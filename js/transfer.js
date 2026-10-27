@@ -225,7 +225,7 @@ function switchTransferTab(el, type) {
         <div class="form-group"><label class="form-label">执行时间</label><input type="time" class="form-input" id="transferTime" value="${timeVal}"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">重复方式</label><select class="form-select" id="transferRepeat"><option>不重复</option><option>每天</option><option>每周</option><option>每月</option></select></div>
+        <div class="form-group"><label class="form-label">重复方式</label><select class="form-select" id="transferRepeat"><option>不重复</option><option>每天</option><option>每周</option><option>每月</option><option>每年</option></select></div>
         <div class="form-group"><label class="form-label">备注（选填）</label><input type="text" class="form-input" id="transferRemark" placeholder="转账备注"></div>
       </div>
       <div class="bank-inline-note">创建任务需完成短信验证码验证；到期自动从储蓄卡扣款，执行前可随时取消。</div>
@@ -1200,6 +1200,14 @@ function nextScheduledRun(date, time, repeat) {
       d.setDate(1);
       d.setMonth(d.getMonth() + 1);
       const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(day, lastDay));
+    } else if (repeat === '每年') {
+      const day = d.getDate();
+      const month = d.getMonth();
+      d.setDate(1);
+      d.setFullYear(d.getFullYear() + 1);
+      d.setMonth(month);
+      const lastDay = new Date(d.getFullYear(), month + 1, 0).getDate();
       d.setDate(Math.min(day, lastDay));
     } else {
       return null;

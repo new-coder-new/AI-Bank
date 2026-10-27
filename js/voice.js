@@ -164,7 +164,7 @@ async function parseVoiceCommandSmart(text) {
 - phone: 收款手机号（字符串，仅phone类型需要）
 - date: 定时转账日期（格式YYYY-MM-DD，仅timed类型需要，无法确定则为空）
 - time: 定时转账时间（格式HH:mm，仅timed类型需要，默认09:00）
-- repeat: 重复方式（不重复/每天/每周/每月，仅timed类型需要，默认不重复）
+- repeat: 重复方式（不重复/每天/每周/每月/每年，仅timed类型需要，默认不重复）
 - total: AA总金额（数字，仅aa类型需要）
 - count: AA参与人数（数字，仅aa类型需要，默认2人）
 

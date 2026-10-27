@@ -251,7 +251,7 @@ function guideStartTimedTransfer() {
   };
   currentModule = 'transfer';
   appendMessage(guideMessage(
-    '<p>请问收款人、转账金额和执行时间是多少？</p>' +
+    '<p>请问收款人、转账金额和执行时间是多少，是否重复（每天/每周/每月/每年）？</p>' +
     '<p class="guide-tip">例如：明天 09:00 给张三转 1000，每月重复</p>'
   ));
   scrollToBottom();
@@ -285,10 +285,11 @@ function guideTimedExtract(text) {
   var t = String(text || '');
   var out = { date: null, time: null, repeat: null };
 
-  if (/每个月|每月|月付/.test(t)) out.repeat = '每月';
+  if (/每年|每年度|年度|年付/.test(t)) out.repeat = '每年';
+  else if (/每个月|每月|月付/.test(t)) out.repeat = '每月';
   else if (/每个星期|每星期|每周|周付/.test(t)) out.repeat = '每周';
   else if (/每天|每日|日付/.test(t)) out.repeat = '每天';
-  if (out.repeat) t = t.replace(/每个月|每月|月付|每个星期|每星期|每周|周付|每天|每日|日付/g, ' ');
+  if (out.repeat) t = t.replace(/每年|每年度|年度|年付|每个月|每月|月付|每个星期|每星期|每周|周付|每天|每日|日付/g, ' ');
 
   // 时间：09:30 / 9点 / 下午3点半
   var tm = t.match(/(\d{1,2})\s*[:：]\s*(\d{2})/);
