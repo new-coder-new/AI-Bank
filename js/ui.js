@@ -33,56 +33,72 @@ var FUNC_GROUPS = [
   {
     title: '转账', items: [
       { key: 'transfer', label: '智能转账', icon: 'transfer' },
-      { key: 'batchTransfer', label: '批量转账', icon: 'users' },
       { key: 'scheduled', label: '定时转账', icon: 'timer' },
-      { key: 'transferHistory', label: '转账记录', icon: 'list' }
+      { key: 'aa', label: 'AA收款', icon: 'users' }
     ]
   },
   {
-    title: '账户', items: [
-      { key: 'bill', label: '账单分析', icon: 'bill' },
-      { key: 'budget', label: '预算管理', icon: 'target' },
-      { key: 'report', label: '财务报告', icon: 'chart' },
-      { key: 'manualReviews', label: '复核审批', icon: 'shield' }
-    ]
-  },
-  {
-    title: '理财', items: [
-      { key: 'wealth', label: '理财操作', icon: 'wealth' },
-      { key: 'investment', label: '基金定投', icon: 'repeat' },
-      { key: 'holdings', label: '我的持仓', icon: 'pie' },
-      { key: 'risk', label: '风险测评', icon: 'shield' }
+    title: '账单', items: [
+      { key: 'bill', label: '消费统计', icon: 'bill' },
+      { key: 'report', label: '账单报告', icon: 'chart' },
+      { key: 'abnormal', label: '异常交易', icon: 'alert' }
     ]
   },
   {
     title: '卡片', items: [
-      { key: 'card', label: '卡片管理', icon: 'card' },
-      { key: 'smartLimit', label: '智能调额', icon: 'sliders' },
-      { key: 'installment', label: '账单分期', icon: 'calendar' }
+      { key: 'cardApply', label: '卡片申请', icon: 'card' },
+      { key: 'cardLimit', label: '额度调整', icon: 'sliders' },
+      { key: 'txnLimit', label: '交易限制', icon: 'lock' },
+      { key: 'cardLost', label: '卡片挂失', icon: 'alert' }
     ]
   },
   {
-    title: '生活与安全', items: [
+    title: '理财', items: [
+      { key: 'wealth', label: '产品', icon: 'wealth' },
+      { key: 'risk', label: '风险评估', icon: 'shield' },
+      { key: 'holdings', label: '持仓', icon: 'pie' }
+    ]
+  },
+  {
+    title: '生活', items: [
       { key: 'subscribe', label: '订阅管理', icon: 'bell' },
-      { key: 'birthday', label: '生日鲜花', icon: 'gift' },
-      { key: 'abnormal', label: '异常交易', icon: 'alert' },
-      { key: 'security', label: '安全中心', icon: 'lock' }
+      { key: 'birthday', label: '生日鲜花', icon: 'gift' }
     ]
   }
+];
+
+// 主分组之外、但仍在用的能力：降级为面板底部一行文字入口，避免功能失去入口
+var FUNC_MORE = [
+  { key: 'transferHistory', label: '转账记录' },
+  { key: 'batchTransfer', label: '批量转账' },
+  { key: 'budget', label: '预算管理' },
+  { key: 'installment', label: '账单分期' },
+  { key: 'security', label: '安全中心' }
 ];
 
 function renderFunctionSheet() {
   const body = document.getElementById('funcPanelBody');
   if (!body) return;
-  body.innerHTML = FUNC_GROUPS.map(function (g) {
+  const groupsHtml = FUNC_GROUPS.map(function (g) {
+    // 每组按自身条目数决定列数（最多 4 列），避免 2/3 项时出现空位
+    const cols = Math.max(2, Math.min(4, g.items.length));
     return '<section class="func-group">' +
       '<h4 class="func-group-title">' + g.title + '</h4>' +
-      '<div class="func-grid">' + g.items.map(function (it) {
+      '<div class="func-grid" style="grid-template-columns:repeat(' + cols + ',1fr)">' + g.items.map(function (it) {
         return '<button class="func-tile" onclick="selectFunc(\'' + it.key + '\')">' +
           '<span class="func-tile-ico">' + bankIcon(it.icon, 20) + '</span>' +
           '<span class="func-tile-label">' + it.label + '</span></button>';
       }).join('') + '</div></section>';
   }).join('');
+
+  // 未进主分组的原有能力，降级为一行文字入口，避免功能失去入口
+  const moreHtml = '<section class="func-group">' +
+    '<h4 class="func-group-title">更多</h4>' +
+    '<div class="func-links">' + FUNC_MORE.map(function (it) {
+      return '<button class="ui-link" onclick="selectFunc(\'' + it.key + '\')">' + it.label + '</button>';
+    }).join('') + '</div></section>';
+
+  body.innerHTML = groupsHtml + moreHtml;
 }
 
 
@@ -100,7 +116,7 @@ const tutorialSteps = [
   },
   {
     title: ' 全部服务',
-    desc: '点击输入框左下角的+号，可以打开全部银行服务，分为转账、账户、理财、卡片、生活与安全五组。',
+    desc: '点击输入框左下角的+号，可以打开全部银行服务，分为转账、账单、卡片、理财、生活五组，底部还有一行「更多」入口。',
     highlight: '.func-btn'
   },
   {

@@ -1,0 +1,212 @@
+// ==========================================================================
+//  卡片服务：卡片申请 / 交易限制 / 卡片挂失
+//  入口：输入框「+」→ 全部服务 → 卡片分组
+//  说明：三个视图都只做前端演示闭环，数据写入 mockData.userProfile 并本地持久化
+//        （saveUserData），不新增后端接口，避免与模拟核心库产生不一致。
+// ==========================================================================
+
+function cardServiceCard() {
+  return (mockData.userProfile && mockData.userProfile.creditCard) || {};
+}
+
+function cardServiceMoney(v) {
+  return '¥' + (Number(v) || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// 统一的「卡片页」外壳：标题 + 副标题 + 内容
+function cardServicePage(title, subtitle, body) {
+  return '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+    '<div class="msg-name">智能金融助手</div>' +
+    '<div class="msg-bubble"><div class="report-page">' +
+    '<div class="report-head"><div><div class="report-title">' + title + '</div>' +
+    '<div class="report-sub">' + subtitle + '</div></div></div>' +
+    body +
+    '</div></div></div></div>';
+}
+
+// ------------------------------ 卡片申请 ------------------------------
+function cardApplyList() {
+  if (!Array.isArray(mockData.userProfile.cardApplications)) mockData.userProfile.cardApplications = [];
+  return mockData.userProfile.cardApplications;
+}
+
+function showCardApplyForm() {
+  const list = cardApplyList();
+  const historyHtml = list.length
+    ? list.slice(-3).reverse().map(a =>
+      '<div class="report-row"><span>' + a.cardType + ' · ' + a.purpose + '</span><b>' + a.status + ' · ' + a.appliedAt + '</b></div>'
+    ).join('')
+    : '<div class="report-empty">暂无申请记录</div>';
+
+  const body =
+    '<div class="data-card">' +
+    '<div class="data-card-title">申请信息</div>' +
+    '<div class="form-group"><label class="form-label">卡种</label>' +
+    '<select class="form-select" id="applyCardType">' +
+    '<option>白金信用卡</option><option>标准金卡</option><option>旅行信用卡</option><option>青年卡</option>' +
+    '</select></div>' +
+    '<div class="form-group"><label class="form-label">期望额度（元）</label>' +
+    '<input type="number" class="form-input" id="applyCardLimit" value="50000" min="5000" step="1000" placeholder="5000 - 200000">' +
+    '<div class="form-hint" id="applyCardHint"></div></div>' +
+    '<div class="form-group"><label class="form-label">主要用途</label>' +
+    '<select class="form-select" id="applyCardPurpose">' +
+    '<option>日常消费</option><option>出行差旅</option><option>教育培训</option><option>大额购物</option><option>其他</option>' +
+    '</select></div>' +
+    '<div class="form-actions">' +
+    '<button class="btn btn-primary" onclick="submitCardApply()">提交申请</button>' +
+    '<button class="btn btn-secondary" onclick="cardApplyCancel()">取消</button>' +
+    '</div></div>' +
+    '<div class="report-panel" style="margin-top:12px;">' +
+    '<div class="report-panel-title">申请记录</div>' + historyHtml +
+    '</div>';
+
+  appendMessage(cardServicePage('卡片申请', '提交后进入审核，通常 1-3 个工作日出结果', body));
+  scrollToBottom();
+}
+
+function cardApplyCancel() {
+  agentReply('已取消卡片申请，未提交任何资料。');
+}
+
+function submitCardApply() {
+  const typeEl = document.getElementById('applyCardType');
+  const limitEl = document.getElementById('applyCardLimit');
+  const purposeEl = document.getElementById('applyCardPurpose');
+  const hint = document.getElementById('applyCardHint');
+  if (!typeEl || !limitEl || !purposeEl) return;
+
+  const cardType = typeEl.value;
+  const want = Number(limitEl.value) || 0;
+  const purpose = purposeEl.value;
+
+  if (want < 5000 || want > 200000) {
+    if (hint) { hint.textContent = '期望额度需在 ¥5,000 - ¥200,000 之间'; hint.style.color = '#B42318'; }
+    return;
+  }
+  if (hint) hint.textContent = '';
+
+  const list = cardApplyList();
+  const at = new Date().toLocaleDateString('zh-CN');
+  list.push({ cardType: cardType, limit: want, purpose: purpose, status: '审核中', appliedAt: at });
+  saveUserData();
+
+  const html = '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+    '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
+    '<div class="bank-result">' +
+    '<div class="bank-result-title">卡片申请已提交</div>' +
+    '<div class="bank-result-amount">¥' + agentFmtInt(want) + '</div>' +
+    '<div class="bank-confirm-rows">' +
+    '<div><span>卡种</span><b>' + cardType + '</b></div>' +
+    '<div><span>主要用途</span><b>' + purpose + '</b></div>' +
+    '<div><span>当前状态</span><b style="color:#B54708;">审核中</b></div>' +
+    '<div><span>申请时间</span><b>' + at + '</b></div>' +
+    '</div>' +
+    '<div style="margin-top:10px;"><button class="ui-link" onclick="showCardApplyForm()">再申请一张</button></div>' +
+    '</div></div></div></div>';
+  appendMessage(html);
+  scrollToBottom();
+}
+
+// ------------------------------ 交易限制 ------------------------------
+function txnLimitDefaults() {
+  return { single: 50000, daily: 100000, night: 'block', overseas: 'block' };
+}
+
+function txnLimitData() {
+  if (!mockData.userProfile.txnLimit) mockData.userProfile.txnLimit = txnLimitDefaults();
+  const d = mockData.userProfile.txnLimit;
+  if (d.single == null) d.single = 50000;
+  if (d.daily == null) d.daily = 100000;
+  if (!d.night) d.night = 'block';
+  if (!d.overseas) d.overseas = 'block';
+  return d;
+}
+
+function showTxnLimitSettings() {
+  const l = txnLimitData();
+  const body =
+    '<div class="data-card">' +
+    '<div class="data-card-title">信用卡交易限制</div>' +
+    '<div class="form-group"><label class="form-label">单笔限额（元）</label>' +
+    '<input type="number" class="form-input" id="txnSingle" value="' + l.single + '" min="1000" step="1000"></div>' +
+    '<div class="form-group"><label class="form-label">日累计限额（元）</label>' +
+    '<input type="number" class="form-input" id="txnDaily" value="' + l.daily + '" min="1000" step="1000">' +
+    '<div class="form-hint" id="txnLimitHint"></div></div>' +
+    '<div class="form-group"><label class="form-label">夜间交易（23:00 - 06:00）</label>' +
+    '<select class="form-select" id="txnNight"><option value="block"' + (l.night === 'block' ? ' selected' : '') + '>禁止</option>' +
+    '<option value="allow"' + (l.night === 'allow' ? ' selected' : '') + '>允许</option></select></div>' +
+    '<div class="form-group"><label class="form-label">境外交易</label>' +
+    '<select class="form-select" id="txnOverseas"><option value="block"' + (l.overseas === 'block' ? ' selected' : '') + '>禁止</option>' +
+    '<option value="allow"' + (l.overseas === 'allow' ? ' selected' : '') + '>允许</option></select></div>' +
+    '<div class="form-actions">' +
+    '<button class="btn btn-primary" onclick="saveTxnLimitSettings()">保存设置</button>' +
+    '<button class="btn btn-secondary" onclick="txnLimitCancel()">取消</button>' +
+    '</div></div>' +
+    '<p style="margin-top:10px;font-size:11.5px;color:#8A97A8;line-height:1.7;">限额作用于信用卡消费；本演示仅保存设置，不拦截实际交易。</p>';
+
+  appendMessage(cardServicePage('交易限制', '按单笔 / 日累计 / 场景控制信用卡消费', body));
+  scrollToBottom();
+}
+
+function txnLimitCancel() {
+  agentReply('已取消修改，交易限制保持原设置。');
+}
+
+function saveTxnLimitSettings() {
+  const singleEl = document.getElementById('txnSingle');
+  const dailyEl = document.getElementById('txnDaily');
+  const nightEl = document.getElementById('txnNight');
+  const overseasEl = document.getElementById('txnOverseas');
+  const hint = document.getElementById('txnLimitHint');
+  if (!singleEl || !dailyEl || !nightEl || !overseasEl) return;
+
+  const single = Number(singleEl.value) || 0;
+  const daily = Number(dailyEl.value) || 0;
+  if (single < 1000) { if (hint) { hint.textContent = '单笔限额不能低于 ¥1,000'; hint.style.color = '#B42318'; } return; }
+  if (daily < single) { if (hint) { hint.textContent = '日累计限额不能低于单笔限额'; hint.style.color = '#B42318'; } return; }
+  if (hint) hint.textContent = '';
+
+  const l = txnLimitData();
+  l.single = single;
+  l.daily = daily;
+  l.night = nightEl.value;
+  l.overseas = overseasEl.value;
+  saveUserData();
+
+  const html = '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+    '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
+    '<div class="bank-result">' +
+    '<div class="bank-result-title">交易限制已更新</div>' +
+    '<div class="bank-result-amount">' + cardServiceMoney(single) + '</div>' +
+    '<div class="bank-confirm-rows">' +
+    '<div><span>单笔限额</span><b>' + cardServiceMoney(single) + '</b></div>' +
+    '<div><span>日累计限额</span><b>' + cardServiceMoney(daily) + '</b></div>' +
+    '<div><span>夜间交易</span><b>' + (l.night === 'block' ? '禁止' : '允许') + '</b></div>' +
+    '<div><span>境外交易</span><b>' + (l.overseas === 'block' ? '禁止' : '允许') + '</b></div>' +
+    '</div></div></div></div></div>';
+  appendMessage(html);
+  scrollToBottom();
+}
+
+// ------------------------------ 卡片挂失 ------------------------------
+function showCardFreezePanel() {
+  const c = cardServiceCard();
+  const frozen = c.isFrozen === true || cardFrozen === true;
+  const number = c.number || '6228 **** **** 8888';
+  const available = c.available != null ? c.available : (c.limit || 0) - (c.used || 0);
+
+  const body =
+    '<div class="data-card">' +
+    '<div class="data-row"><span class="data-label">卡号</span><span class="data-value">' + number + '</span></div>' +
+    '<div class="data-row"><span class="data-label">卡片状态</span><b class="data-value" style="color:' + (frozen ? '#B42318' : '#16A34A') + ';">' + (frozen ? '已挂失' : '正常') + '</b></div>' +
+    '<div class="data-row"><span class="data-label">可用额度</span><span class="data-value">' + cardServiceMoney(available) + '</span></div>' +
+    '</div>' +
+    '<p style="margin-top:10px;font-size:11.5px;color:#8A97A8;line-height:1.7;">挂失后卡片立即冻结、无法继续交易；找回卡片可自助解挂。挂失与解挂均会记入账户变更记录。</p>' +
+    '<div class="form-actions">' +
+    '<button class="btn ' + (frozen ? 'btn-primary' : 'btn-danger') + '" onclick="toggleFreeze()">' + (frozen ? '解除挂失' : '立即挂失') + '</button>' +
+    '<button class="btn btn-secondary" onclick="showCardLimit()">查看卡片详情</button>' +
+    '</div>';
+
+  appendMessage(cardServicePage('卡片挂失', frozen ? '当前状态：已挂失' : '当前状态：正常使用中', body));
+  scrollToBottom();
+}

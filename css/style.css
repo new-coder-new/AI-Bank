@@ -2210,6 +2210,9 @@ body {
 }
 .ui-link:hover { text-decoration: underline; }
 .ui-link.danger { color: var(--bank-red); }
+/* 全部服务面板底部：未进主分组的入口，文字链接形式 */
+.func-links { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 2px; }
+.func-links .ui-link { font-size: 12px; font-weight: 500; }
 
 .ui-overview-card { padding: 22px 22px 18px; }
 .ui-overview-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }

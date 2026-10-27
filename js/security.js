@@ -724,6 +724,12 @@ function quickAction(type) {
     case 'batchTransfer': showBatchTransfer(); break;
     case 'investment': showInvestmentPlans(); break;
     case 'installment': showInstallmentCalculator(); break;
+    // 全部服务（+）新分组：转账 / 卡片
+    case 'aa': openAAForm(); break;
+    case 'cardApply': showCardApplyForm(); break;
+    case 'cardLimit': appendMessage(cardLimitDetailCard()); scrollToBottom(); break;
+    case 'txnLimit': showTxnLimitSettings(); break;
+    case 'cardLost': showCardFreezePanel(); break;
   }
 }
 
