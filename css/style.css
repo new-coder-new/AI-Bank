@@ -2668,6 +2668,32 @@ body {
 .report-row span { color: #64748B; }
 .report-row b { color: var(--bank-text-2); font-weight: 600; text-align: right; }
 .report-empty { padding: 10px 0; color: var(--bank-muted); font-size: 11.5px; }
+/* 账单分析：两列汇总 / 双环形图 / 底部 AI 建议行 */
+.report-summary.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.report-chart-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.report-ai-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bank-line);
+  color: var(--bank-muted);
+  font-size: 11.5px;
+  line-height: 1.7;
+}
+.report-ai-tag {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bank-primary-soft);
+  color: var(--bank-primary);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.dark-mode .report-ai-line { border-top-color: #243041 !important; color: #94A3B8 !important; }
+.dark-mode .report-ai-tag { background: #1B2738 !important; color: #9DC4EA !important; }
 .report-hero {
   display: flex;
   align-items: flex-end;
@@ -2701,6 +2727,8 @@ body {
 .dark-mode .report-bar-label,
 .dark-mode .report-legend-item,
 .dark-mode .report-metric-grid span { color: #94A3B8 !important; }
+.dark-mode .report-legend-item b { color: #C9D5E5 !important; }
+.dark-mode .report-panel-title { color: #C9D5E5 !important; }
 .dark-mode .report-bar-track { background: #243041; }
 .dark-mode .report-hero { background: #172335; border-color: #243041; }
 .dark-mode .report-hero b { color: #E6EDF7; }

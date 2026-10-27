@@ -17,6 +17,27 @@ function reportColor(i) {
   return colors[i % colors.length];
 }
 
+// 账单分析底部的一行 AI 建议：按本月收支与支出结构给一句可执行建议
+function billAnalysisAdvice(totalIncome, totalExpense, expenseList) {
+  const net = totalIncome - totalExpense;
+  const rate = totalIncome > 0 ? net / totalIncome * 100 : 0;
+  const top = (expenseList || [])[0];
+  const topPct = (top && totalExpense > 0) ? top.value / totalExpense * 100 : 0;
+  if (totalIncome <= 0) {
+    return '本月暂无收入记录，先核对流水是否同步完整，再判断收支是否健康。';
+  }
+  if (net < 0) {
+    return '本月支出比收入多 ' + reportInt(Math.abs(net)) + '，优先压缩「' + (top ? top.label : '非必要消费') + '」，避免动用储蓄补缺口。';
+  }
+  if (topPct >= 45) {
+    return '支出集中在「' + top.label + '」（占 ' + topPct.toFixed(1) + '%），本月结余 ' + reportInt(net) + '，可把其中 30% 转入货币基金降低单一支出波动。';
+  }
+  if (rate >= 30) {
+    return '储蓄率 ' + rate.toFixed(1) + '% 表现良好，结余 ' + reportInt(net) + ' 建议按 5:3:2 分配到货币基金、稳健理财与应急金。';
+  }
+  return '储蓄率 ' + rate.toFixed(1) + '%，结余 ' + reportInt(net) + '；建议先补足 3 个月应急金，再考虑长期理财。';
+}
+
 function showBillAnalysis() {
   const u = mockData.userProfile;
   const expenseMap = {};
@@ -30,7 +51,11 @@ function showBillAnalysis() {
     }
   });
   const expenseList = Object.entries(expenseMap).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
-  const incomeList = Object.entries(incomeMap).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+  let incomeList = Object.entries(incomeMap).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+  // 动态流水没有收入记录时回落到静态月度账单，保证收入构成饼图不空转
+  if (!incomeList.length) {
+    incomeList = (mockData.bills.income || []).map(i => ({ label: i.label, value: i.value }));
+  }
   const now = new Date();
   const monthLabel = now.getFullYear() + '年' + (now.getMonth() + 1) + '月';
   window.billExpenseData = expenseList;
@@ -38,21 +63,6 @@ function showBillAnalysis() {
 
   const totalIncome = incomeList.reduce((s, i) => s + i.value, 0);
   const totalExpense = expenseList.reduce((s, i) => s + i.value, 0);
-  const netFlow = totalIncome - totalExpense;
-  const maxExpense = expenseList.length ? expenseList[0].value : 1;
-  const bars = expenseList.slice(0, 6).map((item, i) => `
-    <div class="report-bar">
-      <span class="report-bar-label">${reportEsc(item.label)}</span>
-      <span class="report-bar-track"><i style="width:${Math.max(3, item.value / maxExpense * 100)}%;background:${reportColor(i)};"></i></span>
-      <b>${reportInt(item.value)}</b>
-    </div>
-  `).join('');
-  const expenseRows = expenseList.length
-    ? expenseList.map(i => `<div class="report-row"><span>${reportEsc(i.label)}</span><b class="expense">-${reportMoney(i.value)}</b></div>`).join('')
-    : '<div class="report-empty">暂无支出</div>';
-  const incomeRows = incomeList.length
-    ? incomeList.map(i => `<div class="report-row"><span>${reportEsc(i.label)}</span><b class="income">+${reportMoney(i.value)}</b></div>`).join('')
-    : '<div class="report-empty">暂无收入</div>';
 
   const html = `
     <div class="message">
@@ -67,48 +77,44 @@ function showBillAnalysis() {
                 <div class="report-sub">${monthLabel} · 含动态交易记录</div>
               </div>
             </div>
-            <div class="report-summary">
+            <div class="report-summary cols-2">
               <div><span>总收入</span><b class="income">+${reportMoney(totalIncome)}</b></div>
               <div><span>总支出</span><b class="expense">-${reportMoney(totalExpense)}</b></div>
-              <div><span>净现金流</span><b class="${netFlow >= 0 ? 'income' : 'expense'}">${netFlow >= 0 ? '+' : ''}${reportMoney(netFlow)}</b></div>
             </div>
-            <div class="report-chart-grid">
+            <div class="report-chart-grid cols-2">
               <div class="report-panel">
                 <div class="report-panel-title">支出构成</div>
                 <div class="report-donut"><canvas id="pieChart"></canvas></div>
                 <div class="report-legend" id="pieLegend"></div>
               </div>
               <div class="report-panel">
-                <div class="report-panel-title">分类支出</div>
-                <div class="report-bars">${bars || '<div class="report-empty">暂无支出</div>'}</div>
+                <div class="report-panel-title">收入构成</div>
+                <div class="report-donut"><canvas id="incomePieChart"></canvas></div>
+                <div class="report-legend" id="incomePieLegend"></div>
               </div>
             </div>
-            <div class="report-detail-grid">
-              <div class="report-panel">
-                <div class="report-panel-title">支出明细</div>
-                ${expenseRows}
-              </div>
-              <div class="report-panel">
-                <div class="report-panel-title">收入明细</div>
-                ${incomeRows}
-              </div>
-            </div>
+            <div class="report-ai-line"><span class="report-ai-tag">AI 建议</span><span>${reportEsc(billAnalysisAdvice(totalIncome, totalExpense, expenseList))}</span></div>
           </div>
         </div>
       </div>
     </div>
   `;
   appendMessage(html);
-  setTimeout(drawPieChart, 60);
+  setTimeout(() => {
+    drawReportDonut({ canvasId: 'pieChart', legendId: 'pieLegend', data: expenseList, centerLabel: '总支出' });
+    drawReportDonut({ canvasId: 'incomePieChart', legendId: 'incomePieLegend', data: incomeList, centerLabel: '总收入' });
+  }, 60);
   scrollToBottom();
 }
 
-function drawPieChart() {
-  const canvas = document.getElementById('pieChart');
+// 通用环形图绘制：支出构成 / 收入构成共用（canvasId、legendId、data、centerLabel 可配）
+function drawReportDonut(opts) {
+  const o = opts || {};
+  const canvas = document.getElementById(o.canvasId || 'pieChart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  const rawData = window.billExpenseData || mockData.bills.expense;
+  const rawData = Array.isArray(o.data) ? o.data : (window.billExpenseData || mockData.bills.expense);
   const data = rawData.map((d, i) => ({ ...d, color: d.color || reportColor(i) }));
   const total = data.reduce((s, d) => s + d.value, 0);
   const size = 180;
@@ -121,6 +127,10 @@ function drawPieChart() {
   ctx.clearRect(0, 0, size, size);
 
   const cx = size / 2, cy = size / 2, r = 68, innerR = 43;
+  // 深色模式下环心与分隔线跟随卡片底色，避免白心/白缝
+  const dark = document.body.classList.contains('dark-mode');
+  const ink = dark ? '#E6EDF7' : '#16202E';
+  const hole = dark ? '#172335' : '#FFFFFF';
   if (total <= 0) {
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -137,7 +147,7 @@ function drawPieChart() {
       ctx.closePath();
       ctx.fillStyle = d.color;
       ctx.fill();
-      ctx.strokeStyle = '#FFFFFF';
+      ctx.strokeStyle = hole;
       ctx.lineWidth = 2;
       ctx.stroke();
       startAngle += sliceAngle;
@@ -145,19 +155,19 @@ function drawPieChart() {
   }
   ctx.beginPath();
   ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-  ctx.fillStyle = '#FFFFFF';
+  ctx.fillStyle = hole;
   ctx.fill();
 
   const compact = total >= 10000 ? (total / 10000).toFixed(1) + '万' : Math.round(total).toLocaleString('zh-CN');
-  ctx.fillStyle = '#16202E';
+  ctx.fillStyle = ink;
   ctx.font = '600 13px "PingFang SC", "Microsoft YaHei", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('¥' + compact, cx, cy + 2);
   ctx.fillStyle = '#8A97A8';
   ctx.font = '11px "PingFang SC", "Microsoft YaHei", sans-serif';
-  ctx.fillText('总支出', cx, cy + 18);
+  ctx.fillText(o.centerLabel || '总支出', cx, cy + 18);
 
-  const legend = document.getElementById('pieLegend');
+  const legend = document.getElementById(o.legendId || 'pieLegend');
   if (legend) {
     legend.innerHTML = data.slice(0, 6).map(d => {
       const pct = total > 0 ? (d.value / total * 100).toFixed(1) : '0.0';
@@ -165,6 +175,11 @@ function drawPieChart() {
         reportEsc(d.label) + '</span><b>' + pct + '%</b></div>';
     }).join('');
   }
+}
+
+// 兼容旧调用：只重绘支出构成
+function drawPieChart() {
+  drawReportDonut({ canvasId: 'pieChart', legendId: 'pieLegend', data: window.billExpenseData || mockData.bills.expense, centerLabel: '总支出' });
 }
 
 
