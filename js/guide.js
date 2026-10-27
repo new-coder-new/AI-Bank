@@ -201,7 +201,7 @@ function guideHandleText(text) {
   // 去掉口语前缀，便于识别「我要转账」「帮我转账」
   var bare = t.replace(/^(我要|我想|我想用|帮我|我要用|使用)/, '');
 
-  // 先按当前模块的子功能匹配（模块内上下文，支持别名：产品 ↔ 产品申购、持仓 ↔ 我的持仓）
+  // ① 精确匹配：当前模块的子功能（模块内上下文，支持别名：产品 ↔ 产品申购、持仓 ↔ 我的持仓）
   var cur = guideServiceByKey(currentModule);
   if (cur) {
     var hitSub = cur.subs.filter(function (x) {
@@ -214,14 +214,187 @@ function guideHandleText(text) {
     }
   }
 
-  // 再按一级服务名匹配
+  // ② 精确匹配一级服务名
   var svc = guideResolveService(bare);
   if (svc) {
     guideOpenService(svc.key);
     return true;
   }
 
+  // ③ 模糊识别：「我要看消费统计」「帮我查下账单」「看看理财」这类不精确说法
+  var fuzzy = guideResolveIntent(t);
+  if (fuzzy) {
+    if (fuzzy.kind === 'sub') {
+      guidePickSub(fuzzy.service.key, fuzzy.sub.key);
+    } else {
+      guideOpenService(fuzzy.service.key);
+    }
+    return true;
+  }
+
+  // ④ 明显是「想看某个功能」但本地没认出来 → AI 意图识别兜底
+  if (guideIsMenuIntent(t)) {
+    guideAIIntent(t);
+    return true;
+  }
+
   return false;
+}
+
+// 意图识别相关：去掉「想看 / 帮我 / 一下」等口语成分，只留下功能相关词
+function guideNormalizeText(text) {
+  return String(text || '').trim()
+    .replace(/^(我想看一下|我想看看|我想看|我要看一下|我要看看|我要看|我想用|我要用|我想|我要|帮我|麻烦|请|看一下|看看|看下|查一下|查下|打开|进入|来一下)/, '')
+    .replace(/(一下|的功能|功能|服务|模块|页面|界面|板块|吧|呢|啊|吗|，|,|。|！|!|\?|？|\s)/g, '')
+    .replace(/个(?=账|账|钱|款)/g, '');   // 「转个账」→「转账」
+}
+
+// 只在「明显是打开某功能」的短句上做模糊匹配，避免劫持「给张三转100」这类业务指令
+function guideIsMenuIntent(text) {
+  var s = String(text || '').trim();
+  if (!s) return false;
+  if (/\d/.test(s)) return false;
+  if (/(转账|转给|转\d)/.test(s)) return false;
+  return /^(我想看|我要看|我想|我要|帮我|请|麻烦|看一下|看看|看下|查一下|查下|打开|进入|来一下|查|看)/.test(s);
+}
+
+var GUIDE_SERVICE_KEYWORDS = {
+  transfer: ['转账', '汇款', '打钱', '转钱', '付款'],
+  bill: ['账单', '消费', '统计', '收支', '花销', '流水'],
+  card: ['卡片', '信用卡', '额度', '挂失', '办卡'],
+  wealth: ['理财', '基金', '投资', '持仓', '收益', '风险评估'],
+  life: ['生活', '订阅', '会员', '鲜花', '生日']
+};
+
+var GUIDE_SUB_KEYWORDS = {
+  transfer: {
+    name: ['姓名转账', '按姓名', '姓名'],
+    phone: ['手机号转账', '手机号', '电话号'],
+    timed: ['定时转账', '定时', '预约转账', '计划转账'],
+    aa: ['AA收款', 'AA', '分摊', '收款']
+  },
+  bill: {
+    stat: ['消费统计', '消费汇总', '统计'],
+    report: ['账单报告', '月报', '报告'],
+    abnormal: ['异常交易', '异常', '可疑交易']
+  },
+  card: {
+    apply: ['卡片申请', '申请卡片', '办卡'],
+    limit: ['额度调整', '调整额度', '调额', '额度'],
+    txnlimit: ['交易限制', '交易限额', '限额'],
+    lost: ['卡片挂失', '挂失', '冻结卡片']
+  },
+  wealth: {
+    products: ['产品申购', '申购', '理财产品', '产品'],
+    risk: ['风险评估', '风险测评', '测评'],
+    holdings: ['我的持仓', '持仓', '持有']
+  },
+  life: {
+    subscribe: ['订阅管理', '订阅', '会员'],
+    birthday: ['生日鲜花', '生日', '鲜花']
+  }
+};
+
+// 关键词打分：命中子功能 → 直接进子功能；命中服务 → 进服务菜单；都没有 → null
+function guideResolveIntent(text) {
+  var norm = guideNormalizeText(text);
+  if (!norm) return null;
+
+  // 先看子功能关键词（长的优先，避免「额度」抢走「额度调整」）
+  var best = null;
+  for (var i = 0; i < GUIDE_SERVICES.length; i++) {
+    var svc = GUIDE_SERVICES[i];
+    var subs = GUIDE_SUB_KEYWORDS[svc.key] || {};
+    for (var k in subs) {
+      if (!Object.prototype.hasOwnProperty.call(subs, k)) continue;
+      var words = subs[k];
+      for (var w = 0; w < words.length; w++) {
+        if (norm.indexOf(words[w]) !== -1) {
+          var sub = svc.subs.filter(function (x) { return x.key === k; })[0];
+          if (!sub) continue;
+          var score = words[w].length;
+          if (!best || score > best.score) best = { kind: 'sub', service: svc, sub: sub, score: score };
+        }
+      }
+    }
+  }
+  if (best) return best;
+
+  // 再看服务关键词
+  for (var j = 0; j < GUIDE_SERVICES.length; j++) {
+    var s2 = GUIDE_SERVICES[j];
+    var kws = GUIDE_SERVICE_KEYWORDS[s2.key] || [];
+    for (var m = 0; m < kws.length; m++) {
+      if (norm.indexOf(kws[m]) !== -1) return { kind: 'service', service: s2 };
+    }
+  }
+  return null;
+}
+
+// AI 意图识别兜底：本地规则没认出来时，让模型在固定清单里选一个
+async function guideAIIntent(text) {
+  var loadingId = 'guide-intent-' + Date.now();
+  appendMessage('<div class="message" id="' + loadingId + '"><div class="msg-avatar ai">🤖</div>' +
+    '<div class="msg-content"><div class="msg-name">AI Bank 助手</div>' +
+    '<div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div></div></div>');
+  scrollToBottom();
+
+  var pick = null;
+  try { pick = await guideAIIntentExtract(text); } catch (e) { pick = null; }
+  var el = document.getElementById(loadingId);
+  if (el) el.remove();
+
+  if (pick) {
+    var svc = guideServiceByKey(pick.service);
+    if (svc) {
+      if (pick.sub) {
+        var sub = svc.subs.filter(function (x) { return x.key === pick.sub; })[0];
+        if (sub) { guidePickSub(svc.key, sub.key); return; }
+      }
+      guideOpenService(svc.key);
+      return;
+    }
+  }
+
+  // 认不出就给菜单，并说明可以直接点按钮
+  appendMessage(guideMessage('<p>没太听懂你想打开哪个功能。</p><p class="guide-tip">可以直接点下面的按钮，或输入功能名称，例如「账单分析」「转账」「理财」。</p>'));
+  scrollToBottom();
+  renderServiceWelcome();
+}
+
+async function guideAIIntentExtract(text) {
+  if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return null;
+  if (typeof DEEPSEEK_API_URL === 'undefined' || !DEEPSEEK_API_URL) return null;
+
+  var catalog = GUIDE_SERVICES.map(function (s) {
+    return s.key + '=' + s.label + '（子功能：' + s.subs.map(function (x) { return x.key + '=' + x.label; }).join('、') + '）';
+  }).join('\n');
+
+  var payload = {
+    model: (typeof DEEPSEEK_MODEL !== 'undefined' && DEEPSEEK_MODEL) ? DEEPSEEK_MODEL : 'deepseek-chat',
+    temperature: 0,
+    max_tokens: 80,
+    messages: [
+      { role: 'system', content: '你是银行 App 的意图分类器。只能从给定清单里选服务/子功能，选不出就返回空。只输出 JSON，不要解释。' },
+      { role: 'user', content: '清单：\n' + catalog + '\n\n用户说：' + text + '\n\n输出 JSON：{"service":"服务key或空","sub":"子功能key或空"}' }
+    ]
+  };
+
+  var resp = await fetch(DEEPSEEK_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (typeof DEEPSEEK_API_KEY !== 'undefined' ? DEEPSEEK_API_KEY : '') },
+    body: JSON.stringify(payload)
+  });
+  if (!resp.ok) return null;
+  var data = await resp.json();
+  var content = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+  var m = content.match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  var obj = null;
+  try { obj = JSON.parse(m[0]); } catch (e) { return null; }
+  if (!obj || !obj.service) return null;
+  if (!guideServiceByKey(obj.service)) return null;
+  return { service: obj.service, sub: obj.sub || '' };
 }
 
 // 按「服务名 + 别名」精确匹配一级服务（整词匹配，避免劫持自然语言指令）
