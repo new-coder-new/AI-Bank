@@ -132,6 +132,33 @@ curl http://127.0.0.1:8787/api/health
 - **彻底重置**：重启 `node server/index.js`。  
   服务端数据在内存中，重启即恢复初始数据。
 
+### 3.5 密钥与 AI 能力配置
+
+代码中不保存任何 API Key。AI 能力（对话 / 意图分类 / Agent function calling / 语音识别）按以下优先级取 Key：
+
+| 优先级 | 来源 | 说明 |
+|---|---|---|
+| 1 | `js/config.local.js` | 本机文件，已被 `.gitignore` 忽略，不进入版本库 |
+| 2 | 环境变量 | `DEEPSEEK_API_KEY` / `SILICONFLOW_API_KEY`；缺失本机文件时由 `server/index.js` 注入 |
+
+首次使用：
+
+```bash
+cp js/config.local.example.js js/config.local.js   # 然后填入自己的 Key
+```
+
+无 Key 时的降级行为（演示主流程不受影响）：
+
+| 能力 | 无 Key 表现 |
+|---|---|
+| AI 自由对话 | 回复「本地规则模式」提示，指令类操作照常执行 |
+| 意图分类 | 自动降为本地正则/规则层 |
+| Agent function calling | `agentLLMAvailable()` 返回 false，静默走规则与场景层 |
+| 语音识别 | 直接使用模拟识别文本，不弹错误框 |
+| 语音转账解析 | 跳过模型解析，文本交回对话链路 |
+
+> ⚠️ 历史提交 `56f29d7`（tag `v1`）中仍留有旧的硬编码 Key。若要推送到公开仓库，请先作废/重置这两个 Key，或改写历史后再推送。
+
 ---
 
 ## 4. 目录结构
@@ -766,8 +793,13 @@ npm start
 
 ```bash
 docker build -t ai-banking-agent .
-docker run -p 8080:8080 ai-banking-agent
+docker run -p 8080:8080 \
+  -e DEEPSEEK_API_KEY=sk-xxx \
+  -e SILICONFLOW_API_KEY=sk-xxx \
+  ai-banking-agent
 ```
+
+镜像内不含任何 Key：容器启动后 `GET /js/config.local.js` 会由环境变量即时生成配置。
 
 ### 13.3 腾讯云 CloudBase CloudRun
 
@@ -788,10 +820,11 @@ https://ai-banking-agent-335169-11-1386930579.sh.run.tcloudbase.com/
 - 容器内端口为 `8080`。
 - 服务 `MinNum=1` 常驻，响应快但按实例计费；可下调为 0 省费，代价是冷启动。
 - 代码更新后重新走 CloudBase 源码构建部署即可。
+- 密钥通过控制台「环境变量」配置 `DEEPSEEK_API_KEY` / `SILICONFLOW_API_KEY`，不要写进仓库。
 
 ### 13.4 生产化建议
 
-- 删除前端硬编码 API Key，改为服务端代理或环境变量。
+- ✅ 已删除前端硬编码 API Key：Key 外置到 `js/config.local.js`（git 忽略）或环境变量注入；生产环境建议进一步改为服务端代理，前端完全不接触 Key。
 - 增加登录、会话、权限、审计与限流。
 - 使用真实数据库替代内存数据库。
 - 使用服务端定时任务替代前端定时器。

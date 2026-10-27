@@ -74,6 +74,17 @@ function stopGlobalVoiceRecording() {
 
 async function transcribeGlobalAudio(audioBlob) {
   const recordingText = document.getElementById('voiceRecordingText');
+  // 未配置语音识别 Key：不发起请求，直接走模拟识别，避免弹错误框
+  if (!SILICONFLOW_API_KEY) {
+    console.info('[voice] 未配置 SiliconFlow API Key，语音识别走模拟结果');
+    if (recordingText) {
+      recordingText.textContent = '未配置语音 Key，使用模拟识别';
+      recordingText.style.color = '#999';
+    }
+    const mockTexts = ['查一下我的余额', '本月消费统计', '转500元给张三', '我的理财产品', '信用卡额度'];
+    setTimeout(() => handleGlobalVoiceResult(mockTexts[Math.floor(Math.random() * mockTexts.length)]), 400);
+    return;
+  }
   if (recordingText) {
     recordingText.textContent = '正在识别...';
     recordingText.style.color = '#0B4F9C';
@@ -129,6 +140,14 @@ function handleGlobalVoiceResult(text) {
 
 // 智能转账解析：支持姓名/手机号/定时/AA四种转账类型
 async function parseVoiceCommandSmart(text) {
+  // 未配置 Key：跳过模型解析，直接把文本交给对话链路（本地规则/知识库）
+  if (!DEEPSEEK_API_KEY) {
+    console.info('[voice] 未配置 DeepSeek API Key，跳过模型解析');
+    const userInput = document.getElementById('userInput');
+    if (userInput) userInput.value = text;
+    sendMessage();
+    return;
+  }
   try {
     const prompt = `你是一个金融语音指令解析器。请从以下用户语音识别文本中提取转账信息，返回严格的JSON格式，不要有任何其他文字。
 

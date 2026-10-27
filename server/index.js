@@ -50,6 +50,21 @@ function serveStatic(req, res) {
   });
 }
 
+// 密钥配置下发：js/config.local.js 存在于本机时原样返回（已 git 忽略，不入库）；
+// 文件不存在时回落到环境变量 DEEPSEEK_API_KEY / SILICONFLOW_API_KEY，
+// 保证部署环境不用提交 Key，同时避免浏览器控制台出现 404。
+function serveKeyConfig(res) {
+  const localFile = path.join(STATIC_ROOT, 'js', 'config.local.js');
+  const envBody = 'window.__BANK_KEYS__ = ' + JSON.stringify({
+    deepseekApiKey: process.env.DEEPSEEK_API_KEY || '',
+    siliconflowApiKey: process.env.SILICONFLOW_API_KEY || ''
+  }) + ';\n';
+  fs.readFile(localFile, 'utf8', (err, code) => {
+    res.writeHead(200, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-store' });
+    res.end((!err && code) ? code : envBody);
+  });
+}
+
 // ------------------------------ 工具 ------------------------------
 function sendJSON(res, code, data) {
   const body = JSON.stringify(data);
@@ -489,6 +504,8 @@ const server = http.createServer(async (req, res) => {
   const handler = routes[key];
 
   if (!handler) {
+    // 密钥配置单独下发（本机文件优先，其次环境变量）
+    if (url.pathname === '/js/config.local.js') { serveKeyConfig(res); return; }
     // 无匹配 API 路由时，尝试作为静态文件服务（单端口部署：前端页面/资源）
     serveStatic(req, res);
     return;

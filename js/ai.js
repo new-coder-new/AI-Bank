@@ -51,6 +51,12 @@ async function callLLMIntentClassification(text) {
 {"intent": "意图名称", "module": "模块名", "slots": {"amount": null, "date": null, "payee_name": null, "payee_list": [], "phone": null, "product_name": null, "period": null, "platform": null, "steps": []}, "confidence": 0.0, "reply": "给用户的简短回复"}
 `;
 
+  // 未配置 Key：直接返回 null，由调用方降级到本地规则，避免发出必然 401 的请求
+  if (!DEEPSEEK_API_KEY) {
+    console.info('[ai] 未配置 DeepSeek API Key，意图分类降级为本地规则');
+    return null;
+  }
+
   try {
     const response = await fetch(DEEPSEEK_API_URL, {
       method: 'POST',
@@ -249,6 +255,10 @@ async function sendMessage() {
     appendMessage(`<div class="message" id="${loadingId}"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div></div></div>`);
     scrollToBottom();
     try {
+      // 未配置 Key：直接进入降级提示，不发请求
+      if (!DEEPSEEK_API_KEY) {
+        throw new Error('未配置 DeepSeek API Key，请参考 js/config.local.example.js 创建 js/config.local.js');
+      }
       const response = await fetch(DEEPSEEK_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_API_KEY}` },

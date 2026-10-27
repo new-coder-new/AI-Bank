@@ -966,6 +966,12 @@ async function enhancedSendMessage(text) {
 // 调用AI回复（保留原有的AI对话功能）
 async function callAIResponse(text) {
   try {
+    // 未配置 Key：不发请求，直接给出本地可用提示
+    if (!DEEPSEEK_API_KEY) {
+      appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">当前运行在<strong>本地规则模式</strong>（未配置 DeepSeek API Key），AI 自由对话不可用，但下面的指令都能正常执行：<br><br>• 给张三转账1000元<br>• 查询余额<br>• 先转500给张三，再查一下余额<br>• 本月消费统计<br><br><span style="font-size:12px;color:#999;">配置方法：复制 js/config.local.example.js 为 js/config.local.js 并填入 Key，或设置环境变量 DEEPSEEK_API_KEY。</span></div></div></div>`);
+      scrollToBottom();
+      return;
+    }
     // 构建包含上下文的prompt
     const contextMessages = conversationContext.slice(-6).map(m => ({
       role: m.role === 'user' ? 'user' : 'assistant',
@@ -981,7 +987,7 @@ async function callAIResponse(text) {
         'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
       },
       body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
+        model: MODEL_NAME,
         messages: [
           { role: 'system', content: systemPrompt },
           ...contextMessages,
