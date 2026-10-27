@@ -12,13 +12,37 @@ function showCardLimit() {
   const statusHtml = cardFrozen
     ? '<span class="card-status status-frozen">已挂失</span>'
     : '<span class="card-status status-normal">正常</span>';
+
+  // 申请通过后核发的新卡：主卡之外逐张渲染，保证「卡片」页能看到信用卡增加
+  const allCards = (typeof cardServiceCards === 'function') ? cardServiceCards() : [];
+  const extraCards = allCards.slice(1);
+  const totalCredit = allCards.reduce(function (s, c) { return s + (Number(c.limit) || 0); }, 0);
+  const extraHtml = extraCards.map(function (c) {
+    const lim = Number(c.limit) || 0;
+    return `
+          <div class="card-visual" style="margin-top:12px;position:relative;">
+            <span style="position:absolute;top:10px;right:12px;font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,0.18);color:#fff;">${c.status || '已发卡'}</span>
+            <div class="card-type">${c.cardType || '信用卡'}</div>
+            <div class="card-number">6228 **** **** ${c.tail || '****'}</div>
+            <div class="card-limits">
+              <div class="card-limit-item"><div class="card-limit-label">总额度</div><div class="card-limit-value">¥ ${lim.toLocaleString()}</div></div>
+              <div class="card-limit-item"><div class="card-limit-label">已使用</div><div class="card-limit-value">¥ 0</div></div>
+              <div class="card-limit-item"><div class="card-limit-label">可用额度</div><div class="card-limit-value" style="color:#fbbf24;">¥ ${lim.toLocaleString()}</div></div>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:8px;">${c.issuedAt || ''}</div>
+          </div>`;
+  }).join('');
+  const cardCountText = allCards.length > 1
+    ? '（共 ' + allCards.length + ' 张 · 总授信 ¥ ' + totalCredit.toLocaleString() + '）'
+    : '';
   const html = `
     <div class="message">
       <div class="msg-avatar ai">🤖</div>
       <div class="msg-content">
         <div class="msg-name">智能金融助手</div>
         <div class="msg-bubble">
-          <p>以下是您的信用卡信息：${statusHtml}</p>
+          <p>以下是您的信用卡信息：${statusHtml}<span style="font-size:12px;color:#8A97A8;margin-left:6px;">${cardCountText}</span></p>
           <div class="card-visual" style="${cardFrozen ? 'opacity:0.6;filter:grayscale(0.5);' : ''}">
             <div class="card-type">${card.type}</div>
             <div class="card-number">${card.number}</div>
@@ -29,6 +53,8 @@ function showCardLimit() {
             </div>
             <div class="progress-bar"><div class="progress-fill" style="width:${usagePercent}%"></div></div>
           </div>
+          ${extraHtml}
+          ${extraCards.length ? '<div style="margin-top:10px;"><button class="ui-link" onclick="showCardMyCards()">管理全部卡片（' + allCards.length + ' 张）</button></div>' : ''}
           <div class="data-card">
             <div class="data-card-title">账单信息</div>
             <div class="data-row"><span class="data-label">本期账单金额</span><span class="data-value expense">¥ ${card.billAmount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
