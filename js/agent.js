@@ -1568,7 +1568,7 @@ function agentParseTransfer(text) {
     if (am[2]) amount *= 10000;
   }
   // 手机号转账
-  var phone = text.match(/1[3-9]\d{9}/);
+  var phone = text.match(/1\d{10}/);
   if (!payee && phone) payee = phone[0].slice(0, 3) + '****' + phone[0].slice(7);
   if (!payee || !amount) return null;
   return { payee: payee, amount: amount, phone: phone ? phone[0] : null };

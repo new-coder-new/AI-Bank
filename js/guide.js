@@ -211,7 +211,7 @@ function guideResolveService(name) {
 
 // ------------------------------ 转账槽位收集（姓名 / 手机号） ------------------------------
 // 意图理解规则（每轮输入都按下面规则抽取槽位）：
-//   ① 手机号：11 位、1[3-9] 开头的数字串，先于金额识别，避免被当成金额；
+//   ① 手机号：1 开头的 11 位数字串，先于金额识别，避免被当成金额；陌生号码后续会要求验证姓名；
 //   ② 金额：阿拉伯数字（支持「万」），出现即视为金额；
 //   ③ 收款人（仅姓名转账）：剔除金额与「给/向/转/元/块/请/我」等口语成分后，
 //      优先精确匹配通讯录姓名；匹配不到但为 2-4 位中文，按自由收款人姓名处理。
@@ -249,7 +249,7 @@ function guideTransferParse(text) {
   var t = String(text || '').trim();
 
   var phone = null;
-  var pm = t.match(/1[3-9]\d{9}/);
+  var pm = t.match(/1\d{10}/);
   if (pm) {
     phone = pm[0];
     t = t.replace(pm[0], ' ');
@@ -343,7 +343,20 @@ function guideTransferStep(text) {
     return true;
   }
 
-  // ② 问备注阶段：识别「要 / 不要」，其它输入直接当备注内容
+  // ② 手机号转账：陌生号码需要先验证收款人姓名
+  if (s.stage === 'verifyName') {
+    var typed = t.replace(/[，,。.、\s]/g, '');
+    if (!typed || typed.length > 20 || /^\d+$/.test(typed)) {
+      appendMessage(guideMessage('<p>请填写收款人姓名（2-20 个字符，不能是纯数字）</p>'));
+      scrollToBottom();
+      return true;
+    }
+    s.payee = typed;
+    guideTransferAskRemark();
+    return true;
+  }
+
+  // ③ 问备注阶段：识别「要 / 不要」，其它输入直接当备注内容
   if (s.stage === 'askRemark') {
     if (/^(需要|要|好的|好|是|加|添加|备注|加个备注|写备注|要备注)$/.test(bare)) {
       s.stage = 'remark';
@@ -361,7 +374,7 @@ function guideTransferStep(text) {
     return true;
   }
 
-  // ③ 收槽位阶段
+  // ④ 收槽位阶段
   var parsed = guideTransferParse(t);
 
   // 姓名转账：非通讯录姓名直接提示，不进入槽位
@@ -376,7 +389,11 @@ function guideTransferStep(text) {
 
   var hasTarget = s.kind === 'phone' ? !!s.phone : !!s.payee;
   if (hasTarget && s.amount > 0) {
-    guideTransferAskRemark();
+    if (s.kind === 'phone') {
+      guidePhoneResolvePayee();
+    } else {
+      guideTransferAskRemark();
+    }
     return true;
   }
 
@@ -412,12 +429,41 @@ function guideTransferStep(text) {
   return true;
 }
 
-// 槽位齐了：先回述一次信息，再问是否需要备注
+// 手机号转账：命中通讯录直接带出姓名；陌生号码先要求验证姓名
+function guidePhoneResolvePayee() {
+  var s = GUIDE_TRANSFER;
+  if (!s || s.kind !== 'phone') return;
+  var contact = (typeof findContactByPhone === 'function') ? findContactByPhone(s.phone) : null;
+  if (contact) {
+    s.payee = contact.name;
+    guideTransferAskRemark();
+    return;
+  }
+  s.stage = 'verifyName';
+  appendMessage(guideMessage(
+    '<p>该手机号不在通讯录中，请输入<b>收款人姓名</b>完成验证：</p>' +
+    '<p class="guide-tip">例如：李雷（填写后按姓名核验，仍可正常转账）</p>'
+  ));
+  scrollToBottom();
+}
+
+// 会话里展示的收款对象：手机号转账有姓名时显示「姓名（手机号）」
+function guideTransferTargetLabel() {
+  var s = GUIDE_TRANSFER;
+  if (!s) return '';
+  if (s.kind === 'phone') {
+    if (s.payee && s.phone) return s.payee + '（' + s.phone + '）';
+    return s.payee || s.phone || '';
+  }
+  return s.payee || '';
+}
+
+// 槽位齐了：先确认一次信息，再问是否需要备注
 function guideTransferAskRemark() {
   var s = GUIDE_TRANSFER;
   if (!s) return;
   s.stage = 'askRemark';
-  var target = s.kind === 'phone' ? (s.phone || '') : (s.payee || '');
+  var target = guideTransferTargetLabel();
   var name = (typeof escapeHtml === 'function') ? escapeHtml(target) : target;
   appendMessage(guideMessage(
     '<p>已记录：向 <b>' + name + '</b> 转账 <b>' + guidePlainMoney(s.amount) + ' 元</b>。</p>' +
@@ -509,7 +555,11 @@ async function guideTransferAIFallback(text) {
 
   var aiTag = parsed ? '<span class="guide-ai-tag">AI 理解</span> ' : '';
   var hasTarget = s.kind === 'phone' ? !!s.phone : !!s.payee;
-  if (hasTarget && s.amount > 0) { guideTransferAskRemark(); return; }
+  if (hasTarget && s.amount > 0) {
+    if (s.kind === 'phone') guidePhoneResolvePayee();
+    else guideTransferAskRemark();
+    return;
+  }
   if (s.kind === 'phone') {
     if (s.phone) {
       appendMessage(guideMessage('<p>' + aiTag + '麻烦告诉我转账金额</p>'));
@@ -540,9 +590,10 @@ function guideTransferConfirm() {
   currentModule = 'transfer';
 
   var isPhone = s.kind === 'phone';
-  var target = isPhone ? (s.phone || '') : (s.payee || '');
+  var target = isPhone ? (s.payee || s.phone || '') : (s.payee || '');
   var channel = isPhone ? '手机号转账' : '网银转账';
-  var name = (typeof escapeHtml === 'function') ? escapeHtml(target) : target;
+  var label = s.kind === 'phone' && s.payee && s.phone ? (s.payee + '（' + s.phone + '）') : target;
+  var name = (typeof escapeHtml === 'function') ? escapeHtml(label) : label;
   var remark = String(s.remark || '').trim();
   var remarkHtml = remark ? '，备注：<b>' + ((typeof escapeHtml === 'function') ? escapeHtml(remark) : remark) + '</b>' : '';
 

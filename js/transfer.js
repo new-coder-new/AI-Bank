@@ -408,8 +408,8 @@ function confirmTransfer(btn) {
 
     // 手机号转账：号码格式必须正确；不在通讯录时必须有手填的收款人姓名
     if (type === 'phone') {
-      if (!/^1[3-9]\d{9}$/.test(phoneDigits)) {
-        appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>手机号格式不正确</strong><br>请输入 11 位手机号（1 开头）。</div></div></div>`);
+      if (!/^1\d{10}$/.test(phoneDigits)) {
+        appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>手机号格式不正确</strong><br>请输入 11 位手机号（1 开头的 11 位数字）。</div></div></div>`);
         scrollToBottom();
         return;
       }
