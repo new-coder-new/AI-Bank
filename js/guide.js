@@ -22,7 +22,7 @@ var GUIDE_SERVICES = [
         key: 'phone', label: '手机号转账',
         run: function () { guideStartPhoneTransfer(); }
       },
-      { key: 'timed', label: '定时转账', run: function () { showTransferForm('timed'); } },
+      { key: 'timed', label: '定时转账', run: function () { guideStartTimedTransfer(); } },
       { key: 'aa', label: 'AA收款', run: function () { showTransferForm('aa'); } }
     ]
   },
@@ -244,9 +244,111 @@ function guideStartPhoneTransfer() {
   scrollToBottom();
 }
 
+function guideStartTimedTransfer() {
+  GUIDE_TRANSFER = {
+    kind: 'timed', payee: null, phone: null, amount: null,
+    date: null, time: null, repeat: '不重复', remark: '', stage: 'slots'
+  };
+  currentModule = 'transfer';
+  appendMessage(guideMessage(
+    '<p>请问收款人、转账金额和执行时间是多少？</p>' +
+    '<p class="guide-tip">例如：明天 09:00 给张三转 1000，每月重复</p>'
+  ));
+  scrollToBottom();
+}
+
+// —— 定时转账的日期 / 时间 / 重复解析 ——
+function guidePad2(n) { return (Number(n) < 10 ? '0' : '') + Number(n); }
+
+function guideDateStr(d) {
+  return d.getFullYear() + '-' + guidePad2(d.getMonth() + 1) + '-' + guidePad2(d.getDate());
+}
+
+function guideOffsetDate(days) {
+  var d = new Date();
+  d.setDate(d.getDate() + Number(days || 0));
+  return guideDateStr(d);
+}
+
+// month 为空表示「本月 D 号」，若已过则顺延到下月
+function guideMonthDayDate(month, day) {
+  var now = new Date();
+  var y = now.getFullYear();
+  var m = month ? Number(month) : (now.getMonth() + 1);
+  var d = new Date(y, m - 1, Number(day));
+  if (!month && d.getTime() < now.getTime()) d = new Date(y, m, Number(day));
+  return guideDateStr(d);
+}
+
+// 从一句话里抽日期 / 时间 / 重复方式，命中后从原句剔除，避免干扰金额与收款人
+function guideTimedExtract(text) {
+  var t = String(text || '');
+  var out = { date: null, time: null, repeat: null };
+
+  if (/每个月|每月|月付/.test(t)) out.repeat = '每月';
+  else if (/每个星期|每星期|每周|周付/.test(t)) out.repeat = '每周';
+  else if (/每天|每日|日付/.test(t)) out.repeat = '每天';
+  if (out.repeat) t = t.replace(/每个月|每月|月付|每个星期|每星期|每周|周付|每天|每日|日付/g, ' ');
+
+  // 时间：09:30 / 9点 / 下午3点半
+  var tm = t.match(/(\d{1,2})\s*[:：]\s*(\d{2})/);
+  if (tm) {
+    out.time = guidePad2(tm[1]) + ':' + guidePad2(tm[2]);
+    t = t.replace(tm[0], ' ');
+  } else {
+    var zh = t.match(/(上午|下午|晚上|早上|中午)?\s*(\d{1,2})\s*点\s*(半)?/);
+    if (zh) {
+      var h = parseInt(zh[2], 10);
+      if ((zh[1] === '下午' || zh[1] === '晚上') && h < 12) h += 12;
+      if (zh[1] === '中午' && h < 11) h += 12;
+      out.time = guidePad2(h) + ':' + (zh[3] ? '30' : '00');
+      t = t.replace(zh[0], ' ');
+    }
+  }
+
+  // 日期：YYYY-MM-DD / M月D日 / M-D / 明天 / 后天 / D号
+  var ymd = t.match(/(\d{4})\s*[-/年]\s*(\d{1,2})\s*[-/月]\s*(\d{1,2})\s*[日号]?/);
+  if (ymd) {
+    out.date = ymd[1] + '-' + guidePad2(ymd[2]) + '-' + guidePad2(ymd[3]);
+    t = t.replace(ymd[0], ' ');
+  } else if (/大后天/.test(t)) {
+    out.date = guideOffsetDate(3);
+    t = t.replace(/大后天/g, ' ');
+  } else if (/后天/.test(t)) {
+    out.date = guideOffsetDate(2);
+    t = t.replace(/后天/g, ' ');
+  } else if (/明天|明日/.test(t)) {
+    out.date = guideOffsetDate(1);
+    t = t.replace(/明天|明日/g, ' ');
+  } else if (/今天|今日/.test(t)) {
+    out.date = guideOffsetDate(0);
+    t = t.replace(/今天|今日/g, ' ');
+  } else {
+    var md = t.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?/);
+    if (md) {
+      out.date = guideMonthDayDate(md[1], md[2]);
+      t = t.replace(md[0], ' ');
+    } else {
+      var dd = t.match(/(\d{1,2})\s*[日号]/);
+      if (dd) {
+        out.date = guideMonthDayDate(null, dd[1]);
+        t = t.replace(dd[0], ' ');
+      }
+    }
+  }
+
+  return { rest: t, date: out.date, time: out.time, repeat: out.repeat };
+}
+
 // 从一句话里抽收款人、手机号与金额（手机号先抽，避免 11 位数字被当成金额）
-function guideTransferParse(text) {
+function guideTransferParse(text, kind) {
   var t = String(text || '').trim();
+
+  var timedInfo = null;
+  if (kind === 'timed') {
+    timedInfo = guideTimedExtract(t);
+    t = timedInfo.rest;
+  }
 
   var phone = null;
   var pm = t.match(/1\d{10}/);
@@ -276,7 +378,15 @@ function guideTransferParse(text) {
     if (contact) payee = contact.name;
     else if (/^[\u4e00-\u9fa5·]{2,4}$/.test(rest)) unknownName = rest;
   }
-  return { payee: payee, unknownName: unknownName, phone: phone, amount: amount };
+  return {
+    payee: payee,
+    unknownName: unknownName,
+    phone: phone,
+    amount: amount,
+    date: timedInfo ? timedInfo.date : null,
+    time: timedInfo ? timedInfo.time : null,
+    repeat: timedInfo ? timedInfo.repeat : null
+  };
 }
 
 // 姓名转账只允许转给通讯录联系人
@@ -339,7 +449,7 @@ function guideTransferStep(text) {
   // ① 等备注内容：这一句就是备注
   if (s.stage === 'remark') {
     s.remark = t;
-    guideTransferConfirm();
+    guideCommitTransfer();
     return true;
   }
 
@@ -366,19 +476,19 @@ function guideTransferStep(text) {
     }
     if (/^(不用|不需要|不要|否|跳过|没有|不用了|不写|不加)$/.test(bare)) {
       s.remark = '';
-      guideTransferConfirm();
+      guideCommitTransfer();
       return true;
     }
     s.remark = t;
-    guideTransferConfirm();
+    guideCommitTransfer();
     return true;
   }
 
   // ④ 收槽位阶段
-  var parsed = guideTransferParse(t);
+  var parsed = guideTransferParse(t, s.kind);
 
-  // 姓名转账：非通讯录姓名直接提示，不进入槽位
-  if (s.kind === 'name' && !parsed.payee && parsed.unknownName) {
+  // 姓名 / 定时转账：非通讯录姓名直接提示，不进入槽位
+  if ((s.kind === 'name' || s.kind === 'timed') && !parsed.payee && parsed.unknownName) {
     guideUnknownPayeeNotice(parsed.unknownName);
     return true;
   }
@@ -386,10 +496,23 @@ function guideTransferStep(text) {
   if (parsed.phone) s.phone = parsed.phone;
   if (parsed.payee) s.payee = parsed.payee;
   if (parsed.amount != null && parsed.amount > 0) s.amount = parsed.amount;
+  if (s.kind === 'timed') {
+    if (parsed.date) s.date = parsed.date;
+    if (parsed.time) s.time = parsed.time;
+    if (parsed.repeat) s.repeat = parsed.repeat;
+  }
 
   var hasTarget = s.kind === 'phone' ? !!s.phone : !!s.payee;
   if (hasTarget && s.amount > 0) {
-    if (s.kind === 'phone') {
+    if (s.kind === 'timed') {
+      if (s.date) {
+        if (!s.time) s.time = '09:00';   // 只给了日期时默认 09:00
+        guideTransferAskRemark();
+      } else {
+        appendMessage(guideMessage('<p>请问什么时候执行？</p><p class="guide-tip">例如：明天 09:00 / 10月30日 下午3点 / 每月1号 09:00</p>'));
+        scrollToBottom();
+      }
+    } else if (s.kind === 'phone') {
       guidePhoneResolvePayee();
     } else {
       guideTransferAskRemark();
@@ -405,11 +528,16 @@ function guideTransferStep(text) {
     return true;
   }
 
-  // 缺什么问什么（按姓名转账 / 手机号转账分别追问）
+  // 缺什么问什么（按姓名 / 手机号 / 定时分别追问）
   if (s.kind === 'phone') {
     if (s.phone) { appendMessage(guideMessage('<p>麻烦告诉我转账金额</p>')); scrollToBottom(); return true; }
     if (s.amount > 0) { appendMessage(guideMessage('<p>请问收款手机号是多少？</p>')); scrollToBottom(); return true; }
     appendMessage(guideMessage('<p>请问收款手机号和转账金额是多少？</p>'));
+    scrollToBottom();
+    return true;
+  }
+  if (s.kind === 'timed' && s.payee && s.amount > 0 && !s.date) {
+    appendMessage(guideMessage('<p>请问什么时候执行？</p><p class="guide-tip">例如：明天 09:00 / 10月30日 下午3点 / 每月1号 09:00</p>'));
     scrollToBottom();
     return true;
   }
@@ -465,8 +593,12 @@ function guideTransferAskRemark() {
   s.stage = 'askRemark';
   var target = guideTransferTargetLabel();
   var name = (typeof escapeHtml === 'function') ? escapeHtml(target) : target;
+  var when = (s.kind === 'timed')
+    ? ('于 <b>' + s.date + ' ' + (s.time || '09:00') + '</b> ')
+    : '';
+  var repeatText = (s.kind === 'timed' && s.repeat && s.repeat !== '不重复') ? '（' + s.repeat + '）' : '';
   appendMessage(guideMessage(
-    '<p>已记录：向 <b>' + name + '</b> 转账 <b>' + guidePlainMoney(s.amount) + ' 元</b>。</p>' +
+    '<p>已记录：' + when + '向 <b>' + name + '</b> 转账 <b>' + guidePlainMoney(s.amount) + ' 元</b>' + repeatText + '。</p>' +
     '<p>需要添加备注吗？</p>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideTransferRemarkChoice(true)">添加备注</button>' +
@@ -485,8 +617,57 @@ function guideTransferRemarkChoice(need) {
     scrollToBottom();
   } else {
     s.remark = '';
+    guideCommitTransfer();
+  }
+}
+
+// 按转账类型分流到「立即转账」或「定时转账」的确认流程
+function guideCommitTransfer() {
+  var s = GUIDE_TRANSFER;
+  if (!s) return;
+  if (s.kind === 'timed') {
+    guideTimedConfirm();
+  } else {
     guideTransferConfirm();
   }
+}
+
+// 定时转账确认：先回述一句，再交给既有的定时转账确认卡（含短信验证码）
+function guideTimedConfirm() {
+  var s = GUIDE_TRANSFER;
+  if (!s) return;
+  var info = (mockData.contacts || []).filter(function (c) { return c.name === s.payee; })[0];
+  var task = {
+    payee: s.payee,
+    account: info ? (info.account || '') : '',
+    amount: s.amount,
+    date: s.date,
+    time: s.time || '09:00',
+    repeat: s.repeat || '不重复',
+    remark: s.remark || '',
+    channel: '对话'
+  };
+  var err = (typeof schedValidationError === 'function') ? schedValidationError(task) : '';
+  if (err) {
+    appendMessage(guideMessage('<p>⚠️ ' + ((typeof escapeHtml === 'function') ? escapeHtml(err) : err) + '</p>' +
+      '<p class="guide-tip">请重新告诉我执行时间，例如「明天 09:00」。</p>'));
+    scrollToBottom();
+    s.stage = 'slots';
+    s.date = null;
+    s.time = null;
+    return;
+  }
+
+  GUIDE_TRANSFER = null;
+  currentModule = 'transfer';
+  var repeatText = task.repeat !== '不重复' ? '（' + task.repeat + '）' : '';
+  var remarkText = task.remark ? '，备注：<b>' + ((typeof escapeHtml === 'function') ? escapeHtml(task.remark) : task.remark) + '</b>' : '';
+  appendMessage(guideMessage(
+    '<p>确认于 <b>' + task.date + ' ' + task.time + '</b> 向 <b>' + task.payee + '</b> 转账 <b>' +
+    guidePlainMoney(s.amount) + ' 元</b>' + repeatText + remarkText + '，请确认</p>'
+  ));
+  scrollToBottom();
+  if (typeof openScheduledTransferConfirm === 'function') openScheduledTransferConfirm(task);
 }
 
 // ------------------------------ AI 兜底 ------------------------------
@@ -556,8 +737,19 @@ async function guideTransferAIFallback(text) {
   var aiTag = parsed ? '<span class="guide-ai-tag">AI 理解</span> ' : '';
   var hasTarget = s.kind === 'phone' ? !!s.phone : !!s.payee;
   if (hasTarget && s.amount > 0) {
-    if (s.kind === 'phone') guidePhoneResolvePayee();
-    else guideTransferAskRemark();
+    if (s.kind === 'timed') {
+      if (s.date) {
+        if (!s.time) s.time = '09:00';
+        guideTransferAskRemark();
+      } else {
+        appendMessage(guideMessage('<p>' + aiTag + '请问什么时候执行？</p><p class="guide-tip">例如：明天 09:00 / 10月30日 下午3点</p>'));
+        scrollToBottom();
+      }
+    } else if (s.kind === 'phone') {
+      guidePhoneResolvePayee();
+    } else {
+      guideTransferAskRemark();
+    }
     return;
   }
   if (s.kind === 'phone') {

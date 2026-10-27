@@ -1119,6 +1119,11 @@ function refreshScheduledListCount() {
 }
 
 function openTimedTransferForm() {
+  // 与姓名转账一致：改为对话式收集收款人 / 金额 / 执行时间 / 备注
+  if (typeof guideStartTimedTransfer === 'function') {
+    guideStartTimedTransfer();
+    return;
+  }
   showTransferForm('timed');
 }
 
