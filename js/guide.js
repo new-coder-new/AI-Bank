@@ -245,6 +245,7 @@ function guideTransferParse(text) {
   }
   var rest = t
     .replace(/转账|转帐|转|给|向|帮|请|我|你|人民币|元|块|钱|是|吧|呢|，|,|。|、/g, '')
+    .replace(/[就他她它点些啊嘛呀哈嗯]/g, '')
     .replace(/\s+/g, '');
 
   var payee = null;
@@ -253,7 +254,7 @@ function guideTransferParse(text) {
       return c.name && rest.indexOf(c.name) !== -1;
     })[0];
     if (contact) payee = contact.name;
-    else if (/^[\u4e00-\u9fa5·]{2,6}$/.test(rest)) payee = rest;
+    else if (/^[\u4e00-\u9fa5·]{2,4}$/.test(rest)) payee = rest;
   }
   return { payee: payee, amount: amount };
 }
@@ -266,6 +267,11 @@ function guideTransferStep(text) {
     return true;
   }
 
+  // 明显是别的业务 / 闲聊：不拦截，交回主链路作答（会话保留，下一句继续收槽位）
+  if (/(余额|账单|理财|基金|持仓|订阅|信用卡|额度|挂失|预算|鲜花|生日|安全|你好|您好|谢谢|再见|能做什么|怎么用|什么意思|为什么)/.test(t)) {
+    return false;
+  }
+
   if (!GUIDE_TRANSFER) GUIDE_TRANSFER = { payee: null, amount: null };
   var s = GUIDE_TRANSFER;
   var parsed = guideTransferParse(t);
@@ -276,6 +282,15 @@ function guideTransferStep(text) {
     guideTransferConfirm(s.payee, s.amount);
     return true;
   }
+
+  // 本地没抽全：中文数字（一百 / 一万五 / 两百块）或两个槽位都没抽到 → AI 兜底
+  // 注意：单个数字字（如「张三」里的「三」）不算中文数字，避免把姓名误判为金额
+  var hasCnNumber = /[一二三四五六七八九十百千万两]{2,}|[一二三四五六七八九十百千万两]+(?=\s*(?:元|块|万|千|百|钱))/.test(t);
+  if ((!parsed.payee && parsed.amount == null) || hasCnNumber) {
+    guideTransferAIFallback(t);
+    return true;
+  }
+
   if (s.payee) {
     appendMessage(guideMessage('<p>麻烦告诉我转账金额</p>'));
     scrollToBottom();
@@ -286,9 +301,80 @@ function guideTransferStep(text) {
     scrollToBottom();
     return true;
   }
-  appendMessage(guideMessage('<p>请问收款人和转账金额是多少？</p>'));
-  scrollToBottom();
+
+  // 理论上不会到这里，保底追问
+  guideTransferAIFallback(t);
   return true;
+}
+
+// ------------------------------ AI 兜底 ------------------------------
+// 本地正则只能认「张三 100」这类规整输入；遇到「帮我转一百块给张三」「就打给老王吧，两百」
+// 这类说法，交给模型抽槽位；无 Key / 请求失败时降级为示例引导，不阻塞对话。
+async function guideTransferAIExtract(text, session) {
+  if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return null;
+  if (typeof DEEPSEEK_API_URL === 'undefined' || !DEEPSEEK_API_URL) return null;
+  var known = '已知收款人=' + (session.payee || '未知') + '；已知金额=' + (session.amount || '未知');
+  var resp = await fetch(DEEPSEEK_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + DEEPSEEK_API_KEY },
+    body: JSON.stringify({
+      model: MODEL_NAME,
+      messages: [
+        {
+          role: 'system',
+          content: '你是银行转账助手的槽位抽取器。只输出 JSON，不要解释，不要 markdown。' +
+            '中文数字必须转成阿拉伯数字：一百→100，一千二→1200，一万五→15000。'
+        },
+        {
+          role: 'user',
+          content: '任务：从用户最新一句话里抽取「收款人」和「转账金额」。' + known + '。\n' +
+            '输出格式：{"payee":"姓名，没有就空字符串","amount":数字，没有就0,"reply":"仅当这句话与转账无关时，给一句 20 字内的简短回复"}\n' +
+            '用户最新一句：' + text
+        }
+      ],
+      temperature: 0,
+      max_tokens: 200,
+      stream: false
+    })
+  });
+  if (!resp.ok) return null;
+  var data = await resp.json();
+  var content = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+  var m = content.match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch (e) { return null; }
+}
+
+async function guideTransferAIFallback(text) {
+  var s = GUIDE_TRANSFER || (GUIDE_TRANSFER = { payee: null, amount: null });
+  var loadingId = 'guide-ai-' + Date.now();
+  appendMessage('<div class="message" id="' + loadingId + '"><div class="msg-avatar ai">🤖</div>' +
+    '<div class="msg-content"><div class="msg-name">AI Bank 助手</div>' +
+    '<div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div></div></div>');
+  scrollToBottom();
+
+  var parsed = null;
+  try { parsed = await guideTransferAIExtract(text, s); } catch (e) { parsed = null; }
+  var el = document.getElementById(loadingId);
+  if (el) el.remove();
+
+  var payee = parsed && parsed.payee ? String(parsed.payee).trim() : '';
+  var amount = parsed && parsed.amount ? Number(parsed.amount) : 0;
+  if (payee) s.payee = payee;
+  if (amount > 0) s.amount = amount;
+
+  var aiTag = parsed ? '<span class="guide-ai-tag">AI 理解</span> ' : '';
+  if (s.payee && s.amount > 0) { guideTransferConfirm(s.payee, s.amount); return; }
+  if (s.payee) {
+    appendMessage(guideMessage('<p>' + aiTag + '麻烦告诉我转账金额</p>'));
+  } else if (s.amount > 0) {
+    appendMessage(guideMessage('<p>' + aiTag + '请问要转给谁？</p>'));
+  } else {
+    var reply = parsed && parsed.reply ? String(parsed.reply) : '';
+    appendMessage(guideMessage('<p>' + (reply || '没太听懂。可以直接说收款人和金额，例如「张三 100」。') + '</p>' +
+      '<p class="guide-tip">例如：张三 100 / 张三转 100 / 给李雷转 1.5 万</p>'));
+  }
+  scrollToBottom();
 }
 
 // 槽位齐了：先给一句「确认向 X 转账 N 元」，再出确认卡（强制确认，T1 也先确认）

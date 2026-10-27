@@ -2871,3 +2871,15 @@ body {
 .dark-mode .guide-tip { color: #8A97A8 !important; }
 .guide-chip-ghost { border-style: dashed; color: var(--bank-muted); }
 .guide-chip-ghost:hover { color: var(--bank-primary); }
+.guide-ai-tag {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--bank-primary-soft);
+  color: var(--bank-primary);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.dark-mode .guide-ai-tag { background: #1B2738 !important; color: #9DC4EA !important; }
