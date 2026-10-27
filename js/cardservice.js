@@ -101,10 +101,16 @@ function submitCardApply() {
     '<div><span>当前状态</span><b style="color:#B54708;">审核中</b></div>' +
     '<div><span>申请时间</span><b>' + at + '</b></div>' +
     '</div>' +
-    '<div style="margin-top:10px;"><button class="ui-link" onclick="showCardApplyForm()">再申请一张</button></div>' +
+    '<div style="margin-top:10px;"><button class="ui-link" onclick="reapplyCard()">再申请一张</button></div>' +
     '</div></div></div></div>';
   appendMessage(html);
   scrollToBottom();
+}
+
+// 「再申请一张」：优先走对话式申请，退回原表单
+function reapplyCard() {
+  if (typeof guideStartCardApply === 'function') { guideStartCardApply(); return; }
+  showCardApplyForm();
 }
 
 // ------------------------------ 交易限制 ------------------------------

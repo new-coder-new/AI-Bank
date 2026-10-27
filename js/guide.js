@@ -41,7 +41,7 @@ var GUIDE_SERVICES = [
     aliases: ['卡片'],
     prompt: '卡片管理包含这些操作，请选择：',
     subs: [
-      { key: 'apply', label: '卡片申请', run: function () { showCardApplyForm(); } },
+      { key: 'apply', label: '卡片申请', aliases: ['申请信用卡'], run: function () { guideStartCardApply(); } },
       {
         key: 'limit', label: '额度调整',
         run: function () { appendMessage(cardLimitDetailCard()); scrollToBottom(); }
@@ -211,6 +211,31 @@ function guideHandleText(text) {
     return guideWealthStep(t);
   }
 
+  // 申请信用卡多轮收集进行中（卡种 / 额度 / 用途 → 确认）
+  if (GUIDE_CARD_APPLY) {
+    if (/^(取消|不办了|算了|退出|返回|菜单)$/.test(t)) {
+      GUIDE_CARD_APPLY = null;
+      guideBackToMenu();
+      return true;
+    }
+    var cSvc = guideResolveService(t);
+    if (cSvc) {
+      GUIDE_CARD_APPLY = null;
+      guideOpenService(cSvc.key);
+      return true;
+    }
+    var cardSvc = guideServiceByKey('card');
+    var cSub = cardSvc && cardSvc.subs.filter(function (x) {
+      return x.label === t || (x.aliases || []).indexOf(t) !== -1;
+    })[0];
+    if (cSub) {
+      GUIDE_CARD_APPLY = null;
+      guidePickSub('card', cSub.key);
+      return true;
+    }
+    return guideCardApplyStep(t);
+  }
+
   // 返回一级菜单
   if (/^(返回|返回菜单|服务菜单|主菜单|菜单|首页|服务列表)$/.test(t)) {
     guideBackToMenu();
@@ -310,7 +335,7 @@ var GUIDE_SUB_KEYWORDS = {
     abnormal: ['异常交易', '异常', '可疑交易']
   },
   card: {
-    apply: ['卡片申请', '申请卡片', '办卡'],
+    apply: ['卡片申请', '申请信用卡', '申请卡片', '办卡', '信用卡申请'],
     limit: ['额度调整', '调整额度', '调额', '额度'],
     txnlimit: ['交易限制', '交易限额', '限额'],
     lost: ['卡片挂失', '挂失', '冻结卡片']
@@ -1709,5 +1734,203 @@ function guideWealthSubmit() {
 function guideWealthCancel() {
   GUIDE_WEALTH = null;
   appendMessage(guideMessage('<p>已取消申购，账户未发生扣款。</p>'));
+  scrollToBottom();
+}
+
+// ------------------------------ 申请信用卡：卡种 / 期望额度 / 主要用途 ------------------------------
+// 三个槽位可任意顺序输入，缺什么问什么；齐了出「已整理你的申请信息」确认卡，
+// 提交后写入 userProfile.cardApplications（状态 审核中），申请记录只展示 卡种・用途・状态・日期。
+var GUIDE_CARD_APPLY = null;
+
+var CARD_APPLY_TYPES = ['白金信用卡', '标准金卡', '旅行信用卡', '青年卡'];
+var CARD_APPLY_PURPOSES = ['日常消费', '出行差旅', '教育培训', '大额购物', '其他'];
+
+function guideCardApplyEsc(v) {
+  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
+}
+
+function guideCardApplyTypesText() { return CARD_APPLY_TYPES.join('、'); }
+function guideCardApplyPurposesText() { return CARD_APPLY_PURPOSES.join('、'); }
+
+function guideStartCardApply() {
+  GUIDE_CARD_APPLY = { stage: 'slots', cardType: null, limit: 0, purpose: null };
+  currentModule = 'card';
+  appendMessage(guideMessage(
+    '<p>请告诉我你想办理的信用卡类型、期望额度，以及主要使用用途。</p>' +
+    '<p class="guide-tip">可选卡种：' + guideCardApplyTypesText() + '</p>' +
+    '<p class="guide-tip">可选用途：' + guideCardApplyPurposesText() + '</p>'
+  ));
+  scrollToBottom();
+}
+
+// 从一句话里抽卡种 / 额度 / 用途；同时返回无法识别的卡种词（如「钻石卡」）
+function guideCardApplyParse(text) {
+  var raw = String(text || '');
+  var t = raw;
+
+  var cardType = CARD_APPLY_TYPES.filter(function (n) { return t.indexOf(n) !== -1; })[0] || null;
+  if (!cardType) {
+    if (/白金/.test(t)) cardType = '白金信用卡';
+    else if (/标准金卡|金卡/.test(t)) cardType = '标准金卡';
+    else if (/旅行卡|旅游卡|旅行信用/.test(t)) cardType = '旅行信用卡';
+    else if (/青年卡|青年信用/.test(t)) cardType = '青年卡';
+  }
+
+  // 无法识别的卡种：形如「XX卡」，去掉「申请/办理/一张」等词后仍不是合法卡种
+  var unknownType = null;
+  var cleaned = t.replace(/申请|办理|办|开|一张|我想|我要|想要|的/g, ' ');
+  var tokens = (cleaned.match(/[\u4e00-\u9fa5]{1,6}卡/g) || []);
+  for (var i = 0; i < tokens.length; i++) {
+    var tok = tokens[i];
+    if (tok === '信用卡') continue;
+    var ok = CARD_APPLY_TYPES.some(function (n) { return n.indexOf(tok) !== -1 || tok.indexOf(n) !== -1; });
+    if (!ok) { unknownType = tok; break; }
+  }
+
+  // 用途：先剔除已识别的卡种，避免「旅行信用卡」里的「旅行」被当成用途
+  var t2 = t;
+  CARD_APPLY_TYPES.forEach(function (n) { t2 = t2.split(n).join(' '); });
+  var purpose = CARD_APPLY_PURPOSES.filter(function (n) { return t2.indexOf(n) !== -1; })[0] || null;
+  if (!purpose) {
+    if (/差旅|出差|旅行|旅游/.test(t2)) purpose = '出行差旅';
+    else if (/消费|日常刷卡|买菜/.test(t2)) purpose = '日常消费';
+    else if (/教育|培训|学费|课程/.test(t2)) purpose = '教育培训';
+    else if (/购物|大额|买大件|家电/.test(t2)) purpose = '大额购物';
+    else if (/其他|其它/.test(t2)) purpose = '其他';
+  }
+
+  // 额度
+  var limit = 0;
+  var m = t.match(/(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  if (m) {
+    limit = parseFloat(m[1]);
+    if (m[2]) limit *= 10000;
+  }
+
+  return { cardType: cardType, limit: limit, purpose: purpose, unknownType: unknownType };
+}
+
+function guideCardApplyMissingPrompt(s) {
+  var missType = !s.cardType;
+  var missLimit = !(Number(s.limit) > 0);
+  var missPurpose = !s.purpose;
+  var present = (missType ? 0 : 1) + (missLimit ? 0 : 1) + (missPurpose ? 0 : 1);
+
+  if (present === 0) return '请告诉我你想办理的信用卡类型、期望额度，以及主要使用用途。';
+  if (present === 1) {
+    if (!missType) return '请问期望额度是多少？主要用途是什么？';   // 只给了卡种
+    if (!missLimit) return '请选择信用卡类型以及使用用途。';        // 只给了额度
+    return '请告诉我信用卡类型和期望额度。';                        // 只给了用途
+  }
+  if (missType) return '请选择信用卡类型。';
+  if (missLimit) return '请问你的期望额度是多少元？';
+  return '请问这张卡的主要用途是什么？';
+}
+
+function guideCardApplyMoney(v) {
+  return Number(v || 0).toLocaleString('zh-CN');
+}
+
+function guideCardApplyStep(text) {
+  var t = String(text || '').trim();
+  var s = GUIDE_CARD_APPLY;
+  var parsed = guideCardApplyParse(t);
+
+  // 不认识的卡种：提示可选范围，不污染已收集字段
+  if (parsed.unknownType && !parsed.cardType) {
+    appendMessage(guideMessage('<p>可选卡种仅有：<b>' + guideCardApplyTypesText() + '</b>，请从中选择。</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  if (parsed.cardType) s.cardType = parsed.cardType;
+  if (Number(parsed.limit) > 0) s.limit = parsed.limit;
+  if (parsed.purpose) s.purpose = parsed.purpose;
+
+  // 三样齐了 → 整理确认
+  if (s.cardType && Number(s.limit) > 0 && s.purpose) {
+    guideCardApplyConfirm();
+    return true;
+  }
+
+  var prompt = guideCardApplyMissingPrompt(s);
+
+  // 「申请 50000」这类先给额度的说法，回执里带上识别到的额度
+  if (Number(parsed.limit) > 0 && !parsed.cardType && !parsed.purpose && /^(申请|办理|办|我要申请|我想申请|申请信用卡)/.test(t)) {
+    prompt = '识别到期望额度 ' + guideCardApplyMoney(parsed.limit) + ' 元，请选择信用卡类型和使用用途。';
+  }
+
+  appendMessage(guideMessage('<p>' + prompt + '</p>'));
+  scrollToBottom();
+  return true;
+}
+
+function guideCardApplyConfirm() {
+  var s = GUIDE_CARD_APPLY;
+  if (!s) return;
+  s.stage = 'confirm';
+  appendMessage(guideMessage(
+    '<p>已整理你的申请信息</p>' +
+    '<div class="data-card"><div class="data-card-title">申请信息</div>' +
+    '<div class="data-row"><span class="data-label">卡种</span><span class="data-value">' + guideCardApplyEsc(s.cardType) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">期望额度</span><span class="data-value">' + guideCardApplyMoney(s.limit) + ' 元</span></div>' +
+    '<div class="data-row"><span class="data-label">主要用途</span><span class="data-value">' + guideCardApplyEsc(s.purpose) + '</span></div>' +
+    '</div>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideCardApplySubmit()">提交申请</button>' +
+    '<button class="guide-chip" onclick="guideCardApplyCancel()">取消</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+function guideCardApplySubmit() {
+  var s = GUIDE_CARD_APPLY;
+  if (!s || s.stage !== 'confirm') return;
+  if (Number(s.limit) < 5000 || Number(s.limit) > 200000) {
+    appendMessage(guideMessage('<p>期望额度需在 ¥5,000 - ¥200,000 之间，请重新告诉我期望额度。</p>'));
+    scrollToBottom();
+    s.stage = 'slots';
+    s.limit = 0;
+    return;
+  }
+
+  var list = (typeof cardApplyList === 'function') ? cardApplyList() : (mockData.userProfile.cardApplications = mockData.userProfile.cardApplications || []);
+  var at = new Date().toLocaleDateString('zh-CN');
+  var record = { cardType: s.cardType, limit: s.limit, purpose: s.purpose, status: '审核中', appliedAt: at };
+  list.push(record);
+  saveUserData();
+  GUIDE_CARD_APPLY = null;
+
+  appendMessage(guideMessage(
+    '<p>信用卡申请已提交，状态为<b>审核中</b>，你可以在申请记录里查看进度。</p>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideCardApplyRecords()">查看申请记录</button>' +
+    '<button class="guide-chip" onclick="guideStartCardApply()">再申请一张</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+function guideCardApplyCancel() {
+  GUIDE_CARD_APPLY = null;
+  appendMessage(guideMessage('<p>已取消卡片申请，未提交任何资料。</p>'));
+  scrollToBottom();
+}
+
+// 申请记录：只展示 卡种・用途 / 状态・日期，最新置顶
+function guideCardApplyRecords() {
+  var list = (typeof cardApplyList === 'function') ? cardApplyList() : [];
+  var rows = list.length
+    ? list.slice().reverse().map(function (a) {
+      return '<div class="report-row"><span>' + guideCardApplyEsc(a.cardType) + '・' + guideCardApplyEsc(a.purpose) + '</span>' +
+        '<b>' + guideCardApplyEsc(a.status) + '・' + guideCardApplyEsc(a.appliedAt) + '</b></div>';
+    }).join('')
+    : '<div class="report-empty">暂无申请记录</div>';
+  appendMessage(guideMessage(
+    '<p>卡片申请记录（共 ' + list.length + ' 条，最新置顶）：</p>' +
+    '<div class="report-panel" style="margin-top:6px;">' +
+    '<div class="report-panel-title">申请记录</div>' + rows + '</div>'
+  ));
   scrollToBottom();
 }

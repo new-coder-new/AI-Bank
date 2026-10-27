@@ -729,7 +729,7 @@ function quickAction(type) {
     case 'transferName': guideStartNameTransfer(); break;
     case 'transferPhone': guideStartPhoneTransfer(); break;
     case 'bankTransfer': showTransferForm('bank'); break;
-    case 'cardApply': showCardApplyForm(); break;
+    case 'cardApply': guideStartCardApply(); break;
     case 'cardLimit': appendMessage(cardLimitDetailCard()); scrollToBottom(); break;
     case 'txnLimit': showTxnLimitSettings(); break;
     case 'cardLost': showCardFreezePanel(); break;
