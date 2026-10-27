@@ -731,7 +731,7 @@ function quickAction(type) {
     case 'bankTransfer': showTransferForm('bank'); break;
     case 'cardApply': guideStartCardApply(); break;
     case 'myCards': showCardMyCards(); break;
-    case 'cardLimit': appendMessage(cardLimitDetailCard()); scrollToBottom(); break;
+    case 'cardLimit': guideStartCardLimitAdjust(); break;
     case 'txnLimit': showTxnLimitSettings(); break;
     case 'cardLost': showCardFreezePanel(); break;
   }

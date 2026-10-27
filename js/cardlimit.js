@@ -212,7 +212,7 @@ function cardLimitSubmitReview(target, reason, current, direction) {
   if (typeof submitManualReview !== 'function') return null;
   return submitManualReview({
     amount: target,
-    purpose: '信用卡额度调整（' + (direction === 'up' ? '提额' : '降额') + '）',
+    purpose: '信用卡额度调整・' + (reason || '未填写'),
     source: 'Card',
     items: [
       '当前额度 ¥' + agentFmtInt(current) + ' → 目标 ¥' + agentFmtInt(target),

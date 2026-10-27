@@ -44,8 +44,8 @@ var GUIDE_SERVICES = [
       { key: 'apply', label: '卡片申请', aliases: ['申请信用卡'], run: function () { guideStartCardApply(); } },
       { key: 'mycards', label: '我的卡片', aliases: ['我的信用卡'], run: function () { showCardMyCards(); } },
       {
-        key: 'limit', label: '额度调整',
-        run: function () { appendMessage(cardLimitDetailCard()); scrollToBottom(); }
+        key: 'limit', label: '额度调整', aliases: ['申请调整信用卡额度', '信用卡额度调整', '调额'],
+        run: function () { guideStartCardLimitAdjust(); }
       },
       { key: 'txnlimit', label: '交易限制', run: function () { showTxnLimitSettings(); } },
       { key: 'lost', label: '卡片挂失', run: function () { showCardFreezePanel(); } }
@@ -235,6 +235,31 @@ function guideHandleText(text) {
       return true;
     }
     return guideCardApplyStep(t);
+  }
+
+  // 信用卡额度调整申请进行中（目标额度 + 调整原因 → 确认）
+  if (GUIDE_CARD_LIMIT) {
+    if (/^(取消|不调了|算了|退出|返回|菜单)$/.test(t)) {
+      GUIDE_CARD_LIMIT = null;
+      guideBackToMenu();
+      return true;
+    }
+    var lSvc = guideResolveService(t);
+    if (lSvc) {
+      GUIDE_CARD_LIMIT = null;
+      guideOpenService(lSvc.key);
+      return true;
+    }
+    var limitCardSvc = guideServiceByKey('card');
+    var lSub = limitCardSvc && limitCardSvc.subs.filter(function (x) {
+      return x.label === t || (x.aliases || []).indexOf(t) !== -1;
+    })[0];
+    if (lSub) {
+      GUIDE_CARD_LIMIT = null;
+      guidePickSub('card', lSub.key);
+      return true;
+    }
+    return guideCardLimitStep(t);
   }
 
   // 返回一级菜单
@@ -1938,6 +1963,177 @@ function guideCardApplyRecords() {
     '<p>卡片申请记录（共 ' + list.length + ' 条，最新置顶）：</p>' +
     '<div class="report-panel" style="margin-top:6px;">' +
     '<div class="report-panel-title">申请记录</div>' + rows + '</div>'
+  ));
+  scrollToBottom();
+}
+
+// ------------------------------ 信用卡额度调整申请：目标额度 + 调整原因 ------------------------------
+// 两个槽位可任意顺序输入；齐了出「确认额度调整申请」，提交后写入复核审批队列（待复核）。
+var GUIDE_CARD_LIMIT = null;
+
+var CARD_LIMIT_REASONS = ['消费需求增加', '收入提升', '信用记录良好', '主动降低额度', '长期不用', '风险控制', '其他'];
+
+function guideCardLimitEsc(v) {
+  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
+}
+
+function guideCardLimitState() {
+  var d = (typeof cardLimitData === 'function') ? cardLimitData() : {};
+  return {
+    current: Number(d.effectiveLimit) || 0,
+    used: Number(d.used) || 0,
+    min: (typeof cardLimitMinimum === 'function') ? Number(cardLimitMinimum()) : Number(d.used) || 0
+  };
+}
+
+function guideStartCardLimitAdjust() {
+  GUIDE_CARD_LIMIT = { stage: 'slots', limit: 0, reason: null };
+  currentModule = 'card';
+  var st = guideCardLimitState();
+  appendMessage(guideMessage(
+    '<p>请告诉我想要调整到的目标额度，以及调整原因。</p>' +
+    '<p class="guide-tip">可选原因：' + CARD_LIMIT_REASONS.join('、') + '</p>' +
+    (st.current ? '<p class="guide-tip">当前额度 ¥' + st.current.toLocaleString('zh-CN') + '，最低可调至 ¥' + st.min.toLocaleString('zh-CN') + '（已用额度）</p>' : '')
+  ));
+  scrollToBottom();
+}
+
+function guideCardLimitParse(text) {
+  var t = String(text || '');
+  var limit = 0;
+  var m = t.match(/(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  if (m) {
+    limit = parseFloat(m[1]);
+    if (m[2]) limit *= 10000;
+  }
+
+  var reason = CARD_LIMIT_REASONS.filter(function (n) { return t.indexOf(n) !== -1; })[0] || null;
+  if (!reason) {
+    if (/消费.*(增加|需求)|需求.*增加/.test(t)) reason = '消费需求增加';
+    else if (/收入.*(提升|增加|提高)|涨薪|加薪/.test(t)) reason = '收入提升';
+    else if (/信用.*(良好|好)|记录良好/.test(t)) reason = '信用记录良好';
+    else if (/主动.*(降低|降)|降低额度|降额/.test(t)) reason = '主动降低额度';
+    else if (/长期不用|不用了|闲置|很少用/.test(t)) reason = '长期不用';
+    else if (/风险.*(控制|管理)|控制风险/.test(t)) reason = '风险控制';
+    else if (/其他|其它/.test(t)) reason = '其他';
+  }
+  return { limit: limit, reason: reason };
+}
+
+function guideCardLimitStep(text) {
+  var t = String(text || '').trim();
+  var s = GUIDE_CARD_LIMIT;
+  var parsed = guideCardLimitParse(t);
+
+  if (Number(parsed.limit) > 0) s.limit = parsed.limit;
+  if (parsed.reason) s.reason = parsed.reason;
+
+  if (s.limit > 0 && s.reason) {
+    guideCardLimitConfirm();
+    return true;
+  }
+  if (s.limit > 0) {
+    appendMessage(guideMessage('<p>请选择本次额度的调整原因。</p><p class="guide-tip">可选原因：' + CARD_LIMIT_REASONS.join('、') + '</p>'));
+    scrollToBottom();
+    return true;
+  }
+  if (s.reason) {
+    appendMessage(guideMessage('<p>请问希望将额度调整到多少元？</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  appendMessage(guideMessage('<p>请告诉我想要调整到的目标额度，以及调整原因。</p><p class="guide-tip">可选原因：' + CARD_LIMIT_REASONS.join('、') + '</p>'));
+  scrollToBottom();
+  return true;
+}
+
+function guideCardLimitConfirm() {
+  var s = GUIDE_CARD_LIMIT;
+  if (!s) return;
+  var st = guideCardLimitState();
+
+  if (st.current && Number(s.limit) === st.current) {
+    appendMessage(guideMessage('<p>当前额度已经是 ¥' + st.current.toLocaleString('zh-CN') + '，请输入一个不同的目标额度。</p>'));
+    scrollToBottom();
+    s.limit = 0;
+    return;
+  }
+  if (Number(s.limit) < st.min) {
+    appendMessage(guideMessage('<p>目标额度不能低于已用额度 ¥' + st.min.toLocaleString('zh-CN') + '，请重新告诉我目标额度。</p>'));
+    scrollToBottom();
+    s.limit = 0;
+    return;
+  }
+
+  s.stage = 'confirm';
+  var direction = Number(s.limit) > st.current ? '提额' : '降额';
+  appendMessage(guideMessage(
+    '<p>确认额度调整申请</p>' +
+    '<div class="data-card"><div class="data-card-title">申请信息</div>' +
+    '<div class="data-row"><span class="data-label">目标额度</span><span class="data-value">' + Number(s.limit).toLocaleString('zh-CN') + ' 元</span></div>' +
+    '<div class="data-row"><span class="data-label">调整原因</span><span class="data-value">' + guideCardLimitEsc(s.reason) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">调整方向</span><span class="data-value">' + direction + '（当前 ¥' + st.current.toLocaleString('zh-CN') + '）</span></div>' +
+    '</div>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideCardLimitSubmit()">提交申请</button>' +
+    '<button class="guide-chip" onclick="guideCardLimitCancel()">取消</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+function guideCardLimitSubmit() {
+  var s = GUIDE_CARD_LIMIT;
+  if (!s || s.stage !== 'confirm') return;
+  var st = guideCardLimitState();
+  var target = Number(s.limit) || 0;
+  var direction = target > st.current ? 'up' : 'down';
+  GUIDE_CARD_LIMIT = null;
+
+  if (typeof cardLimitSubmitReview === 'function') {
+    cardLimitSubmitReview(target, s.reason, st.current, direction);
+  }
+
+  appendMessage(guideMessage(
+    '<p>额度调整申请已提交，当前状态<b>待复核</b>，可点击入口查看复核进度。</p>' +
+    '<div class="report-panel" style="margin-top:6px;">' +
+    '<div class="report-panel-title">待复核</div>' +
+    '<div class="report-row"><span>信用卡额度调整・' + guideCardLimitEsc(s.reason) + '</span>' +
+    '<b>待复核・' + new Date().toLocaleDateString('zh-CN') + '</b></div>' +
+    '</div>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="showCardLimitRecords()">查看调额记录</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+function guideCardLimitCancel() {
+  GUIDE_CARD_LIMIT = null;
+  appendMessage(guideMessage('<p>已取消额度调整申请，额度保持不变。</p>'));
+  scrollToBottom();
+}
+
+// 调额记录：只展示 记录标题 / 状态・日期，最新置顶
+function showCardLimitRecords() {
+  var list = (mockData.userProfile.manualReviews || []).filter(function (r) {
+    return r && r.actions && r.actions.some(function (a) { return a.tool === 'card.applyLimit'; });
+  });
+  var rows = list.length
+    ? list.map(function (r) {
+      var st = r.status === '待人工复核' ? '待复核' : (r.status || '待复核');
+      return '<div class="report-row"><span>' + guideCardLimitEsc(r.purpose) + '</span><b>' + guideCardLimitEsc(st) + '・' + guideCardLimitEsc((r.submittedAt || '').split(' ')[0]) + '</b></div>';
+    }).join('')
+    : '<div class="report-empty">暂无调额记录</div>';
+
+  var c = mockData.userProfile.creditCard || {};
+  appendMessage(guideMessage(
+    '<p>调额记录（共 ' + list.length + ' 条，最新置顶）：</p>' +
+    '<div class="report-panel" style="margin-top:6px;">' +
+    '<div class="report-panel-title">信用卡额度调整</div>' + rows + '</div>' +
+    '<p class="guide-tip">当前生效额度 ¥' + (Number(c.effectiveLimit) || 0).toLocaleString('zh-CN') +
+    '，可用 ¥' + (Number(c.available) || 0).toLocaleString('zh-CN') + '</p>'
   ));
   scrollToBottom();
 }
