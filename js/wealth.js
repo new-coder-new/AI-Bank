@@ -425,6 +425,7 @@ function showRiskResult() {
             <div style="font-size:11px;color:#aaa;margin-top:8px;">测评时间：${assessedAt}</div>
             <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
               <button class="btn btn-primary btn-sm" onclick="showProductList()">查看推荐产品</button>
+              <button class="btn btn-secondary btn-sm" onclick="(typeof guideWealthShowAllProducts==='function')?guideWealthShowAllProducts():showProductList()">查询所有产品</button>
               <button class="btn btn-secondary btn-sm" onclick="startRiskAssessment()">重新测评</button>
             </div>
           </div>

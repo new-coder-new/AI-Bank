@@ -223,6 +223,12 @@ function guideHandleText(text) {
     return true;
   }
 
+  // 任何位置说「查询所有产品 / 全部产品」，直接给完整在售清单
+  if (typeof guideIsAllProductsIntent === 'function' && guideIsAllProductsIntent(t)) {
+    guideWealthShowAllProducts();
+    return true;
+  }
+
   // 去掉口语前缀，便于识别「我要转账」「帮我转账」
   var bare = t.replace(/^(我要|我想|我想用|帮我|我要用|使用)/, '');
 
@@ -1458,6 +1464,37 @@ function guideWealthProductLine(p, i) {
     guideWealthEsc(guideWealthTerm(p)) + '，参考' + guideWealthEsc(p.rateLabel || '年化') + ' ' + guideWealthEsc(p.rate) + '）</div>';
 }
 
+// 全部在售产品（带风险适配标记），供「查询所有产品」按钮与意图触发
+function guideWealthShowAllProducts() {
+  var profile = guideWealthValidProfile();
+  var level = profile ? Number(profile.level) : 0;
+  var list = mockData.products || [];
+  var rows = list.map(function (p, i) {
+    var fit = profile ? (Number(p.riskLevel) <= level) : false;
+    var tag = profile
+      ? ' <span style="font-size:11px;color:' + (fit ? '#16A34A' : '#8A97A8') + ';">' +
+        (fit ? '· 适配' : '· 超出您当前 R' + level + ' 承受能力') + '</span>'
+      : '';
+    return guideWealthProductLine(p, i).replace('</div>', '，起购 ¥' + guidePlainMoney(p.minAmount || 0) + tag + '</div>');
+  }).join('');
+
+  appendMessage(guideMessage(
+    '<p>当前在售产品共 <b>' + list.length + '</b> 款' + (profile ? '（您的风险等级：R' + level + '）' : '') + '：</p>' +
+    '<div class="guide-list">' + rows + '</div>' +
+    '<p class="guide-tip">告诉我产品名称和申购金额即可，例如「稳健增利90天，50000」。</p>'
+  ));
+  scrollToBottom();
+}
+
+// 用户说「查询所有产品 / 全部产品 / 更多产品」时的意图判断
+function guideIsAllProductsIntent(text) {
+  var s = String(text || '').trim();
+  if (!s) return false;
+  if (/(所有|全部|其它|其他|更多|在售|别的|还有).{0,4}(产品|理财|基金)/.test(s)) return true;
+  if (/(产品|理财|基金).{0,3}(列表|清单|大全)/.test(s)) return true;
+  return false;
+}
+
 function guideWealthProductListHtml() {
   var items = (mockData.products || []).map(function (p, i) {
     return guideWealthProductLine(p, i);
@@ -1501,7 +1538,8 @@ function guideWealthShowRecommendations(profile) {
   appendMessage(guideMessage(
     '<p>您的风险测评结果：<b>' + guideWealthEsc(p.name) + ' R' + p.level + '</b>。结合您当前资产情况，为您推荐适配产品：</p>' +
     (lines ? '<div class="guide-list">' + lines + '</div>' : '') +
-    '<p>您可以选择以上推荐产品，也可以自行指定理财产品，并告诉我申购金额</p>'
+    '<p>您可以选择以上推荐产品，也可以自行指定理财产品，并告诉我申购金额</p>' +
+    '<div class="guide-chips"><button class="guide-chip" onclick="guideWealthShowAllProducts()">查询所有产品</button></div>'
   ));
   scrollToBottom();
 }
@@ -1572,6 +1610,12 @@ function guideWealthStep(text) {
   if (s.stage === 'assessing') {
     appendMessage(guideMessage('<p>请先完成上面的风险测评题目，选完我再帮你推荐产品。</p>'));
     scrollToBottom();
+    return true;
+  }
+
+  // 想看看全部产品：直接给完整清单（不打断已收集的产品/金额）
+  if (guideIsAllProductsIntent(t)) {
+    guideWealthShowAllProducts();
     return true;
   }
 
