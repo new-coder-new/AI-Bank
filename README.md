@@ -671,6 +671,21 @@ icons → config → api → visualization → storage → security
 - 字体：系统字体栈，数字使用等宽数字。
 - 图标：`js/icons.js` 统一线性 SVG，品牌与 AI 头像使用 “AI” 字标。
 
+### 10.1.1 卡片统一层（v10）
+
+`css/style.css` 末尾的「v10 卡片统一层」把此前各模块自成一色的卡片收敛为一套：
+
+| 层级 | 底色 | 描边 | 圆角 | 覆盖对象 |
+|---|---|---|---|---|
+| 对话内模块卡片 | `#F7F9FC` | `1px #EAF0F7` | `12px` | 数据卡、**结果卡**、确认卡、报告卡（summary/panel/hero/metric）、订阅与理财产品项、持仓卡、空态卡 |
+| 卡片内说明条 | `#FFFFFF` | `1px #EAF0F7` | `10px` | `bank-confirm-note`、`bank-inline-note`、`bank-dialog-note`、`bank-confirm-warn` |
+| 页面级卡片 | `#FFFFFF` | `1px #EAF0F7` | `16px` | 首页快捷区、AI 发现、最近交易、定时任务项（页面底色已是浅灰，白卡才有层级） |
+
+- 语义色卡片（成功绿 / 警示黄 / 风险红 / 评分渐变）保留原底色，只跟随统一圆角。
+- 对应 CSS 变量：`--bank-card-bg`、`--bank-card-line`、`--bank-card-radius`、`--bank-note-*`、`--bank-page-card-radius`。
+- 深色模式在同一区块内切换为 `#172335` 卡片 / `#111A28` 说明条。
+
+
 ### 10.2 页面结构
 
 - **顶部栏**：菜单、AI 品牌、新对话、帮助、用户头像。

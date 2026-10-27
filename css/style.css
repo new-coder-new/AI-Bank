@@ -2716,3 +2716,101 @@ body {
   .report-metric-grid b { font-size: 12px; }
   .report-bar { grid-template-columns: 58px minmax(0,1fr) 62px; }
 }
+
+/* ==========================================================================
+   v10 卡片统一层（2026-10-27）
+   目的：此前每个模块各用一套卡片颜色（白 / #F7F9FC / #FAFBFC / #F2F6FC /
+   #F5F8FD，圆角 8/10/12/14/16 混用），结果卡更是纯白，和模块卡不一致。
+   现统一为：
+     ① 对话内模块卡片（数据卡 / 结果卡 / 确认卡 / 报告卡 / 列表项卡）
+        同一底色 #F7F9FC + 同一描边 + 12px 圆角，扁平无阴影；
+     ② 卡片内说明条（note）统一白底细边 10px，保证与卡片底色区分；
+     ③ 页面级卡片（首页快捷区 / AI 发现 / 最近交易 / 定时任务项）保持白底
+        （页面底色本身是浅灰，白卡才有层级），仅统一描边色与圆角；
+     ④ 语义色卡片（成功绿 / 警示黄 / 风险红 / 评分渐变）保留原底色与文字色，
+        随之统一圆角，做到「同形不同色」。
+   深色模式在末尾同步切换为深色卡片色。
+   ========================================================================== */
+:root {
+  --bank-card-bg: #F7F9FC;
+  --bank-card-line: #EAF0F7;
+  --bank-card-radius: 12px;
+  --bank-note-bg: #FFFFFF;
+  --bank-note-line: #EAF0F7;
+  --bank-note-radius: 10px;
+  --bank-page-card-radius: 16px;
+}
+
+/* ① 对话内模块卡片：同一底色 / 描边 / 圆角 */
+.data-card,
+.bank-result,
+.bank-confirm,
+.bank-canceled,
+.bank-cancelled,
+.bank-sched-empty,
+.report-panel,
+.report-summary,
+.report-hero,
+.report-metric-grid > div,
+.subscribe-item,
+.product-item,
+.holding-card {
+  background: var(--bank-card-bg);
+  border: 1px solid var(--bank-card-line);
+  border-radius: var(--bank-card-radius);
+  box-shadow: none;
+}
+
+/* 结果卡原本无内边距（靠外层气泡留白），上底色后补齐，避免内容贴边 */
+.bank-result {
+  padding: 16px;
+  color: var(--bank-text-2);
+}
+
+/* ② 卡片内说明条：统一白底细边，避免与卡片同色消隐 */
+.bank-inline-note,
+.bank-confirm-note,
+.bank-dialog-note,
+.bank-confirm-warn {
+  background: var(--bank-note-bg);
+  border: 1px solid var(--bank-note-line);
+  border-radius: var(--bank-note-radius);
+}
+
+/* ③ 页面级卡片：白底保留，统一描边色与圆角 */
+.bank-ai-card,
+.bank-quick,
+.bank-txn-list,
+.bank-sched-item {
+  border-color: var(--bank-card-line);
+  border-radius: var(--bank-page-card-radius);
+}
+
+/* ④ 深色模式：统一层跟随深色卡片色 */
+.dark-mode .data-card,
+.dark-mode .bank-result,
+.dark-mode .bank-confirm,
+.dark-mode .bank-canceled,
+.dark-mode .bank-cancelled,
+.dark-mode .bank-sched-empty,
+.dark-mode .report-panel,
+.dark-mode .report-summary,
+.dark-mode .report-hero,
+.dark-mode .report-metric-grid > div,
+.dark-mode .subscribe-item,
+.dark-mode .product-item,
+.dark-mode .holding-card {
+  background: #172335 !important;
+  border-color: #243041 !important;
+}
+.dark-mode .bank-inline-note,
+.dark-mode .bank-confirm-note,
+.dark-mode .bank-dialog-note,
+.dark-mode .bank-confirm-warn {
+  background: #111A28 !important;
+  border-color: #243041 !important;
+}
+.dark-mode .bank-ai-card,
+.dark-mode .bank-quick,
+.dark-mode .bank-txn-list,
+.dark-mode .bank-sched-item { border-color: #243041 !important; }
