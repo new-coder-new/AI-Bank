@@ -251,8 +251,8 @@ function guideStartTimedTransfer() {
   };
   currentModule = 'transfer';
   appendMessage(guideMessage(
-    '<p>请问收款人、转账金额和执行时间是多少，是否重复（每天/每周/每月/每年）？</p>' +
-    '<p class="guide-tip">例如：明天 09:00 给张三转 1000，每月重复</p>'
+    '<p>请问收款人、转账金额和执行时间是多少？</p>' +
+    '<p class="guide-tip">例如：张三，100，明天下午5点</p>'
   ));
   scrollToBottom();
 }
@@ -452,6 +452,11 @@ function guideTransferStep(text) {
     return false;
   }
 
+  // 定时转账走独立的多轮流程（收款人 / 金额 / 执行时间 → 重复方式 → 确认）
+  if (GUIDE_TRANSFER && GUIDE_TRANSFER.kind === 'timed') {
+    return guideTimedStep(t);
+  }
+
   if (!GUIDE_TRANSFER) {
     GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' };
   }
@@ -498,8 +503,8 @@ function guideTransferStep(text) {
   // ④ 收槽位阶段
   var parsed = guideTransferParse(t, s.kind);
 
-  // 姓名 / 定时转账：非通讯录姓名直接提示，不进入槽位
-  if ((s.kind === 'name' || s.kind === 'timed') && !parsed.payee && parsed.unknownName) {
+  // 姓名转账：非通讯录姓名直接提示，不进入槽位
+  if (s.kind === 'name' && !parsed.payee && parsed.unknownName) {
     guideUnknownPayeeNotice(parsed.unknownName);
     return true;
   }
@@ -507,37 +512,10 @@ function guideTransferStep(text) {
   if (parsed.phone) s.phone = parsed.phone;
   if (parsed.payee) s.payee = parsed.payee;
   if (parsed.amount != null && parsed.amount > 0) s.amount = parsed.amount;
-  if (s.kind === 'timed') {
-    if (parsed.date) s.date = parsed.date;
-    if (parsed.time) s.time = parsed.time;
-    if (parsed.repeat) s.repeat = parsed.repeat;
-    if (parsed.period) s.period = parsed.period;
-    // 先前只说了「下午 / 晚上」这段，这次只补钟点时按时间段换算（3点 → 15:00）
-    if (s.time && s.period) {
-      var hh = parseInt(String(s.time).slice(0, 2), 10);
-      if ((s.period === '下午' || s.period === '晚上') && hh < 12) {
-        s.time = guidePad2(hh + 12) + String(s.time).slice(2);
-      } else if (s.period === '中午' && hh < 11) {
-        s.time = guidePad2(hh + 12) + String(s.time).slice(2);
-      }
-    }
-  }
 
   var hasTarget = s.kind === 'phone' ? !!s.phone : !!s.payee;
   if (hasTarget && s.amount > 0) {
-    if (s.kind === 'timed') {
-      // 只说了「明天下午」这类模糊时间 → 追问具体钟点，而不是默默按 09:00 处理
-      if (s.date && !s.time && s.period) {
-        appendMessage(guideMessage(guidePeriodQuestion(s.period, s.date)));
-        scrollToBottom();
-      } else if (s.date) {
-        if (!s.time) s.time = '09:00';   // 只给了日期时默认 09:00
-        guideTransferAskRemark();
-      } else {
-        appendMessage(guideMessage('<p>请问什么时候执行？</p><p class="guide-tip">例如：明天 09:00 / 10月30日 下午3点 / 每月1号 09:00</p>'));
-        scrollToBottom();
-      }
-    } else if (s.kind === 'phone') {
+    if (s.kind === 'phone') {
       guidePhoneResolvePayee();
     } else {
       guideTransferAskRemark();
@@ -553,16 +531,11 @@ function guideTransferStep(text) {
     return true;
   }
 
-  // 缺什么问什么（按姓名 / 手机号 / 定时分别追问）
+  // 缺什么问什么（姓名 / 手机号）
   if (s.kind === 'phone') {
     if (s.phone) { appendMessage(guideMessage('<p>麻烦告诉我转账金额</p>')); scrollToBottom(); return true; }
     if (s.amount > 0) { appendMessage(guideMessage('<p>请问收款手机号是多少？</p>')); scrollToBottom(); return true; }
     appendMessage(guideMessage('<p>请问收款手机号和转账金额是多少？</p>'));
-    scrollToBottom();
-    return true;
-  }
-  if (s.kind === 'timed' && s.payee && s.amount > 0 && !s.date) {
-    appendMessage(guideMessage('<p>请问什么时候执行？</p><p class="guide-tip">例如：明天 09:00 / 10月30日 下午3点 / 每月1号 09:00</p>'));
     scrollToBottom();
     return true;
   }
@@ -665,6 +638,126 @@ function guideCommitTransfer() {
 }
 
 // 定时转账确认：先回述一句，再交给既有的定时转账确认卡（含短信验证码）
+// ------------------------------ 定时转账：3 槽位 + 重复方式 ------------------------------
+// 目标字段：收款人 / 金额 / 执行时间；三样齐了再问「是否重复」，最后出确认卡。
+// 缺字段时按缺失组合给出不同问句，避免每次都从第一个字段重新问。
+
+function guideTimedMissingPrompt(s) {
+  var missPayee = !s.payee;
+  var missAmount = !(Number(s.amount) > 0);
+  var missTime = !(s.date && s.time);
+
+  if (missPayee && missAmount && missTime) return '请问收款人、转账金额和执行时间是多少？';
+  if (!missPayee && missAmount && missTime) return '麻烦告诉转账金额和执行时间是多少';
+  if (missPayee && !missAmount && missTime) return '麻烦告诉收款人和执行时间是多少';
+  if (missPayee && missAmount && !missTime) return '麻烦告诉收款人和转账金额是多少';
+  if (missTime) return '麻烦告诉我执行时间是多少';
+  if (missAmount) return '麻烦告诉我转账金额是多少';
+  if (missPayee) return '麻烦告诉我收款人是多少';
+  return '请问收款人、转账金额和执行时间是多少？';
+}
+
+function guideTimedParseRepeat(text) {
+  var s = String(text || '').trim();
+  if (/^(否|不|不用|不需要|无|没有|不重复|单次|只转一次|一次)$/.test(s)) return '不重复';
+  if (/每年|年度|年付/.test(s)) return '每年';
+  if (/每月|月度|月付/.test(s)) return '每月';
+  if (/每周|每星期|周付/.test(s)) return '每周';
+  if (/每天|每日|日付/.test(s)) return '每天';
+  return null;
+}
+
+function guideTimedRepeatLabel(repeat) {
+  return ({ '每天': '每日循环执行', '每周': '每周循环执行', '每月': '每月循环执行', '每年': '每年循环执行' })[repeat] || '不重复';
+}
+
+// 把日期 + 时间拼成口语化文案：明天下午5点 / 10月30日上午9点
+function guideTimedWhenText(date, time) {
+  if (!date || !time) return '';
+  var today = guideOffsetDate(0);
+  var tomorrow = guideOffsetDate(1);
+  var after = guideOffsetDate(2);
+  var dayLabel;
+  if (date === today) dayLabel = '今天';
+  else if (date === tomorrow) dayLabel = '明天';
+  else if (date === after) dayLabel = '后天';
+  else {
+    var parts = String(date).split('-');
+    dayLabel = Number(parts[1]) + '月' + Number(parts[2]) + '日';
+  }
+
+  var h = parseInt(String(time).slice(0, 2), 10);
+  var m = String(time).slice(3, 5);
+  var clock;
+  if (h < 6) clock = '凌晨' + (h === 0 ? 12 : h) + '点';
+  else if (h < 12) clock = '上午' + h + '点';
+  else if (h === 12) clock = '中午12点';
+  else if (h < 18) clock = '下午' + (h - 12) + '点';
+  else clock = '晚上' + (h - 12) + '点';
+  if (m !== '00') clock += m + '分';
+  return dayLabel + clock;
+}
+
+function guideTimedStep(text) {
+  var t = String(text || '').trim();
+  var s = GUIDE_TRANSFER;
+
+  // 重复方式阶段：只认 不重复 / 每天 / 每周 / 每月 / 每年
+  if (s.stage === 'repeat') {
+    var rep = guideTimedParseRepeat(t);
+    if (!rep) {
+      appendMessage(guideMessage('<p>请回复：不重复 / 每天 / 每周 / 每月 / 每年</p>'));
+      scrollToBottom();
+      return true;
+    }
+    s.repeat = rep;
+    guideTimedConfirm();
+    return true;
+  }
+
+  // 槽位阶段
+  var parsed = guideTransferParse(t, 'timed');
+
+  if (!parsed.payee && parsed.unknownName) {
+    guideUnknownPayeeNotice(parsed.unknownName);
+    return true;
+  }
+
+  if (parsed.payee) s.payee = parsed.payee;
+  if (parsed.amount != null && parsed.amount > 0) s.amount = parsed.amount;
+  if (parsed.date) s.date = parsed.date;
+  if (parsed.time) s.time = parsed.time;
+  if (parsed.period) s.period = parsed.period;
+
+  // 先只说「下午」再补「3点」→ 按时间段换算成 15:00
+  if (s.time && s.period) {
+    var hh = parseInt(String(s.time).slice(0, 2), 10);
+    if ((s.period === '下午' || s.period === '晚上') && hh < 12) {
+      s.time = guidePad2(hh + 12) + String(s.time).slice(2);
+    } else if (s.period === '中午' && hh < 11) {
+      s.time = guidePad2(hh + 12) + String(s.time).slice(2);
+    }
+  }
+
+  // 有日期没钟点（如「明天下午」）→ 追问具体钟点
+  if (s.date && !s.time && s.period) {
+    appendMessage(guideMessage(guidePeriodQuestion(s.period, s.date)));
+    scrollToBottom();
+    return true;
+  }
+
+  if (s.payee && Number(s.amount) > 0 && s.date && s.time) {
+    s.stage = 'repeat';
+    appendMessage(guideMessage('<p>是否重复（每天/每周/每月/每年）？</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  appendMessage(guideMessage('<p>' + guideTimedMissingPrompt(s) + '</p>'));
+  scrollToBottom();
+  return true;
+}
+
 function guideTimedConfirm() {
   var s = GUIDE_TRANSFER;
   if (!s) return;
@@ -681,25 +774,30 @@ function guideTimedConfirm() {
   };
   var err = (typeof schedValidationError === 'function') ? schedValidationError(task) : '';
   if (err) {
-    appendMessage(guideMessage('<p>⚠️ ' + ((typeof escapeHtml === 'function') ? escapeHtml(err) : err) + '</p>' +
-      '<p class="guide-tip">请重新告诉我执行时间，例如「明天 09:00」。</p>'));
+    appendMessage(guideMessage('<p>⚠️ ' + ((typeof escapeHtml === 'function') ? escapeHtml(err) : err) + '</p>'));
     scrollToBottom();
     s.stage = 'slots';
     s.date = null;
     s.time = null;
+    s.period = null;
+    appendMessage(guideMessage('<p>' + guideTimedMissingPrompt(s) + '</p>'));
+    scrollToBottom();
     return;
   }
 
   GUIDE_TRANSFER = null;
   currentModule = 'transfer';
-  var repeatText = task.repeat !== '不重复' ? '（' + task.repeat + '）' : '';
-  var remarkText = task.remark ? '，备注：<b>' + ((typeof escapeHtml === 'function') ? escapeHtml(task.remark) : task.remark) + '</b>' : '';
+  var whenText = guideTimedWhenText(task.date, task.time);
+  var payee = (typeof escapeHtml === 'function') ? escapeHtml(task.payee) : task.payee;
+
   appendMessage(guideMessage(
-    '<p>确认于 <b>' + task.date + ' ' + task.time + '</b> 向 <b>' + task.payee + '</b> 转账 <b>' +
-    guidePlainMoney(s.amount) + ' 元</b>' + repeatText + remarkText + '，请确认</p>'
+    '<p>确认定时向 <b>' + payee + '</b> 转账 <b>' + guidePlainMoney(s.amount) + ' 元</b>，' +
+    '执行时间：' + whenText + '，' + guideTimedRepeatLabel(task.repeat) + '，请确认</p>'
   ));
   scrollToBottom();
-  if (typeof openScheduledTransferConfirm === 'function') openScheduledTransferConfirm(task);
+  if (typeof openScheduledTransferConfirm === 'function') {
+    openScheduledTransferConfirm(task, { okLabel: '确认定时转账' });
+  }
 }
 
 // ------------------------------ AI 兜底 ------------------------------
@@ -770,13 +868,14 @@ async function guideTransferAIFallback(text) {
   var hasTarget = s.kind === 'phone' ? !!s.phone : !!s.payee;
   if (hasTarget && s.amount > 0) {
     if (s.kind === 'timed') {
-      if (s.date) {
-        if (!s.time) s.time = '09:00';
-        guideTransferAskRemark();
+      // 定时转账：AI 只补齐收款人/金额，时间与重复仍按对话规则继续追问
+      if (s.date && s.time) {
+        s.stage = 'repeat';
+        appendMessage(guideMessage('<p>' + aiTag + '是否重复（每天/每周/每月/每年）？</p>'));
       } else {
-        appendMessage(guideMessage('<p>' + aiTag + '请问什么时候执行？</p><p class="guide-tip">例如：明天 09:00 / 10月30日 下午3点</p>'));
-        scrollToBottom();
+        appendMessage(guideMessage('<p>' + aiTag + guideTimedMissingPrompt(s) + '</p>'));
       }
+      scrollToBottom();
     } else if (s.kind === 'phone') {
       guidePhoneResolvePayee();
     } else {

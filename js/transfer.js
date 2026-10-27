@@ -941,7 +941,8 @@ function schedValidationError(task) {
   return '';
 }
 
-function openScheduledTransferConfirm(task) {
+function openScheduledTransferConfirm(task, opts) {
+  const o = opts || {};
   const t = schedDefaultTask(task);
   const err = schedValidationError(t);
   if (err) {
@@ -980,7 +981,7 @@ function openScheduledTransferConfirm(task) {
             <div class="bank-otp-label">短信验证码</div>
             <div class="bank-otp-row">
               <input class="bank-otp-input" id="${cardId}-otp" type="text" inputmode="numeric" maxlength="6" placeholder="请输入 6 位验证码" autocomplete="one-time-code">
-              <button class="btn btn-primary" onclick="submitScheduledTransferOtp(this)">验证并创建</button>
+              <button class="btn btn-primary" onclick="submitScheduledTransferOtp(this)">${o.okLabel || '验证并创建'}</button>
             </div>
             <div class="bank-otp-hint">验证码已发送至 138****6688（演示验证码：${SCHEDULED_DEMO_OTP}）</div>
             <div class="bank-otp-error" id="${cardId}-err"></div>
