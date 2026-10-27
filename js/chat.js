@@ -1010,10 +1010,15 @@ async function callAIResponse(text) {
   }
 }
 
-// 显示欢迎语（改为渲染智能体简报：今日财务驾驶舱 + AI 发现 + 可执行事项）
+// 显示欢迎语：对话起始 = AI 服务向导（五类服务 + 按钮），账户概览由用户点按钮打开
 function showWelcomeMessage() {
   const chatInner = document.getElementById('chatInner');
   if (!chatInner || chatInner.children.length > 0) return;
+
+  if (typeof renderServiceWelcome === 'function') {
+    renderServiceWelcome();
+    return;
+  }
 
   if (typeof renderAgentBriefing === 'function') {
     renderAgentBriefing();

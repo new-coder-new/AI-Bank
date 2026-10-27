@@ -2845,3 +2845,29 @@ body {
 .dark-mode .bank-quick,
 .dark-mode .bank-txn-list,
 .dark-mode .bank-sched-item { border-color: #243041 !important; }
+
+/* ---------- 服务向导：起始欢迎语 / 二级菜单 ---------- */
+.guide-list { margin: 8px 0 10px; }
+.guide-item { font-size: 13.5px; line-height: 1.95; color: var(--bank-text-2); }
+.guide-tip { margin: 2px 0 10px; font-size: 12.5px; color: var(--bank-muted); }
+.guide-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.guide-chip {
+  padding: 6px 14px;
+  border: 1px solid #DCE3EC;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--bank-primary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.guide-chip:hover { background: var(--bank-primary-soft); border-color: #C6DAF0; }
+.guide-foot { margin-top: 10px; }
+.dark-mode .guide-chip { background: #172335 !important; border-color: #243041 !important; color: #9DC4EA !important; }
+.dark-mode .guide-chip:hover { background: #1B2738 !important; border-color: #2E5C8A !important; }
+.dark-mode .guide-item { color: #C9D5E5 !important; }
+.dark-mode .guide-tip { color: #8A97A8 !important; }
+.guide-chip-ghost { border-style: dashed; color: var(--bank-muted); }
+.guide-chip-ghost:hover { color: var(--bank-primary); }
