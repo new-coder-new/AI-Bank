@@ -16,7 +16,7 @@ var GUIDE_SERVICES = [
     subs: [
       {
         key: 'name', label: '姓名转账',
-        run: function () { showTransferForm('smart'); }
+        run: function () { guideStartNameTransfer(); }
       },
       {
         key: 'phone', label: '手机号转账',
@@ -167,6 +167,9 @@ function guideHandleText(text) {
   var t = String(text || '').trim().replace(/[。.!！?？,，\s]+$/g, '');
   if (!t) return false;
 
+  // 姓名转账多轮收集进行中：这一步的输入一律按「收款人 / 金额」解析
+  if (GUIDE_TRANSFER) return guideTransferStep(t);
+
   // 返回一级菜单
   if (/^(返回|返回菜单|服务菜单|主菜单|菜单|首页|服务列表)$/.test(t)) {
     guideBackToMenu();
@@ -205,4 +208,99 @@ function guideHandleText(text) {
   }
 
   return false;
+}
+
+// ------------------------------ 姓名转账：多轮槽位收集 ------------------------------
+// 意图理解规则（每轮输入都按下面两条规则抽取槽位）：
+//   ① 金额：阿拉伯数字（支持「万」），出现即视为金额；
+//   ② 收款人：先剔除金额与「给/向/转/元/块/请/我」等口语成分，剩余中文串优先在
+//      通讯录里精确匹配；匹配不到但长度 2-6 的中文串，按自由收款人姓名处理。
+//   两个槽位齐了出确认卡；只缺一个就追问缺少的那个；都没有就重新问。
+var GUIDE_TRANSFER = null;
+
+function guidePlainMoney(n) {
+  var v = Number(n) || 0;
+  return (Math.round(v) === v) ? String(v) : v.toFixed(2);
+}
+
+function guideStartNameTransfer() {
+  GUIDE_TRANSFER = { payee: null, amount: null };
+  currentModule = 'transfer';
+  appendMessage(guideMessage(
+    '<p>请问收款人和转账金额是多少？</p>' +
+    '<p class="guide-tip">可以分开说，也可以一次说，例如「张三转 100」</p>'
+  ));
+  scrollToBottom();
+}
+
+// 从一句话里抽收款人与金额
+function guideTransferParse(text) {
+  var t = String(text || '').trim();
+  var amount = null;
+  var m = t.match(/(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  if (m) {
+    amount = parseFloat(m[1]);
+    if (m[2]) amount = amount * 10000;
+    t = t.replace(m[0], ' ');
+  }
+  var rest = t
+    .replace(/转账|转帐|转|给|向|帮|请|我|你|人民币|元|块|钱|是|吧|呢|，|,|。|、/g, '')
+    .replace(/\s+/g, '');
+
+  var payee = null;
+  if (rest) {
+    var contact = (mockData.contacts || []).filter(function (c) {
+      return c.name && rest.indexOf(c.name) !== -1;
+    })[0];
+    if (contact) payee = contact.name;
+    else if (/^[\u4e00-\u9fa5·]{2,6}$/.test(rest)) payee = rest;
+  }
+  return { payee: payee, amount: amount };
+}
+
+function guideTransferStep(text) {
+  var t = String(text || '').trim();
+  if (/^(取消|不转了|算了|退出|返回|菜单)$/.test(t)) {
+    GUIDE_TRANSFER = null;
+    guideBackToMenu();
+    return true;
+  }
+
+  if (!GUIDE_TRANSFER) GUIDE_TRANSFER = { payee: null, amount: null };
+  var s = GUIDE_TRANSFER;
+  var parsed = guideTransferParse(t);
+  if (parsed.payee) s.payee = parsed.payee;
+  if (parsed.amount != null && parsed.amount > 0) s.amount = parsed.amount;
+
+  if (s.payee && s.amount > 0) {
+    guideTransferConfirm(s.payee, s.amount);
+    return true;
+  }
+  if (s.payee) {
+    appendMessage(guideMessage('<p>麻烦告诉我转账金额</p>'));
+    scrollToBottom();
+    return true;
+  }
+  if (s.amount > 0) {
+    appendMessage(guideMessage('<p>请问要转给谁？</p>'));
+    scrollToBottom();
+    return true;
+  }
+  appendMessage(guideMessage('<p>请问收款人和转账金额是多少？</p>'));
+  scrollToBottom();
+  return true;
+}
+
+// 槽位齐了：先给一句「确认向 X 转账 N 元」，再出确认卡（强制确认，T1 也先确认）
+function guideTransferConfirm(payee, amount) {
+  GUIDE_TRANSFER = null;
+  currentModule = 'transfer';
+  var name = (typeof escapeHtml === 'function') ? escapeHtml(payee) : payee;
+  appendMessage(guideMessage(
+    '<p>确认向 <b>' + name + '</b> 转账 <b>' + guidePlainMoney(amount) + ' 元</b>，请确认</p>'
+  ));
+  scrollToBottom();
+  if (typeof agentTransferFlow === 'function') {
+    agentTransferFlow(payee, amount, '', '网银转账', { forceConfirm: true, okLabel: '确认转账' });
+  }
 }

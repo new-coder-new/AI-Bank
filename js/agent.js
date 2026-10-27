@@ -1134,7 +1134,7 @@ function agentRenderPlanConfirm(id, plan, results) {
     verifyHtml +
     '<div class="agent-confirm-actions">' +
     '<button class="btn btn-primary btn-sm" onclick="agentApprovePlan(\'' + id + '\')">' +
-    (tier && tier.needVerify ? '验证并执行' : '确认执行') + '</button>' +
+    (tier && tier.needVerify ? '验证并执行' : (plan.confirm.okLabel || '确认执行')) + '</button>' +
     '<button class="btn btn-secondary btn-sm" onclick="agentRejectPlan(\'' + id + '\')">暂不执行</button>' +
     '</div></div>';
 
@@ -1573,8 +1573,9 @@ function agentParseTransfer(text) {
   return { payee: payee, amount: amount, phone: phone ? phone[0] : null };
 }
 
-async function agentTransferFlow(payee, amount, rawText, channel) {
+async function agentTransferFlow(payee, amount, rawText, channel, opts) {
   var ch = channel || '智能转账';
+  var o = opts || {};
   // —— 余额门禁优先于一切：余额不足时不出现「确认转账」按钮，避免用户误以为可以转 ——
   var check = agentCheckBalance([{ amount: amount }]);
   var risk = agentAssessTransferRisk(payee, amount);
@@ -1609,6 +1610,7 @@ async function agentTransferFlow(payee, amount, rawText, channel) {
     confirm: {
       title: '请确认本次转账',
       doneTitle: '转账已完成',
+      okLabel: o.okLabel || '',
       footnote: '该笔交易已记入你的常用收款人，下次同类转账将自动降低风险等级。',
       risk: risk,
       actions: [
@@ -1627,7 +1629,8 @@ async function agentTransferFlow(payee, amount, rawText, channel) {
   }
 
   // T1 免确认：直接执行，但结果仍用卡片呈现，不再用一段纯文字替代
-  if (!tier.needConfirm) {
+  // forceConfirm=true 时（服务向导的多轮转账）即使是 T1 也先出确认卡
+  if (!tier.needConfirm && !o.forceConfirm) {
     var res = await callAgentTool('transfer.execute', { payee: payee, amount: amount, channel: ch });
     if (res && res.ok === false) {
       appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
