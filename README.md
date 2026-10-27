@@ -550,7 +550,7 @@ icons → config → api → visualization → storage → security
 - 支持提额和降额；**最低可调额度严格等于已用额度**（前端表单、提交校验、复核生效、服务端 `POST /api/card/adjust` 与 `/api/card/limit/approve` 四处一致拦截），保证信用额度不低于已用部分、可用额度不为负。
 - 调额申请会进入“复核审批”队列，通过后才更新生效额度与可用额度。
 - 挂失/解挂：先确认，再调用 `card.freeze` / `card.unfreeze`，并同步 `cardFrozen` 与 `creditCard.isFrozen`。入口：全部服务 → 卡片 → 卡片挂失。
-- 信用卡交易限制：单笔限额 / 日累计限额 / 夜间交易 / 境外交易，持久化到 `userProfile.txnLimit`；`cardTxnLimitCheck()` 已接入**账单分期提交**（超单笔限额直接拦截）与页面内的「试算一笔消费」；真实刷卡通道未接入，不做实际扣款拦截。
+- 信用卡交易限制：单笔限额 / 日累计限额 / 夜间交易 / 境外交易，持久化到 `userProfile.txnLimit`；`cardTxnLimitCheck()` 已接入**账单分期提交**，按「单笔限额 → 日累计限额 → 场景开关」顺序校验，命中即拦截且不产生扣款；「查看限制规则」按钮可查看当前阈值、今日已用与判定顺序。
 - 卡片申请：卡种 / 期望额度（¥5,000–¥200,000 校验）/ 用途 → 生成「审核中」申请记录并持久化。
 - 账单分期计算器：3/6/9/12/18/24 期费率与月供测算。
 
@@ -700,7 +700,7 @@ icons → config → api → visualization → storage → security
   |---|---|---|
   | 转账 | 智能转账 / 定时转账 / AA收款 | 转账表单（按姓名、手机号、银行卡号）/ 定时任务列表 / AA 表单 |
   | 账单 | 消费统计 / 账单报告 / 异常交易 | `showBillAnalysis` / `showFinanceReport` / `showAbnormalAlert` |
-  | 卡片 | 卡片申请 / 额度调整 / 交易限制 / 卡片挂失 | `showCardApplyForm` / `cardLimitDetailCard` / `showTxnLimitSettings`（含限额试算）/ `showCardFreezePanel` |
+  | 卡片 | 卡片申请 / 额度调整 / 交易限制 / 卡片挂失 | `showCardApplyForm` / `cardLimitDetailCard` / `showTxnLimitSettings`（含「查看限制规则」）/ `showCardFreezePanel` |
   | 理财 | 产品 / 风险评估 / 持仓 | `showProductList` / `startRiskAssessment` / `showHoldings` |
   | 生活 | 订阅管理 / 生日鲜花 | `showSubscribeList` / `showBirthdayReminder` |
   | 更多 | 转账记录 / 批量转账 / 预算管理 / 账单分期 / 复核审批 / 安全中心 | 原功能保留，降级为文字入口 |

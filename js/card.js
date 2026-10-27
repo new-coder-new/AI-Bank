@@ -304,6 +304,8 @@ function confirmInstallment() {
   });
   
   c.currentBill = Math.max(0, (c.currentBill || 0) - amount);
+  // 记入当日累计消费，供日累计限额判断
+  if (typeof cardTxnLimitRecord === 'function') cardTxnLimitRecord(amount);
   saveUserData();
   
   appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">✅ <strong>账单分期成功</strong><br>分期金额：¥${amount.toLocaleString()}<br>分期期数：${period}期<br>每期应还：¥${monthlyPayment.toFixed(2)}<br>手续费总额：¥${totalFee.toFixed(2)}<br><br>本期账单已减少¥${amount.toLocaleString()}，分期金额从下期开始偿还。</div></div></div>`);
