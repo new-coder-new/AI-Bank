@@ -726,6 +726,9 @@ function quickAction(type) {
     case 'installment': showInstallmentCalculator(); break;
     // 全部服务（+）新分组：转账 / 卡片
     case 'aa': openAAForm(); break;
+    case 'transferName': guideStartNameTransfer(); break;
+    case 'transferPhone': guideStartPhoneTransfer(); break;
+    case 'bankTransfer': showTransferForm('bank'); break;
     case 'cardApply': showCardApplyForm(); break;
     case 'cardLimit': appendMessage(cardLimitDetailCard()); scrollToBottom(); break;
     case 'txnLimit': showTxnLimitSettings(); break;

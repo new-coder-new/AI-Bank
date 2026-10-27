@@ -46,16 +46,18 @@ function syncScheduledTimeMin() {
 // mode: 'smart'（按姓名/手机号/银行卡号，即时转账）| 'timed'（定时转账）| 'aa'（AA 收款）
 // 面板入口按业务动作各开一个模式，避免在同一个表单里塞 5 个页签造成两套导航。
 function showTransferForm(mode) {
-  const m = (mode === 'timed' || mode === 'aa') ? mode : 'smart';
+  const m = (mode === 'timed' || mode === 'aa' || mode === 'bank') ? mode : 'smart';
   const tabDefs = m === 'smart'
-    ? [['name', '按姓名'], ['phone', '手机号'], ['bank', '银行卡号']]
-    : (m === 'timed' ? [['timed', '定时转账']] : [['aa', 'AA收款']]);
-  const title = m === 'timed' ? '定时转账' : (m === 'aa' ? 'AA 收款' : '智能转账');
+    ? [['name', '按姓名'], ['phone', '手机号']]
+    : (m === 'timed' ? [['timed', '定时转账']] : (m === 'bank' ? [['bank', '银行卡号']] : [['aa', 'AA收款']]));
+  const title = m === 'timed' ? '定时转账' : (m === 'aa' ? 'AA 收款' : (m === 'bank' ? '银行卡转账' : '智能转账'));
   const note = m === 'timed'
     ? '创建任务需短信验证码验证；到期自动从储蓄卡扣款，执行前可随时取消。'
     : m === 'aa'
       ? '先由你垫付，再按参与人数向联系人收款；发起后可在对话中查看分摊明细。'
-      : '按姓名、手机号或银行卡号转账；金额达到风控档位会升级确认与验证。';
+      : (m === 'bank'
+        ? '按收款银行卡号转账；金额达到风控档位会升级确认与验证。'
+        : '按姓名或手机号转账；金额达到风控档位会升级确认与验证。');
   const tabsHtml = m === 'smart'
     ? '<div class="tabs">' + tabDefs.map((t, i) =>
       '<div class="tab' + (i === 0 ? ' active' : '') + '" onclick="switchTransferTab(this,\'' + t[0] + '\')">' + t[1] + '</div>'
@@ -299,7 +301,7 @@ function confirmTransfer(btn) {
   const formMode = form.dataset.mode || '';
   const type = activeTab
     ? (activeTab.textContent.includes('姓名') ? 'name' : activeTab.textContent.includes('手机号') ? 'phone' : activeTab.textContent.includes('银行卡') ? 'bank' : activeTab.textContent.includes('定时') ? 'timed' : 'aa')
-    : (formMode === 'timed' || formMode === 'aa' ? formMode : 'name');
+    : (formMode === 'timed' || formMode === 'aa' || formMode === 'bank' ? formMode : 'name');
   const getVal = (id) => form.querySelector('#' + id)?.value || '';
   let detailHtml = '';
   let aaRequestData = null;

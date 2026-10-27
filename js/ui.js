@@ -32,7 +32,8 @@ function openTxnsPage() {
 var FUNC_GROUPS = [
   {
     title: '转账', items: [
-      { key: 'transfer', label: '智能转账', icon: 'transfer' },
+      { key: 'transferName', label: '姓名转账', icon: 'transfer' },
+      { key: 'transferPhone', label: '手机号转账', icon: 'receive' },
       { key: 'scheduled', label: '定时转账', icon: 'timer' },
       { key: 'aa', label: 'AA收款', icon: 'users' }
     ]
@@ -69,6 +70,7 @@ var FUNC_GROUPS = [
 
 // 主分组之外、但仍在用的能力：降级为面板底部一行文字入口，避免功能失去入口
 var FUNC_MORE = [
+  { key: 'bankTransfer', label: '银行卡转账' },
   { key: 'transferHistory', label: '转账记录' },
   { key: 'batchTransfer', label: '批量转账' },
   { key: 'budget', label: '预算管理' },

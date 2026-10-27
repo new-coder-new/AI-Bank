@@ -477,11 +477,12 @@ icons → config → api → visualization → storage → security
 - 语音输入。
 - 复杂指令里的转账步骤。
 
-表单支持 3 个 Tab（智能转账）：
+表单支持 2 个 Tab（智能转账）：
 
 - 按姓名。
 - 手机号。
-- 银行卡号。
+
+银行卡转账已独立为「全部服务 → 更多 → 银行卡转账」的单模式表单。
 
 定时转账、AA 收款各自独立成页。
 
@@ -816,12 +817,12 @@ AI：确认定时向 张三 转账 100 元，执行时间：明天下午5点，�
 
   | 分组 | 入口 | 落地页 |
   |---|---|---|
-  | 转账 | 智能转账 / 定时转账 / AA收款 | 转账表单（按姓名、手机号、银行卡号）/ 定时任务列表 / AA 表单 |
+  | 转账 | 姓名转账 / 手机号转账 / 定时转账 / AA收款 | 对话式姓名转账 / 手机号转账 / 定时转账（+重复方式）/ AA 收款 |
   | 账单 | 消费统计 / 账单报告 / 异常交易 | `showBillAnalysis` / `showFinanceReport` / `showAbnormalAlert` |
   | 卡片 | 卡片申请 / 额度调整 / 交易限制 / 卡片挂失 | `showCardApplyForm` / `cardLimitDetailCard` / `showTxnLimitSettings`（含「查看限制规则」）/ `showCardFreezePanel` |
   | 理财 | 产品申购 / 风险评估 / 我的持仓 | `showProductList` / `startRiskAssessment` / `showHoldings` |
   | 生活 | 订阅管理 / 生日鲜花 | `showSubscribeList` / `showBirthdayReminder` |
-  | 更多 | 转账记录 / 批量转账 / 预算管理 / 账单分期 / 复核审批 / 安全中心 | 原功能保留，降级为文字入口 |
+  | 更多 | 银行卡转账 / 转账记录 / 批量转账 / 预算管理 / 账单分期 / 复核审批 / 安全中心 | 银行卡转账为单模式表单；其余为原功能文字入口 |
 
   转账表单按入口收敛：**智能转账** 只含「按姓名 / 手机号 / 银行卡号」三种收款人识别方式；**定时转账** 与 **AA 收款** 各自独立成页（`showTransferForm('timed' | 'aa')`），不再以页签形式塞进同一张表单。
 
