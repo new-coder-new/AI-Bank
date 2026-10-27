@@ -64,9 +64,9 @@ var GUIDE_SERVICES = [
     aliases: ['理财服务', '投资理财'],
     prompt: '理财服务包含这些内容，请选择：',
     subs: [
-      { key: 'products', label: '产品', run: function () { showProductList(); } },
+      { key: 'products', label: '产品申购', aliases: ['产品', '申购'], run: function () { showProductList(); } },
       { key: 'risk', label: '风险评估', run: function () { startRiskAssessment(); } },
-      { key: 'holdings', label: '持仓', run: function () { showHoldings(); } }
+      { key: 'holdings', label: '我的持仓', aliases: ['持仓'], run: function () { showHoldings(); } }
     ]
   },
   {
@@ -185,10 +185,13 @@ function guideHandleText(text) {
   // 去掉口语前缀，便于识别「我要转账」「帮我转账」
   var bare = t.replace(/^(我要|我想|我想用|帮我|我要用|使用)/, '');
 
-  // 先按当前模块的子功能匹配（模块内上下文）
+  // 先按当前模块的子功能匹配（模块内上下文，支持别名：产品 ↔ 产品申购、持仓 ↔ 我的持仓）
   var cur = guideServiceByKey(currentModule);
   if (cur) {
-    var hitSub = cur.subs.filter(function (x) { return x.label === bare; })[0];
+    var hitSub = cur.subs.filter(function (x) {
+      var names = [x.label].concat(x.aliases || []);
+      return names.indexOf(bare) !== -1;
+    })[0];
     if (hitSub) {
       guidePickSub(cur.key, hitSub.key);
       return true;

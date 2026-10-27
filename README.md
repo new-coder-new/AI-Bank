@@ -736,7 +736,7 @@ AI：请问收款人和转账金额是多少？
   | 转账 | 智能转账 / 定时转账 / AA收款 | 转账表单（按姓名、手机号、银行卡号）/ 定时任务列表 / AA 表单 |
   | 账单 | 消费统计 / 账单报告 / 异常交易 | `showBillAnalysis` / `showFinanceReport` / `showAbnormalAlert` |
   | 卡片 | 卡片申请 / 额度调整 / 交易限制 / 卡片挂失 | `showCardApplyForm` / `cardLimitDetailCard` / `showTxnLimitSettings`（含「查看限制规则」）/ `showCardFreezePanel` |
-  | 理财 | 产品 / 风险评估 / 持仓 | `showProductList` / `startRiskAssessment` / `showHoldings` |
+  | 理财 | 产品申购 / 风险评估 / 我的持仓 | `showProductList` / `startRiskAssessment` / `showHoldings` |
   | 生活 | 订阅管理 / 生日鲜花 | `showSubscribeList` / `showBirthdayReminder` |
   | 更多 | 转账记录 / 批量转账 / 预算管理 / 账单分期 / 复核审批 / 安全中心 | 原功能保留，降级为文字入口 |
 

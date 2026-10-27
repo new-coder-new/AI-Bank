@@ -54,9 +54,9 @@ var FUNC_GROUPS = [
   },
   {
     title: '理财', items: [
-      { key: 'wealth', label: '产品', icon: 'wealth' },
+      { key: 'wealth', label: '产品申购', icon: 'wealth' },
       { key: 'risk', label: '风险评估', icon: 'shield' },
-      { key: 'holdings', label: '持仓', icon: 'pie' }
+      { key: 'holdings', label: '我的持仓', icon: 'pie' }
     ]
   },
   {
