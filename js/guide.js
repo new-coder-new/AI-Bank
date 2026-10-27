@@ -1910,10 +1910,9 @@ function guideCardApplySubmit() {
 
   appendMessage(guideMessage(
     '<p>信用卡申请已提交，状态为<b>审核中</b>' + (review ? '，已进入「复核审批」队列' : '') +
-    '。审批通过后会核发新卡，可在申请记录或复核审批里查看进度。</p>' +
+    '。审批通过后会核发新卡，可在申请记录里查看进度。</p>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideCardApplyRecords()">查看申请记录</button>' +
-    (review ? '<button class="guide-chip" onclick="showManualReviews()">查看复核审批</button>' : '') +
     '<button class="guide-chip" onclick="guideStartCardApply()">再申请一张</button>' +
     '</div>'
   ));
