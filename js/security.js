@@ -730,6 +730,7 @@ function quickAction(type) {
     case 'transferPhone': guideStartPhoneTransfer(); break;
     case 'bankTransfer': showTransferForm('bank'); break;
     case 'cardApply': guideStartCardApply(); break;
+    case 'myCards': showCardMyCards(); break;
     case 'cardLimit': appendMessage(cardLimitDetailCard()); scrollToBottom(); break;
     case 'txnLimit': showTxnLimitSettings(); break;
     case 'cardLost': showCardFreezePanel(); break;
@@ -849,7 +850,9 @@ async function adminApproveReview(id) {
     var a = actions[i];
     try {
       var res;
-      if (a.tool === 'card.applyLimit' && typeof applyCardLimitAdjustment === 'function') {
+      if (a.tool === 'card.applyCard' && typeof approveCardApplication === 'function') {
+        res = approveCardApplication(a.args || {});
+      } else if (a.tool === 'card.applyLimit' && typeof applyCardLimitAdjustment === 'function') {
         res = applyCardLimitAdjustment(a.args || {});
       } else {
         res = await callAgentTool(a.tool, a.args || {});
@@ -869,6 +872,28 @@ async function adminApproveReview(id) {
     saveUserData();
     showAdminReviewPanel();
     appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">管理员审批</div><div class="msg-bubble agent-bubble"><div class="bank-result"><div class="bank-result-title" style="color:#B42318;">审批执行失败</div><div class="bank-result-note">' + manualReviewEsc(failed.summary || '业务执行异常') + '</div></div></div></div></div>');
+    scrollToBottom();
+    return;
+  }
+
+  var isCardApply = actions.some(function (a) { return a.tool === 'card.applyCard'; });
+  if (isCardApply) {
+    var applyArgs = (actions.filter(function (a) { return a.tool === 'card.applyCard'; })[0] || {}).args || {};
+    record.status = '已通过';
+    record.reviewedAt = new Date().toLocaleString('zh-CN');
+    record.note = '已通过；' + (summaries.join('；') || '已核发新卡');
+    saveUserData();
+    showAdminReviewPanel();
+    appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">管理员审批</div><div class="msg-bubble agent-bubble"><div class="bank-result">' +
+      '<div class="bank-result-title">信用卡已核发</div>' +
+      '<div class="bank-result-amount">¥' + agentFmtInt(applyArgs.limit || 0) + '</div>' +
+      '<div class="bank-confirm-rows">' +
+      '<div><span>卡种</span><b>' + manualReviewEsc(applyArgs.cardType || '信用卡') + '</b></div>' +
+      '<div><span>主要用途</span><b>' + manualReviewEsc(applyArgs.purpose || '日常消费') + '</b></div>' +
+      '<div><span>当前状态</span><b style="color:#15803D;">已发卡</b></div>' +
+      '</div>' +
+      '<div style="margin-top:10px;"><button class="ui-link" onclick="showCardMyCards()">查看我的卡片</button></div>' +
+      '</div></div></div></div>');
     scrollToBottom();
     return;
   }
@@ -914,6 +939,24 @@ function adminRejectReview(id) {
   record.status = '已拒绝';
   record.reviewedAt = new Date().toLocaleString('zh-CN');
   record.note = '管理员已拒绝，账户未扣款';
+  if (record.actions && record.actions.some(function (a) { return a.tool === 'card.applyCard'; })) {
+    var applyAction = record.actions.filter(function (a) { return a.tool === 'card.applyCard'; })[0] || {};
+    if (typeof rejectCardApplication === 'function') rejectCardApplication(applyAction.args || {});
+    record.status = '已拒绝';
+    record.reviewedAt = new Date().toLocaleString('zh-CN');
+    record.note = '管理员已拒绝该卡片申请，未核发新卡';
+    saveUserData();
+    showAdminReviewPanel();
+    appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">管理员审批</div><div class="msg-bubble agent-bubble"><div class="bank-result">' +
+      '<div class="bank-result-title" style="color:#B42318;">信用卡申请未通过</div>' +
+      '<div class="bank-result-amount">¥' + agentFmtInt((applyAction.args || {}).limit || 0) + '</div>' +
+      '<div class="bank-result-note">本次未核发新卡，你可调整资料后重新申请。</div>' +
+      '<div style="margin-top:10px;"><button class="ui-link" onclick="guideStartCardApply()">重新申请</button></div>' +
+      '</div></div></div></div>');
+    scrollToBottom();
+    return;
+  }
+
   if (record.actions && record.actions.some(function (a) { return a.tool === 'card.applyLimit'; })) {
     var card = mockData.userProfile.creditCard;
     card.limitApplyStatus = '已拒绝';

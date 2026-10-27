@@ -30,6 +30,114 @@ function cardApplyList() {
   return mockData.userProfile.cardApplications;
 }
 
+// 已持有的信用卡列表：首次调用时用主卡初始化
+function cardServiceCards() {
+  if (!Array.isArray(mockData.userProfile.creditCards)) {
+    var main = mockData.userProfile.creditCard || {};
+    mockData.userProfile.creditCards = [{
+      id: 'CARD-MAIN',
+      cardType: main.type || '白金信用卡',
+      limit: Number(main.effectiveLimit || main.limit || 90000) || 90000,
+      purpose: '日常消费',
+      status: '已发卡',
+      issuedAt: main.issuedAt || '开户即持有',
+      tail: String(main.number || '').replace(/\D/g, '').slice(-4) || '8888'
+    }];
+  }
+  return mockData.userProfile.creditCards;
+}
+
+// 卡片申请提交后进入「复核审批」：审批通过才核发新卡
+function submitCardApplyReview(cardType, limit, purpose) {
+  if (typeof submitManualReview !== 'function') return null;
+  return submitManualReview({
+    amount: Number(limit) || 0,
+    purpose: '信用卡申请 · ' + cardType,
+    source: '卡片申请',
+    items: ['卡种：' + cardType, '期望额度：¥' + (Number(limit) || 0).toLocaleString('zh-CN'), '主要用途：' + purpose],
+    actions: [{ tool: 'card.applyCard', args: { cardType: cardType, limit: Number(limit) || 0, purpose: purpose } }],
+    silent: true
+  });
+}
+
+// 复核通过：核发新卡，并把对应申请记录置为已通过
+function approveCardApplication(args) {
+  var a = args || {};
+  var cardType = a.cardType || '标准金卡';
+  var limit = Number(a.limit) || 0;
+  var purpose = a.purpose || '日常消费';
+  var list = cardServiceCards();
+  var tail = String(1000 + Math.floor(Math.random() * 9000));
+  list.push({
+    id: 'CARD' + Date.now(),
+    cardType: cardType,
+    limit: limit,
+    purpose: purpose,
+    status: '已发卡',
+    issuedAt: new Date().toLocaleString('zh-CN'),
+    tail: tail
+  });
+
+  var apps = cardApplyList();
+  for (var i = apps.length - 1; i >= 0; i--) {
+    if (apps[i].status === '审核中' && apps[i].cardType === cardType && Number(apps[i].limit) === limit) {
+      apps[i].status = '已通过';
+      apps[i].approvedAt = new Date().toLocaleString('zh-CN');
+      break;
+    }
+  }
+  saveUserData();
+  return { ok: true, summary: '已核发 ' + cardType + '（额度 ¥' + limit.toLocaleString('zh-CN') + '，尾号 ' + tail + '）' };
+}
+
+// 复核拒绝：申请记录置为已拒绝
+function rejectCardApplication(args) {
+  var a = args || {};
+  var cardType = a.cardType || '';
+  var limit = Number(a.limit) || 0;
+  var apps = cardApplyList();
+  for (var i = apps.length - 1; i >= 0; i--) {
+    if (apps[i].status === '审核中' && apps[i].cardType === cardType && Number(apps[i].limit) === limit) {
+      apps[i].status = '已拒绝';
+      apps[i].approvedAt = new Date().toLocaleString('zh-CN');
+      break;
+    }
+  }
+  saveUserData();
+  return { ok: true, summary: '已拒绝 ' + cardType + ' 申请，未核发新卡' };
+}
+
+// 卡片简称：白金信用卡 → 白金（用于列表左侧小徽标）
+function cardShortLabel(type) {
+  var s = String(type || '信用卡');
+  if (s.indexOf('白金') !== -1) return '白金';
+  if (s.indexOf('旅行') !== -1) return '旅行';
+  if (s.indexOf('青年') !== -1) return '青年';
+  if (s.indexOf('金卡') !== -1) return '金卡';
+  return s.slice(0, 2);
+}
+
+// 我的卡片：展示已持有卡片（申请通过后会增加）
+function showCardMyCards() {
+  var list = cardServiceCards();
+  var totalLimit = list.reduce(function (s, c) { return s + (Number(c.limit) || 0); }, 0);
+  var rows = list.map(function (c) {
+    return '<div class="bank-sched-item">' +
+      '<div class="bank-sched-date" style="background:#F5F8FD;color:#09407F;"><b>' + cardShortLabel(c.cardType) + '</b><small>尾号 ' + (c.tail || '****') + '</small></div>' +
+      '<div class="bank-sched-main"><b>' + (c.cardType || '信用卡') + '</b><small>' + (c.issuedAt || '') + ' · ' + (c.purpose || '') + '</small></div>' +
+      '<div class="bank-sched-side"><span class="bank-status approved">' + (c.status || '已发卡') + '</span><b style="font-size:12px;color:#334155;">¥' + (Number(c.limit) || 0).toLocaleString('zh-CN') + '</b></div>' +
+      '</div>';
+  }).join('');
+  appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+    '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
+    '<div class="bank-page-head"><div><div class="bank-page-title">我的卡片</div>' +
+    '<div class="bank-page-sub">共 ' + list.length + ' 张 · 总额度 ¥' + totalLimit.toLocaleString('zh-CN') + '</div></div>' +
+    '<button class="ui-link" onclick="guideStartCardApply()">申请新卡</button></div>' +
+    '<div class="bank-sched-list">' + (rows || '<div class="bank-sched-empty">暂无信用卡</div>') + '</div>' +
+    '</div></div></div>');
+  scrollToBottom();
+}
+
 function showCardApplyForm() {
   const list = cardApplyList();
   const historyHtml = list.length

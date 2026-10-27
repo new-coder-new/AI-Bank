@@ -42,6 +42,7 @@ var GUIDE_SERVICES = [
     prompt: '卡片管理包含这些操作，请选择：',
     subs: [
       { key: 'apply', label: '卡片申请', aliases: ['申请信用卡'], run: function () { guideStartCardApply(); } },
+      { key: 'mycards', label: '我的卡片', aliases: ['我的信用卡'], run: function () { showCardMyCards(); } },
       {
         key: 'limit', label: '额度调整',
         run: function () { appendMessage(cardLimitDetailCard()); scrollToBottom(); }
@@ -1902,10 +1903,17 @@ function guideCardApplySubmit() {
   saveUserData();
   GUIDE_CARD_APPLY = null;
 
+  // 申请同时进入「复核审批」队列；审批通过后才会核发新卡
+  var review = (typeof submitCardApplyReview === 'function')
+    ? submitCardApplyReview(record.cardType, record.limit, record.purpose)
+    : null;
+
   appendMessage(guideMessage(
-    '<p>信用卡申请已提交，状态为<b>审核中</b>，你可以在申请记录里查看进度。</p>' +
+    '<p>信用卡申请已提交，状态为<b>审核中</b>' + (review ? '，已进入「复核审批」队列' : '') +
+    '。审批通过后会核发新卡，可在申请记录或复核审批里查看进度。</p>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideCardApplyRecords()">查看申请记录</button>' +
+    (review ? '<button class="guide-chip" onclick="showManualReviews()">查看复核审批</button>' : '') +
     '<button class="guide-chip" onclick="guideStartCardApply()">再申请一张</button>' +
     '</div>'
   ));

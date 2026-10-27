@@ -48,6 +48,7 @@ var FUNC_GROUPS = [
   {
     title: '卡片', items: [
       { key: 'cardApply', label: '卡片申请', icon: 'card' },
+      { key: 'myCards', label: '我的卡片', icon: 'card' },
       { key: 'cardLimit', label: '额度调整', icon: 'sliders' },
       { key: 'txnLimit', label: '交易限制', icon: 'lock' },
       { key: 'cardLost', label: '卡片挂失', icon: 'alert' }
