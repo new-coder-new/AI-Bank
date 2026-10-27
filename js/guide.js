@@ -23,7 +23,7 @@ var GUIDE_SERVICES = [
         run: function () { guideStartPhoneTransfer(); }
       },
       { key: 'timed', label: '定时转账', run: function () { guideStartTimedTransfer(); } },
-      { key: 'aa', label: 'AA收款', run: function () { showTransferForm('aa'); } }
+      { key: 'aa', label: 'AA收款', run: function () { guideStartAATransfer(); } }
     ]
   },
   {
@@ -160,6 +160,31 @@ function guideHandleText(text) {
 
   // 姓名转账多轮收集进行中：这一步的输入一律按「收款人 / 金额」解析
   if (GUIDE_TRANSFER) return guideTransferStep(t);
+
+  // AA 收款多轮收集进行中
+  if (GUIDE_AA) {
+    if (/^(取消|不做了|算了|退出|返回|菜单)$/.test(t)) {
+      GUIDE_AA = null;
+      guideBackToMenu();
+      return true;
+    }
+    var aaSvc = guideResolveService(t);
+    if (aaSvc) {
+      GUIDE_AA = null;
+      guideOpenService(aaSvc.key);
+      return true;
+    }
+    var transferSvcAA = guideServiceByKey('transfer');
+    var aaSub = transferSvcAA && transferSvcAA.subs.filter(function (x) {
+      return x.label === t || (x.aliases || []).indexOf(t) !== -1;
+    })[0];
+    if (aaSub) {
+      GUIDE_AA = null;
+      guidePickSub('transfer', aaSub.key);
+      return true;
+    }
+    return guideAAStep(t);
+  }
 
   // 返回一级菜单
   if (/^(返回|返回菜单|服务菜单|主菜单|菜单|首页|服务列表)$/.test(t)) {
@@ -927,4 +952,261 @@ function guideTransferConfirm() {
   if (typeof agentTransferFlow === 'function') {
     agentTransferFlow(target, s.amount, '', channel, { forceConfirm: true, okLabel: '确认转账', remark: remark });
   }
+}
+
+// ------------------------------ AA 收款：垫付总额 + 参与人名单 ------------------------------
+// 规则：发起人（当前登录用户「我」）属于参与 AA 的一员；
+//       输入垫付总额 + 除我之外的参与人名单；单人应付 = 总额 ÷（名单人数 + 1）。
+// 名单可以一次给多个，也可以逐个补充；每次补充后都问「还有其他参与人吗？」直到「没有」。
+// 重名联系人要求用户选择（① ② …）。
+var GUIDE_AA = null;
+
+function guideAAEsc(v) {
+  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
+}
+
+function guideStartAATransfer() {
+  GUIDE_AA = { total: 0, participants: [], stage: 'slots', pendingNames: [], pickOptions: [] };
+  currentModule = 'transfer';
+  appendMessage(guideMessage('<p>请告诉我你垫付的总金额和除你外需要收款的参与人</p>'));
+  scrollToBottom();
+}
+
+// 从一句话里抽垫付总额与名单
+function guideAAParse(text) {
+  var t = String(text || '');
+  var total = 0;
+  var m = t.match(/(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  if (m) {
+    total = parseFloat(m[1]);
+    if (m[2]) total *= 10000;
+    t = t.replace(m[0], ' ');
+  }
+  t = t.replace(/垫付|总额|总金额|总|收款|收|元|块|钱|包括|包含|和|还有|参与人|名单|aa/gi, ' ');
+  var names = t.split(/[、,，;；\s]+/)
+    .map(function (x) { return x.trim().replace(/[。.！!]$/, ''); })
+    .filter(Boolean);
+  return { total: total, names: names };
+}
+
+function guideAAPushParticipant(contact) {
+  var s = GUIDE_AA;
+  if (!s) return;
+  var exists = s.participants.some(function (p) { return p.phone === contact.phone; });
+  if (!exists) s.participants.push({ name: contact.name, phone: contact.phone });
+}
+
+// 逐个解析名单：唯一命中直接加入；重名进入选择；不在通讯录则提示
+// 返回 true 表示这批名单已处理完，false 表示中途被打断（等待用户选择 / 补充）
+function guideAAAddNames(names) {
+  var s = GUIDE_AA;
+  for (var i = 0; i < names.length; i++) {
+    var name = names[i];
+    var matches = (mockData.contacts || []).filter(function (c) { return c.name === name; });
+    if (matches.length === 0) {
+      appendMessage(guideMessage(
+        '<p>「<b>' + guideAAEsc(name) + '</b>」不在通讯录里。AA 收款只能选择通讯录联系人：' + guideContactNames() + '。</p>' +
+        '<p class="guide-tip">可以继续告诉我其他人，或回复「没有」结束名单。</p>'
+      ));
+      scrollToBottom();
+      return false;
+    }
+    if (matches.length === 1) {
+      guideAAPushParticipant(matches[0]);
+      continue;
+    }
+    // 重名：让用户选择
+    s.pendingNames = names.slice(i + 1);
+    s.pickOptions = matches;
+    s.stage = 'pick';
+    guideAAPickPrompt(name, matches);
+    return false;
+  }
+  return true;
+}
+
+function guideAAPickPrompt(name, options) {
+  var circled = '①②③④⑤⑥⑦⑧⑨';
+  var items = options.map(function (c, i) {
+    return '<button class="guide-chip" onclick="guideAAPick(' + i + ')">' + (circled.charAt(i) || (i + 1)) + ' ' +
+      guideAAEsc(c.name) + '（' + guideAAEsc(c.phone || '') + '）</button>';
+  }).join('');
+  appendMessage(guideMessage(
+    '<p>查询到 ' + options.length + ' 位【' + guideAAEsc(name) + '】，请选择你要收款的「' + guideAAEsc(name) + '」：</p>' +
+    '<div class="guide-chips">' + items + '</div>'
+  ));
+  scrollToBottom();
+}
+
+function guideAAPick(index) {
+  var s = GUIDE_AA;
+  if (!s || s.stage !== 'pick') return;
+  var contact = s.pickOptions[Number(index)];
+  if (!contact) return;
+  guideAAPushParticipant(contact);
+  var rest = s.pendingNames || [];
+  s.pickOptions = [];
+  s.pendingNames = [];
+  s.stage = 'slots';
+  if (!guideAAAddNames(rest)) return;
+  guideAAMore();
+}
+
+function guideAAMore() {
+  var s = GUIDE_AA;
+  if (!s) return;
+  s.stage = 'askMore';
+  appendMessage(guideMessage('<p>还有其他参与人吗？</p>'));
+  scrollToBottom();
+}
+
+// 用户回答「没有」：缺金额就补问金额，否则直接出确认
+function guideAANoMore() {
+  var s = GUIDE_AA;
+  if (!s) return;
+  if (!(Number(s.total) > 0)) {
+    s.stage = 'needAmount';
+    appendMessage(guideMessage('<p>麻烦告诉我你垫付的总金额</p>'));
+    scrollToBottom();
+    return;
+  }
+  if (!s.participants.length) {
+    s.stage = 'slots';
+    appendMessage(guideMessage('<p>麻烦告诉我除你外需要收款的参与人</p>'));
+    scrollToBottom();
+    return;
+  }
+  guideAAConfirm();
+}
+
+function guideAAConfirm() {
+  var s = GUIDE_AA;
+  if (!s) return;
+  s.stage = 'confirm';
+  var splitCount = s.participants.length + 1;
+  var per = s.total / splitCount;
+  var names = s.participants.map(function (p) { return p.name; }).join('、');
+  appendMessage(guideMessage(
+    '<p>确认由你先行垫付 <b>' + guidePlainMoney(s.total) + '</b> 元，本次 AA 一共 <b>' + splitCount + '</b> 人（包含你）分摊，' +
+    '向 <b>' + guideAAEsc(names) + '</b> 收款，每人应付 <b>' + guidePlainMoney(per) + '</b> 元，请确认</p>' +
+    '<div class="guide-chips"><button class="guide-chip" onclick="guideAASubmit()">发起AA收款</button></div>'
+  ));
+  scrollToBottom();
+}
+
+function guideAASubmit() {
+  var s = GUIDE_AA;
+  if (!s || s.stage !== 'confirm') return;
+  var splitCount = s.participants.length + 1;
+  var per = s.total / splitCount;
+  var names = s.participants.map(function (p) { return p.name; });
+  var u = mockData.userProfile;
+  if (!u.aaRequests) u.aaRequests = [];
+  u.aaRequests.unshift({
+    id: 'aa' + Date.now(),
+    activity: 'AA收款',
+    total: s.total,
+    payer: '我',
+    participants: ['我'].concat(names),
+    collectFrom: names,
+    splitCount: splitCount,
+    perPerson: per,
+    status: '待收款',
+    createdAt: new Date().toLocaleString('zh-CN')
+  });
+  saveUserData();
+  GUIDE_AA = null;
+
+  var rows = '<div class="bank-confirm-rows">' +
+    '<div><span>垫付总额</span><b>¥' + guidePlainMoney(s.total) + '</b></div>' +
+    '<div><span>参与人数</span><b>' + splitCount + ' 人（含我）</b></div>' +
+    '<div><span>收款名单</span><b>' + guideAAEsc(names.join('、')) + '</b></div>' +
+    '<div><span>每人应付</span><b>¥' + guidePlainMoney(per) + '</b></div>' +
+    '<div><span>当前状态</span><b style="color:#B54708;">待收款</b></div>' +
+    '</div>';
+  appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+    '<div class="msg-name">AI Bank 助手</div><div class="msg-bubble agent-bubble">' +
+    '<div class="bank-result">' +
+    '<div class="bank-result-title">已发起 AA 收款</div>' +
+    '<div class="bank-result-amount">¥' + guidePlainMoney(per) + '</div>' +
+    rows +
+    '<div style="margin-top:10px;"><button class="ui-link" onclick="showTransferHistory()">查看记录</button></div>' +
+    '</div></div></div></div>');
+  scrollToBottom();
+}
+
+function guideAAStep(text) {
+  var t = String(text || '').trim();
+  var s = GUIDE_AA;
+  if (!s) return true;
+
+  // 重名选择阶段：支持 1/2/3、①②③、手机号、或带括号的选项文本
+  if (s.stage === 'pick') {
+    var idx = -1;
+    var m = t.match(/^([1-9])/);
+    if (m) {
+      idx = parseInt(m[1], 10) - 1;
+    } else {
+      var circled = '①②③④⑤⑥⑦⑧⑨';
+      var ci = circled.indexOf(t.charAt(0));
+      if (ci >= 0) idx = ci;
+    }
+    if (idx < 0) {
+      var digitsIn = t.replace(/\D/g, '');
+      if (digitsIn.length >= 4) {
+        for (var i = 0; i < s.pickOptions.length; i++) {
+          if (String(s.pickOptions[i].phone || '').replace(/\D/g, '').slice(-4) === digitsIn.slice(-4)) { idx = i; break; }
+        }
+      }
+    }
+    if (idx >= 0 && s.pickOptions[idx]) {
+      guideAAPick(idx);
+      return true;
+    }
+    guideAAPickPrompt(s.pickOptions[0].name, s.pickOptions);
+    return true;
+  }
+
+  // 「还有其他参与人吗」的回答
+  if (s.stage === 'askMore' && /^(没有|没有了|没|无|否|不|不用|就这些|这些|够了|结束|是的|对)$/.test(t)) {
+    if (/^(是的|对)$/.test(t)) {
+      appendMessage(guideMessage('<p>请告诉我还要收谁？</p>'));
+      scrollToBottom();
+      return true;
+    }
+    guideAANoMore();
+    return true;
+  }
+
+  var parsed = guideAAParse(t);
+  if (parsed.total > 0) s.total = parsed.total;
+
+  // 有新名单：加入后继续问「还有其他参与人吗」
+  if (parsed.names.length) {
+    if (!guideAAAddNames(parsed.names)) return true;
+    guideAAMore();
+    return true;
+  }
+
+  // 只给了金额
+  if (parsed.total > 0) {
+    if (s.participants.length) { guideAAConfirm(); return true; }
+    s.stage = 'slots';
+    appendMessage(guideMessage('<p>麻烦告诉我除你外需要收款的参与人</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  // 什么都没识别：按当前进度追问
+  if (s.stage === 'askMore') {
+    appendMessage(guideMessage('<p>还有其他参与人吗？</p><p class="guide-tip">回复「没有」继续；也可以继续补充参与人</p>'));
+  } else if (!(Number(s.total) > 0) && !s.participants.length) {
+    appendMessage(guideMessage('<p>请告诉我你垫付的总金额和除你外需要收款的参与人</p>'));
+  } else if (!s.participants.length) {
+    appendMessage(guideMessage('<p>麻烦告诉我除你外需要收款的参与人</p>'));
+  } else {
+    appendMessage(guideMessage('<p>麻烦告诉我你垫付的总金额</p>'));
+  }
+  scrollToBottom();
+  return true;
 }
