@@ -199,18 +199,23 @@ function guideHandleText(text) {
   }
 
   // 再按一级服务名匹配
-  for (var i = 0; i < GUIDE_SERVICES.length; i++) {
-    var s = GUIDE_SERVICES[i];
-    var names = [s.label].concat(s.aliases || []);
-    for (var j = 0; j < names.length; j++) {
-      if (bare === names[j]) {
-        guideOpenService(s.key);
-        return true;
-      }
-    }
+  var svc = guideResolveService(bare);
+  if (svc) {
+    guideOpenService(svc.key);
+    return true;
   }
 
   return false;
+}
+
+// 按「服务名 + 别名」精确匹配一级服务（整词匹配，避免劫持自然语言指令）
+function guideResolveService(name) {
+  for (var i = 0; i < GUIDE_SERVICES.length; i++) {
+    var s = GUIDE_SERVICES[i];
+    var names = [s.label].concat(s.aliases || []);
+    if (names.indexOf(name) !== -1) return s;
+  }
+  return null;
 }
 
 // ------------------------------ 姓名转账：多轮槽位收集 ------------------------------
@@ -267,6 +272,27 @@ function guideTransferStep(text) {
   if (/^(取消|不转了|算了|退出|返回|菜单)$/.test(t)) {
     GUIDE_TRANSFER = null;
     guideBackToMenu();
+    return true;
+  }
+
+  var bare = t.replace(/^(我要|我想|我想用|帮我|我要用|使用)/, '');
+
+  // 会话中说出服务名（如直接打字「转账」「账单分析」）→ 退出收集，进入该服务二级菜单
+  var svc = guideResolveService(bare);
+  if (svc) {
+    GUIDE_TRANSFER = null;
+    guideOpenService(svc.key);
+    return true;
+  }
+
+  // 说出转账模块内的其它子功能（手机号转账 / 定时转账 / AA收款 / 姓名转账）→ 直接切换过去
+  var transferSvc = guideServiceByKey('transfer');
+  var subHit = transferSvc && transferSvc.subs.filter(function (x) {
+    return x.label === bare || (x.aliases || []).indexOf(bare) !== -1;
+  })[0];
+  if (subHit) {
+    GUIDE_TRANSFER = null;
+    guidePickSub('transfer', subHit.key);
     return true;
   }
 
