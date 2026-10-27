@@ -579,7 +579,8 @@ registerAgentTool('transfer.execute', {
       };
     }
 
-    var recorded = addTransaction('expense', amount, '转账给' + payee, args.channel || '智能转账', true);
+    var txDesc = '转账给' + payee + (args.remark ? '（' + args.remark + '）' : '');
+    var recorded = addTransaction('expense', amount, txDesc, args.channel || '智能转账', true);
     if (recorded === false) {
       return { ok: false, summary: '扣款未成功（可用余额不足），账户未发生变动' };
     }
@@ -1614,8 +1615,8 @@ async function agentTransferFlow(payee, amount, rawText, channel, opts) {
       footnote: '该笔交易已记入你的常用收款人，下次同类转账将自动降低风险等级。',
       risk: risk,
       actions: [
-        { label: '转账给 ' + payee + ' ¥' + agentFmt(amount), tool: 'transfer.execute',
-          args: { payee: payee, amount: amount, channel: ch }, amount: amount, risk: risk }
+        { label: '转账给 ' + payee + ' ¥' + agentFmt(amount) + (o.remark ? ' · 备注：' + o.remark : ''), tool: 'transfer.execute',
+          args: { payee: payee, amount: amount, channel: ch, remark: o.remark || '' }, amount: amount, risk: risk }
       ]
     },
     after: null

@@ -141,7 +141,7 @@ function switchTransferTab(el, type) {
     content.innerHTML = `
       <div class="form-group"><label class="form-label">收款人手机号</label><input type="tel" class="form-input" id="transferPhone" placeholder="请输入手机号" value="138****1234"></div>
       <div class="form-group"><label class="form-label">转账金额（元）</label><input type="number" class="form-input" id="transferAmount" placeholder="请输入金额" oninput="renderTransferTierHint()"><div id="transferTierHint" style="display:none;margin-top:6px;font-size:12px;line-height:1.6;"></div></div>
-      <div class="form-group"><label class="form-label">收款人姓名（选填）</label><input type="text" class="form-input" id="transferName" placeholder="验证收款人姓名"></div>
+      <div class="form-group"><label class="form-label">备注（选填）</label><input type="text" class="form-input" id="transferRemark" placeholder="转账备注"></div>
     `;
   } else if (type === 'bank') {
     content.innerHTML = `
@@ -302,11 +302,11 @@ function confirmTransfer(btn) {
   } else if (type === 'phone') {
     const phone = getVal('transferPhone');
     const amount = getVal('transferAmount') || '0';
-    const name = getVal('transferName') || '未验证';
+    const remark = getVal('transferRemark') || '无';
     detailHtml = `<div class="data-row"><span class="data-label">转账类型</span><span class="data-value">手机号转账</span></div>
       <div class="data-row"><span class="data-label">收款手机号</span><span class="data-value">${phone}</span></div>
-      <div class="data-row"><span class="data-label">收款人姓名</span><span class="data-value">${name}</span></div>
       <div class="data-row"><span class="data-label">转账金额</span><span class="data-value expense">¥ ${parseFloat(amount).toFixed(2)}</span></div>
+      <div class="data-row"><span class="data-label">备注</span><span class="data-value">${remark}</span></div>
       <div class="data-row"><span class="data-label">交易时间</span><span class="data-value">${new Date().toLocaleString('zh-CN')}</span></div>`;
   } else if (type === 'bank') {
     const bankcard = getVal('transferBankCard');
@@ -339,7 +339,7 @@ function confirmTransfer(btn) {
     const contact = type === 'name'
       ? getVal('transferContact')
       : type === 'phone'
-        ? (getVal('transferName') || getVal('transferPhone') || '手机号用户')
+        ? (getVal('transferPhone') || '手机号用户')
         : (validateBankCard(getVal('transferBankCard')).bank || '银行卡用户');
     if (!(amount > 0)) {
       appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>转账金额无效</strong><br>请输入大于 0 的转账金额。</div></div></div>`);
@@ -350,7 +350,7 @@ function confirmTransfer(btn) {
     // 移除表单，避免重复提交；真正结果由 Agent 链路输出
     form.closest('.message')?.remove();
     if (typeof agentTransferFlow === 'function') {
-      agentTransferFlow(contact, amount, '', ch);
+      agentTransferFlow(contact, amount, '', ch, { remark: getVal('transferRemark') || '' });
       return;
     }
     // 降级（理论上不会走到）：无 Agent 层时至少拦住超支
