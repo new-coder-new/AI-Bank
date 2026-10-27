@@ -275,6 +275,16 @@ function confirmInstallment() {
   const rate = installmentRates[period] || 0.006;
   
   if (amount < 100) { alert('分期金额最低100元'); return; }
+
+  // 交易限制接入：分期属于信用卡消费，超过单笔限额直接拦截
+  if (typeof cardTxnLimitCheck === 'function') {
+    const chk = cardTxnLimitCheck(amount, 'online');
+    if (!chk.ok) {
+      appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>分期未提交</strong><br>${chk.reason}。可在「全部服务 → 卡片 → 交易限制」中调整。</div></div></div>`);
+      scrollToBottom();
+      return;
+    }
+  }
   
   const c = mockData.userProfile.creditCard;
   const totalFee = amount * rate * period;

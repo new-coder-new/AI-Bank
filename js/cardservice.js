@@ -122,6 +122,29 @@ function txnLimitData() {
   return d;
 }
 
+// 限额校验：单笔 / 场景（scenes: online | night | overseas），供分期确认与「试算」调用
+function cardTxnLimitCheck(amount, scene) {
+  const l = txnLimitData();
+  const amt = Number(amount) || 0;
+  if (amt <= 0) return { ok: false, reason: '金额无效' };
+  if (amt > Number(l.single)) return { ok: false, reason: '超过单笔限额 ' + cardServiceMoney(l.single) };
+  if (scene === 'night' && l.night === 'block') return { ok: false, reason: '夜间交易已被禁止（23:00-06:00）' };
+  if (scene === 'overseas' && l.overseas === 'block') return { ok: false, reason: '境外交易已被禁止' };
+  return { ok: true, reason: '在限额内，可正常交易' };
+}
+
+function txnLimitTest() {
+  const amtEl = document.getElementById('txnTestAmount');
+  const sceneEl = document.getElementById('txnTestScene');
+  const out = document.getElementById('txnTestResult');
+  if (!amtEl || !sceneEl || !out) return;
+  const amt = Number(amtEl.value) || 0;
+  if (amt <= 0) { out.textContent = '请输入试算金额'; out.style.color = '#B42318'; return; }
+  const res = cardTxnLimitCheck(amt, sceneEl.value);
+  out.textContent = (res.ok ? '✅ 通过：' : '⛔ 拦截：') + res.reason;
+  out.style.color = res.ok ? '#16A34A' : '#B42318';
+}
+
 function showTxnLimitSettings() {
   const l = txnLimitData();
   const body =
@@ -142,7 +165,17 @@ function showTxnLimitSettings() {
     '<button class="btn btn-primary" onclick="saveTxnLimitSettings()">保存设置</button>' +
     '<button class="btn btn-secondary" onclick="txnLimitCancel()">取消</button>' +
     '</div></div>' +
-    '<p style="margin-top:10px;font-size:11.5px;color:#8A97A8;line-height:1.7;">限额作用于信用卡消费；本演示仅保存设置，不拦截实际交易。</p>';
+    '<div class="data-card" style="margin-top:12px;">' +
+    '<div class="data-card-title">试算一笔消费</div>' +
+    '<div class="form-row">' +
+    '<div class="form-group" style="flex:1;"><label class="form-label">金额（元）</label><input type="number" class="form-input" id="txnTestAmount" placeholder="例如 25000"></div>' +
+    '<div class="form-group" style="flex:1;"><label class="form-label">场景</label><select class="form-select" id="txnTestScene">' +
+    '<option value="online">线上消费</option><option value="night">夜间交易</option><option value="overseas">境外交易</option></select></div>' +
+    '</div>' +
+    '<button class="btn btn-secondary btn-sm" onclick="txnLimitTest()">按当前限额校验</button>' +
+    '<div class="form-hint" id="txnTestResult" style="margin-top:8px;"></div>' +
+    '</div>' +
+    '<p style="margin-top:10px;font-size:11.5px;color:#8A97A8;line-height:1.7;">限额已接入账单分期与上方试算校验；真实刷卡通道未接入，不做实际扣款拦截。</p>';
 
   appendMessage(cardServicePage('交易限制', '按单笔 / 日累计 / 场景控制信用卡消费', body));
   scrollToBottom();

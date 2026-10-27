@@ -43,42 +43,38 @@ function syncScheduledTimeMin() {
   }
 }
 
-function showTransferForm() {
-  const contactOptions = mockData.contacts.map(c =>
-    `<option value="${c.name}">${c.name}（${c.phone}）</option>`
-  ).join('');  const html = `
+// mode: 'smart'（按姓名/手机号/银行卡号，即时转账）| 'timed'（定时转账）| 'aa'（AA 收款）
+// 面板入口按业务动作各开一个模式，避免在同一个表单里塞 5 个页签造成两套导航。
+function showTransferForm(mode) {
+  const m = (mode === 'timed' || mode === 'aa') ? mode : 'smart';
+  const tabDefs = m === 'smart'
+    ? [['name', '按姓名'], ['phone', '手机号'], ['bank', '银行卡号']]
+    : (m === 'timed' ? [['timed', '定时转账']] : [['aa', 'AA收款']]);
+  const title = m === 'timed' ? '定时转账' : (m === 'aa' ? 'AA 收款' : '智能转账');
+  const note = m === 'timed'
+    ? '创建任务需短信验证码验证；到期自动从储蓄卡扣款，执行前可随时取消。'
+    : m === 'aa'
+      ? '先由你垫付，再按参与人数向联系人收款；发起后可在对话中查看分摊明细。'
+      : '按姓名、手机号或银行卡号转账；金额达到风控档位会升级确认与验证。';
+  const tabsHtml = m === 'smart'
+    ? '<div class="tabs">' + tabDefs.map((t, i) =>
+      '<div class="tab' + (i === 0 ? ' active' : '') + '" onclick="switchTransferTab(this,\'' + t[0] + '\')">' + t[1] + '</div>'
+    ).join('') + '</div>'
+    : '';
+
+  const html = `
     <div class="message">
       <div class="msg-avatar ai">🤖</div>
       <div class="msg-content">
         <div class="msg-name">智能金融助手</div>
         <div class="msg-bubble">
-          <p>请选择转账方式并填写信息：</p>
+          <p>${title}：请填写以下信息</p>
           <div style="background:#F2F6FC;border:1px solid #CFDFF3;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:#09407F;">
-            即时转账按金额分级确认；定时转账创建时需短信验证码，到期自动执行，执行前可随时取消。
+            ${note}
           </div>
-          <div class="transfer-form">
-            <div class="tabs">
-              <div class="tab active" onclick="switchTransferTab(this,'name')">按姓名</div>
-              <div class="tab" onclick="switchTransferTab(this,'phone')">手机号</div>
-              <div class="tab" onclick="switchTransferTab(this,'bank')">银行卡号</div>
-              <div class="tab" onclick="switchTransferTab(this,'timed')">定时转账</div>
-              <div class="tab" onclick="switchTransferTab(this,'aa')">AA收款</div>
-            </div>
-            <div id="transferContent">
-              <div class="form-group">
-                <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">收款人 <button class="btn btn-primary btn-sm" onclick="goToContactsTab()" style="padding:2px 8px;font-size:11px;">管理</button></label>
-                <select class="form-select" id="transferContact">${contactOptions}</select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">转账金额（元）</label>
-                <input type="number" class="form-input" id="transferAmount" placeholder="请输入金额" min="0.01" step="0.01" oninput="renderTransferTierHint()">
-                <div id="transferTierHint" style="display:none;margin-top:6px;font-size:12px;line-height:1.6;"></div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">备注（选填）</label>
-                <input type="text" class="form-input" id="transferRemark" placeholder="转账备注">
-              </div>
-            </div>
+          <div class="transfer-form" data-mode="${m}">
+            ${tabsHtml}
+            <div id="transferContent"></div>
             <div class="form-actions">
               <button class="btn btn-primary" onclick="confirmTransfer(this)">确认转账</button>
               <button class="btn btn-secondary" onclick="cancelTransfer()">取消</button>
@@ -89,24 +85,24 @@ function showTransferForm() {
     </div>
   `;
   appendMessage(html);
+  const forms = document.querySelectorAll('.transfer-form');
+  const form = forms[forms.length - 1];
+  if (form) switchTransferTab(form.querySelector('.tab'), tabDefs[0][0]);
   scrollToBottom();
 }
 
 // 打开 AA 表单并预填总金额/活动名称（语音 AA 复用，避免只按人数瞎猜参与人）
 function openAAForm(prefillTotal, prefillName) {
-  showTransferForm();
+  showTransferForm('aa');
   setTimeout(function () {
-    const forms = document.querySelectorAll('.transfer-form');
-    const form = forms[forms.length - 1];
-    if (!form) return;
-    const aaTab = Array.from(form.querySelectorAll('.tab')).find(t => t.textContent.includes('AA'));
-    if (aaTab) switchTransferTab(aaTab, 'aa');
-    const totalInput = form.querySelector('#aaTotal');
+    const totalInput = document.getElementById('aaTotal');
     if (totalInput && prefillTotal) totalInput.value = prefillTotal;
-    const nameInput = form.querySelector('#aaName');
+    const nameInput = document.getElementById('aaName');
     if (nameInput && prefillName) nameInput.value = prefillName;
     updateAADetail();
-    form.scrollIntoView({ block: 'center' });
+    const forms = document.querySelectorAll('.transfer-form');
+    const form = forms[forms.length - 1];
+    if (form) form.scrollIntoView({ block: 'center' });
   }, 80);
 }
 
@@ -127,23 +123,24 @@ function renderTransferTierHint() {
 }
 
 function switchTransferTab(el, type) {
-  const form = el.closest('.transfer-form');
+  const forms = document.querySelectorAll('.transfer-form');
+  const form = (el && typeof el.closest === 'function') ? el.closest('.transfer-form') : forms[forms.length - 1];
   if (!form) return;
   form.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
+  if (el && el.classList) el.classList.add('active');
   const content = form.querySelector('#transferContent');
   if (!content) return;
   if (type === 'name') {
     const contactOptions = mockData.contacts.map(c => `<option value="${c.name}">${c.name}（${c.phone}）</option>`).join('');
     content.innerHTML = `
       <div class="form-group"><label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">收款人 <button class="btn btn-primary btn-sm" onclick="goToContactsTab()" style="padding:2px 8px;font-size:11px;">管理</button></label><select class="form-select" id="transferContact">${contactOptions}</select></div>
-      <div class="form-group"><label class="form-label">转账金额（元）</label><input type="number" class="form-input" id="transferAmount" placeholder="请输入金额"></div>
+      <div class="form-group"><label class="form-label">转账金额（元）</label><input type="number" class="form-input" id="transferAmount" placeholder="请输入金额" oninput="renderTransferTierHint()"><div id="transferTierHint" style="display:none;margin-top:6px;font-size:12px;line-height:1.6;"></div></div>
       <div class="form-group"><label class="form-label">备注（选填）</label><input type="text" class="form-input" id="transferRemark" placeholder="转账备注"></div>
     `;
   } else if (type === 'phone') {
     content.innerHTML = `
       <div class="form-group"><label class="form-label">收款人手机号</label><input type="tel" class="form-input" id="transferPhone" placeholder="请输入手机号" value="138****1234"></div>
-      <div class="form-group"><label class="form-label">转账金额（元）</label><input type="number" class="form-input" id="transferAmount" placeholder="请输入金额"></div>
+      <div class="form-group"><label class="form-label">转账金额（元）</label><input type="number" class="form-input" id="transferAmount" placeholder="请输入金额" oninput="renderTransferTierHint()"><div id="transferTierHint" style="display:none;margin-top:6px;font-size:12px;line-height:1.6;"></div></div>
       <div class="form-group"><label class="form-label">收款人姓名（选填）</label><input type="text" class="form-input" id="transferName" placeholder="验证收款人姓名"></div>
     `;
   } else if (type === 'bank') {
@@ -151,7 +148,7 @@ function switchTransferTab(el, type) {
       <div class="form-group"><label class="form-label">收款银行卡号</label><input type="text" class="form-input" id="transferBankCard" placeholder="请输入银行卡号（16-19位）" maxlength="19" style="font-family:monospace;" oninput="this.value=this.value.replace(/\\D/g,'')" onblur="validateTransferBankCard()"></div>
       <div id="transferBankCardValid" style="display:none;padding:4px 0;color:#22c55e;font-size:12px;">卡号格式正确</div>
       <div id="transferBankCardInvalid" style="display:none;padding:4px 0;color:#ef4444;font-size:12px;">卡号格式不正确</div>
-      <div class="form-group"><label class="form-label">转账金额（元）</label><input type="number" class="form-input" id="transferAmount" placeholder="请输入金额"></div>
+      <div class="form-group"><label class="form-label">转账金额（元）</label><input type="number" class="form-input" id="transferAmount" placeholder="请输入金额" oninput="renderTransferTierHint()"><div id="transferTierHint" style="display:none;margin-top:6px;font-size:12px;line-height:1.6;"></div></div>
       <div class="form-group"><label class="form-label">备注（选填）</label><input type="text" class="form-input" id="transferRemark" placeholder="转账备注"></div>
     `;
   } else if (type === 'timed') {
@@ -241,7 +238,10 @@ function confirmTransfer(btn) {
   const form = btn ? btn.closest('.transfer-form') : document.querySelector('.transfer-form');
   if (!form) return;
   const activeTab = form.querySelector('.tab.active');
-  const type = activeTab ? activeTab.textContent.includes('姓名') ? 'name' : activeTab.textContent.includes('手机号') ? 'phone' : activeTab.textContent.includes('银行卡') ? 'bank' : activeTab.textContent.includes('定时') ? 'timed' : 'aa' : 'name';
+  const formMode = form.dataset.mode || '';
+  const type = activeTab
+    ? (activeTab.textContent.includes('姓名') ? 'name' : activeTab.textContent.includes('手机号') ? 'phone' : activeTab.textContent.includes('银行卡') ? 'bank' : activeTab.textContent.includes('定时') ? 'timed' : 'aa')
+    : (formMode === 'timed' || formMode === 'aa' ? formMode : 'name');
   const getVal = (id) => form.querySelector('#' + id)?.value || '';
   let detailHtml = '';
   let aaRequestData = null;
@@ -1040,12 +1040,7 @@ function refreshScheduledListCount() {
 }
 
 function openTimedTransferForm() {
-  showTransferForm();
-  setTimeout(function () {
-    const form = document.querySelector('.transfer-form');
-    const tabs = form ? form.querySelectorAll('.tab') : [];
-    if (tabs[3]) switchTransferTab(tabs[3], 'timed');
-  }, 30);
+  showTransferForm('timed');
 }
 
 function showScheduledTransfers() {
