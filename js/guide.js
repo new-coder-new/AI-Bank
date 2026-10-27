@@ -268,14 +268,33 @@ function guideTransferParse(text) {
     .replace(/\s+/g, '');
 
   var payee = null;
+  var unknownName = '';
   if (rest) {
     var contact = (mockData.contacts || []).filter(function (c) {
       return c.name && rest.indexOf(c.name) !== -1;
     })[0];
     if (contact) payee = contact.name;
-    else if (/^[\u4e00-\u9fa5·]{2,4}$/.test(rest)) payee = rest;
+    else if (/^[\u4e00-\u9fa5·]{2,4}$/.test(rest)) unknownName = rest;
   }
-  return { payee: payee, phone: phone, amount: amount };
+  return { payee: payee, unknownName: unknownName, phone: phone, amount: amount };
+}
+
+// 姓名转账只允许转给通讯录联系人
+function guideIsContact(name) {
+  return (mockData.contacts || []).some(function (c) { return c.name === name; });
+}
+
+function guideContactNames() {
+  return (mockData.contacts || []).map(function (c) { return c.name; }).join('、') || '暂无联系人';
+}
+
+function guideUnknownPayeeNotice(name) {
+  var n = (typeof escapeHtml === 'function') ? escapeHtml(name) : name;
+  appendMessage(guideMessage(
+    '<p>「<b>' + n + '</b>」不在通讯录里。姓名转账只支持通讯录联系人：' + guideContactNames() + '。</p>' +
+    '<p class="guide-tip">可以改用手机号转账，或先在「联系人」中新增后再试。</p>'
+  ));
+  scrollToBottom();
 }
 
 function guideTransferStep(text) {
@@ -344,6 +363,13 @@ function guideTransferStep(text) {
 
   // ③ 收槽位阶段
   var parsed = guideTransferParse(t);
+
+  // 姓名转账：非通讯录姓名直接提示，不进入槽位
+  if (s.kind === 'name' && !parsed.payee && parsed.unknownName) {
+    guideUnknownPayeeNotice(parsed.unknownName);
+    return true;
+  }
+
   if (parsed.phone) s.phone = parsed.phone;
   if (parsed.payee) s.payee = parsed.payee;
   if (parsed.amount != null && parsed.amount > 0) s.amount = parsed.amount;
@@ -471,6 +497,12 @@ async function guideTransferAIFallback(text) {
   var payee = parsed && parsed.payee ? String(parsed.payee).trim() : '';
   var phone = parsed && parsed.phone ? String(parsed.phone).trim() : '';
   var amount = parsed && parsed.amount ? Number(parsed.amount) : 0;
+
+  // 姓名转账：模型抽出的收款人也必须在通讯录里
+  if (payee && s.kind === 'name' && !guideIsContact(payee)) {
+    guideUnknownPayeeNotice(payee);
+    return;
+  }
   if (payee) s.payee = payee;
   if (phone) s.phone = phone;
   if (amount > 0) s.amount = amount;

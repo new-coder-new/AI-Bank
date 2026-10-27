@@ -122,6 +122,63 @@ function renderTransferTierHint() {
     (t.needVerify ? '：需要输入二次验证码后才可执行。' : (t.needConfirm ? '：需要确认后执行。' : '：可直接执行。'));
 }
 
+// 手机号与通讯录匹配：通讯录里的号码是脱敏的（138****1234），先把输入按同样规则脱敏再比对
+function maskPhoneForMatch(phone) {
+  var digits = String(phone || '').replace(/\D/g, '');
+  if (digits.length === 11) return digits.slice(0, 3) + '****' + digits.slice(7);
+  return String(phone || '').trim();
+}
+
+function findContactByPhone(phone) {
+  var key = maskPhoneForMatch(phone);
+  if (!key) return null;
+  var list = mockData.contacts || [];
+  for (var i = 0; i < list.length; i++) {
+    if (maskPhoneForMatch(list[i].phone) === key) return list[i];
+  }
+  return null;
+}
+
+// 手机号输入变化时：命中通讯录就带出姓名并锁定，否则要求手动验证姓名
+function resolvePhonePayee() {
+  var phoneEl = document.getElementById('transferPhone');
+  var nameEl = document.getElementById('transferName');
+  var hintEl = document.getElementById('transferNameHint');
+  var labelEl = document.getElementById('transferNameLabel');
+  if (!phoneEl || !nameEl || !hintEl) return;
+
+  var digits = String(phoneEl.value || '').replace(/\D/g, '');
+  var contact = digits.length === 11 ? findContactByPhone(digits) : null;
+
+  if (contact) {
+    nameEl.value = contact.name;
+    nameEl.dataset.auto = '1';
+    nameEl.disabled = true;
+    nameEl.style.background = '#F0F4FA';
+    if (labelEl) labelEl.textContent = '收款人姓名（通讯录匹配）';
+    hintEl.textContent = '已匹配联系人：' + contact.name + '（' + (contact.bank || '') + ' ' + (contact.account || '') + '）';
+    hintEl.style.color = '#16A34A';
+    return;
+  }
+
+  if (nameEl.dataset.auto === '1') {
+    nameEl.value = '';
+    nameEl.dataset.auto = '0';
+  }
+  nameEl.disabled = false;
+  nameEl.style.background = '';
+  if (labelEl) labelEl.textContent = '收款人姓名（该手机号不在联系人中，需验证）';
+  if (!digits) {
+    hintEl.textContent = '';
+  } else if (digits.length < 11) {
+    hintEl.textContent = '请输入 11 位手机号';
+    hintEl.style.color = '#8A97A8';
+  } else {
+    hintEl.textContent = '该手机号不在联系人中，请填写收款人姓名以完成验证';
+    hintEl.style.color = '#B54708';
+  }
+}
+
 function switchTransferTab(el, type) {
   const forms = document.querySelectorAll('.transfer-form');
   const form = (el && typeof el.closest === 'function') ? el.closest('.transfer-form') : forms[forms.length - 1];
@@ -139,7 +196,8 @@ function switchTransferTab(el, type) {
     `;
   } else if (type === 'phone') {
     content.innerHTML = `
-      <div class="form-group"><label class="form-label">收款人手机号</label><input type="tel" class="form-input" id="transferPhone" placeholder="请输入手机号" value="138****1234"></div>
+      <div class="form-group"><label class="form-label">收款手机号</label><input type="tel" class="form-input" id="transferPhone" placeholder="请输入 11 位手机号" maxlength="11" oninput="resolvePhonePayee()" onblur="resolvePhonePayee()"></div>
+      <div class="form-group"><label class="form-label" id="transferNameLabel">收款人姓名</label><input type="text" class="form-input" id="transferName" placeholder="请输入收款人姓名" maxlength="20" oninput="resolvePhonePayee()"><div id="transferNameHint" class="form-hint"></div></div>
       <div class="form-group"><label class="form-label">转账金额（元）</label><input type="number" class="form-input" id="transferAmount" placeholder="请输入金额" oninput="renderTransferTierHint()"><div id="transferTierHint" style="display:none;margin-top:6px;font-size:12px;line-height:1.6;"></div></div>
       <div class="form-group"><label class="form-label">备注（选填）</label><input type="text" class="form-input" id="transferRemark" placeholder="转账备注"></div>
     `;
@@ -300,11 +358,15 @@ function confirmTransfer(btn) {
     openScheduledTransferConfirm(task);
     return;
   } else if (type === 'phone') {
-    const phone = getVal('transferPhone');
+    const phone = String(getVal('transferPhone') || '').replace(/\D/g, '');
     const amount = getVal('transferAmount') || '0';
+    const phoneContact = findContactByPhone(phone);
+    const typedName = (getVal('transferName') || '').trim();
+    const payeeName = phoneContact ? phoneContact.name : typedName;
     const remark = getVal('transferRemark') || '无';
     detailHtml = `<div class="data-row"><span class="data-label">转账类型</span><span class="data-value">手机号转账</span></div>
       <div class="data-row"><span class="data-label">收款手机号</span><span class="data-value">${phone}</span></div>
+      <div class="data-row"><span class="data-label">收款人姓名</span><span class="data-value">${payeeName || '<span style="color:#B42318;">未填写</span>'}${phoneContact ? '' : ' <span style="font-size:10.5px;color:#8A97A8;">（非联系人，已手填验证）</span>'}</span></div>
       <div class="data-row"><span class="data-label">转账金额</span><span class="data-value expense">¥ ${parseFloat(amount).toFixed(2)}</span></div>
       <div class="data-row"><span class="data-label">备注</span><span class="data-value">${remark}</span></div>
       <div class="data-row"><span class="data-label">交易时间</span><span class="data-value">${new Date().toLocaleString('zh-CN')}</span></div>`;
@@ -336,11 +398,28 @@ function confirmTransfer(btn) {
   // 这样金额分级、二次验证码、余额门禁三处防线都生效，不再出现"表单转账无风控"的漏洞。
   if (type === 'name' || type === 'phone' || type === 'bank') {
     const amount = parseFloat(getVal('transferAmount')) || 0;
+    const phoneDigits = type === 'phone' ? String(getVal('transferPhone') || '').replace(/\D/g, '') : '';
+    const phoneContact = type === 'phone' ? findContactByPhone(phoneDigits) : null;
     const contact = type === 'name'
       ? getVal('transferContact')
       : type === 'phone'
-        ? (getVal('transferPhone') || '手机号用户')
+        ? (phoneContact ? phoneContact.name : (getVal('transferName') || '').trim())
         : (validateBankCard(getVal('transferBankCard')).bank || '银行卡用户');
+
+    // 手机号转账：号码格式必须正确；不在通讯录时必须有手填的收款人姓名
+    if (type === 'phone') {
+      if (!/^1[3-9]\d{9}$/.test(phoneDigits)) {
+        appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>手机号格式不正确</strong><br>请输入 11 位手机号（1 开头）。</div></div></div>`);
+        scrollToBottom();
+        return;
+      }
+      if (!contact) {
+        appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>需要验证收款人姓名</strong><br>该手机号不在通讯录中，请填写收款人姓名后再提交。</div></div></div>`);
+        scrollToBottom();
+        return;
+      }
+    }
+
     if (!(amount > 0)) {
       appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>转账金额无效</strong><br>请输入大于 0 的转账金额。</div></div></div>`);
       scrollToBottom();

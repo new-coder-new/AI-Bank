@@ -1577,6 +1577,26 @@ function agentParseTransfer(text) {
 async function agentTransferFlow(payee, amount, rawText, channel, opts) {
   var ch = channel || '智能转账';
   var o = opts || {};
+
+  // 姓名转账只允许转给通讯录里的联系人；手机号转账、银行卡转账不走这条限制
+  var NAME_CHANNELS = { '网银转账': 1, '智能转账': 1, '姓名转账': 1 };
+  if (NAME_CHANNELS[ch]) {
+    var contacts = mockData.contacts || [];
+    var known = contacts.some(function (c) { return c.name === payee; });
+    if (!known) {
+      var names = contacts.map(function (c) { return c.name; }).join('、');
+      appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+        '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
+        '<div class="agent-result-card">' +
+        '<div class="agent-result-title" style="color:#B54708;">该收款人不在通讯录</div>' +
+        '<div class="agent-result-desc">姓名转账只支持通讯录里的联系人：' + (names || '暂无联系人') +
+        '。如需转给新收款人，请先在「联系人」中新增，或改用手机号转账。</div>' +
+        '<div class="agent-result-foot"><button class="ui-link" onclick="goToContactsTab()">去联系人</button></div>' +
+        '</div></div></div></div>');
+      scrollToBottom();
+      return { handled: true, executed: false, reason: 'unknownPayee' };
+    }
+  }
   // —— 余额门禁优先于一切：余额不足时不出现「确认转账」按钮，避免用户误以为可以转 ——
   var check = agentCheckBalance([{ amount: amount }]);
   var risk = agentAssessTransferRisk(payee, amount);
