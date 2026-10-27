@@ -1106,7 +1106,7 @@ https://ai-banking-agent-335169-11-1386930579.sh.run.tcloudbase.com/
 2. **API Key 硬编码**：`config.js` 中有 DeepSeek 与硅基流动语音识别 Key，生产必须迁移到服务端环境变量，且应轮换已暴露的 Key。
 3. **无鉴权**：所有 API 公开，CORS 为 `*`，没有多用户隔离。
 4. **定时转账是前端实现**：页面关闭时不会执行，重新打开会补跑；真实银行必须放到服务端调度。
-5. **局部本地数据**：定时任务仅存在前端 localStorage；订阅添加、鲜花下单等部分操作没有对应的服务端写接口，刷新后可能被服务端快照覆盖。
+5. **局部本地数据**：以下字段前端 localStorage 持有、后端核心不持有，`apiInjectSnapshot()` 会显式保留：`scheduledTransfers`、`riskProfile`、`manualReviews`、`aaRequests`、`creditCards`、`cardApplications`、`txnLimit`，以及主卡上的 `limitApply*` / `effectiveLimit` 等调额状态；其余字段仍会被服务端快照覆盖。
 6. **AI/ASR 依赖外部服务**：网络或 Key 不可用时，Function Calling 会降级到规则层；语音识别不可用会影响语音转账。
 7. **演示性风控**：T1–T4、风险评分、验证码、指纹均为演示逻辑，不是真实银行风控。
 8. **信用卡额度**：调额走申请表单，审批与生效为模拟；降额等复杂场景未做完整业务闭环。

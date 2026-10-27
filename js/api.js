@@ -55,26 +55,28 @@ function apiInjectSnapshot(snap) {
   if (!snap) return;
   // 注入账户核心数据
   if (snap.userProfile) {
-    // 定时转账是前端本地任务（后端核心暂不持有该表），快照覆盖时必须保留，
-    // 否则刷新页面后任务会凭空消失，已执行的提醒也会与账户状态脱节。
-    const localScheduled = (mockData.userProfile && Array.isArray(mockData.userProfile.scheduledTransfers))
-      ? mockData.userProfile.scheduledTransfers
-      : null;
-    // 理财风险测评结果也是前端本地资产，后端快照不持有，覆盖时保留
-    const localRiskProfile = (mockData.userProfile && mockData.userProfile.riskProfile)
-      ? mockData.userProfile.riskProfile
-      : null;
-    const localManualReviews = (mockData.userProfile && Array.isArray(mockData.userProfile.manualReviews))
-      ? mockData.userProfile.manualReviews
-      : null;
-    const localAARequests = (mockData.userProfile && Array.isArray(mockData.userProfile.aaRequests))
-      ? mockData.userProfile.aaRequests
-      : null;
+    // 以下字段是「前端本地资产」，后端核心不持有，快照覆盖时必须原样保留，
+    // 否则刷新页面后这些数据会凭空消失（定时任务、风评、复核、AA、卡片、申请记录、交易限制）。
+    var localProfile = mockData.userProfile || {};
+    var localKeep = {};
+    ['scheduledTransfers', 'riskProfile', 'manualReviews', 'aaRequests',
+      'creditCards', 'cardApplications', 'txnLimit'].forEach(function (k) {
+      if (localProfile[k] != null) localKeep[k] = localProfile[k];
+    });
+    var localCreditCard = localProfile.creditCard ? JSON.parse(JSON.stringify(localProfile.creditCard)) : null;
+
     mockData.userProfile = snap.userProfile;
-    if (localScheduled) mockData.userProfile.scheduledTransfers = localScheduled;
-    if (localRiskProfile) mockData.userProfile.riskProfile = localRiskProfile;
-    if (localManualReviews) mockData.userProfile.manualReviews = localManualReviews;
-    if (localAARequests) mockData.userProfile.aaRequests = localAARequests;
+
+    Object.keys(localKeep).forEach(function (k) { mockData.userProfile[k] = localKeep[k]; });
+
+    // 主卡的额度调整/挂失状态同样是本地产生的，不能被快照里的旧值覆盖
+    if (localCreditCard && mockData.userProfile.creditCard) {
+      ['effectiveLimit', 'approvedLimit', 'appliedLimit', 'available', 'isFrozen',
+        'limitApplyStatus', 'limitApplyReason', 'limitApplyAt', 'limitApplyDirection',
+        'approvedAt', 'limitUpdatedAt'].forEach(function (k) {
+        if (localCreditCard[k] != null) mockData.userProfile.creditCard[k] = localCreditCard[k];
+      });
+    }
   }
   if (snap.bills) mockData.bills = snap.bills;
   if (snap.products) mockData.products = snap.products;
