@@ -55,7 +55,7 @@ var GUIDE_SERVICES = [
     aliases: ['理财服务', '投资理财'],
     prompt: '理财服务包含这些内容，请选择：',
     subs: [
-      { key: 'products', label: '产品申购', aliases: ['产品', '申购'], run: function () { showProductList(); } },
+      { key: 'products', label: '产品申购', aliases: ['产品', '申购'], run: function () { guideStartWealthPurchase(); } },
       { key: 'risk', label: '风险评估', run: function () { startRiskAssessment(); } },
       { key: 'holdings', label: '我的持仓', aliases: ['持仓'], run: function () { showHoldings(); } }
     ]
@@ -184,6 +184,31 @@ function guideHandleText(text) {
       return true;
     }
     return guideAAStep(t);
+  }
+
+  // 理财申购多轮收集进行中（风评 → 产品/金额 → 确认）
+  if (GUIDE_WEALTH) {
+    if (/^(取消|不做了|算了|退出|返回|菜单)$/.test(t)) {
+      GUIDE_WEALTH = null;
+      guideBackToMenu();
+      return true;
+    }
+    var wSvc = guideResolveService(t);
+    if (wSvc) {
+      GUIDE_WEALTH = null;
+      guideOpenService(wSvc.key);
+      return true;
+    }
+    var wealthSvc = guideServiceByKey('wealth');
+    var wSub = wealthSvc && wealthSvc.subs.filter(function (x) {
+      return x.label === t || (x.aliases || []).indexOf(t) !== -1;
+    })[0];
+    if (wSub) {
+      GUIDE_WEALTH = null;
+      guidePickSub('wealth', wSub.key);
+      return true;
+    }
+    return guideWealthStep(t);
   }
 
   // 返回一级菜单
@@ -1382,4 +1407,263 @@ function guideAAStep(text) {
   }
   scrollToBottom();
   return true;
+}
+
+// ------------------------------ 理财申购：风评（有效期 1 年）→ 推荐 → 产品/金额 → 确认 ------------------------------
+// 规则：
+//   ① 风评有效（1 年内）：先播报等级 + 推荐 2 款适配产品，再收产品与金额；
+//   ② 风评缺失/过期：先要求测评，测完自动接着推荐；
+//   ③ 产品与金额可一次说完，也可分开说；确认后走 wealth.buy（含金额风控）。
+var GUIDE_WEALTH = null;
+
+function guideWealthEsc(v) {
+  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
+}
+
+function guideWealthProfile() {
+  if (typeof riskProfile !== 'undefined' && riskProfile) return riskProfile;
+  if (mockData.userProfile && mockData.userProfile.riskProfile) return mockData.userProfile.riskProfile;
+  return null;
+}
+
+function guideWealthValidProfile() {
+  var p = guideWealthProfile();
+  if (!p) return null;
+  var ok = (typeof riskProfileValid === 'function') ? riskProfileValid(p) : !!p.level;
+  return ok ? p : null;
+}
+
+// 从产品描述里取期限：90天 / 3年 / 灵活存取 / 长期
+function guideWealthTerm(p) {
+  var d = String((p && p.desc) || '');
+  var m = d.match(/(\d+)\s*天/);
+  if (m) return m[1] + '天';
+  if (/3年期|三年/.test(d + (p && p.name ? p.name : ''))) return '3年';
+  if (/灵活/.test(d)) return '灵活存取';
+  if (/长期/.test(d)) return '长期';
+  return '期限灵活';
+}
+
+function guideWealthRecommendations(profile) {
+  var level = Number(profile && profile.level) || 1;
+  var list = (mockData.products || []).filter(function (p) { return Number(p.riskLevel) <= level; });
+  list.sort(function (a, b) { return parseFloat(b.rate) - parseFloat(a.rate); });
+  return list.slice(0, 2);
+}
+
+function guideWealthProductLine(p, i) {
+  var circled = '①②③④⑤⑥⑦⑧⑨';
+  var mark = circled.charAt(i) || (i + 1);
+  return '<div>' + mark + ' <b>' + guideWealthEsc(p.name) + '</b>（R' + p.riskLevel + '，' +
+    guideWealthEsc(guideWealthTerm(p)) + '，参考' + guideWealthEsc(p.rateLabel || '年化') + ' ' + guideWealthEsc(p.rate) + '）</div>';
+}
+
+function guideWealthProductListHtml() {
+  var items = (mockData.products || []).map(function (p, i) {
+    return guideWealthProductLine(p, i);
+  }).join('');
+  return '<div class="guide-list">' + items + '</div>';
+}
+
+function guideWealthAccountTail() {
+  var n = (mockData.userProfile && mockData.userProfile.debitCard && mockData.userProfile.debitCard.number) || '';
+  var digits = String(n).replace(/\D/g, '');
+  return digits ? digits.slice(-4) : '****';
+}
+
+function guideStartWealthPurchase() {
+  GUIDE_WEALTH = { stage: 'slots', product: null, amount: null };
+  currentModule = 'wealth';
+
+  var profile = guideWealthProfile();
+  if (!profile || !guideWealthValidProfile()) {
+    GUIDE_WEALTH.stage = 'risk';
+    var expired = (typeof riskProfileExpired === 'function') ? riskProfileExpired(profile) : false;
+    appendMessage(guideMessage(
+      '<p>查询到您' + (expired ? '风险测评<b>已过期</b>（有效期 1 年）' : '尚未完成风险评估') +
+      '，按照监管要求，需要先完成风险测评，才能为您推荐和购买理财产品，是否现在开始测评？</p>' +
+      '<div class="guide-chips">' +
+      '<button class="guide-chip" onclick="guideWealthStartAssess()">开始测评</button>' +
+      '<button class="guide-chip" onclick="guideWealthCancelAssess()">暂不测评</button>' +
+      '</div>'
+    ));
+    scrollToBottom();
+    return;
+  }
+  guideWealthShowRecommendations(profile);
+}
+
+function guideWealthShowRecommendations(profile) {
+  var p = profile || guideWealthValidProfile();
+  if (!p) return;
+  var recs = guideWealthRecommendations(p);
+  var lines = recs.map(guideWealthProductLine).join('');
+  appendMessage(guideMessage(
+    '<p>您的风险测评结果：<b>' + guideWealthEsc(p.name) + ' R' + p.level + '</b>。结合您当前资产情况，为您推荐适配产品：</p>' +
+    (lines ? '<div class="guide-list">' + lines + '</div>' : '') +
+    '<p>您可以选择以上推荐产品，也可以自行指定理财产品，并告诉我申购金额</p>'
+  ));
+  scrollToBottom();
+}
+
+function guideWealthStartAssess() {
+  if (!GUIDE_WEALTH) GUIDE_WEALTH = { stage: 'risk', product: null, amount: null };
+  GUIDE_WEALTH.stage = 'assessing';
+  if (typeof startRiskAssessment === 'function') startRiskAssessment(true);
+}
+
+function guideWealthCancelAssess() {
+  GUIDE_WEALTH = null;
+  appendMessage(guideMessage('<p>好的。完成风险测评后，随时可以来申购理财产品。</p>'));
+  scrollToBottom();
+}
+
+// 产品名模糊匹配：整串命中优先，否则取最长公共子串（≥3 字）
+function guideWealthFindProduct(text) {
+  var t = String(text || '').replace(/\s/g, '');
+  if (!t) return null;
+  var best = null;
+  var bestScore = 0;
+  (mockData.products || []).forEach(function (p) {
+    var name = String(p.name || '');
+    if (!name) return;
+    if (t.indexOf(name) !== -1) {
+      if (name.length > bestScore) { best = p; bestScore = name.length; }
+      return;
+    }
+    for (var i = 0; i < name.length; i++) {
+      for (var j = i + 3; j <= name.length; j++) {
+        var sub = name.slice(i, j);
+        if (t.indexOf(sub) !== -1 && sub.length > bestScore) { best = p; bestScore = sub.length; }
+      }
+    }
+  });
+  return best;
+}
+
+function guideWealthParse(text) {
+  var t = String(text || '');
+  var product = guideWealthFindProduct(t);
+  // 产品名里常带数字（90天 / 三年 / 3期），先剔除再抽金额，避免「稳健增利90天」把 90 当金额
+  if (product && product.name) t = t.replace(product.name, ' ');
+  t = t.replace(/\d+\s*(天|日|年|期|个月|月)/g, ' ');
+
+  var amount = 0;
+  var m = t.match(/(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  if (m) {
+    amount = parseFloat(m[1]);
+    if (m[2]) amount *= 10000;
+  }
+  return { product: product, amount: amount };
+}
+
+function guideWealthStep(text) {
+  var t = String(text || '').trim();
+  var s = GUIDE_WEALTH;
+  var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
+
+  // ① 需要先测评
+  if (s.stage === 'risk') {
+    if (/^(好的|好|是|行|可以|开始|测评|现在|要|开始测评)$/.test(plain)) { guideWealthStartAssess(); return true; }
+    if (/^(不用|不|否|暂不|算了|以后|稍后|不需要)$/.test(plain)) { guideWealthCancelAssess(); return true; }
+    s.stage = 'slots';
+  }
+
+  if (s.stage === 'assessing') {
+    appendMessage(guideMessage('<p>请先完成上面的风险测评题目，选完我再帮你推荐产品。</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  var parsed = guideWealthParse(t);
+  if (parsed.product) s.product = parsed.product;
+  if (parsed.amount > 0) s.amount = parsed.amount;
+
+  if (s.product && Number(s.amount) > 0) { guideWealthConfirm(); return true; }
+  if (s.product) {
+    appendMessage(guideMessage('<p>麻烦告诉我您的申购金额</p>'));
+    scrollToBottom();
+    return true;
+  }
+  if (Number(s.amount) > 0) {
+    appendMessage(guideMessage('<p>麻烦告诉我您想申购的理财产品</p>' + guideWealthProductListHtml()));
+    scrollToBottom();
+    return true;
+  }
+
+  appendMessage(guideMessage('<p>请告诉我产品名称和申购金额，例如「稳健增利90天，50000」。</p>' + guideWealthProductListHtml()));
+  scrollToBottom();
+  return true;
+}
+
+function guideWealthConfirm() {
+  var s = GUIDE_WEALTH;
+  if (!s) return;
+  var profile = guideWealthValidProfile();
+  if (!profile) {
+    s.stage = 'risk';
+    appendMessage(guideMessage(
+      '<p>按照监管要求，申购前需要完成有效的风险测评（有效期 1 年）。是否现在开始测评？</p>' +
+      '<div class="guide-chips">' +
+      '<button class="guide-chip" onclick="guideWealthStartAssess()">开始测评</button>' +
+      '<button class="guide-chip" onclick="guideWealthCancelAssess()">暂不测评</button>' +
+      '</div>'
+    ));
+    scrollToBottom();
+    return;
+  }
+
+  var p = s.product;
+  if (Number(p.riskLevel) > Number(profile.level)) {
+    appendMessage(guideMessage(
+      '<p>「<b>' + guideWealthEsc(p.name) + '</b>」的风险等级是 R' + p.riskLevel + '，高于您的风险承受能力 R' + profile.level + '，暂时无法申购。</p>' +
+      '<p class="guide-tip">可以看看这些适配产品：</p>' +
+      '<div class="guide-list">' + guideWealthRecommendations(profile).map(guideWealthProductLine).join('') + '</div>'
+    ));
+    scrollToBottom();
+    s.product = null;
+    return;
+  }
+
+  var minAmount = Number(p.minAmount) || 0;
+  if (Number(s.amount) < minAmount) {
+    appendMessage(guideMessage('<p>申购金额不能低于起购金额 ¥' + guidePlainMoney(minAmount) + '，请重新告诉我申购金额。</p>'));
+    scrollToBottom();
+    s.amount = null;
+    return;
+  }
+
+  var available = Number(mockData.userProfile && mockData.userProfile.debitCard && mockData.userProfile.debitCard.available) || 0;
+  if (Number(s.amount) > available) {
+    appendMessage(guideMessage('<p>可用余额 ¥' + guidePlainMoney(available) + ' 不足本次申购金额 ¥' + guidePlainMoney(s.amount) + '，请调整金额。</p>'));
+    scrollToBottom();
+    s.amount = null;
+    return;
+  }
+
+  s.stage = 'confirm';
+  appendMessage(guideMessage(
+    '<p>确认申购【<b>' + guideWealthEsc(p.name) + '</b>】<b>' + guidePlainMoney(s.amount) + '</b> 元，默认从活期主账户（尾号' +
+    guideWealthAccountTail() + '）扣款，请确认</p>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideWealthSubmit()">确认申购</button>' +
+    '<button class="guide-chip" onclick="guideWealthCancel()">取消</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+function guideWealthSubmit() {
+  var s = GUIDE_WEALTH;
+  if (!s || s.stage !== 'confirm') return;
+  var name = s.product.name;
+  var amount = s.amount;
+  GUIDE_WEALTH = null;
+  if (typeof executeBuyProduct === 'function') executeBuyProduct(name, amount);
+}
+
+function guideWealthCancel() {
+  GUIDE_WEALTH = null;
+  appendMessage(guideMessage('<p>已取消申购，账户未发生扣款。</p>'));
+  scrollToBottom();
 }

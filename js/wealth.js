@@ -1,4 +1,36 @@
 // ========== 理财操作（中阶：风险测评+推荐+申赎） ==========
+// 风险测评有效期：1 年（到期需重新测评才能推荐/购买）
+var RISK_PROFILE_VALID_MS = 365 * 24 * 60 * 60 * 1000;
+
+function riskProfileTimestamp(profile) {
+  if (!profile) return 0;
+  if (profile.assessedAtTs) return Number(profile.assessedAtTs) || 0;
+  if (profile.assessedAt) {
+    var t = Date.parse(String(profile.assessedAt).replace(/-/g, '/'));
+    if (!isNaN(t)) return t;
+  }
+  return 0;
+}
+
+// 有效：有测评结果，且测评时间在 1 年内（老数据没时间戳时按有效处理，避免误判）
+function riskProfileValid(profile) {
+  if (!profile || !profile.level) return false;
+  var ts = riskProfileTimestamp(profile);
+  if (!ts) return true;
+  return (Date.now() - ts) < RISK_PROFILE_VALID_MS;
+}
+
+function riskProfileExpired(profile) {
+  return !!profile && !!profile.level && !riskProfileValid(profile);
+}
+
+function riskProfileExpireText(profile) {
+  var ts = riskProfileTimestamp(profile);
+  if (!ts) return '';
+  var d = new Date(ts + RISK_PROFILE_VALID_MS);
+  return d.getFullYear() + '-' + (d.getMonth() < 9 ? '0' : '') + (d.getMonth() + 1) + '-' + (d.getDate() < 10 ? '0' : '') + d.getDate();
+}
+
 function showProductList() {
   // 从本地持久化恢复上次测评结果（服务端快照不会覆盖它）
   if (!riskProfile && mockData.userProfile && mockData.userProfile.riskProfile) {
@@ -23,18 +55,24 @@ function showProductList() {
     </div>`;
   }).join('');
   const riskTip = riskProfile
-    ? `<div class="data-card" style="background:#F5F8FD;border-color:#CFDFF3;margin-bottom:12px;">
+    ? (riskProfileExpired(riskProfile)
+      ? `<div class="data-card" style="background:#fffbeb;border-color:#fde68a;margin-bottom:12px;">
+        <div class="data-card-title">风险测评已过期</div>
+        <div style="font-size:12px;color:#666;margin-bottom:8px;">测评有效期 1 年，上一份测评已于 <b>${riskProfileExpireText(riskProfile)}</b> 到期；按监管要求需重新测评后才能申购。</div>
+        <button class="btn btn-primary btn-sm" onclick="startRiskAssessment(true)">重新测评</button>
+       </div>`
+      : `<div class="data-card" style="background:#F5F8FD;border-color:#CFDFF3;margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
           <div class="data-card-title" style="margin-bottom:0;">你的风险等级：${riskProfile.name}（${riskProfile.level}级）</div>
-          <button class="btn btn-secondary btn-sm" onclick="startRiskAssessment()">重新测评</button>
+          <button class="btn btn-secondary btn-sm" onclick="startRiskAssessment(true)">重新测评</button>
         </div>
         <div style="font-size:12px;color:#666;margin-top:6px;">${riskProfile.desc}</div>
-        ${riskProfile.assessedAt ? `<div style="font-size:11px;color:#999;margin-top:5px;">上次测评：${riskProfile.assessedAt}</div>` : ''}
-       </div>`
+        ${riskProfile.assessedAt ? `<div style="font-size:11px;color:#999;margin-top:5px;">上次测评：${riskProfile.assessedAt}${riskProfileExpireText(riskProfile) ? ' · 有效期至 ' + riskProfileExpireText(riskProfile) : ''}</div>` : ''}
+       </div>`)
     : `<div class="data-card" style="background:#fffbeb;border-color:#fde68a;margin-bottom:12px;">
         <div class="data-card-title">尚未进行风险测评</div>
         <div style="font-size:12px;color:#666;margin-bottom:8px;">完成风险测评后，系统将为你智能推荐匹配的理财产品</div>
-        <button class="btn btn-primary btn-sm" onclick="startRiskAssessment()">立即测评</button>
+        <button class="btn btn-primary btn-sm" onclick="startRiskAssessment(true)">立即测评</button>
        </div>`;
   const html = `
     <div class="message">
@@ -311,12 +349,12 @@ const riskQuestions = [
 let riskCurrentQ = 0;
 let riskScores = [];
 
-function startRiskAssessment() {
-  // 支持重新测评：已有结果时先提示，避免误覆盖
+function startRiskAssessment(skipConfirm) {
+  // 支持重新测评：已有结果时先提示，避免误覆盖（对话流程里 skipConfirm=true 直接开始）
   if (!riskProfile && mockData.userProfile && mockData.userProfile.riskProfile) {
     riskProfile = mockData.userProfile.riskProfile;
   }
-  if (riskProfile && !confirm(`你当前的风险等级是「${riskProfile.name}（${riskProfile.level}级）」。\n\n重新测评会覆盖当前结果，是否继续？`)) return;
+  if (!skipConfirm && riskProfile && !confirm(`你当前的风险等级是「${riskProfile.name}（${riskProfile.level}级）」。\n\n重新测评会覆盖当前结果，是否继续？`)) return;
   riskCurrentQ = 0;
   riskScores = [];
   showRiskQuestion();
@@ -369,7 +407,7 @@ function showRiskResult() {
   else if (avg <= 3.5) { level = 3; name = '平衡型'; desc = '追求收益与风险平衡，可承受中等波动，适合混合型基金'; color = '#f59e0b'; }
   else { level = 4; name = '进取型'; desc = '追求高收益，可承受较大波动，适合股票型、成长型基金'; color = '#ef4444'; }
   const assessedAt = new Date().toLocaleString('zh-CN');
-  riskProfile = { level, name, desc, color, assessedAt };
+  riskProfile = { level, name, desc, color, assessedAt, assessedAtTs: Date.now() };
   // 持久化测评结果，刷新页面后仍保留；重新测评会覆盖旧结果
   mockData.userProfile.riskProfile = riskProfile;
   saveUserData();
@@ -396,6 +434,14 @@ function showRiskResult() {
   `;
   appendMessage(html);
   scrollToBottom();
+
+  // 对话式申购：测评是从「理财申购」里发起的，测完接着推荐产品
+  if (typeof GUIDE_WEALTH !== 'undefined' && GUIDE_WEALTH && GUIDE_WEALTH.stage === 'assessing') {
+    GUIDE_WEALTH.stage = 'slots';
+    setTimeout(function () {
+      if (typeof guideWealthShowRecommendations === 'function') guideWealthShowRecommendations(riskProfile);
+    }, 300);
+  }
 }
 
 
