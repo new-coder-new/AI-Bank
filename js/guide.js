@@ -98,6 +98,9 @@ function guideMessage(inner) {
 }
 
 // 一级菜单：对话起始欢迎语
+// 「账户概览」入口暂时屏蔽：需要恢复时把下面开关改成 true 即可
+var GUIDE_SHOW_OVERVIEW = false;
+
 function renderServiceWelcome() {
   var list = GUIDE_SERVICES.map(function (s) {
     return '<div class="guide-item">🔹 ' + s.label + '</div>';
@@ -105,14 +108,15 @@ function renderServiceWelcome() {
   var chips = GUIDE_SERVICES.map(function (s) {
     return guideChip(s.label, "guideOpenService('" + s.key + "')");
   }).join('');
+  var overviewChip = GUIDE_SHOW_OVERVIEW
+    ? '<button class="guide-chip guide-chip-ghost" onclick="guideOpenOverview()">账户概览</button>'
+    : '';
 
   appendMessage(guideMessage(
     '<p><b>你好，我是 AI Bank 助手</b><br>我可以为你提供这些服务：</p>' +
     '<div class="guide-list">' + list + '</div>' +
     '<p class="guide-tip">你可以直接点击按钮，或者输入对应的功能名称。</p>' +
-    '<div class="guide-chips">' + chips +
-    '<button class="guide-chip guide-chip-ghost" onclick="guideOpenOverview()">账户概览</button>' +
-    '</div>'
+    '<div class="guide-chips">' + chips + overviewChip + '</div>'
   ));
   scrollToBottom();
 }
