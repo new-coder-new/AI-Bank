@@ -147,7 +147,7 @@ function updateCardLimitHint() {
   if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
 
   if (!(target > 0)) { hint.textContent = '请输入目标额度'; return; }
-  if (target < min) { hint.textContent = '最低可调至 ¥' + agentFmtInt(min) + '（即已用额度，额度不能低于已用部分）'; return; }
+  if (target < min) { hint.textContent = '最低可调至 ¥' + agentFmtInt(min); return; }
   hint.textContent = (target > cur ? '提额' : '降额') + '：¥' + agentFmtInt(cur) + ' → ¥' + agentFmtInt(target) + '，调整后可用额度 ¥' + agentFmtInt(Math.max(0, target - used));
 }
 
