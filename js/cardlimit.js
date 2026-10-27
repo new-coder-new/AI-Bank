@@ -113,7 +113,7 @@ function cardLimitAdjustForm(currentLimit, presetTarget) {
     '<option>消费需求增加</option><option>收入提升</option><option>信用记录良好</option><option>主动降低额度</option><option>长期不用</option><option>风险控制</option><option>其他</option>' +
     '</select></div>' +
     '<div class="form-actions">' +
-    '<button class="btn btn-primary" onclick="cardLimitApply()">提交复核申请</button>' +
+    '<button class="btn btn-primary" id="cardLimitSubmitBtn" onclick="cardLimitApply()">提交复核申请</button>' +
     '<button class="btn btn-secondary" onclick="cardLimitCancel()">取消</button>' +
     '</div></div>' +
     '</div></div></div>';
@@ -136,9 +136,18 @@ function updateCardLimitHint() {
   var cur = cardLimitData().effectiveLimit;
   var used = Number(cardLimitData().used) || 0;
   var min = cardLimitMinimum();
+  var btn = document.getElementById('cardLimitSubmitBtn');
+
+  // 目标额度与当前额度一致：不显示任何文字，直接禁用提交按钮
+  if (target === cur) {
+    hint.textContent = '';
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.45'; btn.style.cursor = 'not-allowed'; }
+    return;
+  }
+  if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
+
   if (!(target > 0)) { hint.textContent = '请输入目标额度'; return; }
   if (target < min) { hint.textContent = '最低可调至 ¥' + agentFmtInt(min) + '（即已用额度，额度不能低于已用部分）'; return; }
-  if (target === cur) { hint.textContent = '目标额度与当前生效额度相同'; return; }
   hint.textContent = (target > cur ? '提额' : '降额') + '：¥' + agentFmtInt(cur) + ' → ¥' + agentFmtInt(target) + '，调整后可用额度 ¥' + agentFmtInt(Math.max(0, target - used));
 }
 
@@ -156,7 +165,8 @@ function cardLimitApply() {
   var minLimit = cardLimitMinimum();
 
   if (target <= 0) { agentReply('请输入有效的目标额度。'); return; }
-  if (target === cur) { agentReply('目标额度与当前生效额度相同，无需调整。'); return; }
+  // 目标额度未变化：静默忽略（该情形下列表单的提交按钮已禁用，无文案提示）
+  if (target === cur) return;
   if (target < minLimit) {
     agentReply('目标额度不能低于已用额度 ¥' + agentFmtInt(used) + '。');
     return;
@@ -391,7 +401,7 @@ registerAgentTool('card.adjustLimit', {
       return { ok: false, summary: '请提供目标额度，例如「把额度调到 100000 元」。当前生效额度 ¥' + agentFmtInt(cur) };
     }
     if (target === cur) {
-      return { ok: false, summary: '目标额度与当前生效额度相同，无需调整。' };
+      return { ok: false, summary: '目标额度未变化，已跳过提交。' };
     }
     if (target < minLimit) {
       return { ok: false, summary: '目标额度不能低于已用额度 ¥' + agentFmtInt(used) + '。' };

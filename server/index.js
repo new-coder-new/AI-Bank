@@ -408,7 +408,7 @@ const routes = {
     const used = Number(c.used) || 0;
     const minLimit = used; // 最低可调额度严格等于已用额度
     if (amt <= 0) return { ok: false, error: '目标额度无效' };
-    if (amt === cur) return { ok: false, error: `目标额度与当前生效额度相同（¥${cur}）` };
+    if (amt === cur) return { ok: false, error: `目标额度未变化（¥${cur}）` };
     if (amt < minLimit) return { ok: false, error: `目标额度不能低于已用额度 ¥${minLimit}` };
     c.appliedLimit = amt;
     c.limitApplyStatus = '待人工复核';
