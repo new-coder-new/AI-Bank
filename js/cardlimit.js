@@ -105,7 +105,7 @@ function cardLimitAdjustForm(currentLimit, presetTarget) {
     '<p style="margin-bottom:6px;font-weight:600;"> 信用卡额度调整申请</p>' +
     '<p style="font-size:12px;color:#999;margin-bottom:12px;">当前生效额度 <b style="color:#09407F;">¥' + agentFmtInt(currentLimit) + '</b></p>' +
     '<div class="transfer-form">' +
-    '<div class="form-group"><label class="form-label">目标额度（可调高或调低）</label>' +
+    '<div class="form-group"><label class="form-label">目标额度</label>' +
     '<input type="number" class="form-input" id="cardLimitTarget" value="' + pre + '" min="' + minLimit + '" oninput="updateCardLimitHint()"></div>' +
     '<div id="cardLimitHint" class="form-hint"></div>' +
     '<div class="form-group"><label class="form-label">调整原因</label>' +
@@ -116,16 +116,16 @@ function cardLimitAdjustForm(currentLimit, presetTarget) {
     '<button class="btn btn-primary" onclick="cardLimitApply()">提交复核申请</button>' +
     '<button class="btn btn-secondary" onclick="cardLimitCancel()">取消</button>' +
     '</div></div>' +
-    '<p style="margin-top:10px;font-size:12px;color:#999;">调额申请会进入复核审批；通过后才生效。</p>' +
     '</div></div></div>';
   appendMessage(html);
   updateCardLimitHint();
   scrollToBottom();
 }
 
+// 最低可调额度：严格等于已用额度（信用额度不能低于已用部分，否则可用额度为负）
 function cardLimitMinimum() {
   var used = Number(cardLimitData().used) || 0;
-  return Math.max(1000, Math.ceil(used / 1000) * 1000);
+  return Math.max(0, used);
 }
 
 function updateCardLimitHint() {
@@ -137,7 +137,7 @@ function updateCardLimitHint() {
   var used = Number(cardLimitData().used) || 0;
   var min = cardLimitMinimum();
   if (!(target > 0)) { hint.textContent = '请输入目标额度'; return; }
-  if (target < min) { hint.textContent = '最低可调至 ¥' + agentFmtInt(min) + '（不能低于已用额度 ¥' + agentFmtInt(used) + '）'; return; }
+  if (target < min) { hint.textContent = '最低可调至 ¥' + agentFmtInt(min) + '（即已用额度，额度不能低于已用部分）'; return; }
   if (target === cur) { hint.textContent = '目标额度与当前生效额度相同'; return; }
   hint.textContent = (target > cur ? '提额' : '降额') + '：¥' + agentFmtInt(cur) + ' → ¥' + agentFmtInt(target) + '，调整后可用额度 ¥' + agentFmtInt(Math.max(0, target - used));
 }
@@ -158,7 +158,7 @@ function cardLimitApply() {
   if (target <= 0) { agentReply('请输入有效的目标额度。'); return; }
   if (target === cur) { agentReply('目标额度与当前生效额度相同，无需调整。'); return; }
   if (target < minLimit) {
-    agentReply('目标额度不能低于 ¥' + agentFmtInt(minLimit) + '（已用额度 ¥' + agentFmtInt(used) + '）。');
+    agentReply('目标额度不能低于已用额度 ¥' + agentFmtInt(used) + '。');
     return;
   }
 
@@ -181,7 +181,6 @@ function cardLimitApply() {
     '<div><span>申请原因</span><b>' + reason + '</b></div>' +
     '<div><span>当前状态</span><b style="color:#B54708;">待复核</b></div>' +
     '</div>' +
-    '<div class="bank-result-note">本次未扣款；复核通过后额度才会生效。</div>' +
     '<div style="margin-top:10px;"><button class="ui-link" onclick="showManualReviews()">查看复核</button></div>' +
     '</div>' +
     '</div></div></div>';
@@ -395,7 +394,7 @@ registerAgentTool('card.adjustLimit', {
       return { ok: false, summary: '目标额度与当前生效额度相同，无需调整。' };
     }
     if (target < minLimit) {
-      return { ok: false, summary: '目标额度不能低于 ¥' + agentFmtInt(minLimit) + '（已用额度 ¥' + agentFmtInt(used) + '）。' };
+      return { ok: false, summary: '目标额度不能低于已用额度 ¥' + agentFmtInt(used) + '。' };
     }
     var direction = target > cur ? 'up' : 'down';
     var review = cardLimitSubmitReview(target, (args && args.reason) || '未填写', cur, direction);

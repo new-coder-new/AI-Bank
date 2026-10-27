@@ -547,7 +547,7 @@ icons → config → api → visualization → storage → security
   - 生效额度 `effectiveLimit`
   - 兼容字段 `limit`
 - 调额统一走“申请 → 复核审批 → 生效”的申请表单，不再直接改生效额度。
-- 支持提额和降额；降额不得低于已用额度对应的最低额度。
+- 支持提额和降额；**最低可调额度严格等于已用额度**（前端表单、提交校验、复核生效、服务端 `POST /api/card/adjust` 与 `/api/card/limit/approve` 四处一致拦截），保证信用额度不低于已用部分、可用额度不为负。
 - 调额申请会进入“复核审批”队列，通过后才更新生效额度与可用额度。
 - 挂失/解挂：先确认，再调用 `card.freeze` / `card.unfreeze`，并同步 `cardFrozen` 与 `creditCard.isFrozen`。
 - 账单分期计算器：3/6/9/12/18/24 期费率与月供测算。

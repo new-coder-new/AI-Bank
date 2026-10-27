@@ -876,7 +876,6 @@ async function adminApproveReview(id) {
       '<div class="bank-result-title">额度调整已生效</div>' +
       '<div class="bank-result-amount">¥' + agentFmtInt(card.effectiveLimit) + '</div>' +
       '<div class="bank-confirm-rows"><div><span>调整方向</span><b>' + (card.limitApplyDirection === 'up' ? '提额' : '降额') + '</b></div><div><span>可用额度</span><b>¥' + agentFmtInt(card.available) + '</b></div></div>' +
-      '<div class="bank-result-note">' + summaries.map(manualReviewEsc).join('；') + '</div>' +
       '<div style="margin-top:10px;"><button class="ui-link" onclick="showCardLimit()">查看额度</button></div>' +
       '</div></div></div></div>');
     scrollToBottom();
