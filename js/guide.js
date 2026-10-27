@@ -138,7 +138,7 @@ function guideOpenService(key) {
   appendMessage(guideMessage(
     '<p>' + s.prompt + '</p>' +
     '<div class="guide-chips">' + chips + '</div>' +
-    '<div class="guide-foot"><button class="ui-link" onclick="guideBackToMenu()">返回服务菜单</button></div>'
+    '<p class="guide-tip">你可以直接点击按钮，或者输入对应的功能名称。</p>'
   ));
   scrollToBottom();
 }

@@ -2864,7 +2864,6 @@ body {
   transition: background .15s, border-color .15s;
 }
 .guide-chip:hover { background: var(--bank-primary-soft); border-color: #C6DAF0; }
-.guide-foot { margin-top: 10px; }
 .dark-mode .guide-chip { background: #172335 !important; border-color: #243041 !important; color: #9DC4EA !important; }
 .dark-mode .guide-chip:hover { background: #1B2738 !important; border-color: #2E5C8A !important; }
 .dark-mode .guide-item { color: #C9D5E5 !important; }
