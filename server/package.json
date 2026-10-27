@@ -1,0 +1,14 @@
+{
+  "name": "ai-banking-agent-server",
+  "version": "1.0.0",
+  "description": "AI 金融助手 · 模拟银行核心系统（数据真实化后端）",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,7 @@
+node_modules
+.workbuddy
+preview
+.git
+*.log
+Dockerfile
+.dockerignore
