@@ -283,7 +283,7 @@ function guideMonthDayDate(month, day) {
 // 从一句话里抽日期 / 时间 / 重复方式，命中后从原句剔除，避免干扰金额与收款人
 function guideTimedExtract(text) {
   var t = String(text || '');
-  var out = { date: null, time: null, repeat: null };
+  var out = { date: null, time: null, repeat: null, period: null };
 
   if (/每年|每年度|年度|年付/.test(t)) out.repeat = '每年';
   else if (/每个月|每月|月付/.test(t)) out.repeat = '每月';
@@ -304,6 +304,15 @@ function guideTimedExtract(text) {
       if (zh[1] === '中午' && h < 11) h += 12;
       out.time = guidePad2(h) + ':' + (zh[3] ? '30' : '00');
       t = t.replace(zh[0], ' ');
+    }
+  }
+
+  // 只有时间段、没有具体钟点（如「明天下午」）→ 记下 period，稍后追问「下午几点」
+  if (!out.time) {
+    var pd = t.match(/(凌晨|早上|上午|中午|下午|晚上)/);
+    if (pd) {
+      out.period = pd[1];
+      t = t.replace(pd[0], ' ');
     }
   }
 
@@ -338,7 +347,7 @@ function guideTimedExtract(text) {
     }
   }
 
-  return { rest: t, date: out.date, time: out.time, repeat: out.repeat };
+  return { rest: t, date: out.date, time: out.time, repeat: out.repeat, period: out.period };
 }
 
 // 从一句话里抽收款人、手机号与金额（手机号先抽，避免 11 位数字被当成金额）
@@ -386,7 +395,8 @@ function guideTransferParse(text, kind) {
     amount: amount,
     date: timedInfo ? timedInfo.date : null,
     time: timedInfo ? timedInfo.time : null,
-    repeat: timedInfo ? timedInfo.repeat : null
+    repeat: timedInfo ? timedInfo.repeat : null,
+    period: timedInfo ? timedInfo.period : null
   };
 }
 
@@ -501,12 +511,26 @@ function guideTransferStep(text) {
     if (parsed.date) s.date = parsed.date;
     if (parsed.time) s.time = parsed.time;
     if (parsed.repeat) s.repeat = parsed.repeat;
+    if (parsed.period) s.period = parsed.period;
+    // 先前只说了「下午 / 晚上」这段，这次只补钟点时按时间段换算（3点 → 15:00）
+    if (s.time && s.period) {
+      var hh = parseInt(String(s.time).slice(0, 2), 10);
+      if ((s.period === '下午' || s.period === '晚上') && hh < 12) {
+        s.time = guidePad2(hh + 12) + String(s.time).slice(2);
+      } else if (s.period === '中午' && hh < 11) {
+        s.time = guidePad2(hh + 12) + String(s.time).slice(2);
+      }
+    }
   }
 
   var hasTarget = s.kind === 'phone' ? !!s.phone : !!s.payee;
   if (hasTarget && s.amount > 0) {
     if (s.kind === 'timed') {
-      if (s.date) {
+      // 只说了「明天下午」这类模糊时间 → 追问具体钟点，而不是默默按 09:00 处理
+      if (s.date && !s.time && s.period) {
+        appendMessage(guideMessage(guidePeriodQuestion(s.period, s.date)));
+        scrollToBottom();
+      } else if (s.date) {
         if (!s.time) s.time = '09:00';   // 只给了日期时默认 09:00
         guideTransferAskRemark();
       } else {
@@ -585,6 +609,13 @@ function guideTransferTargetLabel() {
     return s.payee || s.phone || '';
   }
   return s.payee || '';
+}
+
+// 时间段模糊时的追问：只说了「明天下午」就再问「下午几点」
+function guidePeriodQuestion(period, date) {
+  var label = { '凌晨': '凌晨', '早上': '早上', '上午': '上午', '中午': '中午', '下午': '下午', '晚上': '晚上' }[period] || period;
+  return '<p>请问 ' + (date ? (date + ' ') : '') + label + '几点执行？</p>' +
+    '<p class="guide-tip">例如：3点 / 15:00（只给「' + label + '」不写具体钟点没法创建定时转账）</p>';
 }
 
 // 槽位齐了：先确认一次信息，再问是否需要备注
