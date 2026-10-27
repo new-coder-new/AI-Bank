@@ -117,6 +117,8 @@ function drawReportDonut(opts) {
   const rawData = Array.isArray(o.data) ? o.data : (window.billExpenseData || mockData.bills.expense);
   const data = rawData.map((d, i) => ({ ...d, color: d.color || reportColor(i) }));
   const total = data.reduce((s, d) => s + d.value, 0);
+  // 环心金额：默认取各部分合计，也可由调用方显式指定（如「本月收入」口径）
+  const centerVal = (o.centerValue != null) ? Number(o.centerValue) : total;
   const size = 180;
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   canvas.width = Math.round(size * dpr);
@@ -158,7 +160,7 @@ function drawReportDonut(opts) {
   ctx.fillStyle = hole;
   ctx.fill();
 
-  const compact = total >= 10000 ? (total / 10000).toFixed(1) + '万' : Math.round(total).toLocaleString('zh-CN');
+  const compact = centerVal >= 10000 ? (centerVal / 10000).toFixed(1) + '万' : Math.round(centerVal).toLocaleString('zh-CN');
   ctx.fillStyle = ink;
   ctx.font = '600 13px "PingFang SC", "Microsoft YaHei", sans-serif';
   ctx.textAlign = 'center';
@@ -171,8 +173,9 @@ function drawReportDonut(opts) {
   if (legend) {
     legend.innerHTML = data.slice(0, 6).map(d => {
       const pct = total > 0 ? (d.value / total * 100).toFixed(1) : '0.0';
+      const val = (o.legendFormat === 'money') ? reportMoney(d.value) : pct + '%';
       return '<div class="report-legend-item"><span class="report-dot" style="background:' + d.color + ';"></span><span>' +
-        reportEsc(d.label) + '</span><b>' + pct + '%</b></div>';
+        reportEsc(d.label) + '</span><b>' + val + '</b></div>';
     }).join('');
   }
 }
@@ -252,7 +255,6 @@ function showFinanceReport() {
   const savingsRate = totalIncome > 0 ? ((netFlow / totalIncome) * 100).toFixed(1) : '0.0';
   const holdings = u.holdings || [];
   const totalHoldings = holdings.reduce((s, h) => s + h.amount, 0);
-  const totalProfit = holdings.reduce((s, h) => s + (h.profit || 0), 0);
   const subscriptions = mockData.subscriptions;
   const monthlySubExpense = subscriptions.reduce((s, sub) => {
     const monthly = sub.cycle === '/月' ? sub.price : sub.cycle === '/季' ? sub.price / 3 : sub.price / 12;
@@ -260,12 +262,21 @@ function showFinanceReport() {
   }, 0);
   const now = new Date();
   const monthLabel = now.getFullYear() + '年' + (now.getMonth() + 1) + '月';
-  const advice = [
-    '本月储蓄率 ' + savingsRate + '%，表现' + (savingsRate > 30 ? '优秀' : savingsRate > 10 ? '良好' : '有待提升') + '。',
-    '建议将闲置资金的 ' + Math.min(30, Math.max(10, parseInt(savingsRate) / 2)) + '% 配置稳健型理财产品。',
-    '订阅月均支出 ' + reportMoney(monthlySubExpense) + '，建议定期检查不必要的订阅。',
-    '下月目标：将储蓄率提升至 ' + Math.min(50, parseInt(savingsRate) + 5) + '%。'
-  ];
+
+  // 收入分配：支出 / 结余；资产构成：储蓄卡可用 / 冻结 / 理财持仓
+  const cash = Number(u.debitCard.balance) || 0;
+  const frozen = Number(u.debitCard.frozen) || 0;
+  const flowList = [
+    { label: '支出', value: totalExpense },
+    { label: '结余', value: Math.max(0, netFlow) }
+  ].filter(x => x.value > 0);
+  const assetList = [
+    { label: '储蓄卡可用', value: Math.max(0, cash - frozen) },
+    { label: '冻结金额', value: frozen },
+    { label: '理财持仓', value: totalHoldings }
+  ].filter(x => x.value > 0);
+  const totalAssets = assetList.reduce((s, x) => s + x.value, 0);
+
   const html = `
     <div class="message">
       <div class="msg-avatar ai">🤖</div>
@@ -279,32 +290,46 @@ function showFinanceReport() {
                 <div class="report-sub">${monthLabel} · 收支与资产概览</div>
               </div>
             </div>
-            <div class="report-hero">
-              <div><span>本月净现金流</span><b class="${netFlow >= 0 ? 'income' : 'expense'}">${netFlow >= 0 ? '+' : ''}${reportMoney(netFlow)}</b></div>
-              <div class="report-hero-side"><span>储蓄率</span><b>${savingsRate}%</b></div>
-            </div>
-            <div class="report-metric-grid">
+            <div class="report-summary">
               <div><span>总收入</span><b class="income">+${reportMoney(totalIncome)}</b></div>
               <div><span>总支出</span><b class="expense">-${reportMoney(totalExpense)}</b></div>
               <div><span>订阅月均</span><b class="expense">-${reportMoney(monthlySubExpense)}</b></div>
             </div>
-            <div class="report-panel" style="margin-top:12px;">
-              <div class="report-panel-title">资产状况</div>
-              <div class="report-row"><span>储蓄卡余额</span><b>${reportMoney(u.debitCard.balance)}</b></div>
-              <div class="report-row"><span>冻结金额</span><b>${reportMoney(u.debitCard.frozen)}</b></div>
-              <div class="report-row"><span>理财持仓</span><b>${holdings.length} 只 · ${reportMoney(totalHoldings)}</b></div>
-              <div class="report-row"><span>累计收益</span><b class="${totalProfit >= 0 ? 'income' : 'expense'}">${totalProfit >= 0 ? '+' : ''}${reportMoney(totalProfit)}</b></div>
-              <div class="report-row"><span>信用卡已用</span><b>${reportInt(u.creditCard.used)} / ${reportInt(u.creditCard.limit)}</b></div>
+            <div class="report-chart-grid cols-2">
+              <div class="report-panel">
+                <div class="report-panel-title">收入分配</div>
+                <div class="report-donut"><canvas id="flowChart"></canvas></div>
+                <div class="report-legend" id="flowLegend"></div>
+              </div>
+              <div class="report-panel">
+                <div class="report-panel-title">资产构成</div>
+                <div class="report-donut"><canvas id="assetChart"></canvas></div>
+                <div class="report-legend" id="assetLegend"></div>
+              </div>
             </div>
-            <div class="report-panel" style="margin-top:12px;">
-              <div class="report-panel-title">建议</div>
-              <ul class="report-advice">${advice.map(x => '<li>' + x + '</li>').join('')}</ul>
-            </div>
+            <div class="report-ai-line"><span class="report-ai-tag">AI 建议</span><span>${reportEsc(financeReportAdvice({ savingsRate: Number(savingsRate), netFlow: netFlow }))}</span></div>
           </div>
         </div>
       </div>
     </div>
   `;
   appendMessage(html);
+  setTimeout(() => {
+    drawReportDonut({ canvasId: 'flowChart', legendId: 'flowLegend', data: flowList, centerLabel: '本月收入', centerValue: totalIncome });
+    drawReportDonut({ canvasId: 'assetChart', legendId: 'assetLegend', data: assetList, centerLabel: '总资产', centerValue: totalAssets, legendFormat: 'money' });
+  }, 60);
   scrollToBottom();
+}
+
+// 财务报告底部的一行 AI 建议：只保留「储蓄率判断 + 结余去向」，保证单行可读
+function financeReportAdvice(d) {
+  const rate = Number(d && d.savingsRate) || 0;
+  const net = Number(d && d.netFlow) || 0;
+  const head = rate >= 30 ? '储蓄率 ' + rate.toFixed(1) + '%，收支结构健康'
+    : rate >= 10 ? '储蓄率 ' + rate.toFixed(1) + '%，仍有提升空间'
+    : '储蓄率 ' + rate.toFixed(1) + '%，需优先压缩非必要支出';
+  const body = net > 0
+    ? '，结余 ' + reportInt(net) + ' 按 5:3:2 配置货币基金/稳健理财/应急金'
+    : '，本月缺口 ' + reportInt(Math.abs(net)) + '，先补足应急金';
+  return head + body + '。';
 }
