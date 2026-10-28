@@ -3406,13 +3406,16 @@ function guideCardLostStep(text) {
   s.card = card;
   s.tail = tail;
   s.stage = 'confirm';
+  s.confirmBoxId = 'card-lost-confirm-' + Date.now();
   appendMessage(guideMessage(
+    '<div id="' + s.confirmBoxId + '">' +
     '<p>确认挂失尾号 <b>' + guideCardLostEsc(tail) + '</b> 的' + guideCardLostEsc(card.cardType || '信用卡') + '。</p>' +
     '<p class="guide-tip">⚠️ 挂失后卡片直接冻结、无法继续交易；如需补卡，新卡预计 3-5 个工作日寄出。</p>' +
     '<p class="guide-tip">点击确认后需要通过交易密码或短信验证码完成风险验证。</p>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideCardLostSubmit()">确认挂失</button>' +
     '<button class="guide-chip" onclick="guideCardLostCancel()">取消</button>' +
+    '</div>' +
     '</div>'
   ));
   scrollToBottom();
@@ -3434,8 +3437,7 @@ function guideCardLostSubmit() {
     '信用卡挂失 · ' + (card.cardType || '信用卡') + ' 尾号 ' + (card.tail || '****'),
     function (ok) {
       if (!ok) {
-        appendMessage(guideMessage('<p>未通过安全验证，已取消挂失，卡片状态保持不变。</p>'));
-        scrollToBottom();
+        guideCardLostCollapse('未通过安全验证，已取消挂失，卡片状态保持不变。');
         return;
       }
       guideCardLostApply(card);
@@ -3463,6 +3465,12 @@ function guideCardLostApply(card) {
   c.status = '已挂失';
   c.frozenAt = new Date().toLocaleString('zh-CN');
   saveUserData();
+  // 成功：确认块收起成一行，避免按钮残留
+  var okBoxId = GUIDE_CARD_LOST && GUIDE_CARD_LOST.confirmBoxId;
+  var okBox = okBoxId ? document.getElementById(okBoxId) : null;
+  if (okBox) {
+    okBox.innerHTML = '<p>已确认挂失尾号 <b>' + guideCardLostEsc(c.tail || '****') + '</b> 的' + guideCardLostEsc(c.cardType || '信用卡') + '。</p>';
+  }
   GUIDE_CARD_LOST = null;
 
   appendMessage(guideMessage(
@@ -3476,10 +3484,22 @@ function guideCardLostApply(card) {
   ));
   scrollToBottom();
 }
-function guideCardLostCancel() {
+// 取消 / 验证失败：把确认块整体折叠成一行
+function guideCardLostCollapse(text) {
+  var s = GUIDE_CARD_LOST;
+  var boxId = s && s.confirmBoxId;
+  var box = boxId ? document.getElementById(boxId) : null;
   GUIDE_CARD_LOST = null;
-  appendMessage(guideMessage('<p>已取消挂失，卡片状态保持不变。</p>'));
+  if (box) {
+    box.innerHTML = '<p>' + text + '</p>';
+  } else {
+    appendMessage(guideMessage('<p>' + text + '</p>'));
+  }
   scrollToBottom();
+}
+
+function guideCardLostCancel() {
+  guideCardLostCollapse('已取消挂失，卡片状态保持不变。');
 }
 
 // ------------------------------ 持仓管理：追加申购 / 赎回（对话式） ------------------------------
