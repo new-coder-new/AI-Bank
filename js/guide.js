@@ -264,7 +264,8 @@ function guideHandleText(text) {
 
   // 持仓管理：追加申购 / 赎回进行中
   if (GUIDE_HOLDING) {
-    if (/^(取消|不操作了|算了|退出|返回|菜单)$/.test(t)) {
+    // 只有「返回 / 菜单」才退出会话；「取消」交给流程本身，回「已取消，持仓保持不变。」
+    if (/^(返回|菜单|返回菜单|退出)$/.test(t)) {
       GUIDE_HOLDING = null;
       guideBackToMenu();
       return true;
@@ -1424,6 +1425,17 @@ function guideAAStep(text) {
   var s = GUIDE_AA;
   if (!s) return true;
 
+  if (s.stage === 'confirm') {
+    var plainAA = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
+    if (/^(确认|确定|发起|发起AA收款|提交|是|好|好的|行|可以)$/.test(plainAA)) { guideAASubmit(); return true; }
+    if (/^(取消|不|不要|算了|退出)$/.test(plainAA)) {
+      GUIDE_AA = null;
+      appendMessage(guideMessage('<p>已取消本次 AA 收款，未发起任何收款。</p>'));
+      scrollToBottom();
+      return true;
+    }
+  }
+
   // 重名选择阶段：支持 1/2/3、①②③、手机号、或带括号的选项文本
   if (s.stage === 'pick') {
     var idx = -1;
@@ -1699,6 +1711,12 @@ function guideWealthStep(text) {
     return true;
   }
 
+  // 确认阶段支持直接打字
+  if (s.stage === 'confirm') {
+    if (/^(确认|确认申购|确定|是|好|好的|行|可以|提交|提交申请)$/.test(plain)) { guideWealthSubmit(); return true; }
+    if (/^(取消|不|不要|算了|退出)$/.test(plain)) { guideWealthCancel(); return true; }
+  }
+
   var parsed = guideWealthParse(t);
   if (parsed.product) s.product = parsed.product;
   if (parsed.amount > 0) s.amount = parsed.amount;
@@ -1916,6 +1934,14 @@ function guideCardApplyMoney(v) {
 function guideCardApplyStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_CARD_APPLY;
+  var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
+
+  // 确认阶段支持直接打字
+  if (s.stage === 'confirm') {
+    if (/^(确认|确定|提交|提交申请|是|好|好的|行|可以)$/.test(plain)) { guideCardApplySubmit(); return true; }
+    if (/^(取消|不|不要|算了|退出)$/.test(plain)) { guideCardApplyCancel(); return true; }
+  }
+
   var parsed = guideCardApplyParse(t);
 
   // 不认识的卡种：提示可选范围，不污染已收集字段
@@ -2079,6 +2105,14 @@ function guideCardLimitParse(text) {
 function guideCardLimitStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_CARD_LIMIT;
+  var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
+
+  // 确认阶段支持直接打字
+  if (s.stage === 'confirm') {
+    if (/^(确认|确定|提交|提交申请|是|好|好的|行|可以)$/.test(plain)) { guideCardLimitSubmit(); return true; }
+    if (/^(取消|不|不要|算了|退出)$/.test(plain)) { guideCardLimitCancel(); return true; }
+  }
+
   var parsed = guideCardLimitParse(t);
 
   if (Number(parsed.limit) > 0) s.limit = parsed.limit;
@@ -2317,6 +2351,13 @@ async function guideTxnLimitStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_TXN_LIMIT;
 
+  // 确认阶段支持直接打字
+  if (s.stage === 'confirm') {
+    var plainConfirm = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
+    if (/^(确认|确定|确认设置|提交|是|好|好的|行|可以)$/.test(plainConfirm)) { guideTxnLimitSubmit(); return true; }
+    if (/^(取消|不|不要|算了|退出)$/.test(plainConfirm)) { guideTxnLimitCancel(); return true; }
+  }
+
   // ① 夜间 / 境外：本地先认「允许 / 禁止」，认不出用 AI 理解「是 / 否 / 可以 / 算了」
   if (s.stage === 'night' || s.stage === 'overseas') {
     var which = s.stage;
@@ -2489,6 +2530,14 @@ function guideStartCardLost() {
 function guideCardLostStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_CARD_LOST;
+
+  // 确认阶段支持直接打字
+  if (s.stage === 'confirm') {
+    var plainLost = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
+    if (/^(确认|确定|确认挂失|挂失|是|好|好的|行|可以)$/.test(plainLost)) { guideCardLostSubmit(); return true; }
+    if (/^(取消|不|不要|算了|退出)$/.test(plainLost)) { guideCardLostCancel(); return true; }
+  }
+
   var digits = t.replace(/\D/g, '');
 
   if (digits.length < 4) {
@@ -2738,6 +2787,21 @@ function guideHoldingStep(text) {
     if (/^(是|对|要|追加|仍然|确认|继续|是的)/.test(plain)) { guideHoldingSubSubmitAsRisk(); return true; }
     if (/^(不|否|不要|取消|算了)/.test(plain)) { guideHoldingCancel(); return true; }
     appendMessage(guideMessage('<p>是否仍要追加申购？请回复「追加」或「取消」。</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  // 确认阶段：支持直接打字「确认 / 修改 / 取消」，不必点按钮
+  if (s.stage === 'subConfirm' || s.stage === 'redeemConfirm' || s.stage === 'redeemAllConfirm') {
+    if (/^(确认|确定|确认申购|确认赎回|确认一键赎回|是|好|好的|行|可以|继续|提交|提交申请)$/.test(plain)) {
+      if (s.stage === 'subConfirm') { guideHoldingSubSubmit(); return true; }
+      if (s.stage === 'redeemConfirm') { guideHoldingRedeemSubmit(); return true; }
+      guideHoldingRedeemAllSubmit();
+      return true;
+    }
+    if (/^(修改|改一下|重填|重新填写|重新输入)$/.test(plain)) { guideHoldingModify(); return true; }
+    if (/^(取消|不|不要|算了|退出)$/.test(plain)) { guideHoldingCancel(); return true; }
+    appendMessage(guideMessage('<p>请点击按钮，或直接回复「确认 / 修改 / 取消」。</p>'));
     scrollToBottom();
     return true;
   }
