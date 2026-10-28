@@ -991,13 +991,13 @@ function guideTransferStep(text) {
       scrollToBottom();
       return true;
     }
-    if (/^(不用|不需要|不要|否|不是|跳过|没有|不用了|不写|不加)$/.test(bare)) {
+    if (/^(不用|不需要|不要|不|否|不是|跳过|没有|不用了|不写|不加)$/.test(bare)) {
       s.remark = '';
       guideCommitTransfer();
       return true;
     }
     if (guideLooksLikeNewTransfer(t)) {
-      guideFlowLockedNotice('当前这笔转账还没走完：请回复「添加备注」或「不用了」继续。');
+      guideFlowLockedNotice('当前这笔转账还没走完：请回复「是」或「否」继续。');
       return true;
     }
     s.remark = t;
@@ -1110,12 +1110,19 @@ function guidePeriodQuestion(period, date) {
 }
 
 // 槽位齐了：先确认一次信息，再问是否需要备注
-// 对话里不再单独问备注：收款人 + 金额齐了直接出确认卡（备注可在确认卡里留空）
+// 问备注：只问一句「是否需要添加备注？」，不再回述「已记录：向 X 转账 Y 元」
 function guideTransferAskRemark() {
   var s = GUIDE_TRANSFER;
   if (!s) return;
-  s.remark = '';
-  guideCommitTransfer();
+  s.stage = 'askRemark';
+  appendMessage(guideMessage(
+    '<p>是否需要添加备注？</p>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideTransferRemarkChoice(true)">是</button>' +
+    '<button class="guide-chip" onclick="guideTransferRemarkChoice(false)">否</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
 }
 
 function guideTransferRemarkChoice(need) {
