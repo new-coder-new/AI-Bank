@@ -1163,13 +1163,18 @@ function guideCommitTransfer() {
 function guideTimedMissingPrompt(s) {
   var missPayee = !s.payee;
   var missAmount = !(Number(s.amount) > 0);
-  var missTime = !(s.date && s.time);
+  var missDate = !s.date;
+  var missTime = !s.time;
 
-  if (missPayee && missAmount && missTime) return '请问收款人、转账金额和执行时间是多少？';
-  if (!missPayee && missAmount && missTime) return '麻烦告诉转账金额和执行时间是多少';
-  if (missPayee && !missAmount && missTime) return '麻烦告诉收款人和执行时间是多少';
-  if (missPayee && missAmount && !missTime) return '麻烦告诉收款人和转账金额是多少';
-  if (missTime) return '麻烦告诉我执行时间是多少';
+  if (missPayee && missAmount && (missDate || missTime)) return '请问收款人、转账金额和执行时间是多少？';
+  if (!missPayee && missAmount && (missDate || missTime)) return '麻烦告诉转账金额和执行时间是多少';
+  if (missPayee && !missAmount && (missDate || missTime)) return '麻烦告诉收款人和执行时间是多少';
+  if (missPayee && missAmount) return '麻烦告诉收款人和转账金额是多少';
+  // 只差日期：时间已经记下了，别再反复要时间
+  if (missDate && !missTime) return '请问执行日期是哪天？（今天 / 明天 / 具体日期；时间已记为 ' + s.time + '）';
+  // 只差钟点
+  if (!missDate && missTime) return '请问几点执行？（例如：15:00）';
+  if (missDate && missTime) return '麻烦告诉我执行时间是多少（如「明天下午5点」）';
   if (missAmount) return '麻烦告诉我转账金额是多少';
   if (missPayee) return '麻烦告诉我收款人是多少';
   return '请问收款人、转账金额和执行时间是多少？';
