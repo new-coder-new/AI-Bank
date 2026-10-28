@@ -1139,35 +1139,24 @@ function agentTierBadge(tier) {
 }
 
 // ------------------------------ 5. 计划执行器 + 可视化 ------------------------------
-// 转账完成卡：金额 / 收款方 / 余额 +【完成】，说明只留一句
+// 转账完成卡：金额 / 收款方 / 余额 + 一句说明（确认即完成，无额外按钮、不用绿色底）
 function agentTransferDoneCardHtml(amount, payee, balance) {
   var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x); };
   var amt = agentFmt(amount);
   var bal = agentFmt(balance);
   function row(label, value) {
-    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px;">' +
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;border-bottom:1px solid #f1f3f6;">' +
       '<span style="color:#6b7280;">' + label + '</span>' +
       '<b style="color:#111827;font-weight:600;">' + value + '</b></div>';
   }
-  return '<div class="agent-result-card">' +
-    '<div class="agent-result-title" style="color:#16a34a;">转账已完成</div>' +
-    '<div style="margin:10px 0 14px;border:1px solid #e5e9f0;border-radius:10px;padding:8px 12px;background:#f8fafc;">' +
+  return '<div style="margin-top:14px;border:1px solid #e5e9f0;background:#fff;border-radius:12px;padding:14px 16px;">' +
+    '<div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:6px;">转账已完成</div>' +
     row('金额', amt + ' 元') +
     row('收款方', esc(payee)) +
     row('余额', bal + ' 元') +
-    '</div>' +
-    '<button class="btn btn-primary btn-sm" onclick="agentTransferDoneFinish(this, \'' + esc(amt) + '\', \'' + esc(payee) + '\')">完成</button>' +
-    '<div class="agent-result-foot" style="margin-top:10px;">资金已入账，请注意核对收款方信息。</div>' +
+    '<div style="font-size:12px;color:#6b7280;line-height:1.6;margin-top:10px;">资金已入账，请注意核对收款方信息。</div>' +
     '</div>';
 }
-
-// 点【完成】把结果卡收成一行，不再有「查看交易记录」等入口
-function agentTransferDoneFinish(btn, amt, payee) {
-  var card = btn && btn.closest ? btn.closest('.agent-result-card') : null;
-  if (!card) return;
-  card.innerHTML = '<div class="agent-result-desc" style="margin:0;">转账已完成 · ' + amt + ' 元 → ' + payee + '</div>';
-}
-
 // 只保留一句「正在为你处理…」，执行步骤（逻辑链）不再展示给用户
 function agentPlanShell(id, plan) {
   return '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
