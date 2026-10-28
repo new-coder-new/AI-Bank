@@ -2888,6 +2888,8 @@ function guideCardLimitSubmit() {
     return;
   }
   var direction = target > st.current ? 'up' : 'down';
+  // 提交后确认卡收起按钮，补一行状态
+  guideConfirmCardDone(s.cardBoxId ? (s.cardBoxId + '-wrap') : null, '已提交待复核');
   GUIDE_CARD_LIMIT = null;
 
   if (typeof cardLimitSubmitReviewFor === 'function') {
