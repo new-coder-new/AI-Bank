@@ -144,6 +144,10 @@ function buildUserProfile() {
         }
       ],
     },
+    creditCards: [
+      { id: 'CARD-MAIN', cardType: '白金信用卡', tail: '6789', limit: 90000, used: 23650, purpose: '日常消费', status: '已发卡', issuedAt: '开户即持有' },
+      { id: 'CARD-2', cardType: '标准金卡', tail: '2290', limit: 50008, used: 0, purpose: '日常消费', status: '已发卡', issuedAt: '2026-10-28 19:59:13' }
+    ],
     creditCard: {
       number: '6228 4801 2345 6789',
       level: '白金信用卡',

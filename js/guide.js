@@ -2598,6 +2598,7 @@ function guideStartCardLimitAdjust() {
   GUIDE_CARD_LIMIT = { stage: 'slots', limit: 0, reason: null, cards: cards, card: cards[0] || null };
   var st = guideCardLimitState();
   appendMessage(guideMessage(
+    (cards[0] ? '<p>正在调整「<b>' + guideCardLimitEsc(guideCardLabel(cards[0])) + '</b>」的额度。</p>' : '') +
     '<p>请告诉我想要调整到的目标额度，以及调整原因。</p>' +
     '<p class="guide-tip">可选原因：' + CARD_LIMIT_REASONS.join('、') + '</p>' +
     (st.current ? '<p class="guide-tip">当前额度 ¥' + st.current.toLocaleString('zh-CN') + '，最低可调至 ¥' + st.min.toLocaleString('zh-CN') + '（已用额度）</p>' : '')
