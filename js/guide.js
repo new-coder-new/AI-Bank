@@ -311,6 +311,14 @@ function guideLockedRun(fn) {
   return true;
 }
 
+// 「我想要订阅某易云年卡 / 订购某度网盘年卡」→ 直接进添加订阅，并把服务与周期解析出来
+function guideIsSubAddPhrase(t) {
+  var s = String(t || '').trim();
+  if (!s) return false;
+  if (/(取消|退订|关闭|停止|解约)/.test(s)) return false;
+  if (!/(订阅|订购|开通|添加|买)/.test(s)) return false;
+  return /(会员|vip|VIP|年卡|月卡|季卡|包年|包月|包季|某易云|易云|网易云|某讯|腾讯|某度|百度|网盘)/.test(s);
+}
 // 「我买了哪些产品 / 我持有几只基金」→ 看持仓管理，而不是产品推荐
 function guideIsHoldingsQuery(t) {
   var s = String(t || '').trim();
@@ -461,6 +469,14 @@ function guideHandleText(text) {
       return true;
     }
     return guideLockedRun(function () { return guideCardLostStep(t); });
+  }
+
+  // 「我想要订阅某易云年卡」→ 直接进添加订阅并预填服务/周期
+  if (guideIsSubAddPhrase(t)) {
+    if (typeof guideStartSubAdd === 'function') {
+      guideStartSubAdd();
+      return guideLockedRun(function () { return guideSubAddStep(t); });
+    }
   }
 
   // 「我买了哪些产品 / 持仓」→ 看持仓
