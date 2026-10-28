@@ -1729,14 +1729,17 @@ function guideWealthConfirm() {
   }
 
   var p = s.product;
-  if (Number(p.riskLevel) > Number(profile.level)) {
+  if (Number(p.riskLevel) > Number(profile.level) && !s.riskOverride) {
+    // 风险等级高于承受能力：不直接拦截，提醒风险并让用户自行确认
     appendMessage(guideMessage(
-      '<p>「<b>' + guideWealthEsc(p.name) + '</b>」的风险等级是 R' + p.riskLevel + '，高于您的风险承受能力 R' + profile.level + '，暂时无法申购。</p>' +
-      '<p class="guide-tip">可以看看这些适配产品：</p>' +
-      '<div class="guide-list">' + guideWealthRecommendations(profile).map(guideWealthProductLine).join('') + '</div>'
+      '<p>「<b>' + guideWealthEsc(p.name) + '</b>」的风险等级是 <b>R' + p.riskLevel + '</b>，高于您的风险承受能力 <b>R' + profile.level + '</b>（' + guideWealthEsc(profile.name) + '）。</p>' +
+      '<p class="guide-tip">该产品波动可能超过您的承受范围，是否仍要申购？</p>' +
+      '<div class="guide-chips">' +
+      '<button class="guide-chip" onclick="guideWealthRiskProceed()">仍然申购</button>' +
+      '<button class="guide-chip" onclick="guideWealthRiskCancel()">换个产品</button>' +
+      '</div>'
     ));
     scrollToBottom();
-    s.product = null;
     return;
   }
 
@@ -1760,6 +1763,7 @@ function guideWealthConfirm() {
   appendMessage(guideMessage(
     '<p>确认申购【<b>' + guideWealthEsc(p.name) + '</b>】<b>' + guidePlainMoney(s.amount) + '</b> 元，默认从活期主账户（尾号' +
     guideWealthAccountTail() + '）扣款，请确认</p>' +
+    (s.riskOverride ? '<p class="guide-tip">⚠️ 该产品风险等级 R' + p.riskLevel + ' 高于你的风险承受能力 R' + profile.level + '，已按你的确认继续申购。</p>' : '') +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideWealthSubmit()">确认申购</button>' +
     '<button class="guide-chip" onclick="guideWealthCancel()">取消</button>' +
@@ -1768,6 +1772,29 @@ function guideWealthConfirm() {
   scrollToBottom();
 }
 
+// 风险等级高于承受能力时：用户确认「仍然申购」后带标记继续出确认卡
+function guideWealthRiskProceed() {
+  var s = GUIDE_WEALTH;
+  if (!s || !s.product) return;
+  s.riskOverride = true;
+  appendMessage(guideMessage('<p>好的，已按你的确认继续申购，请在确认卡中核对信息。</p>'));
+  scrollToBottom();
+  guideWealthConfirm();
+}
+
+// 选择换个产品：清空已选产品并给出适配产品
+function guideWealthRiskCancel() {
+  var s = GUIDE_WEALTH;
+  if (!s) return;
+  s.product = null;
+  var profile = guideWealthValidProfile();
+  appendMessage(guideMessage(
+    '<p>好的，已取消这笔申购。以下是适配你风险等级的产品：</p>' +
+    (profile ? '<div class="guide-list">' + guideWealthRecommendations(profile).map(guideWealthProductLine).join('') + '</div>' : '') +
+    '<p class="guide-tip">告诉我产品名称和申购金额即可。</p>'
+  ));
+  scrollToBottom();
+}
 function guideWealthSubmit() {
   var s = GUIDE_WEALTH;
   if (!s || s.stage !== 'confirm') return;
