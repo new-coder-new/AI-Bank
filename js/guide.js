@@ -311,6 +311,17 @@ function guideLockedRun(fn) {
   return true;
 }
 
+// 「我买了哪些产品 / 我持有几只基金」→ 看持仓管理，而不是产品推荐
+function guideIsHoldingsQuery(t) {
+  var s = String(t || '').trim();
+  if (!s) return false;
+  // 申购/买入/赎回这类是操作，不是查询
+  if (/(申购|买入|追加|赎回|卖出|购买|下单)/.test(s) && !/(买了|买过|持有|哪些)/.test(s)) return false;
+  if (/(持仓|持有中|我的持仓)/.test(s)) return true;
+  if (/(买了|买过|买过什么|持有).{0,8}(产品|基金|理财|什么|哪些|几只|几个)/.test(s)) return true;
+  if (/(我|我的).{0,6}(有哪些|有什么|买过|买了).{0,8}(产品|基金|理财)/.test(s)) return true;
+  return false;
+}
 // 「我现在有哪些卡 / 我的卡片 / 几张卡」→ 直接列出卡片
 function guideIsCardListQuery(t) {
   var s = String(t || '').trim();
@@ -450,6 +461,11 @@ function guideHandleText(text) {
       return true;
     }
     return guideLockedRun(function () { return guideCardLostStep(t); });
+  }
+
+  // 「我买了哪些产品 / 持仓」→ 看持仓
+  if (guideIsHoldingsQuery(t)) {
+    if (typeof guideStartHoldings === 'function') { guideStartHoldings(); return true; }
   }
 
   // 「我现在有哪些卡」直接列卡片
