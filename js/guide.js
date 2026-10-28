@@ -29,9 +29,9 @@ var GUIDE_SERVICES = [
   {
     key: 'bill', label: '账单分析', icon: 'bill',
     aliases: ['账单'],
-    prompt: '财务总览包含「资产概览」和「账单明细」，也可以直接看异常交易：',
+    prompt: '账单分析包含收支结构、支出构成和近 7 日趋势，也可以直接看异常交易：',
     subs: [
-      { key: 'overview', label: '财务总览', aliases: ['消费统计', '账单报告', '账单'], run: function () { showFinancialOverview(); } },
+      { key: 'overview', label: '账单分析', aliases: ['财务总览', '消费统计', '账单报告', '账单'], run: function () { showBillOverview(); } },
       { key: 'abnormal', label: '异常交易', run: function () { showAbnormalAlert(); } }
     ]
   },
@@ -305,6 +305,14 @@ function guideLockedRun(fn) {
   return true;
 }
 
+// 「分析账单 / 看看账单 / 消费统计 / 账单报告」这类说法 → 直接弹出账单分析
+function guideIsBillAnalysisIntent(t) {
+  var s = String(t || '').trim();
+  if (!/(账单|消费|收支|花销|流水)/.test(s)) return false;
+  if (/^(账单|消费)$/.test(s)) return false;
+  return /(分析|看看|看一下|看下|查看|查一下|查询|统计|报告|情况|健康|明细|画像|走势|趋势|结构)/.test(s) ||
+    /^(消费统计|账单报告|账单分析|财务总览)$/.test(s);
+}
 // 一句话里既有转账动作又有时间说法（「明天下午5点，给张三转1000元」）→ 定时转账
 function guideTimedPhraseIntent(t) {
   var s = String(t || '');
@@ -448,6 +456,11 @@ function guideHandleText(text) {
   if (typeof guideIsAllProductsIntent === 'function' && guideIsAllProductsIntent(t)) {
     guideWealthShowAllProducts();
     return true;
+  }
+
+  // 账单分析意图：「分析账单」「看看我的消费」→ 直接出可视化账单分析
+  if (guideIsBillAnalysisIntent(t)) {
+    if (typeof showBillOverview === 'function') { showBillOverview(); return true; }
   }
 
   // 定时转账意图：一句话里带时间 + 转账动作，直接进定时转账多轮流程

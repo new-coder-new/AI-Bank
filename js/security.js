@@ -807,7 +807,7 @@ function quickAction(type) {
     case 'scheduled': showScheduledTransfers(); break;
     case 'manualReviews': showManualReviews(); break;
     case 'adminReview': showAdminReviewPanel(); break;
-    case 'bill': showFinancialOverview(); break;
+    case 'bill': showBillOverview(); break;
     case 'wealth': showProductList(); break;
     case 'card': showCardLimit(); break;
     case 'subscribe': guideStartSubManage(); break;
@@ -823,7 +823,7 @@ function quickAction(type) {
     case 'agent': runAgentWorkflow('帮我转账100元然后查询余额'); break;
     case 'smartLimit': showSmartLimit(); break;
     case 'birthday': guideStartBirthdayFlower(); break;
-    case 'report': showFinancialOverview(); break;
+    case 'report': showBillOverview(); break;
     case 'security': showSecurityCenter(); break;
     case 'batchTransfer': showBatchTransfer(); break;
     case 'investment': showInvestmentPlans(); break;

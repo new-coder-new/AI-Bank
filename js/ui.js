@@ -40,7 +40,7 @@ var FUNC_GROUPS = [
   },
   {
     title: '账单', items: [
-      { key: 'bill', label: '财务总览', icon: 'bill' },
+      { key: 'bill', label: '账单分析', icon: 'bill' },
       { key: 'abnormal', label: '异常交易', icon: 'alert' }
     ]
   },

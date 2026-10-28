@@ -107,19 +107,20 @@ function showBillAnalysis() {
   scrollToBottom();
 }
 
-// 财务总览：消费统计 + 账单报告合并成一个页面，内分「资产概览」「账单明细」两个区域
-function showFinancialOverview() {
+// 账单分析：消费统计 + 账单报告合并，内容以可视化为主（环形图 / 占比条 / 近 7 日趋势）
+function showBillOverview() {
   const u = mockData.userProfile;
   const now = new Date();
   const monthLabel = now.getFullYear() + '年' + (now.getMonth() + 1) + '月';
   const txns = u.recentTxns || [];
 
-  // —— 账单明细：本月收支 ——
+  // —— 收支 ——
   const totalIncome = txns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const totalExpense = txns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const netFlow = totalIncome - totalExpense;
   const savingsRate = totalIncome > 0 ? (netFlow / totalIncome) * 100 : 0;
 
+  // —— 支出分类 ——
   const expenseMap = {};
   txns.filter(t => t.type === 'expense').forEach(t => {
     expenseMap[t.channel] = (expenseMap[t.channel] || 0) + t.amount;
@@ -127,29 +128,51 @@ function showFinancialOverview() {
   const expenseList = Object.entries(expenseMap)
     .map(([label, value]) => ({ label, value }))
     .sort((a, b) => b.value - a.value);
-  const topExpense = expenseList.slice(0, 4);
+  window.billExpenseData = expenseList;
 
-  // —— 资产概览 ——
+  const catBars = expenseList.slice(0, 5).map((x, i) => {
+    const pct = totalExpense > 0 ? (x.value / totalExpense) * 100 : 0;
+    return '<div class="bill-cat-row">' +
+      '<div class="bill-cat-head"><span>' + reportEsc(x.label) + '</span><b>' + reportMoney(x.value) + '（' + pct.toFixed(1) + '%）</b></div>' +
+      '<div class="bill-cat-track"><i style="width:' + Math.max(2, Math.round(pct)) + '%;background:' + reportColor(i) + '"></i></div>' +
+      '</div>';
+  }).join('') || '<div class="report-empty">本月暂无支出记录</div>';
+
+  // —— 近 7 日支出趋势 ——
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const value = txns.filter(t => t.type === 'expense' && String(t.date || '').slice(0, 10) === key)
+      .reduce((s, t) => s + t.amount, 0);
+    days.push({ label: (d.getMonth() + 1) + '/' + d.getDate(), value: value });
+  }
+  // 近 7 日没有支出时，退化为「最近 7 笔支出」，避免图表全空
+  let trendTitle = '近 7 日支出趋势';
+  let trendData = days;
+  const sum7 = days.reduce((s, d) => s + d.value, 0);
+  if (sum7 <= 0) {
+    const recentExpense = txns.filter(t => t.type === 'expense').slice(0, 7).reverse();
+    if (recentExpense.length) {
+      trendTitle = '最近 7 笔支出';
+      trendData = recentExpense.map(t => ({
+        label: String(t.date || '').slice(5, 10).replace('-', '/') || '—',
+        value: Number(t.amount) || 0
+      }));
+    }
+  }
+  const maxDay = Math.max.apply(null, trendData.map(d => d.value).concat([1]));
+  const trendBars = trendData.map(d => {
+    const h = Math.max(4, Math.round((d.value / maxDay) * 100));
+    return '<div class="bill-bar"><i style="height:' + h + '%"></i><em>' + (d.value > 0 ? Math.round(d.value) : '') + '</em><span>' + d.label + '</span></div>';
+  }).join('');
+
+  // —— 资产（两列，移动端不挤） ——
   const cash = Number(u.debitCard && u.debitCard.balance) || 0;
   const frozen = Number(u.debitCard && u.debitCard.frozen) || 0;
   const holdingsTotal = (u.holdings || []).reduce((s, h) => s + (Number(h.amount) || 0), 0);
-  const credit = u.creditCard || {};
-  const creditLimit = Number(credit.effectiveLimit || credit.limit || 0);
-  const creditUsed = Number(credit.used || 0);
-  const creditAvail = creditLimit ? Math.max(0, creditLimit - creditUsed) : 0;
   const totalAssets = Math.max(0, cash - frozen) + holdingsTotal;
-
-  const recentRows = txns.slice(0, 5).map(t => {
-    const sign = t.type === 'income' ? '+' : '-';
-    const cls = t.type === 'income' ? 'income' : 'expense';
-    return '<div class="report-row"><span>' + reportEsc(t.channel || t.desc || '交易') + '　' + reportEsc(t.date || '') + '</span>' +
-      '<b class="' + cls + '">' + sign + reportMoney(t.amount) + '</b></div>';
-  }).join('');
-
-  const topRows = topExpense.length ? topExpense.map(x => {
-    const pct = totalExpense > 0 ? Math.round((x.value / totalExpense) * 100) : 0;
-    return '<div class="report-row"><span>' + reportEsc(x.label) + '</span><b>' + reportMoney(x.value) + '　' + pct + '%</b></div>';
-  }).join('') : '<div class="report-empty">本月暂无支出记录</div>';
 
   const advice = billAnalysisAdvice(totalIncome, totalExpense, expenseList);
 
@@ -162,34 +185,51 @@ function showFinancialOverview() {
           <div class="report-page">
             <div class="report-head">
               <div>
-                <div class="report-title">财务总览</div>
-                <div class="report-sub">${monthLabel} · 资产概览与账单明细</div>
+                <div class="report-title">账单分析</div>
+                <div class="report-sub">${monthLabel} · 收支结构 / 支出构成 / 近 7 日趋势</div>
               </div>
+            </div>
+
+            <div class="report-summary cols-2">
+              <div><span>总收入</span><b class="income">+${reportMoney(totalIncome)}</b></div>
+              <div><span>总支出</span><b class="expense">-${reportMoney(totalExpense)}</b></div>
+            </div>
+
+            <div class="report-chart-grid cols-2" style="margin-top:12px;">
+              <div class="report-panel">
+                <div class="report-panel-title">支出构成</div>
+                <div class="report-donut"><canvas id="billPieChart"></canvas></div>
+                <div class="report-legend" id="billPieLegend"></div>
+              </div>
+              <div class="report-panel">
+                <div class="report-panel-title">收支与结余</div>
+                <div class="bill-meter">
+                  <div class="bill-meter-row"><span>支出 / 收入</span><b>${totalIncome > 0 ? Math.round((totalExpense / totalIncome) * 100) : 0}%</b></div>
+                  <div class="bill-meter-track"><i style="width:${totalIncome > 0 ? Math.min(100, Math.round((totalExpense / totalIncome) * 100)) : 0}%"></i></div>
+                  <div class="bill-meter-row"><span>储蓄率</span><b>${savingsRate.toFixed(1)}%</b></div>
+                  <div class="bill-meter-track alt"><i style="width:${Math.max(0, Math.min(100, Math.round(savingsRate)))}%"></i></div>
+                  <div class="bill-meter-row"><span>结余</span><b class="${netFlow >= 0 ? 'income' : 'expense'}">${netFlow >= 0 ? '+' : '-'}${reportMoney(Math.abs(netFlow))}</b></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="report-panel" style="margin-top:12px;">
+              <div class="report-panel-title">支出分类占比</div>
+              ${catBars}
+            </div>
+
+            <div class="report-panel" style="margin-top:12px;">
+              <div class="report-panel-title">${trendTitle}</div>
+              <div class="bill-bars">${trendBars}</div>
             </div>
 
             <div class="report-panel" style="margin-top:12px;">
               <div class="report-panel-title">资产概览</div>
-              <div class="report-summary">
+              <div class="report-summary cols-2">
                 <div><span>总资产</span><b>${reportMoney(totalAssets)}</b></div>
-                <div><span>储蓄卡可用</span><b>${reportMoney(Math.max(0, cash - frozen))}</b></div>
                 <div><span>理财持仓</span><b>${reportMoney(holdingsTotal)}</b></div>
               </div>
               <div class="report-row"><span>冻结金额</span><b>${reportMoney(frozen)}</b></div>
-              <div class="report-row"><span>信用卡可用额度</span><b>${creditLimit ? reportMoney(creditAvail) + ' / ' + reportMoney(creditLimit) : '暂无信用卡'}</b></div>
-            </div>
-
-            <div class="report-panel" style="margin-top:12px;">
-              <div class="report-panel-title">账单明细</div>
-              <div class="report-summary">
-                <div><span>总收入</span><b class="income">+${reportMoney(totalIncome)}</b></div>
-                <div><span>总支出</span><b class="expense">-${reportMoney(totalExpense)}</b></div>
-                <div><span>结余</span><b class="${netFlow >= 0 ? 'income' : 'expense'}">${netFlow >= 0 ? '+' : '-'}${reportMoney(Math.abs(netFlow))}</b></div>
-              </div>
-              <div class="report-row"><span>储蓄率</span><b>${savingsRate.toFixed(1)}%</b></div>
-              <div class="report-panel-title" style="margin-top:12px;">支出分类</div>
-              ${topRows}
-              <div class="report-panel-title" style="margin-top:12px;">最近交易</div>
-              ${recentRows || '<div class="report-empty">暂无交易记录</div>'}
             </div>
 
             <div class="report-ai-line"><span class="report-ai-tag">AI 建议</span><span>${reportEsc(advice)}</span></div>
@@ -199,7 +239,15 @@ function showFinancialOverview() {
     </div>
   `;
   appendMessage(html);
+  setTimeout(() => {
+    drawReportDonut({ canvasId: 'billPieChart', legendId: 'billPieLegend', data: expenseList, centerLabel: '总支出' });
+  }, 60);
   scrollToBottom();
+}
+
+// 兼容旧入口名
+function showFinancialOverview() {
+  return showBillOverview();
 }
 // 通用环形图绘制：支出构成 / 收入构成共用（canvasId、legendId、data、centerLabel 可配）
 function drawReportDonut(opts) {
