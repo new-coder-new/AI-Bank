@@ -1,4 +1,4 @@
-// ========== 用户体验优化：深色模式 ==========
+﻿// ========== 用户体验优化：深色模式 ==========
 function toggleDarkMode() {
   const body = document.body;
   const isDark = body.classList.toggle('dark-mode');
@@ -66,6 +66,7 @@ var FUNC_GROUPS = [
       { key: 'subAdd', label: '添加订阅', icon: 'bell' },
       { key: 'subscribe', label: '订阅管理', icon: 'bell' },
       { key: 'subCancel', label: '取消订阅', icon: 'alert' },
+      { key: 'flowerOrder', label: '鲜花订购', icon: 'gift' },
       { key: 'birthday', label: '生日鲜花', icon: 'gift' }
     ]
   }

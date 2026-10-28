@@ -1,4 +1,4 @@
-// ========== 极致版：生日鲜花联动 ==========
+﻿// ========== 极致版：生日鲜花联动 ==========
 function calcDaysUntilBirthday(birthdayStr) {
   const today = new Date();
   const [month, day] = birthdayStr.split('-').map(Number);
@@ -28,6 +28,10 @@ function showBirthdayReminder() {
           ${upcoming.length > 0 ? `<div class="data-card" style="background:#fef2f2;border-color:#fecaca;margin-bottom:12px;">
             <div class="data-card-title">近期生日提醒（7天内）</div>
             ${upcoming.map(c => `<div class="data-row"><span class="data-label">${c.name}（${c.relation}）</span><span class="data-value" style="color:#ef4444;font-weight:600;">还有 ${c.days} 天（${c.birthday}）</span></div>`).join('')}
+            <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <div style="font-size:12px;color:#B42318;">${upcoming[0].name}生日快要到啦，要不要订购鲜花？</div>
+              <button class="btn btn-primary btn-sm" onclick="guideStartFlowerOrder()">去订购鲜花</button>
+            </div>
           </div>` : ''}
           <div class="data-card">
             <div class="data-card-title">联系人生日列表</div>

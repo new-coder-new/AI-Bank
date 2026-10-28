@@ -69,6 +69,7 @@ var GUIDE_SERVICES = [
       { key: 'subAdd', label: '添加订阅', aliases: ['添加新订阅'], run: function () { guideStartSubAdd(); } },
       { key: 'subscribe', label: '订阅管理', aliases: ['我的订阅'], run: function () { guideStartSubManage(); } },
       { key: 'subCancel', label: '取消订阅', aliases: ['退订'], run: function () { guideStartSubCancel(); } },
+      { key: 'flower', label: '鲜花订购', aliases: ['订花', '买花'], run: function () { guideStartFlowerOrder(); } },
       { key: 'birthday', label: '生日鲜花', run: function () { showBirthdayReminder(); } }
     ]
   }
@@ -280,6 +281,11 @@ function guideHandleText(text) {
     return guideSubSession(t);
   }
 
+  // 鲜花订购 / 订单管理进行中
+  if (GUIDE_FLOWER) {
+    return guideFlowerSession(t);
+  }
+
   // 交易限制设置进行中
   if (GUIDE_TXN_LIMIT) {
     if (/^(取消|不设了|算了|退出|返回|菜单)$/.test(t)) {
@@ -413,6 +419,7 @@ var GUIDE_SUB_KEYWORDS = {
     subAdd: ['添加订阅', '添加新订阅', '开通订阅', '新增订阅'],
     subscribe: ['订阅管理', '订阅', '会员', '自动续费'],
     subCancel: ['取消订阅', '退订', '终止订阅'],
+    flower: ['鲜花订购', '订花', '买花', '鲜花订单'],
     birthday: ['生日鲜花', '生日', '鲜花']
   }
 };
@@ -3798,4 +3805,471 @@ async function guideSubSession(t) {
   if (s.mode === 'add') return guideSubAddStep(t);
   if (s.mode === 'manage') return guideSubManageStep(t);
   return guideSubCancelStep(t);
+}
+
+// ------------------------------ 鲜花订购：下单 / 查看 / 修改 / 取消 ------------------------------
+var GUIDE_FLOWER = null;
+
+var FLOWER_BOUQUETS = [
+  { name: '简约玫瑰', price: 199 },
+  { name: '向日葵花束', price: 229 },
+  { name: '混搭小花束', price: 159 },
+  { name: '康乃馨礼盒', price: 259 }
+];
+var FLOWER_SLOTS = [
+  { key: 'morning', label: '09:00–12:00', text: '上午9-12点' },
+  { key: 'afternoon', label: '14:00–18:00', text: '下午14-18点' },
+  { key: 'evening', label: '19:00–21:00', text: '晚间19-21点' }
+];
+var FLOWER_CANCEL_FEE = 20;
+
+function guideFlowerEsc(v) {
+  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
+}
+
+function guideFlowerDateStr(days) {
+  var d = new Date();
+  d.setDate(d.getDate() + (Number(days) || 0));
+  return d.getFullYear() + '-' + guidePad2(d.getMonth() + 1) + '-' + guidePad2(d.getDate());
+}
+
+// 订单表：首次访问时放两条演示记录（一条待配送、一条已完成）
+function guideFlowerOrders() {
+  var u = mockData.userProfile || (mockData.userProfile = {});
+  if (!Array.isArray(u.flowerOrders)) {
+    u.flowerOrders = [
+      {
+        id: 'F' + Date.now() + '1', recipient: '李四', phone: '13800138000',
+        address: '清远市清城区XX小区', bouquet: '简约玫瑰', price: 199,
+        date: guideFlowerDateStr(4), slot: 'afternoon', card: '生日快乐',
+        payMethod: '储蓄卡', status: '待配送', createdAt: new Date().toLocaleString('zh-CN')
+      },
+      {
+        id: 'F' + Date.now() + '2', recipient: '王五', phone: '13700137000',
+        address: '清远市清城区YY小区', bouquet: '康乃馨礼盒', price: 259,
+        date: '2026-10-20', slot: 'morning', card: '',
+        payMethod: '储蓄卡', status: '已完成', createdAt: '2026/10/18 09:00:00'
+      }
+    ];
+  }
+  return u.flowerOrders;
+}
+
+function guideFlowerSlot(slotKey) {
+  return FLOWER_SLOTS.filter(function (s) { return s.key === slotKey; })[0] || FLOWER_SLOTS[0];
+}
+
+function guideFlowerBouquet(name) {
+  if (!name) return null;
+  return FLOWER_BOUQUETS.filter(function (b) {
+    return name.indexOf(b.name) !== -1 || b.name.indexOf(name) !== -1 ||
+      (name.indexOf('玫瑰') !== -1 && b.name === '简约玫瑰') ||
+      (name.indexOf('向日葵') !== -1 && b.name === '向日葵花束') ||
+      (name.indexOf('混搭') !== -1 && b.name === '混搭小花束') ||
+      (name.indexOf('康乃馨') !== -1 && b.name === '康乃馨礼盒');
+  })[0] || null;
+}
+
+function guideFlowerDisplayDate(date) {
+  if (!date) return '';
+  var parts = String(date).split('-');
+  return Number(parts[1]) + '月' + Number(parts[2]) + '日';
+}
+
+// 距离配送开始还有多少小时
+function guideFlowerHoursLeft(order) {
+  var slot = guideFlowerSlot(order && order.slot);
+  var start = String((order && order.date) || '') + ' ' + String(slot.label).slice(0, 5);
+  var t = Date.parse(start.replace(/-/g, '/'));
+  if (isNaN(t)) return 999;
+  return (t - Date.now()) / 3600000;
+}
+
+// 从一句话里抽鲜花订单的各个字段
+function guideFlowerParse(text) {
+  var raw = String(text || '');
+  var out = { recipient: '', phone: '', address: '', bouquet: '', date: '', slot: '', card: '', payMethod: '' };
+
+  var pm = raw.match(/1\d{10}/);
+  if (pm) out.phone = pm[0];
+
+  if (/信用卡/.test(raw)) out.payMethod = '信用卡';
+  else if (/储蓄卡|借记卡/.test(raw)) out.payMethod = '储蓄卡';
+
+  var cm = raw.match(/(?:写贺卡|贺卡留言|贺卡|留言)\s*[:：]?\s*([^，,。；;]*)/);
+  if (cm && cm[1]) out.card = cm[1].trim().slice(0, 30);
+
+  var b = guideFlowerBouquet(raw);
+  if (b) out.bouquet = b.name;
+
+  if (/下午|14-18|14:00/.test(raw)) out.slot = 'afternoon';
+  else if (/晚上|晚间|19-21|19:00/.test(raw)) out.slot = 'evening';
+  else if (/上午|早上|9-12|09:00/.test(raw)) out.slot = 'morning';
+
+  var dm = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (dm) out.date = dm[1] + '-' + guidePad2(dm[2]) + '-' + guidePad2(dm[3]);
+  else if (/今天|今日/.test(raw)) out.date = guideFlowerDateStr(0);
+  else if (/后天/.test(raw)) out.date = guideFlowerDateStr(2);
+  else if (/明天|明日/.test(raw)) out.date = guideFlowerDateStr(1);
+  else {
+    var md = raw.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?/);
+    if (md) out.date = guideMonthDayDate(md[1], md[2]);
+  }
+
+  // 地址：取包含行政区/街道/小区的片段
+  var segs = raw.split(/[，,。；;\n]/).map(function (x) { return x.trim(); }).filter(Boolean);
+  var used = [];
+  segs.forEach(function (seg) {
+    if (!out.phone && /1\d{10}/.test(seg)) { out.phone = seg.match(/1\d{10}/)[0]; used.push(seg); return; }
+    if (!out.address && /(市|区|县|路|街|小区|号|楼|室|大道|花园|苑)/.test(seg) &&
+      !/月|日|点|卡|玫瑰|向日葵|康乃馨|混搭/.test(seg)) {
+      out.address = seg; used.push(seg);
+    }
+  });
+
+  // 收花人：「送给 / 给 / 收花人：X」或剩下的短中文片段
+  var rm = raw.match(/(?:送给|送|给|收花人|收件人)\s*[:：]?\s*([\u4e00-\u9fa5·]{2,4})/);
+  if (rm) out.recipient = rm[1];
+  if (!out.recipient) {
+    var leftover = segs.filter(function (seg) { return used.indexOf(seg) === -1; })
+      .map(function (seg) { return seg.replace(/(送给|送|给|收花人|收件人)/g, '').trim(); })
+      .filter(function (seg) { return /^[\u4e00-\u9fa5·]{2,4}$/.test(seg); })[0];
+    if (leftover) out.recipient = leftover;
+  }
+
+  // 剩下的短文本若不像地址/花束/时间，当作贺卡留言
+  if (!out.card) {
+    var maybe = segs.filter(function (seg) {
+      var cleaned = seg.replace(/^(送给|送|给|收花人|收件人)\s*[:：]?\s*/, '').trim();
+      if (out.recipient && cleaned === out.recipient) return false;
+      if (used.indexOf(seg) !== -1) return false;
+      if (/1\d{10}/.test(seg)) return false;
+      if (/月|日|点|卡|玫瑰|向日葵|康乃馨|混搭/.test(seg)) return false;
+      if (/^(送给|送|给|收花人|收件人)/.test(seg)) return false;
+      return /^[\u4e00-\u9fa5，,！!…\s]{2,30}$/.test(seg);
+    })[0];
+    if (maybe) out.card = maybe.trim().slice(0, 30);
+  }
+
+  return out;
+}
+
+function guideFlowerMissingPrompt(s) {
+  var miss = [];
+  if (!s.recipient) miss.push('收花人');
+  if (!s.phone) miss.push('手机号');
+  if (!s.address) miss.push('收货地址');
+  if (!s.bouquet) miss.push('花束款式');
+  if (!s.date || !s.slot) miss.push('配送日期和时段');
+  if (!miss.length) return '';
+  return '请提供' + miss.join('、') + '。';
+}
+
+function guideStartFlowerOrder() {
+  GUIDE_FLOWER = { mode: 'order', stage: 'slots', order: { recipient: '', phone: '', address: '', bouquet: '', date: '', slot: '', card: '', payMethod: '储蓄卡' }, editing: null };
+  currentModule = 'life';
+  appendMessage(guideMessage(
+    '<p>请告诉我收花人、手机号、收货地址、花束款式、配送日期和配送时段。</p>' +
+    '<p class="guide-tip">可选花束：' + FLOWER_BOUQUETS.map(function (b) { return b.name; }).join('、') + '</p>' +
+    '<p class="guide-tip">配送时段：' + FLOWER_SLOTS.map(function (s) { return s.text; }).join('、') + '</p>' +
+    '<p class="guide-tip">默认使用储蓄卡支付，可随时改成信用卡。</p>'
+  ));
+  scrollToBottom();
+}
+
+function guideFlowerOrderCard(s) {
+  var o = s.order;
+  var slot = guideFlowerSlot(o.slot);
+  var pay = o.payMethod === '信用卡' ? '信用卡' : '储蓄卡（默认）';
+  var bouquet = guideFlowerBouquet(o.bouquet);
+  var price = bouquet ? bouquet.price : 0;
+  return '<div class="data-card"><div class="data-card-title">确认鲜花订单</div>' +
+    '<div class="data-row"><span class="data-label">收花人</span><span class="data-value">' + guideFlowerEsc(o.recipient) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">联系电话</span><span class="data-value">' + guideFlowerEsc(o.phone) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">收货地址</span><span class="data-value">' + guideFlowerEsc(o.address) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">花束款式</span><span class="data-value">' + guideFlowerEsc(o.bouquet) + (price ? '（¥' + price + '）' : '') + '</span></div>' +
+    '<div class="data-row"><span class="data-label">配送时间</span><span class="data-value">' + guideFlowerDisplayDate(o.date) + ' ' + slot.label + '</span></div>' +
+    '<div class="data-row"><span class="data-label">贺卡留言</span><span class="data-value">' + (o.card ? guideFlowerEsc(o.card) : '无') + '</span></div>' +
+    '<div class="data-row"><span class="data-label">支付方式</span><span class="data-value">' + pay + '</span></div>' +
+    '</div>';
+}
+
+function guideFlowerConfirm() {
+  var s = GUIDE_FLOWER;
+  if (!s) return;
+  s.stage = 'confirm';
+  appendMessage(guideMessage(guideFlowerOrderCard(s) +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideFlowerSubmit()">提交订单</button>' +
+    '<button class="guide-chip" onclick="guideFlowerPaySwitch()">改用信用卡支付</button>' +
+    '<button class="guide-chip" onclick="guideFlowerCancelOp()">取消</button>' +
+    '</div>'));
+  scrollToBottom();
+}
+
+async function guideFlowerOrderStep(text) {
+  var t = String(text || '').trim();
+  var s = GUIDE_FLOWER;
+  var parsed = guideFlowerParse(t);
+  var o = s.order;
+
+  // 确认阶段的自由输入：切换支付 / 确认 / 取消
+  if (s.stage === 'confirm') {
+    if (/信用卡/.test(t)) { o.payMethod = '信用卡'; appendMessage(guideMessage('<p>已切换为信用卡支付。</p>')); guideFlowerConfirm(); return true; }
+    if (/储蓄卡|借记卡/.test(t)) { o.payMethod = '储蓄卡'; appendMessage(guideMessage('<p>已切换为储蓄卡支付。</p>')); guideFlowerConfirm(); return true; }
+    if (/^(确认|提交|提交订单|确定|是|好|行)$/.test(t.replace(/[吧呢啊呀。.!！?？\s]/g, ''))) { return guideFlowerSubmit(); }
+    if (/^(取消|不|算了|返回)$/.test(t.replace(/[吧呢啊呀。.!！?？\s]/g, ''))) { guideFlowerCancelOp(); return true; }
+  }
+
+  if (parsed.recipient) o.recipient = parsed.recipient;
+  if (parsed.phone) o.phone = parsed.phone;
+  if (parsed.address) o.address = parsed.address;
+  if (parsed.bouquet) o.bouquet = parsed.bouquet;
+  if (parsed.date) o.date = parsed.date;
+  if (parsed.slot) o.slot = parsed.slot;
+  if (parsed.card) o.card = parsed.card;
+  if (parsed.payMethod) o.payMethod = parsed.payMethod;
+
+  if (o.recipient && o.phone && o.address && o.bouquet && o.date && o.slot) {
+    guideFlowerConfirm();
+    return true;
+  }
+  appendMessage(guideMessage('<p>' + guideFlowerMissingPrompt(o) + '</p>' +
+    '<p class="guide-tip">可选花束：' + FLOWER_BOUQUETS.map(function (b) { return b.name; }).join('、') + '</p>' +
+    '<p class="guide-tip">配送时段：' + FLOWER_SLOTS.map(function (x) { return x.text; }).join('、') + '</p>'));
+  scrollToBottom();
+  return true;
+}
+
+function guideFlowerPaySwitch() {
+  var s = GUIDE_FLOWER;
+  if (!s) return;
+  s.order.payMethod = s.order.payMethod === '信用卡' ? '储蓄卡' : '信用卡';
+  appendMessage(guideMessage('<p>已切换为' + (s.order.payMethod === '信用卡' ? '信用卡' : '储蓄卡') + '支付。</p>'));
+  guideFlowerConfirm();
+}
+
+async function guideFlowerSubmit() {
+  var s = GUIDE_FLOWER;
+  if (!s || s.stage !== 'confirm') return true;
+  var o = s.order;
+  var bouquet = guideFlowerBouquet(o.bouquet);
+  var price = bouquet ? bouquet.price : 0;
+  var today = guideFlowerDateStr(0);
+
+  if (o.date < today) {
+    appendMessage(guideMessage('<p>配送日期不能早于今天（' + guideFlowerDisplayDate(today) + '），请重新告诉我配送日期。</p>'));
+    scrollToBottom();
+    s.order.date = '';
+    s.stage = 'slots';
+    return true;
+  }
+  if (o.card && o.card.length > 30) o.card = o.card.slice(0, 30);
+
+  var payMethod = o.payMethod === '信用卡' ? '信用卡' : '储蓄卡';
+  var debit = (mockData.userProfile && mockData.userProfile.debitCard) || {};
+  var available = Number(debit.available) || 0;
+  if (payMethod === '储蓄卡' && price > available) {
+    appendMessage(guideMessage('<p>储蓄卡可用余额 ¥' + available.toLocaleString('zh-CN') + ' 不足支付本次鲜花订单（¥' + price + '），请改用信用卡支付。</p>' +
+      '<div class="guide-chips"><button class="guide-chip" onclick="guideFlowerPaySwitch()">改用信用卡支付</button>' +
+      '<button class="guide-chip" onclick="guideFlowerCancelOp()">取消</button></div>'));
+    scrollToBottom();
+    return true;
+  }
+
+  GUIDE_FLOWER = null;
+  guideFlowerOrders().unshift({
+    id: 'F' + Date.now(),
+    recipient: o.recipient,
+    phone: o.phone,
+    address: o.address,
+    bouquet: o.bouquet,
+    price: price,
+    date: o.date,
+    slot: o.slot,
+    card: o.card || '',
+    payMethod: payMethod,
+    status: '待配送',
+    createdAt: new Date().toLocaleString('zh-CN')
+  });
+  saveUserData();
+  appendMessage(guideMessage('<p>鲜花订单提交成功，将在配送日按时派送，你可以在生活订购记录里查看订单状态。</p>' +
+    '<div class="guide-chips"><button class="guide-chip" onclick="guideStartFlowerList()">查看鲜花订单</button></div>'));
+  scrollToBottom();
+  return true;
+}
+
+function guideStartFlowerList() {
+  GUIDE_FLOWER = { mode: 'list', stage: 'list' };
+  currentModule = 'life';
+  var list = guideFlowerOrders();
+  var pending = list.filter(function (x) { return x.status === '待配送'; });
+  var done = list.filter(function (x) { return x.status !== '待配送'; });
+  var rows = function (arr) {
+    return arr.map(function (o2) {
+      var slot = guideFlowerSlot(o2.slot);
+      return '<div class="bank-sched-item">' +
+        '<div class="bank-sched-date" style="background:#F5F8FD;color:#09407F;"><b>' + guideFlowerEsc(o2.status) + '</b><small>' + guideFlowerEsc(guideFlowerDisplayDate(o2.date)) + '</small></div>' +
+        '<div class="bank-sched-main"><b>' + guideFlowerEsc(o2.bouquet) + '｜收件：' + guideFlowerEsc(o2.recipient) + '</b>' +
+        '<small>' + guideFlowerDisplayDate(o2.date) + ' ' + slot.text + ' · ' + guideFlowerEsc(o2.payMethod || '储蓄卡') + '</small></div>' +
+        (o2.status === '待配送' ? '<div class="bank-sched-side" style="gap:6px;display:flex;"><button class="ui-link" onclick="guideFlowerModifyStart(\'' + o2.id + '\')">修改订单</button>' +
+          '<button class="ui-link" onclick="guideFlowerCancelStart(\'' + o2.id + '\')">取消订单</button></div>' : '') +
+        '</div>';
+    }).join('');
+  };
+  appendMessage(guideMessage(
+    '<p>鲜花订单列表：</p>' +
+    '<div class="report-panel"><div class="report-panel-title">待配送</div>' + (rows(pending) || '<div class="report-empty">暂无待配送订单</div>') + '</div>' +
+    '<div class="report-panel" style="margin-top:10px;"><div class="report-panel-title">已完成</div>' + (rows(done) || '<div class="report-empty">暂无历史订单</div>') + '</div>' +
+    '<div class="guide-chips"><button class="guide-chip" onclick="guideStartFlowerOrder()">订购鲜花</button></div>'
+  ));
+  scrollToBottom();
+}
+
+// 修改订单：配送日前可改
+function guideFlowerModifyStart(orderId) {
+  var order = guideFlowerOrders().filter(function (x) { return x.id === orderId; })[0];
+  if (!order) return;
+  if (guideFlowerHoursLeft(order) < 0) {
+    appendMessage(guideMessage('<p>该订单已过配送时间，无法修改。</p>'));
+    scrollToBottom();
+    return;
+  }
+  GUIDE_FLOWER = { mode: 'modify', stage: 'modify-slots', order: order, newBouquet: '' };
+  currentModule = 'life';
+  var slot = guideFlowerSlot(order.slot);
+  appendMessage(guideMessage('<p>要修改「' + guideFlowerEsc(order.recipient) + '」这笔鲜花订单的什么？例如「改成向日葵花束」。</p>' +
+    '<p class="guide-tip">当前：' + guideFlowerEsc(order.bouquet) + '｜' + guideFlowerDisplayDate(order.date) + ' ' + slot.text +
+    '（配送前 24 小时以上可免费修改）</p>'));
+  scrollToBottom();
+}
+
+function guideFlowerModifyConfirm() {
+  var s = GUIDE_FLOWER;
+  if (!s || !s.order) return;
+  s.stage = 'modify-confirm';
+  var bouquet = guideFlowerBouquet(s.newBouquet);
+  s.newBouquet = bouquet ? bouquet.name : s.newBouquet;
+  appendMessage(guideMessage(
+    '<div class="data-card"><div class="data-card-title">确认修改订单</div>' +
+    '<div class="data-row"><span class="data-label">原款式</span><span class="data-value">' + guideFlowerEsc(s.order.bouquet) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">新款式</span><span class="data-value">' + guideFlowerEsc(s.newBouquet) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">其余信息</span><span class="data-value">保持不变</span></div>' +
+    '<div class="data-row"><span class="data-label">支付方式</span><span class="data-value">' + guideFlowerEsc(s.order.payMethod || '储蓄卡') + '</span></div>' +
+    '</div>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideFlowerModifySubmit()">确认修改</button>' +
+    '<button class="guide-chip" onclick="guideFlowerCancelOp()">返回</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+function guideFlowerModifySubmit() {
+  var s = GUIDE_FLOWER;
+  if (!s || s.stage !== 'modify-confirm' || !s.order) return;
+  var target = guideFlowerOrders().filter(function (x) { return x.id === s.order.id; })[0];
+  var bouquet = guideFlowerBouquet(s.newBouquet);
+  if (target) {
+    if (bouquet) { target.bouquet = bouquet.name; target.price = bouquet.price; }
+    target.updatedAt = new Date().toLocaleString('zh-CN');
+    saveUserData();
+  }
+  GUIDE_FLOWER = null;
+  appendMessage(guideMessage('<p>订单已修改：款式改为「' + guideFlowerEsc(bouquet ? bouquet.name : s.newBouquet) + '」，其余信息保持不变。</p>'));
+  scrollToBottom();
+}
+
+// 取消订单：不足 24 小时收服务费
+function guideFlowerCancelStart(orderId) {
+  var order = guideFlowerOrders().filter(function (x) { return x.id === orderId; })[0];
+  if (!order) return;
+  GUIDE_FLOWER = { mode: 'cancel', stage: 'cancel-confirm', order: order };
+  currentModule = 'life';
+  var slot = guideFlowerSlot(order.slot);
+  var hrs = guideFlowerHoursLeft(order);
+  appendMessage(guideMessage(
+    '<div class="data-card"><div class="data-card-title">确认取消这条鲜花订单</div>' +
+    '<div class="data-row"><span class="data-label">收花人</span><span class="data-value">' + guideFlowerEsc(order.recipient) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">配送时间</span><span class="data-value">' + guideFlowerDisplayDate(order.date) + ' ' + slot.text + '</span></div>' +
+    '</div>' +
+    (hrs < 24 ? '<p class="guide-tip">距离配送日不足24小时，取消会收取少量服务费 ¥' + FLOWER_CANCEL_FEE + '。</p>' : '<p class="guide-tip">配送前 24 小时以上可免费取消。</p>') +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideFlowerCancelSubmit()">确认取消</button>' +
+    '<button class="guide-chip" onclick="guideFlowerCancelOp()">返回</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+function guideFlowerCancelSubmit() {
+  var s = GUIDE_FLOWER;
+  if (!s || s.stage !== 'cancel-confirm' || !s.order) return;
+  var order = s.order;
+  var hrs = guideFlowerHoursLeft(order);
+  var fee = hrs < 24 ? FLOWER_CANCEL_FEE : 0;
+  var target = guideFlowerOrders().filter(function (x) { return x.id === order.id; })[0];
+  if (target) { target.status = '已取消'; target.cancelledAt = new Date().toLocaleString('zh-CN'); }
+  if (fee > 0 && typeof addTransaction === 'function') addTransaction('expense', fee, '鲜花订单取消服务费-' + order.recipient, '鲜花订购', true);
+  saveUserData();
+  GUIDE_FLOWER = null;
+  appendMessage(guideMessage('<p>鲜花订单已取消' + (fee > 0 ? '，已收取服务费 ¥' + fee : '，未产生费用') + '。</p>'));
+  scrollToBottom();
+}
+
+function guideFlowerCancelOp() {
+  GUIDE_FLOWER = null;
+  appendMessage(guideMessage('<p>已取消本次操作，鲜花订单保持不变。</p>'));
+  scrollToBottom();
+}
+
+// 鲜花会话统一入口
+async function guideFlowerSession(t) {
+  var s = GUIDE_FLOWER;
+  if (!s) return true;
+  var plain = String(t || '').replace(/[吧呢啊呀。.!！?？\s]/g, '');
+
+  if (s.mode === 'order') {
+    if (s.stage === 'confirm' && /^(取消|不|算了)$/.test(plain)) { guideFlowerCancelOp(); return true; }
+    if (/^(返回|菜单|返回菜单|退出)$/.test(plain) && s.stage !== 'confirm') {
+      GUIDE_FLOWER = null;
+      guideBackToMenu();
+      return true;
+    }
+    return guideFlowerOrderStep(t);
+  }
+
+  if (s.mode === 'modify') {
+    if (/^(返回|取消|不|算了)$/.test(plain) && s.stage === 'modify-confirm') { guideFlowerCancelOp(); return true; }
+    if (s.stage === 'modify-confirm' && /^(确认|确定|确认修改|是|好|行)$/.test(plain)) { guideFlowerModifySubmit(); return true; }
+    if (/^(返回|菜单|退出)$/.test(plain)) { GUIDE_FLOWER = null; guideBackToMenu(); return true; }
+    var b2 = guideFlowerBouquet(t);
+    if (b2) { s.newBouquet = b2.name; guideFlowerModifyConfirm(); return true; }
+    appendMessage(guideMessage('<p>要改成哪一款花束？可选：' + FLOWER_BOUQUETS.map(function (x) { return x.name; }).join('、') + '</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  if (s.mode === 'cancel') {
+    if (/^(确认|确定|确认取消|是|好|行)$/.test(plain)) { guideFlowerCancelSubmit(); return true; }
+    if (/^(返回|取消|不|算了)$/.test(plain)) { guideFlowerCancelOp(); return true; }
+    appendMessage(guideMessage('<p>请确认是否取消这条鲜花订单：回复「确认取消」或「返回」。</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  if (s.mode === 'list') {
+    if (/修改|改一下|换款式|改款式/.test(t)) {
+      var target2 = guideFlowerOrders().filter(function (x) { return x.status === '待配送' && t.indexOf(x.recipient) !== -1; })[0];
+      if (target2) { guideFlowerModifyStart(target2.id); return true; }
+    }
+    if (/取消/.test(t)) {
+      var target3 = guideFlowerOrders().filter(function (x) { return x.status === '待配送' && t.indexOf(x.recipient) !== -1; })[0];
+      if (target3) { guideFlowerCancelStart(target3.id); return true; }
+    }
+    appendMessage(guideMessage('<p>请点订单上的【修改订单】/【取消订单】，或告诉我「修改李四的鲜花订单」「取消李四的鲜花订单」。</p>'));
+    scrollToBottom();
+    return true;
+  }
+  return true;
 }

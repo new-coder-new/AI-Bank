@@ -1,4 +1,4 @@
-// ========== 通用安全验证弹窗 ==========
+﻿// ========== 通用安全验证弹窗 ==========
 // 验证状态
 let securityVerifyCallback = null;
 let securityVerifyPurpose = '';
@@ -712,6 +712,7 @@ function quickAction(type) {
     case 'subscribe': guideStartSubManage(); break;
     case 'subAdd': guideStartSubAdd(); break;
     case 'subCancel': guideStartSubCancel(); break;
+    case 'flowerOrder': guideStartFlowerOrder(); break;
     case 'userinfo': showUserInfo(); break;
     case 'risk': startRiskAssessment(); break;
     case 'abnormal': showAbnormalAlert(); break;
