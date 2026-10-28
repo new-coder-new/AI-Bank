@@ -8,6 +8,7 @@ function calcDaysUntilBirthday(birthdayStr) {
 }
 
 function showBirthdayReminder() {
+  if (typeof syncContactsBirthdays === 'function') syncContactsBirthdays();
   const contacts = mockData.userProfile.birthdayContacts || [];
   const contactsWithDays = contacts.map(c => ({ ...c, days: calcDaysUntilBirthday(c.birthday) }));
   const upcoming = contactsWithDays.filter(c => c.days <= 7);
@@ -122,6 +123,7 @@ function saveBirthdayContact() {
     return;
   }
   mockData.userProfile.birthdayContacts.push({ name, birthday, relation, flower, price });
+  if (typeof syncContactsBirthdays === 'function') syncContactsBirthdays();
   saveUserData();
   document.querySelector('div[style*=fixed]').remove();
   appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">已添加联系人：<strong>${name}</strong>（${relation}），生日：${birthday}，推荐鲜花：${flower}（¥${price}）</div></div></div>`);
@@ -131,6 +133,9 @@ function saveBirthdayContact() {
 function deleteBirthdayContact(name) {
   if (!confirm(`确定要删除联系人"${name}"吗？`)) return;
   mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter(c => c.name !== name);
+  // 通讯录里同一个人只清掉生日信息，联系人本身保留
+  const linked = (mockData.contacts || []).filter(c => c.name === name)[0];
+  if (linked) { delete linked.birthday; if (linked.fromBirthday) { mockData.contacts = mockData.contacts.filter(c => c.name !== name); } }
   saveUserData();
   appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">删除 已删除联系人：<strong>${name}</strong></div></div></div>`);
   scrollToBottom();

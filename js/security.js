@@ -474,8 +474,45 @@ function renderTxnItem(t) {
 }
 
 // 渲染联系人管理页面
+// 通讯录与生日联系人双向同步：两边任何一侧的改动都会补齐另一侧
+function syncContactsBirthdays() {
+  if (!Array.isArray(mockData.contacts)) mockData.contacts = [];
+  var u = mockData.userProfile || (mockData.userProfile = {});
+  if (!Array.isArray(u.birthdayContacts)) u.birthdayContacts = [];
+  var bc = u.birthdayContacts;
+
+  // 生日联系人 → 通讯录：缺人就补一条，已有的补齐关系与生日
+  bc.forEach(function (b) {
+    if (!b || !b.name) return;
+    var full = /^\d{4}-/.test(String(b.birthday || '')) ? b.birthday : ('2026-' + b.birthday);
+    var c = mockData.contacts.filter(function (x) { return x.name === b.name; })[0];
+    if (c) {
+      if (!c.relation) c.relation = b.relation || '朋友';
+      if (!c.birthday) c.birthday = full;
+    } else {
+      mockData.contacts.push({
+        name: b.name, phone: '—', account: '', bank: '',
+        relation: b.relation || '朋友', birthday: full, fromBirthday: true
+      });
+    }
+  });
+
+  // 通讯录 → 生日联系人：有生日但生日表里没有的补进去
+  mockData.contacts.forEach(function (c) {
+    if (!c || !c.name || !c.birthday) return;
+    if (bc.some(function (b) { return b.name === c.name; })) return;
+    bc.push({
+      name: c.name,
+      birthday: String(c.birthday).slice(5),
+      relation: c.relation || '朋友',
+      flower: '康乃馨',
+      price: 128
+    });
+  });
+  return mockData.contacts;
+}
 function renderUserInfoContacts(u) {
-  const contacts = mockData.contacts || [];
+  const contacts = (typeof syncContactsBirthdays === 'function') ? syncContactsBirthdays() : (mockData.contacts || []);
   return `
     <section class="userinfo-section">
       <div class="ui-card-head">
@@ -608,6 +645,7 @@ function saveContact(index, popupId) {
     mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter(c => c.name !== name);
   }
 
+  if (typeof syncContactsBirthdays === 'function') syncContactsBirthdays();
   saveUserData();
   document.getElementById(popupId)?.remove();
   renderUserInfoPage();
