@@ -117,7 +117,9 @@ function guideIsReadOnlyQuery(text) {
   var s = String(text || '').trim();
   if (!s) return false;
   // 明确是变更类操作时不算只读查询
-  if (/(调整|提升|提高|降低|申请|办理|设置|修改|取消|关闭|开启|挂失|购买|申购|赎回)/.test(s)) return false;
+  if (/(调整|提升|提高|降低|申请|办理|设置|修改|取消|关闭|开启|挂失|购买|申购|赎回|提额|调高|调低|调额)/.test(s)) return false;
+  // 「我要调我的信用卡额度」「把额度降一点」这类也属于变更，不能当成只读查询
+  if (/额度/.test(s) && /(调|改|降|升|加|减)/.test(s)) return false;
   if (!/(余额|额度|交易记录|最近交易|流水)/.test(s)) return false;
   return /^(查|看|看看|查看|查询|显示|我的|我|帮我|麻烦|请问|还有|还剩)/.test(s) ||
     /(多少|余额|额度)/.test(s);
@@ -309,6 +311,13 @@ function guideLockedRun(fn) {
   return true;
 }
 
+// 「我要调我的信用卡额度 / 提额」这类说法 → 直接进入额度调整对话，而不是只展示额度信息
+function guideIsCardLimitAdjustIntent(t) {
+  var s = String(t || '');
+  if (!/额度|提额/.test(s)) return false;
+  if (!/(信用卡|卡片|卡|额度)/.test(s)) return false;
+  return /(调|调整|提额|提高|提升|调高|调低|降低|增加|减少|申请调整|改)/.test(s);
+}
 // 「分析账单 / 看看账单 / 消费统计 / 账单报告」这类说法 → 直接弹出账单分析
 function guideIsBillAnalysisIntent(t) {
   var s = String(t || '').trim();
@@ -460,6 +469,11 @@ function guideHandleText(text) {
   if (typeof guideIsAllProductsIntent === 'function' && guideIsAllProductsIntent(t)) {
     guideWealthShowAllProducts();
     return true;
+  }
+
+  // 信用卡调额意图：「我要调我的信用卡额度」→ 直接进入额度调整流程（问目标额度与原因）
+  if (guideIsCardLimitAdjustIntent(t)) {
+    if (typeof guideStartCardLimitAdjust === 'function') { guideStartCardLimitAdjust(); return true; }
   }
 
   // 账单分析意图：「分析账单」「看看我的消费」→ 直接出可视化账单分析
