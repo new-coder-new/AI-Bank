@@ -1139,6 +1139,35 @@ function agentTierBadge(tier) {
 }
 
 // ------------------------------ 5. 计划执行器 + 可视化 ------------------------------
+// 转账完成卡：金额 / 收款方 / 余额 +【完成】，说明只留一句
+function agentTransferDoneCardHtml(amount, payee, balance) {
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x); };
+  var amt = agentFmt(amount);
+  var bal = agentFmt(balance);
+  function row(label, value) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px;">' +
+      '<span style="color:#6b7280;">' + label + '</span>' +
+      '<b style="color:#111827;font-weight:600;">' + value + '</b></div>';
+  }
+  return '<div class="agent-result-card">' +
+    '<div class="agent-result-title" style="color:#16a34a;">转账已完成</div>' +
+    '<div style="margin:10px 0 14px;border:1px solid #e5e9f0;border-radius:10px;padding:8px 12px;background:#f8fafc;">' +
+    row('金额', amt + ' 元') +
+    row('收款方', esc(payee)) +
+    row('余额', bal + ' 元') +
+    '</div>' +
+    '<button class="btn btn-primary btn-sm" onclick="agentTransferDoneFinish(this, \'' + esc(amt) + '\', \'' + esc(payee) + '\')">完成</button>' +
+    '<div class="agent-result-foot" style="margin-top:10px;">资金已入账，请注意核对收款方信息。</div>' +
+    '</div>';
+}
+
+// 点【完成】把结果卡收成一行，不再有「查看交易记录」等入口
+function agentTransferDoneFinish(btn, amt, payee) {
+  var card = btn && btn.closest ? btn.closest('.agent-result-card') : null;
+  if (!card) return;
+  card.innerHTML = '<div class="agent-result-desc" style="margin:0;">转账已完成 · ' + amt + ' 元 → ' + payee + '</div>';
+}
+
 // 只保留一句「正在为你处理…」，执行步骤（逻辑链）不再展示给用户
 function agentPlanShell(id, plan) {
   return '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
@@ -1366,7 +1395,13 @@ async function agentApprovePlan(id) {
   var resultClass = failedLogs ? 'failed' : 'success';
   var resultBadge = failedLogs ? '部分失败' : '已完成';
   var footer2 = document.getElementById(id + '-footer');
-  if (footer2) {
+  var isTransferPlan = (plan.confirm.actions || []).some(function (a) { return a.tool === 'transfer.execute'; });
+  if (footer2 && isTransferPlan && !failedLogs) {
+    var doneAct = (plan.confirm.actions || [])[0] || {};
+    var donePayee = (doneAct.args && doneAct.args.payee) || '';
+    var doneBalance = Number((mockData.userProfile && mockData.userProfile.debitCard && mockData.userProfile.debitCard.available) || 0);
+    footer2.innerHTML = agentTransferDoneCardHtml(totalAmount, donePayee, doneBalance);
+  } else if (footer2) {
     footer2.innerHTML = '<div class="agent-result-card">' +
       '<div class="agent-result-title">' + (plan.confirm.doneTitle || '已按方案执行完成') + '</div>' +
       logs.map(function (l) {
@@ -1778,11 +1813,8 @@ async function agentTransferFlow(payee, amount, rawText, channel, opts) {
     var available = Number(mockData.userProfile.debitCard.available) || 0;
     appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
       '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
-      '<div class="agent-result-card">' +
-      '<div class="agent-result-title">转账已完成</div>' +
-      '<div class="agent-result-desc">收款人：' + payee + ' · 当前可用余额 ¥' + agentFmt(available) + '</div>' +
-      '<div class="agent-result-foot"><button class="ui-link" onclick="goToTxnsTab()">查看交易记录</button></div>' +
-      '</div></div></div></div>');
+      agentTransferDoneCardHtml(amount, payee, available) +
+      '</div></div></div>');
     scrollToBottom();
     return { handled: true, executed: true, tier: tier, result: res };
   }
