@@ -2159,6 +2159,8 @@ function showCardLimitRecords() {
 }
 
 // ------------------------------ 交易限制设置：单笔 / 日累计 / 夜间 / 境外 ------------------------------
+// 采集顺序严格按规则：单笔限额 → 日累计限额 → 夜间交易 → 境外交易 → 汇总确认。
+// 校验：金额必须 ≥0 的有效数字；单笔 > 日累计只提示核对、不自动修改；夜间/境外只接受「允许 / 禁止」。
 var GUIDE_TXN_LIMIT = null;
 
 function guideTxnLimitEsc(v) {
@@ -2173,178 +2175,110 @@ function guideTxnLimitFlagText(v) {
   return v === 'allow' ? '允许' : '禁止';
 }
 
+function guideTxnLimitValue(text) {
+  var m = String(text || '').match(/(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  if (!m) return null;
+  var v = parseFloat(m[1]);
+  if (m[2]) v *= 10000;
+  return v;
+}
+
+// 只认「允许 / 禁止」，其它一律返回 null（由调用方提示重选）
+function guideTxnLimitFlag(text) {
+  var t = String(text || '').trim().replace(/[。.!！?？,，、\s]/g, '');
+  if (!t) return null;
+  if (/(禁止|不允许|不可以|不行|关闭)/.test(t)) return 'block';
+  if (/^(允许|可以|行)$/.test(t)) return 'allow';
+  return null;
+}
+
+function guideTxnLimitNightQuestion(prefix) {
+  return '<p>' + (prefix || '') + '是否允许夜间交易（23:00-06:00）？</p>';
+}
+
 function guideStartTxnLimit() {
-  GUIDE_TXN_LIMIT = { single: null, daily: null, night: null, overseas: null, stage: 'slots', askedReuse: false, basedOnCurrent: false };
+  GUIDE_TXN_LIMIT = { stage: 'limits', single: null, daily: null, night: null, overseas: null };
   currentModule = 'card';
-  appendMessage(guideMessage(
-    '<p>请设置单笔限额、日累计限额，同时选择夜间交易（23:00-06:00）、境外交易是禁止还是允许。</p>' +
-    '<p class="guide-tip">例如：单笔最多 5000 元，每天最多 10000 元，禁止夜间交易和境外交易</p>'
-  ));
+  appendMessage(guideMessage('<p>请设置单笔限额与每日限额。</p>'));
   scrollToBottom();
-}
-
-// 当前真实生效配置（读不到就返回 null，不编造）
-function guideTxnLimitCurrent() {
-  var d = mockData.userProfile && mockData.userProfile.txnLimit;
-  if (!d || !(Number(d.single) > 0) || !(Number(d.daily) > 0)) return null;
-  return {
-    single: Number(d.single),
-    daily: Number(d.daily),
-    night: d.night === 'allow' ? 'allow' : 'block',
-    overseas: d.overseas === 'allow' ? 'allow' : 'block'
-  };
-}
-
-function guideTxnLimitParse(text) {
-  var t = String(text || '');
-  var out = { single: null, daily: null, night: null, overseas: null, modify: false };
-  out.modify = /(改成|改为|改到|调整成|调整为|调成|调到|设置为|设置成|只改|仅改)/.test(t);
-
-  var ms = t.match(/(?:单笔|每笔|单次)[^\d]{0,10}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
-  if (ms) { out.single = parseFloat(ms[1]); if (ms[2]) out.single *= 10000; }
-  var md = t.match(/(?:日累计|每日|每天|当日|一天|一天内)[^\d]{0,10}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
-  if (md) { out.daily = parseFloat(md[1]); if (md[2]) out.daily *= 10000; }
-
-  function clauseFlag(c) {
-    if (/(禁止|不允许|关闭|关掉|锁定|拦截|不支持)/.test(c)) return 'block';
-    if (/(允许|开启|打开|放行|可用|支持)/.test(c)) return 'allow';
-    return null;
-  }
-  var clauses = t.split(/[。；;，,\n]/);
-  clauses.forEach(function (c) {
-    if (/夜间/.test(c) && !out.night) { var f = clauseFlag(c); if (f) out.night = f; }
-    if (/境外|海外/.test(c) && !out.overseas) { var f2 = clauseFlag(c); if (f2) out.overseas = f2; }
-  });
-
-  return out;
-}
-
-function guideTxnLimitMissingPrompt(s) {
-  var miss = [];
-  if (!(Number(s.single) > 0)) miss.push('单笔限额');
-  if (!(Number(s.daily) > 0)) miss.push('日累计限额');
-  if (!s.night) miss.push('夜间交易');
-  if (!s.overseas) miss.push('境外交易');
-  if (miss.length === 4) return '请设置单笔限额、日累计限额，同时选择夜间交易（23:00-06:00）、境外交易是禁止还是允许。';
-  if (miss.length === 3 && miss[0] === '日累计限额') return '还需要设置日累计限额，以及夜间交易、境外交易的权限。';
-  if (miss.length === 2 && miss[0] === '夜间交易' && miss[1] === '境外交易') return '还需要选择夜间交易、境外交易是禁止还是允许。';
-  return '还需要设置' + miss.join('、') + '。';
 }
 
 function guideTxnLimitStep(text) {
   var t = String(text || '').trim();
-  var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
   var s = GUIDE_TXN_LIMIT;
 
-  if (s.stage === 'askReuse') {
-    if (/^(是|对|可以|沿用|好的|好|行|嗯|是的|沿用当前|用当前的|保持不变)$/.test(plain)) {
-      var cur0 = guideTxnLimitCurrent();
-      if (cur0) {
-        if (!(Number(s.single) > 0)) s.single = cur0.single;
-        if (!(Number(s.daily) > 0)) s.daily = cur0.daily;
-        if (!s.night) s.night = cur0.night;
-        if (!s.overseas) s.overseas = cur0.overseas;
-        s.basedOnCurrent = true;
-      }
-      guideTxnLimitConfirm();
-      return true;
-    }
-    if (/^(不|否|不用|重新|不要|不沿用)$/.test(plain)) {
-      s.stage = 'slots';
-      appendMessage(guideMessage('<p>' + guideTxnLimitMissingPrompt(s) + '</p>'));
+  // ① 夜间 / 境外：只接受「允许 / 禁止」
+  if (s.stage === 'night' || s.stage === 'overseas') {
+    var flag = guideTxnLimitFlag(t);
+    if (!flag) {
+      appendMessage(guideMessage('<p>该选项仅可回复【允许】或【禁止】，请重新选择。</p>'));
       scrollToBottom();
       return true;
     }
-    s.stage = 'slots';
-  }
-
-  var p = guideTxnLimitParse(t);
-  if (p.single != null) s.single = p.single;
-  if (p.daily != null) s.daily = p.daily;
-  if (p.night) s.night = p.night;
-  if (p.overseas) s.overseas = p.overseas;
-
-  var complete = (Number(s.single) > 0 && Number(s.daily) > 0 && s.night && s.overseas);
-  if (complete) { guideTxnLimitConfirm(); return true; }
-
-  // 局部修改（「把单笔限额改成 3000 元」）：用当前生效配置补齐其余项
-  var cur = guideTxnLimitCurrent();
-  if (p.modify && cur) {
-    if (!(Number(s.single) > 0)) s.single = cur.single;
-    if (!(Number(s.daily) > 0)) s.daily = cur.daily;
-    if (!s.night) s.night = cur.night;
-    if (!s.overseas) s.overseas = cur.overseas;
-    s.basedOnCurrent = true;
+    if (s.stage === 'night') {
+      s.night = flag;
+      s.stage = 'overseas';
+      appendMessage(guideMessage('<p>是否允许境外交易？</p>'));
+      scrollToBottom();
+      return true;
+    }
+    s.overseas = flag;
     guideTxnLimitConfirm();
     return true;
   }
 
-  // 只说了某个场景开关：确认是否沿用当前配置
-  if (cur && !s.askedReuse && (p.night || p.overseas) && !(Number(s.single) > 0 || Number(s.daily) > 0)) {
-    s.askedReuse = true;
-    s.stage = 'askReuse';
-    var changed = p.overseas ? '境外交易将设为' + guideTxnLimitFlagText(p.overseas) : '夜间交易将设为' + guideTxnLimitFlagText(p.night);
-    var rest = p.overseas ? '其余限额、夜间交易' : '其余限额、境外交易';
-    appendMessage(guideMessage(
-      '<p>' + changed + '。' + rest + '是否沿用当前已生效配置？</p>' +
-      '<div class="guide-chips">' +
-      '<button class="guide-chip" onclick="guideTxnLimitReuse(true)">沿用当前配置</button>' +
-      '<button class="guide-chip" onclick="guideTxnLimitReuse(false)">重新设置</button>' +
-      '</div>'
-    ));
+  // ② 限额：句中带关键字的两项分别归位；只有一个裸数字时默认作为日累计限额
+  var mSingle = t.match(/(?:单笔|每笔|单次)[^\d]{0,10}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  var mDaily = t.match(/(?:日累计|每日|每天|一天|日限额)[^\d]{0,10}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  var bare = guideTxnLimitValue(t);
+
+  function guideTxnLimitToVal(m) {
+    if (!m) return null;
+    var v = parseFloat(m[1]);
+    if (m[2]) v *= 10000;
+    return v;
+  }
+
+  if (mSingle) s.single = guideTxnLimitToVal(mSingle);
+  if (mDaily) s.daily = guideTxnLimitToVal(mDaily);
+
+  if (!mSingle && !mDaily && bare != null) {
+    if (s.single != null && s.daily == null) s.daily = bare;
+    else if (s.daily == null) s.daily = bare;
+    else if (s.single == null) s.single = bare;
+    else s.daily = bare;
+  }
+
+  if (s.single == null) {
+    appendMessage(guideMessage('<p>请输入单笔限额</p>'));
+    scrollToBottom();
+    return true;
+  }
+  if (s.daily == null) {
+    appendMessage(guideMessage('<p>请输入每日限额</p>'));
     scrollToBottom();
     return true;
   }
 
-  appendMessage(guideMessage('<p>' + guideTxnLimitMissingPrompt(s) + '</p>'));
+  // 两项齐了：单笔 > 日累计只提示核对，不自动修改，继续采集夜间交易
+  var warn = Number(s.single) > Number(s.daily) ? '您设置的单笔限额大于日累计限额，请核对确认。' : '';
+  s.stage = 'night';
+  appendMessage(guideMessage(guideTxnLimitNightQuestion(warn)));
   scrollToBottom();
   return true;
-}
-
-function guideTxnLimitReuse(yes) {
-  var s = GUIDE_TXN_LIMIT;
-  if (!s) return;
-  var cur = guideTxnLimitCurrent();
-  if (yes && cur) {
-    if (!(Number(s.single) > 0)) s.single = cur.single;
-    if (!(Number(s.daily) > 0)) s.daily = cur.daily;
-    if (!s.night) s.night = cur.night;
-    if (!s.overseas) s.overseas = cur.overseas;
-    s.basedOnCurrent = true;
-    s.stage = 'slots';
-    guideTxnLimitConfirm();
-    return;
-  }
-  s.stage = 'slots';
-  appendMessage(guideMessage('<p>' + guideTxnLimitMissingPrompt(s) + '</p>'));
-  scrollToBottom();
 }
 
 function guideTxnLimitConfirm() {
   var s = GUIDE_TXN_LIMIT;
   if (!s) return;
-
-  if (Number(s.single) > Number(s.daily)) {
-    appendMessage(guideMessage(
-      '<p>单笔限额 ' + guideTxnLimitMo(s.single) + ' 大于日累计限额 ' + guideTxnLimitMo(s.daily) + '，请核对后重新告诉我。</p>' +
-      '<p class="guide-tip">单笔限额不应超过日累计限额。</p>'
-    ));
-    scrollToBottom();
-    s.single = null;
-    s.daily = null;
-    return;
-  }
-
   s.stage = 'confirm';
-  var note = s.basedOnCurrent ? '<p class="guide-tip">基于当前生效配置，仅修改你这次指定的项目。</p>' : '';
   appendMessage(guideMessage(
-    '<p>确认交易限制配置</p>' +
-    '<div class="data-card"><div class="data-card-title">交易限制</div>' +
+    '<div class="data-card">' +
     '<div class="data-row"><span class="data-label">单笔限额</span><span class="data-value">' + (Number(s.single) || 0).toLocaleString('zh-CN') + ' 元</span></div>' +
     '<div class="data-row"><span class="data-label">日累计限额</span><span class="data-value">' + (Number(s.daily) || 0).toLocaleString('zh-CN') + ' 元</span></div>' +
     '<div class="data-row"><span class="data-label">夜间交易（23:00-06:00）</span><span class="data-value">' + guideTxnLimitFlagText(s.night) + '</span></div>' +
     '<div class="data-row"><span class="data-label">境外交易</span><span class="data-value">' + guideTxnLimitFlagText(s.overseas) + '</span></div>' +
-    '</div>' + note +
+    '</div>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideTxnLimitSubmit()">确认设置</button>' +
     '<button class="guide-chip" onclick="guideTxnLimitCancel()">取消</button>' +
@@ -2369,10 +2303,9 @@ function guideTxnLimitSubmit() {
 
 function guideTxnLimitCancel() {
   GUIDE_TXN_LIMIT = null;
-  appendMessage(guideMessage('<p>已取消修改，交易限制保持原有配置。</p>'));
+  appendMessage(guideMessage('<p>已取消修改，交易限制保持原配置。</p>'));
   scrollToBottom();
 }
-
 // ------------------------------ 卡片挂失：尾号 + 二次确认（不区分临时/正式） ------------------------------
 var GUIDE_CARD_LOST = null;
 
