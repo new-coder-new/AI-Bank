@@ -1817,34 +1817,39 @@ function agentRiskStep(payee, amount) {
 
 function agentRiskCardHtml(payee, amount, risk, tier) {
   var badge = agentRiskBadge(risk.level);
-  var tierHtml = '';
-  if (tier) {
-    var tb = agentTierBadge(tier);
-    tierHtml = '<div class="agent-tier-row">' +
-      '<span class="agent-tier-badge" style="color:' + tb.color + ';background:' + tb.bg + ';border-color:' + tb.border + ';">' + tb.text + '</span>' +
-      '<span class="agent-tier-note">' + (tier.needVerify ? '需二次验证码' : (tier.needConfirm ? '需确认后执行' : '可直接执行')) + '</span>' +
-      '</div>';
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x); };
+  var reasons = (risk.reasons || []).map(function (r) { return r.label; });
+
+  // 风险一句话：新联系人 + 首次交易合并成「首次向该联系人转账」
+  var riskText = '未命中风险规则';
+  if (reasons.length === 1 && reasons[0] === '该联系人首次交易') riskText = '首次向该联系人转账';
+  else if (!risk.known && reasons.indexOf('该联系人首次交易') !== -1) riskText = '首次向该联系人转账';
+  else if (reasons.length) riskText = reasons.join('；');
+
+  // 提示：按档位给出下一步
+  var tipText = '请确认后继续。';
+  if (tier && tier.needManual) tipText = '需提交人工复核，通过后才会执行';
+  else if ((tier && tier.needVerify) || risk.needVerify) tipText = '请输入短信验证码完成二次验证';
+
+  function line(label, value) {
+    return '<div style="font-size:13px;color:#374151;line-height:1.9;">' + label +
+      '：<b style="font-weight:600;color:#111827;">' + value + '</b></div>';
   }
+
   return '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手</div>' +
     '<div class="msg-bubble agent-bubble">' +
-    '<div class="agent-risk-head">主动风险干预</div>' +
-    '<div class="agent-risk-badge" style="color:' + badge.color + ';background:' + badge.bg + ';border-color:' + badge.border + ';">' +
-    badge.text + ' · 风险分 ' + risk.score + '/100</div>' +
-    tierHtml +
-    '<div class="agent-risk-rows">' +
-    '<div class="agent-risk-row"><span>收款人</span><span>' + ((typeof escapeHtml === 'function') ? escapeHtml(payee) : payee) + (risk.known ? '' : '（新联系人）') + '</span></div>' +
-    '<div class="agent-risk-row"><span>转账金额</span><span>¥' + agentFmt(amount) + '</span></div>' +
-    risk.reasons.map(function (r) {
-      return '<div class="agent-risk-reason"><span class="agent-risk-reason-name">' + r.label + '</span><span class="agent-risk-reason-desc">' + r.detail + '</span></div>';
-    }).join('') +
+    '<div style="border:1px solid #f1d9d9;background:#fff;border-radius:12px;padding:14px 16px;">' +
+    '<div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:6px;">主动风险干预' +
+    '<span style="color:#d1d5db;font-weight:400;">｜</span>' +
+    '<span style="color:' + badge.color + ';">' + badge.text + ' ' + risk.score + '/100</span></div>' +
+    line('收款人', esc(payee) + (risk.known ? '' : '（新联系人）')) +
+    line('金额', '¥' + agentFmt(amount)) +
+    line('风险', esc(riskText)) +
+    line('提示', esc(tipText)) +
     '</div>' +
-    '<div class="agent-risk-foot">' + (risk.needVerify
-      ? '为保障账户安全，本次交易需要二次验证，请输入短信验证码后执行。'
-      : '金额高于你的日常交易习惯，请确认后再继续。') + '</div>' +
     '</div></div></div>';
 }
-
 // ---- 超支方案卡：余额不足时给出可执行的选择，而不是只报错 ----
 // 排序原则：优先「不借钱」方案（改金额 / 分批），贷款类放在后面，除非用户主动要。
 function agentShortageCardHtml(check, payee) {
