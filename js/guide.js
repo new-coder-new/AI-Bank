@@ -2322,14 +2322,29 @@ async function guideTxnLimitStep(text) {
     return v;
   }
 
-  if (mSingle) s.single = guideTxnLimitToVal(mSingle);
-  if (mDaily) s.daily = guideTxnLimitToVal(mDaily);
+  var rest = t;
+  if (mSingle) { s.single = guideTxnLimitToVal(mSingle); rest = rest.replace(mSingle[0], ' '); }
+  if (mDaily) { s.daily = guideTxnLimitToVal(mDaily); rest = rest.replace(mDaily[0], ' '); }
 
-  if (!mSingle && !mDaily && bare != null) {
-    if (s.single != null && s.daily == null) s.daily = bare;
-    else if (s.daily == null) s.daily = bare;
-    else if (s.single == null) s.single = bare;
-    else s.daily = bare;
+  // 剩下的裸数字按出现顺序处理：1 个 → 默认日累计；2 个 → 先单笔、后日累计
+  var restNums = [];
+  var reNum = /(\d+(?:\.\d+)?)\s*(万|w|W)?/g;
+  var mm;
+  while ((mm = reNum.exec(rest))) {
+    var vNum = parseFloat(mm[1]);
+    if (mm[2]) vNum *= 10000;
+    restNums.push(vNum);
+  }
+
+  if (restNums.length >= 2) {
+    if (s.single == null) s.single = restNums[0];
+    if (s.daily == null) s.daily = restNums[1];
+  } else if (restNums.length === 1) {
+    var only = restNums[0];
+    if (s.single != null && s.daily == null) s.daily = only;
+    else if (s.daily == null) s.daily = only;
+    else if (s.single == null) s.single = only;
+    else s.daily = only;
   }
 
   // 本地没解析到数字，或句子里是中文数字（五千 / 一万 / 五百）→ 让 AI 抽取
