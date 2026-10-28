@@ -460,13 +460,6 @@ function showAbnormalAlert() {
       <div class="msg-content">
         <div class="msg-name">智能金融助手</div>
         <div class="msg-bubble">
-          <div class="alert-banner">
-            <div class="alert-banner-icon">!</div>
-            <div class="alert-banner-content">
-              <div class="alert-banner-title">检测到 ${abnormal.length} 笔异常交易</div>
-              <div class="alert-banner-desc">系统已自动识别大额消费、凌晨交易等风险行为</div>
-            </div>
-          </div>
           <div class="data-card">
             <div class="data-card-title">异常交易明细</div>
             ${abnormal.map(t => `
