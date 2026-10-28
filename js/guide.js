@@ -822,17 +822,47 @@ function guideTransferParse(text, kind) {
   }
 
   var amount = null;
+  var phoneLike = '';
   // 负号开头的数字不当作金额（避免「转-100」变成 +100）
   var negativeAmount = /[-负]\s*\d/.test(t);
-  var m = t.match(/(\d[\d,]*(?:\.\d+)?)\s*(亿|万|w|W|千|k|K)?/);
-  if (m) {
-    amount = parseFloat(m[1].replace(/,/g, ''));
-    var unit = m[2];
-    if (unit === '亿') amount *= 100000000;
-    else if (unit === '万' || unit === 'w' || unit === 'W') amount *= 10000;
-    else if (unit === '千' || unit === 'k' || unit === 'K') amount *= 1000;
+  // 一句话里有多个数字时取「最后一个」当金额：手机号在前、金额在后（如「1300 200」→ 200）
+  var nums = [];
+  var numRe = /(\d[\d,]*(?:\.\d+)?)\s*(亿|万|w|W|千|k|K)?/g;
+  var nm;
+  while ((nm = numRe.exec(t)) !== null) {
+    nums.push({ text: nm[0], value: nm[1], unit: nm[2], prefix: t.slice(0, nm.index) });
+    if (nm[0].length === 0) numRe.lastIndex += 1;
+  }
+  if (nums.length) {
+    var looksPhone = function (v) { return /^1\d{3,10}$/.test(String(v).replace(/,/g, '')); };
+    // 谁是手机号碎片：紧跟在「到 / 给 / 向 / 手机号 / 号码」后面的数字
+    var fragIdx = -1;
+    for (var fi = nums.length - 1; fi >= 0; fi--) {
+      if (looksPhone(nums[fi].value) && /(到|给|向|手机号?|号码|电话)\s*$/.test(nums[fi].prefix || '')) { fragIdx = fi; break; }
+    }
+    // 没有明确前缀时：最后一个像手机号、倒数第二个不像 → 最后一个是碎片
+    if (fragIdx === -1 && nums.length >= 2 &&
+      looksPhone(nums[nums.length - 1].value) && !looksPhone(nums[nums.length - 2].value)) {
+      fragIdx = nums.length - 1;
+    }
+    // 金额 = 除去碎片后的最后一个数字（「1300 200」→ 200；「转1000到1234」→ 1000）
+    var amtIdx = -1;
+    for (var ai = nums.length - 1; ai >= 0; ai--) {
+      if (ai !== fragIdx) { amtIdx = ai; break; }
+    }
+    if (amtIdx === -1) amtIdx = nums.length - 1;
+    var last = nums[amtIdx];
+    amount = parseFloat(last.value.replace(/,/g, ''));
+    if (last.unit === '亿') amount *= 100000000;
+    else if (last.unit === '万' || last.unit === 'w' || last.unit === 'W') amount *= 10000;
+    else if (last.unit === '千' || last.unit === 'k' || last.unit === 'K') amount *= 1000;
     if (!(amount > 0) || negativeAmount) amount = null;
-    t = t.replace(m[0], ' ');
+    t = t.replace(last.text, ' ');
+    // 剩下的数字如果像「位数不足的手机号」，记下来提示用户
+    var leftovers = nums.filter(function (x, i) { return i !== amtIdx; })
+      .map(function (x) { return x.value.replace(/,/g, ''); });
+    var maybePhone = leftovers.filter(function (x) { return /^1\d{3,9}$/.test(x); })[0];
+    if (!phone && maybePhone) phoneLike = maybePhone;
   }
   var rest = t
     .replace(/转账|转帐|转|给|向|帮|请|我|你|人民币|元|块|钱|是|吧|呢|，|,|。|、/g, '')
@@ -852,6 +882,7 @@ function guideTransferParse(text, kind) {
     payee: payee,
     unknownName: unknownName,
     phone: phone,
+    phoneLike: phoneLike,
     amount: amount,
     date: timedInfo ? timedInfo.date : null,
     time: timedInfo ? timedInfo.time : null,
@@ -1008,7 +1039,20 @@ function guideTransferStep(text) {
   // 缺什么问什么（姓名 / 手机号）
   if (s.kind === 'phone') {
     if (s.phone) { appendMessage(guideMessage('<p>麻烦告诉我转账金额</p>')); scrollToBottom(); return true; }
-    if (s.amount > 0) { appendMessage(guideMessage('<p>请问收款手机号是多少？</p>')); scrollToBottom(); return true; }
+    if (s.amount > 0) {
+      var phoneTip = parsed.phoneLike
+        ? '<p class="guide-tip">「' + parsed.phoneLike + '」位数不足 11 位，没有当作手机号；金额已按 ' + s.amount + ' 元记录。</p>'
+        : '';
+      appendMessage(guideMessage('<p>请问收款手机号是多少？</p>' + phoneTip));
+      scrollToBottom();
+      return true;
+    }
+    if (parsed.phoneLike) {
+      appendMessage(guideMessage('<p>请提供 11 位收款手机号和转账金额。</p>' +
+        '<p class="guide-tip">「' + parsed.phoneLike + '」位数不足 11 位，没有当作手机号。</p>'));
+      scrollToBottom();
+      return true;
+    }
     appendMessage(guideMessage('<p>请问收款手机号和转账金额是多少？</p>'));
     scrollToBottom();
     return true;
