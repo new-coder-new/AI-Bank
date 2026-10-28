@@ -1110,25 +1110,12 @@ function guidePeriodQuestion(period, date) {
 }
 
 // 槽位齐了：先确认一次信息，再问是否需要备注
+// 对话里不再单独问备注：收款人 + 金额齐了直接出确认卡（备注可在确认卡里留空）
 function guideTransferAskRemark() {
   var s = GUIDE_TRANSFER;
   if (!s) return;
-  s.stage = 'askRemark';
-  var target = guideTransferTargetLabel();
-  var name = (typeof escapeHtml === 'function') ? escapeHtml(target) : target;
-  var when = (s.kind === 'timed')
-    ? ('于 <b>' + s.date + ' ' + (s.time || '09:00') + '</b> ')
-    : '';
-  var repeatText = (s.kind === 'timed' && s.repeat && s.repeat !== '不重复') ? '（' + s.repeat + '）' : '';
-  appendMessage(guideMessage(
-    '<p>已记录：' + when + '向 <b>' + name + '</b> 转账 <b>' + guidePlainMoney(s.amount) + ' 元</b>' + repeatText + '。</p>' +
-    '<p>是否需要添加备注？</p>' +
-    '<div class="guide-chips">' +
-    '<button class="guide-chip" onclick="guideTransferRemarkChoice(true)">是</button>' +
-    '<button class="guide-chip" onclick="guideTransferRemarkChoice(false)">否</button>' +
-    '</div>'
-  ));
-  scrollToBottom();
+  s.remark = '';
+  guideCommitTransfer();
 }
 
 function guideTransferRemarkChoice(need) {
