@@ -110,7 +110,7 @@ function executeLLMIntentRoute(result, originalText) {
       <p style="margin-bottom:10px;font-weight:600;"> 我是您的智能金融助手，支持以下功能：</p>
       <div class="data-card">
         <div class="data-row"><span class="data-label"> 智能转账</span><span class="data-value">姓名/手机号/银行卡/AA；定时转账需验证码后创建</span></div>
-        <div class="data-row"><span class="data-label"> 理财操作</span><span class="data-value">风险测评、智能推荐、申购赎回、我的持仓</span></div>
+        <div class="data-row"><span class="data-label"> 理财操作</span><span class="data-value">风险测评、智能推荐、申购赎回、持仓管理</span></div>
         <div class="data-row"><span class="data-label"> 卡片管理</span><span class="data-value">额度查询、智能调额、挂失解挂</span></div>
         <div class="data-row"><span class="data-label"> 订阅管理</span><span class="data-value">订阅列表、添加订阅、一键取消、自动续费</span></div>
         <div class="data-row"><span class="data-label"> 预算管理</span><span class="data-value">多周期预算（日/周/月/年）、总预算、超支预警</span></div>
@@ -279,7 +279,7 @@ async function sendMessage() {
 
 支持的功能列表：
 -  智能转账：按姓名/手机号/银行卡号/AA收款；定时转账创建时需短信验证码，到期自动执行，执行前可取消
--  理财操作：风险测评、智能推荐、申购赎回、我的持仓、基金定投
+-  理财操作：风险测评、智能推荐、申购赎回、持仓管理、基金定投
 -  卡片管理：额度查询、智能调额、挂失解挂、账单分期
 -  订阅管理：订阅列表、添加订阅、一键取消、自动续费
 -  预算管理：多周期预算设置（日/周/月/年）、总预算、超支预警

@@ -178,7 +178,7 @@ async function executeBuyProduct(name, amount) {
       <div class="data-row"><span class="data-label">当前可用余额</span><span class="data-value">¥ ${Number(u.debitCard.available).toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
       <div class="data-row"><span class="data-label">确认状态</span><span class="data-value" style="color:#f59e0b;">待确认（T+1工作日）</span></div>
     </div>
-    <p style="margin-top:8px;font-size:12px;color:#999;">已自动加入我的持仓，可在「我的持仓」中查看收益。</p>
+    <p style="margin-top:8px;font-size:12px;color:#999;">已自动加入持仓，可在「持仓管理」中查看收益。</p>
   </div></div></div>`);
   scrollToBottom();
 }
@@ -446,7 +446,7 @@ function showRiskResult() {
 }
 
 
-// ========== 高阶版：我的持仓与收益分析 ==========
+// ========== 高阶版：持仓管理与收益分析 ==========
 function showHoldings() {
   const holdings = mockData.userProfile.holdings || [];
   const totalAmount = holdings.reduce((s, h) => s + h.amount, 0);
@@ -459,7 +459,7 @@ function showHoldings() {
       <div class="msg-content">
         <div class="msg-name">智能金融助手</div>
         <div class="msg-bubble">
-          <p><strong>我的持仓</strong><span style="font-size:12px;color:#8A97A8;margin-left:6px;">共 ${holdings.length} 只</span></p>
+          <p><strong>持仓管理</strong><span style="font-size:12px;color:#8A97A8;margin-left:6px;">共 ${holdings.length} 只</span></p>
           <div class="data-card">
             <div class="data-row"><span class="data-label">持仓总金额</span><span class="data-value" style="font-weight:700;">¥${totalAmount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
             <div class="data-row"><span class="data-label">累计收益</span><span class="data-value ${totalProfit >= 0 ? 'income' : 'expense'}" style="font-weight:700;">${totalProfit >= 0 ? '+' : ''}¥${totalProfit.toLocaleString('zh-CN', {minimumFractionDigits: 2})}（${totalProfit >= 0 ? '+' : ''}${totalProfitRate}%）</span></div>

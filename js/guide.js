@@ -58,7 +58,7 @@ var GUIDE_SERVICES = [
     subs: [
       { key: 'products', label: '产品申购', aliases: ['产品', '申购'], run: function () { guideStartWealthPurchase(); } },
       { key: 'risk', label: '风险评估', run: function () { startRiskAssessment(); } },
-      { key: 'holdings', label: '我的持仓', aliases: ['持仓'], run: function () { guideStartHoldings(); } }
+      { key: 'holdings', label: '持仓管理', aliases: ['持仓', '我的持仓'], run: function () { guideStartHoldings(); } }
     ]
   },
   {
@@ -262,7 +262,7 @@ function guideHandleText(text) {
     return guideCardLimitStep(t);
   }
 
-  // 我的持仓：追加申购 / 赎回进行中
+  // 持仓管理：追加申购 / 赎回进行中
   if (GUIDE_HOLDING) {
     if (/^(取消|不操作了|算了|退出|返回|菜单)$/.test(t)) {
       GUIDE_HOLDING = null;
@@ -312,7 +312,7 @@ function guideHandleText(text) {
   // 去掉口语前缀，便于识别「我要转账」「帮我转账」
   var bare = t.replace(/^(我要|我想|我想用|帮我|我要用|使用)/, '');
 
-  // ① 精确匹配：当前模块的子功能（模块内上下文，支持别名：产品 ↔ 产品申购、持仓 ↔ 我的持仓）
+  // ① 精确匹配：当前模块的子功能（模块内上下文，支持别名：产品 ↔ 产品申购、持仓 ↔ 持仓管理）
   var cur = guideServiceByKey(currentModule);
   if (cur) {
     var hitSub = cur.subs.filter(function (x) {
@@ -398,7 +398,7 @@ var GUIDE_SUB_KEYWORDS = {
   wealth: {
     products: ['产品申购', '申购', '理财产品', '产品'],
     risk: ['风险评估', '风险测评', '测评'],
-    holdings: ['我的持仓', '持仓', '持有']
+    holdings: ['持仓管理', '我的持仓', '持仓', '持有']
   },
   life: {
     subscribe: ['订阅管理', '订阅', '会员'],
@@ -2578,7 +2578,7 @@ function guideCardLostCancel() {
   scrollToBottom();
 }
 
-// ------------------------------ 我的持仓：追加申购 / 赎回（对话式） ------------------------------
+// ------------------------------ 持仓管理：追加申购 / 赎回（对话式） ------------------------------
 // 入口：先展示持仓卡片概览，再问「需要赎回还是追加申购呢？」
 var GUIDE_HOLDING = null;
 
