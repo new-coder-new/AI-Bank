@@ -983,15 +983,15 @@ function guideTransferStep(text) {
     return true;
   }
 
-  // ③ 问备注阶段：识别「要 / 不要」，其它输入直接当备注内容
+  // ③ 问备注阶段：识别「是 / 否」，其它输入直接当备注内容
   if (s.stage === 'askRemark') {
-    if (/^(需要|要|好的|好|是|加|添加|备注|加个备注|写备注|要备注)$/.test(bare)) {
+    if (/^(需要|要|好的|好|是|对|是的|加|添加|备注|加个备注|写备注|要备注)$/.test(bare)) {
       s.stage = 'remark';
-      appendMessage(guideMessage('<p>请输入备注内容</p><p class="guide-tip">例如：房租 / 还款 / AA</p>'));
+      appendMessage(guideMessage('<p>请输入备注内容</p><p class="guide-tip">例如：房租 / 还款 / AA（最多 20 字）</p>'));
       scrollToBottom();
       return true;
     }
-    if (/^(不用|不需要|不要|否|跳过|没有|不用了|不写|不加)$/.test(bare)) {
+    if (/^(不用|不需要|不要|否|不是|跳过|没有|不用了|不写|不加)$/.test(bare)) {
       s.remark = '';
       guideCommitTransfer();
       return true;
@@ -1122,10 +1122,10 @@ function guideTransferAskRemark() {
   var repeatText = (s.kind === 'timed' && s.repeat && s.repeat !== '不重复') ? '（' + s.repeat + '）' : '';
   appendMessage(guideMessage(
     '<p>已记录：' + when + '向 <b>' + name + '</b> 转账 <b>' + guidePlainMoney(s.amount) + ' 元</b>' + repeatText + '。</p>' +
-    '<p>需要添加备注吗？</p>' +
+    '<p>是否需要添加备注？</p>' +
     '<div class="guide-chips">' +
-    '<button class="guide-chip" onclick="guideTransferRemarkChoice(true)">添加备注</button>' +
-    '<button class="guide-chip" onclick="guideTransferRemarkChoice(false)">不用了</button>' +
+    '<button class="guide-chip" onclick="guideTransferRemarkChoice(true)">是</button>' +
+    '<button class="guide-chip" onclick="guideTransferRemarkChoice(false)">否</button>' +
     '</div>'
   ));
   scrollToBottom();
@@ -1136,7 +1136,7 @@ function guideTransferRemarkChoice(need) {
   if (!s) return;
   if (need) {
     s.stage = 'remark';
-    appendMessage(guideMessage('<p>请输入备注内容</p><p class="guide-tip">例如：房租 / 还款 / AA</p>'));
+    appendMessage(guideMessage('<p>请输入备注内容</p><p class="guide-tip">例如：房租 / 还款 / AA（最多 20 字）</p>'));
     scrollToBottom();
   } else {
     s.remark = '';
