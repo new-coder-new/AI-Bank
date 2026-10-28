@@ -305,6 +305,18 @@ function guideLockedRun(fn) {
   return true;
 }
 
+// 一句话里既有转账动作又有时间说法（「明天下午5点，给张三转1000元」）→ 定时转账
+function guideTimedPhraseIntent(t) {
+  var s = String(t || '');
+  if (!/(转给|转账|转帐|打钱|汇款|付款|转\s*\d|给.{1,6}转)/.test(s)) return false;
+  return /(今天|明天|后天|大后天|下周|下个月|本周|上周|周[一二三四五六日天]|星期[一二三四五六日天]|\d{1,2}\s*月\s*\d{1,2}\s*[日号]|\d{1,2}\s*[点时]|\d{1,2}:\d{2}|上午|下午|晚上|中午|早上|凌晨|每月|每周|每天|每年)/.test(s);
+}
+
+// 一句话里出现 AA / 分摊 / 垫付 → AA 收款
+function guideAAPhraseIntent(t) {
+  var s = String(t || '');
+  return /(aa|AA|Aa|分摊|平摊|垫付)/.test(s);
+}
 // 文本解析：服务名 / 子功能名 / 返回菜单，命中则接管，返回 true
 function guideHandleText(text) {
   var t = String(text || '').trim().replace(/[。.!！?？,，\s]+$/g, '');
@@ -436,6 +448,18 @@ function guideHandleText(text) {
   if (typeof guideIsAllProductsIntent === 'function' && guideIsAllProductsIntent(t)) {
     guideWealthShowAllProducts();
     return true;
+  }
+
+  // 定时转账意图：一句话里带时间 + 转账动作，直接进定时转账多轮流程
+  if (guideTimedPhraseIntent(t)) {
+    GUIDE_TRANSFER = { kind: 'timed', payee: null, phone: null, amount: null, date: null, time: null, repeat: '不重复', period: null, remark: '', stage: 'slots' };
+    return guideLockedRun(function () { return guideTimedStep(t); });
+  }
+
+  // AA 收款意图：一句话里带 AA / 分摊 / 垫付
+  if (guideAAPhraseIntent(t)) {
+    GUIDE_AA = { total: 0, participants: [], stage: 'slots', pendingNames: [], pickOptions: [] };
+    return guideLockedRun(function () { return guideAAStep(t); });
   }
 
   // 去掉口语前缀，便于识别「我要转账」「帮我转账」
@@ -1509,9 +1533,12 @@ function guideAAParse(text) {
     if (!(total > 0)) total = 0;
     t = t.replace(m[0], ' ');
   }
-  t = t.replace(/垫付|总额|总金额|总|收款|收|元|块|钱|包括|包含|和|还有|参与人|名单|aa/gi, ' ');
+  t = t.replace(/垫付|总额|总金额|总|收款|收|元|块|钱|包括|包含|还有|参与人|名单|aa/gi, ' ');
+  // 「张三和李四」这种并列先转成分隔符，再清掉「向 / 给 / 帮」这类引导词
+  t = t.replace(/[和与跟及]/g, '、');
+  t = t.replace(/^[\s、,，;；]*(向|给|帮|让|请|找)/, '');
   var names = t.split(/[、,，;；\s]+/)
-    .map(function (x) { return x.trim().replace(/[。.！!]$/, ''); })
+    .map(function (x) { return x.trim().replace(/^(向|给|帮|让|请|找)/, '').replace(/[。.！!]$/, ''); })
     .filter(Boolean);
   return { total: total, names: names };
 }
