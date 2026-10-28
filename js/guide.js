@@ -941,6 +941,53 @@ function guideLooksLikeNewTransfer(text) {
   var hasTransferWord = /(转给|转账|汇款|打钱|转\s*\d|再转|付给|给.+转)/.test(t);
   return hasAmount && hasTransferWord;
 }
+// 备注阶段统一处理（即时转账 / 定时转账共用）：
+// 问「是否需要添加备注？」时认「是 / 否」，其它文字直接当备注内容；等备注内容时这一句就是备注
+function guideTransferHandleRemarkStage(text) {
+  var s = GUIDE_TRANSFER;
+  if (!s) return false;
+  if (s.stage !== 'askRemark' && s.stage !== 'remark') return false;
+  var raw = String(text || '').trim();
+  var plain = raw.replace(/[吧呢啊呀。.!！?？,，\s]/g, '');
+
+  // 已经在等备注内容
+  if (s.stage === 'remark') {
+    if (/^(不用了|不加了|不要了|取消备注|跳过)$/.test(plain)) {
+      s.remark = '';
+      guideCommitTransfer();
+      return true;
+    }
+    if (guideLooksLikeNewTransfer(raw)) {
+      guideFlowLockedNotice('正在等你的备注内容：请直接写备注，或回复「不用了」跳过。');
+      return true;
+    }
+    s.remark = raw;
+    guideCommitTransfer();
+    return true;
+  }
+
+  // 问「是否需要添加备注？」
+  if (/^(需要|要|用|是|对|是的|好|好的|行|可以|加|添加|备注|加个备注|写备注|要备注|加上)$/.test(plain)) {
+    s.stage = 'remark';
+    appendMessage(guideMessage('<p>请输入备注内容</p><p class="guide-tip">例如：房租 / 还款 / AA（最多 20 字）</p>'));
+    scrollToBottom();
+    return true;
+  }
+  if (/^(不用|不需要|不要|不|否|不是|不用了|不写|不加|跳过|没有|算了)$/.test(plain)) {
+    s.remark = '';
+    guideCommitTransfer();
+    return true;
+  }
+  if (guideLooksLikeNewTransfer(raw)) {
+    guideFlowLockedNotice('当前这笔转账还没走完：请回复「是」或「否」继续。');
+    return true;
+  }
+  // 直接打字写备注也算（如「房租」）
+  s.remark = raw;
+  guideCommitTransfer();
+  return true;
+}
+
 function guideTransferStep(text) {
   var t = String(text || '').trim();
   if (/^(取消|不转了|算了|退出|返回|菜单)$/.test(t)) {
@@ -948,6 +995,9 @@ function guideTransferStep(text) {
     guideBackToMenu();
     return true;
   }
+
+  // 备注阶段（两种转账共用）：优先按备注处理，避免「还信用卡」这类被闲聊锁拦下
+  if (guideTransferHandleRemarkStage(text)) return true;
 
   var bare = t.replace(/^(我要|我想|我想用|帮我|我要用|使用)/, '');
 
@@ -1240,6 +1290,9 @@ function guideTimedWhenText(date, time) {
 async function guideTimedStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_TRANSFER;
+  if (!s) return true;
+  // 备注阶段交给统一处理（是 / 否 / 直接写备注）
+  if (guideTransferHandleRemarkStage(t)) return true;
 
   // 重复方式阶段：本地先认，认不出交给模型理解（「一直」「按月来」等）
   if (s.stage === 'repeat') {
