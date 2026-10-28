@@ -452,18 +452,17 @@ function showHoldings() {
   const totalAmount = holdings.reduce((s, h) => s + h.amount, 0);
   const totalProfit = holdings.reduce((s, h) => s + h.profit, 0);
   const totalProfitRate = totalAmount > 0 ? (totalProfit / totalAmount * 100).toFixed(2) : '0.00';
+  // 对话里只做「看」：概览压缩成三行，明细不带赎回/追加申购按钮
   const html = `
     <div class="message">
       <div class="msg-avatar ai">🤖</div>
       <div class="msg-content">
         <div class="msg-name">智能金融助手</div>
         <div class="msg-bubble">
-          <p><strong>我的持仓概览</strong></p>
+          <p><strong>我的持仓</strong><span style="font-size:12px;color:#8A97A8;margin-left:6px;">共 ${holdings.length} 只</span></p>
           <div class="data-card">
             <div class="data-row"><span class="data-label">持仓总金额</span><span class="data-value" style="font-weight:700;">¥${totalAmount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
-            <div class="data-row"><span class="data-label">累计收益</span><span class="data-value ${totalProfit >= 0 ? 'income' : 'expense'}" style="font-weight:700;">${totalProfit >= 0 ? '+' : ''}¥${totalProfit.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
-            <div class="data-row"><span class="data-label">总收益率</span><span class="data-value ${totalProfit >= 0 ? 'income' : 'expense'}" style="font-weight:700;">${totalProfit >= 0 ? '+' : ''}${totalProfitRate}%</span></div>
-            <div class="data-row"><span class="data-label">持仓产品数</span><span class="data-value">${holdings.length} 只</span></div>
+            <div class="data-row"><span class="data-label">累计收益</span><span class="data-value ${totalProfit >= 0 ? 'income' : 'expense'}" style="font-weight:700;">${totalProfit >= 0 ? '+' : ''}¥${totalProfit.toLocaleString('zh-CN', {minimumFractionDigits: 2})}（${totalProfit >= 0 ? '+' : ''}${totalProfitRate}%）</span></div>
           </div>
           <p style="margin-top:12px;font-size:13px;font-weight:600;color:#333;">持仓明细</p>
           ${holdings.map(h => `
@@ -487,10 +486,6 @@ function showHoldings() {
                 </div>
               </div>
               <div style="margin-top:8px;font-size:11px;color:#999;">买入日期：${h.buyDate}</div>
-              <div style="margin-top:8px;display:flex;gap:8px;">
-                <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="redeemProduct('${h.name}')">赎回</button>
-                <button class="btn btn-primary btn-sm" style="flex:1;" onclick="buyProduct('${h.name}', ${mockData.products.find(p=>p.name===h.name)?.minAmount || 100})">追加申购</button>
-              </div>
             </div>
           `).join('')}
         </div>
