@@ -218,7 +218,7 @@ function guideOpenOverview() {
 // 二级菜单：某一类服务的子功能
 function guideOpenService(key) {
   if (typeof guideActiveFlowLabel === 'function' && guideActiveFlowLabel()) {
-    guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。');
+    guideFlowLockedNotice();
     return;
   }
   var s = guideServiceByKey(key);
@@ -240,7 +240,7 @@ function guideOpenService(key) {
 // 进入某个子功能：执行对应流程，并保持模块上下文
 function guidePickSub(serviceKey, subKey) {
   if (typeof guideActiveFlowLabel === 'function' && guideActiveFlowLabel()) {
-    guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。');
+    guideFlowLockedNotice();
     return;
   }
   var s = guideServiceByKey(serviceKey);
@@ -284,11 +284,11 @@ function guideActiveFlowLabel() {
 
 // 流程锁提示：当前流程没走完，不允许跳去别的功能 / 重新开一单
 function guideFlowLockedNotice(extra) {
-  var label = guideActiveFlowLabel();
+  var label = guideActiveFlowLabel() || '业务';
   appendMessage(guideMessage(
-    '<p>当前正在「<b>' + (label || '业务') + '</b>」流程中，请先完成这次操作。</p>' +
+    '<p>正在' + label + '流程，请先完成本轮操作。</p>' +
     (extra ? '<p class="guide-tip">' + extra + '</p>' : '') +
-    '<p class="guide-tip">如需放弃并重新开始，请回复「取消」。</p>'
+    '<p class="guide-tip">如需退出，请回复「取消」。</p>'
   ));
   scrollToBottom();
 }
@@ -315,7 +315,7 @@ function guideHandleText(text) {
   if (guideActiveFlowLabel()) {
     var otherSvc = guideResolveService(t);
     if (otherSvc) {
-      guideFlowLockedNotice('当前正在「' + guideActiveFlowLabel() + '」流程中，不能切换到「' + otherSvc.label + '」。');
+      guideFlowLockedNotice();
       return true;
     }
   }
@@ -330,8 +330,8 @@ function guideHandleText(text) {
       guideBackToMenu();
       return true;
     }
-    if (guideResolveService(t)) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
-    if (guideServiceByKey('transfer') && guideServiceByKey('transfer').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
+    if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
+    if (guideServiceByKey('transfer') && guideServiceByKey('transfer').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
     return guideLockedRun(function () { return guideAAStep(t); });
   }
 
@@ -342,8 +342,8 @@ function guideHandleText(text) {
       guideBackToMenu();
       return true;
     }
-    if (guideResolveService(t)) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
-    if (guideServiceByKey('wealth') && guideServiceByKey('wealth').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
+    if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
+    if (guideServiceByKey('wealth') && guideServiceByKey('wealth').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
     return guideLockedRun(function () { return guideWealthStep(t); });
   }
 
@@ -354,8 +354,8 @@ function guideHandleText(text) {
       guideBackToMenu();
       return true;
     }
-    if (guideResolveService(t)) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
-    if (guideServiceByKey('card') && guideServiceByKey('card').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
+    if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
+    if (guideServiceByKey('card') && guideServiceByKey('card').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
     return guideLockedRun(function () { return guideCardApplyStep(t); });
   }
 
@@ -366,8 +366,8 @@ function guideHandleText(text) {
       guideBackToMenu();
       return true;
     }
-    if (guideResolveService(t)) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
-    if (guideServiceByKey('card') && guideServiceByKey('card').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
+    if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
+    if (guideServiceByKey('card') && guideServiceByKey('card').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
     return guideLockedRun(function () { return guideCardLimitStep(t); });
   }
 
@@ -931,7 +931,7 @@ function guideTransferStep(text) {
 
   // 流程锁：转账没走完之前，说别的服务 / 子功能都要先完成这次转账
   if (guideResolveService(bare)) {
-    guideFlowLockedNotice('转账还没完成，不能切换到别的功能。');
+    guideFlowLockedNotice();
     return true;
   }
   var transferSvc = guideServiceByKey('transfer');
@@ -939,13 +939,13 @@ function guideTransferStep(text) {
     return x.label === bare || (x.aliases || []).indexOf(bare) !== -1;
   });
   if (subHit) {
-    guideFlowLockedNotice('转账还没完成，不能切换到别的转账方式。');
+    guideFlowLockedNotice();
     return true;
   }
 
   // 流程锁：别的业务 / 闲聊也不放行，避免一次转账没完成就跳走
   if (/(余额|账单|理财|基金|持仓|订阅|信用卡|额度|挂失|预算|鲜花|生日|安全|你好|您好|谢谢|再见|能做什么|怎么用|什么意思|为什么)/.test(t)) {
-    guideFlowLockedNotice('转账还没完成，先别切换到其他问题。');
+    guideFlowLockedNotice();
     return true;
   }
 

@@ -796,7 +796,7 @@ function addTransaction(type, amount, desc, channel, deductBalance) {
 function quickAction(type) {
   // 流程锁：还有没走完的对话流程时，不允许从按钮跳到别的功能
   if (typeof guideActiveFlowLabel === 'function' && guideActiveFlowLabel()) {
-    if (typeof guideFlowLockedNotice === 'function') guideFlowLockedNotice('功能按钮已暂时锁定，请先完成当前流程，或回复「取消」。');
+    if (typeof guideFlowLockedNotice === 'function') guideFlowLockedNotice();
     return;
   }
   const welcome = document.getElementById('welcome');
