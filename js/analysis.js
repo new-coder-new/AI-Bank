@@ -441,9 +441,8 @@ function showAbnormalSummary() {
     '<div class="alert-banner-content">' +
     '<div class="alert-banner-title">检测到 ' + abnormal.length + ' 笔异常交易</div>' +
     '<div class="alert-banner-desc">系统已自动识别大额消费、凌晨交易等风险行为</div>' +
-    '</div></div>' +
-    '<div class="guide-chips" style="margin-top:10px;">' +
-    '<button class="guide-chip" onclick="showAbnormalAlert()">查看异常交易</button>' +
+    '</div>' +
+    '<button class="alert-banner-btn" onclick="showAbnormalAlert()">查看</button>' +
     '</div>';
   if (typeof guideMessage === 'function') {
     appendMessage(guideMessage(msg));
