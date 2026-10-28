@@ -2777,6 +2777,20 @@ async function guideCardLimitStep(text) {
 
   var parsed = guideCardLimitParse(t);
 
+  // 明确说要调到 0 / 低于已用额度：直接提示，不再反复问目标额度
+  var stNow = guideCardLimitState();
+  var explicitZero = Number(parsed.limit) === 0 && /(^|[^\d])0\s*(元|块)?/.test(t) && /(调整|调|改|降|设|改成|改为)/.test(t);
+  if (explicitZero && stNow.min > 0) {
+    appendMessage(guideMessage(
+      '<p>目标额度不能低于已用额度 ¥' + stNow.min.toLocaleString('zh-CN') + '，请重新告诉我目标额度。</p>' +
+      '<p class="guide-tip">当前额度 ¥' + stNow.current.toLocaleString('zh-CN') + '，最低可调至 ¥' + stNow.min.toLocaleString('zh-CN') + '（已用额度）。</p>'
+    ));
+    scrollToBottom();
+    s.limit = 0;
+    s.stage = 'slots';
+    return true;
+  }
+
   // 本地没认出原因/额度（如「最近开销大」「想提到八万」）→ 交给模型映射
   if (!parsed.reason || !(Number(parsed.limit) > 0)) {
     var aiLimit = await guideCardLimitAIReason(t);
