@@ -1384,13 +1384,23 @@ body {
 }
 .input-textarea { font-size: 14px; color: var(--bank-text); }
 .input-textarea::placeholder { color: #A3AFBE; }
-.func-btn, .voice-btn {
+.func-btn, .voice-btn, .clear-chat-btn {
   width: 36px;
   height: 36px;
   border-radius: 11px;
   background: transparent;
   color: #64748B;
 }
+.clear-chat-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.clear-chat-btn:hover { background: #FEE4E2; color: #B42318; }
 .func-btn:hover, .voice-btn:hover { background: var(--bank-primary-soft); color: var(--bank-primary); }
 .func-btn.active { background: var(--bank-primary); color: #fff; }
 .send-btn {
@@ -1889,8 +1899,9 @@ body {
 .dark-mode .input-textarea { color: #E6EDF7; }
 .dark-mode .input-textarea::placeholder { color: #6B7A8F; }
 .dark-mode .input-hint { color: #6B7A8F; }
-.dark-mode .func-btn, .dark-mode .voice-btn { color: #A7B4C6; }
+.dark-mode .func-btn, .dark-mode .voice-btn, .dark-mode .clear-chat-btn { color: #A7B4C6; }
 .dark-mode .func-btn:hover, .dark-mode .voice-btn:hover { background: #1B2738; color: #7FB4E3; }
+.dark-mode .clear-chat-btn:hover { background: #3A1D1D; color: #F97066; }
 .dark-mode .func-panel { background: #111A28 !important; }
 .dark-mode .func-panel-title { color: #E6EDF7; }
 .dark-mode .func-tile { background: #172335 !important; border-color: #243041 !important; }

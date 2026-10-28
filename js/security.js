@@ -1214,6 +1214,33 @@ function confirmResetChat() {
 }
 
 // 实际执行重置
+// 对话框里的「清除」：一键清空全部对话并回到主菜单（不再弹确认）
+function clearConversation() {
+  const chatInner = document.getElementById('chatInner');
+  if (chatInner) chatInner.innerHTML = '';
+  const userInfoPage = document.getElementById('userInfoPage');
+  if (userInfoPage && userInfoPage.classList.contains('show') && typeof closeUserInfoPage === 'function') closeUserInfoPage();
+  // 清空对话上下文
+  conversationContext = [];
+  currentDialogState = null;
+  if (typeof agentLLMClearHistory === 'function') agentLLMClearHistory();
+  if (typeof guideResetAllSessions === 'function') guideResetAllSessions();
+  if (typeof agentSessionReset === 'function') agentSessionReset();
+  // 关掉可能开着的浮层（确认框 / 安全验证）
+  document.querySelectorAll('[id^="security-verify-"], .bank-dialog-overlay').forEach(function (el) { el.remove(); });
+  const input = document.getElementById('userInput');
+  if (input) { input.value = ''; input.style.height = 'auto'; }
+  currentModule = 'chat';
+  document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.remove('active'); });
+  const chatNav = document.querySelector('.nav-item[onclick*="chat"]');
+  if (chatNav) chatNav.classList.add('active');
+  // 回到主菜单（服务向导）
+  showWelcomeMessage();
+  scrollToTop();
+  scrollToBottom();
+  if (typeof showToast === 'function') showToast('已清除对话，回到主菜单', 1800);
+}
+
 function performResetChat() {
   const userInfoPage = document.getElementById('userInfoPage');
   if (userInfoPage && userInfoPage.classList.contains('show')) closeUserInfoPage();
