@@ -3252,7 +3252,9 @@ function guideTxnLimitConfirm() {
   var s = GUIDE_TXN_LIMIT;
   if (!s) return;
   s.stage = 'confirm';
+  s.confirmBoxId = s.confirmBoxId || ('txn-limit-confirm-' + Date.now());
   appendMessage(guideMessage(
+    '<div id="' + s.confirmBoxId + '-wrap">' +
     '<div class="data-card">' +
     (s.card ? '<div class="data-row"><span class="data-label">信用卡</span><span class="data-value">' + guideCardLimitEsc(guideCardLabel(s.card)) + '</span></div>' : '') +
     '<div class="data-row"><span class="data-label">单笔限额</span><span class="data-value">' + (Number(s.single) || 0).toLocaleString('zh-CN') + ' 元</span></div>' +
@@ -3263,6 +3265,7 @@ function guideTxnLimitConfirm() {
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideTxnLimitSubmit()">确认设置</button>' +
     '<button class="guide-chip" onclick="guideTxnLimitCancel()">取消</button>' +
+    '</div>' +
     '</div>'
   ));
   scrollToBottom();
@@ -3297,14 +3300,35 @@ function guideTxnLimitSubmit() {
     }
   }
   saveUserData();
+  // 确认卡收起按钮，标记为已完成
+  var wrapId = s.confirmBoxId ? (s.confirmBoxId + '-wrap') : null;
+  var wrapEl = wrapId ? document.getElementById(wrapId) : null;
+  if (wrapEl) {
+    var chips = wrapEl.querySelector('.guide-chips');
+    if (chips) chips.remove();
+    var cardEl = wrapEl.querySelector('.data-card');
+    if (cardEl) {
+      var doneRow = document.createElement('div');
+      doneRow.className = 'data-row';
+      doneRow.innerHTML = '<span class="data-label">状态</span><span class="data-value" style="color:#16a34a;">已生效</span>';
+      cardEl.appendChild(doneRow);
+    }
+  }
   GUIDE_TXN_LIMIT = null;
   appendMessage(guideMessage('<p>' + (cardLabel ? guideCardLimitEsc(cardLabel) + ' ' : '') + '交易限制已更新完成。</p>'));
   scrollToBottom();
 }
 
 function guideTxnLimitCancel() {
+  var s = GUIDE_TXN_LIMIT;
+  var wrapId = s && s.confirmBoxId ? (s.confirmBoxId + '-wrap') : null;
   GUIDE_TXN_LIMIT = null;
-  appendMessage(guideMessage('<p>已取消修改，交易限制保持原配置。</p>'));
+  var wrap = wrapId ? document.getElementById(wrapId) : null;
+  if (wrap) {
+    wrap.innerHTML = '<p>已取消修改，交易限制保持原配置。</p>';
+  } else {
+    appendMessage(guideMessage('<p>已取消修改，交易限制保持原配置。</p>'));
+  }
   scrollToBottom();
 }
 // ------------------------------ 卡片挂失：尾号 + 二次确认（不区分临时/正式） ------------------------------
