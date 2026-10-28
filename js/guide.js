@@ -58,7 +58,7 @@ var GUIDE_SERVICES = [
     subs: [
       { key: 'products', label: '产品申购', aliases: ['产品', '申购'], run: function () { guideStartWealthPurchase(); } },
       { key: 'risk', label: '风险评估', run: function () { startRiskAssessment(); } },
-      { key: 'holdings', label: '我的持仓', aliases: ['持仓'], run: function () { showHoldings(); } }
+      { key: 'holdings', label: '我的持仓', aliases: ['持仓'], run: function () { guideStartHoldings(); } }
     ]
   },
   {
@@ -262,6 +262,15 @@ function guideHandleText(text) {
     return guideCardLimitStep(t);
   }
 
+  // 我的持仓：追加申购 / 赎回进行中
+  if (GUIDE_HOLDING) {
+    if (/^(取消|不操作了|算了|退出|返回|菜单)$/.test(t)) {
+      GUIDE_HOLDING = null;
+      guideBackToMenu();
+      return true;
+    }
+    return guideHoldingStep(t);
+  }
   // 交易限制设置进行中
   if (GUIDE_TXN_LIMIT) {
     if (/^(取消|不设了|算了|退出|返回|菜单)$/.test(t)) {
@@ -2566,5 +2575,380 @@ function guideCardLostApply(card) {
 function guideCardLostCancel() {
   GUIDE_CARD_LOST = null;
   appendMessage(guideMessage('<p>已取消挂失，卡片状态保持不变。</p>'));
+  scrollToBottom();
+}
+
+// ------------------------------ 我的持仓：追加申购 / 赎回（对话式） ------------------------------
+// 入口：先展示持仓卡片概览，再问「需要赎回还是追加申购呢？」
+var GUIDE_HOLDING = null;
+
+function guideHoldingEsc(v) {
+  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
+}
+
+function guideHoldingList() {
+  return (mockData.userProfile.holdings || []).filter(function (h) { return h && h.status !== '已赎回'; });
+}
+
+function guideHoldingAccountTail() {
+  var n = (mockData.userProfile && mockData.userProfile.debitCard && mockData.userProfile.debitCard.number) || '';
+  var d = String(n).replace(/\D/g, '');
+  return d ? d.slice(-4) : '****';
+}
+
+// 在产品名里做模糊匹配（先整串，再最长公共子串 ≥3）
+function guideHoldingFind(text) {
+  var t = String(text || '').replace(/\s/g, '');
+  if (!t) return null;
+  var list = guideHoldingList();
+  var best = null, bestScore = 0;
+  list.forEach(function (h) {
+    var name = String(h.name || '');
+    if (!name) return;
+    if (t.indexOf(name) !== -1) { if (name.length > bestScore) { best = h; bestScore = name.length; } return; }
+    for (var i = 0; i < name.length; i++) {
+      for (var j = i + 3; j <= name.length; j++) {
+        var sub = name.slice(i, j);
+        if (t.indexOf(sub) !== -1 && sub.length > bestScore) { best = h; bestScore = sub.length; }
+      }
+    }
+  });
+  return best;
+}
+
+function guideHoldingAmount(text) {
+  var t = String(text || '');
+  var p = guideHoldingFind(t);
+  if (p && p.name) t = t.replace(p.name, ' ');
+  t = t.replace(/\d+\s*(天|年|期|个月|月)/g, ' ');
+  var m = t.match(/(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  if (!m) return 0;
+  var v = parseFloat(m[1]);
+  if (m[2]) v *= 10000;
+  return v;
+}
+
+// 封闭期判断：产品名/描述里有天数或年期，且买入日 + 期限还没到
+function guideHoldingTermDays(h) {
+  var prod = (mockData.products || []).filter(function (p) { return p.name === h.name; })[0] || {};
+  var s = String(h.name || '') + ' ' + String(prod.desc || '');
+  var m = s.match(/(\d+)\s*天/);
+  if (m) return Number(m[1]);
+  if (/三年|3年/.test(s)) return 1095;
+  if (/(\d+)\s*年/.test(s)) return Number(RegExp.$1) * 365;
+  return 0;
+}
+
+function guideHoldingClosed(h) {
+  var days = guideHoldingTermDays(h);
+  if (!days) return false;
+  var t = Date.parse(String(h.buyDate || '').replace(/-/g, '/'));
+  if (isNaN(t)) return false;
+  return Date.now() < (t + days * 86400000);
+}
+
+function guideStartHoldings() {
+  GUIDE_HOLDING = { stage: 'choose', mode: null, product: null, amount: null, full: false, riskOverride: false };
+  currentModule = 'wealth';
+  showHoldings();
+  appendMessage(guideMessage(
+    '<p>需要赎回还是追加申购呢？</p>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideHoldingChoose(\'sub\')">追加申购</button>' +
+    '<button class="guide-chip" onclick="guideHoldingChoose(\'redeem\')">赎回</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+function guideHoldingChoose(mode) {
+  var s = GUIDE_HOLDING;
+  if (!s) return;
+  if (mode === 'sub') {
+    s.mode = 'sub';
+    s.stage = 'subSlots';
+    appendMessage(guideMessage('<p>请告诉我要追加申购的产品名称以及申购金额。</p>'));
+  } else {
+    s.mode = 'redeem';
+    s.stage = 'redeemSlots';
+    appendMessage(guideMessage('<p>您可以选择赎回全部持仓，或者指定产品并告知赎回金额（全额赎回可直接回复“全额”）。</p>'));
+  }
+  scrollToBottom();
+}
+
+function guideHoldingStep(text) {
+  var t = String(text || '').trim();
+  var plain = t.replace(/[。.!！?？,，、\s]/g, '');
+  var s = GUIDE_HOLDING;
+
+  // ① 选择动作
+  if (s.stage === 'choose') {
+    if (/追加|申购|加仓|买入/.test(t)) { guideHoldingChoose('sub'); return true; }
+    if (/赎回|卖出|取出/.test(t)) { guideHoldingChoose('redeem'); return true; }
+    appendMessage(guideMessage('<p>需要赎回还是追加申购呢？</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  // ② 追加申购收槽位
+  if (s.stage === 'subSlots') {
+    var p = guideHoldingFind(t);
+    var amt = guideHoldingAmount(t);
+    if (p) s.product = p;
+    if (amt > 0) s.amount = amt;
+    if (s.product && Number(s.amount) > 0) { guideHoldingSubConfirm(); return true; }
+    if (s.product) { appendMessage(guideMessage('<p>麻烦告诉我本次追加申购的金额</p>')); scrollToBottom(); return true; }
+    if (Number(s.amount) > 0) { appendMessage(guideMessage('<p>麻烦告诉我您要追加申购的产品名称</p>')); scrollToBottom(); return true; }
+    appendMessage(guideMessage('<p>请告诉我要追加申购的产品名称以及申购金额。</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  // ③ 赎回收槽位
+  if (s.stage === 'redeemSlots') {
+    if (/赎回全部|全部赎回|一键赎回|全赎|都赎回|全部持仓/.test(t)) {
+      s.all = true;
+      guideHoldingRedeemAllConfirm();
+      return true;
+    }
+    var rp = guideHoldingFind(t);
+    var ramt = guideHoldingAmount(t);
+    var full = /全额|全部金额/.test(t) && !s.all;
+    if (rp) s.product = rp;
+    if (ramt > 0 && !full) s.amount = ramt;
+    if (full) s.full = true;
+    // 只说了产品：先查封闭期，封闭期内直接拒绝，不再问金额
+    if (s.product && !(s.full || Number(s.amount) > 0) && guideHoldingClosed(s.product)) {
+      appendMessage(guideMessage('<p>【<b>' + guideHoldingEsc(s.product.name) + '</b>】当前处于封闭期，暂不支持赎回。</p>'));
+      scrollToBottom();
+      s.product = null;
+      s.amount = null;
+      s.full = false;
+      return true;
+    }
+    if (s.product && (s.full || Number(s.amount) > 0)) { guideHoldingRedeemConfirm(); return true; }
+    if (s.product) { appendMessage(guideMessage('<p>请问您赎回多少金额？全额赎回可直接回复“全额”</p>')); scrollToBottom(); return true; }
+    if (Number(s.amount) > 0) { appendMessage(guideMessage('<p>麻烦告诉我需要赎回的产品名称</p>')); scrollToBottom(); return true; }
+    appendMessage(guideMessage('<p>您可以选择赎回全部持仓，或者指定产品并告知赎回金额（全额赎回可直接回复“全额”）。</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  if (s.stage === 'subRisk') {
+    if (/^(是|对|要|追加|仍然|确认|继续|是的)/.test(plain)) { guideHoldingSubSubmitAsRisk(); return true; }
+    if (/^(不|否|不要|取消|算了)/.test(plain)) { guideHoldingCancel(); return true; }
+    appendMessage(guideMessage('<p>是否仍要追加申购？请回复「追加」或「取消」。</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  // 兜底
+  appendMessage(guideMessage('<p>需要赎回还是追加申购呢？</p>'));
+  scrollToBottom();
+  return true;
+}
+
+// 追加申购确认卡（风险等级不匹配时先提醒）
+function guideHoldingSubConfirm() {
+  var s = GUIDE_HOLDING;
+  if (!s || !s.product) return;
+  var prod = (mockData.products || []).filter(function (p) { return p.name === s.product.name; })[0] || {};
+  var profile = guideWealthValidProfile();
+  if (profile && Number(prod.riskLevel) > Number(profile.level) && !s.riskOverride) {
+    s.stage = 'subRisk';
+    appendMessage(guideMessage(
+      '<p>该产品风险等级 <b>R' + prod.riskLevel + '</b>，高于您 <b>R' + profile.level + ' ' + guideHoldingEsc(profile.name) + '</b>的风险承受等级，是否追加申购？</p>' +
+      '<div class="guide-chips">' +
+      '<button class="guide-chip" onclick="guideHoldingSubSubmitAsRisk()">仍然追加</button>' +
+      '<button class="guide-chip" onclick="guideHoldingCancel()">取消</button>' +
+      '</div>'
+    ));
+    scrollToBottom();
+    return;
+  }
+  s.stage = 'subConfirm';
+  appendMessage(guideMessage(
+    '<p>确认对【<b>' + guideHoldingEsc(s.product.name) + '</b>】追加申购 <b>' + guidePlainMoney(s.amount) + '</b> 元，默认从活期主账户（尾号' +
+    guideHoldingAccountTail() + '）扣款，请确认</p>' +
+    (s.riskOverride ? '<p class="guide-tip">⚠️ 该产品风险等级高于你的风险承受能力，已按你的确认继续。</p>' : '') +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideHoldingSubSubmit()">确认申购</button>' +
+    '<button class="guide-chip" onclick="guideHoldingModify()">修改</button>' +
+    '<button class="guide-chip" onclick="guideHoldingCancel()">取消</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+// 风险确认后继续
+function guideHoldingSubSubmitAsRisk() {
+  var s = GUIDE_HOLDING;
+  if (!s) return;
+  s.riskOverride = true;
+  s.stage = 'subSlots';
+  guideHoldingSubConfirm();
+}
+
+async function guideHoldingSubSubmit() {
+  var s = GUIDE_HOLDING;
+  if (!s || s.stage !== 'subConfirm') return;
+  var name = s.product.name;
+  var amount = Number(s.amount) || 0;
+  var prod = (mockData.products || []).filter(function (p) { return p.name === name; })[0] || {};
+  var minAmount = Number(prod.minAmount) || 0;
+  var available = Number(mockData.userProfile && mockData.userProfile.debitCard && mockData.userProfile.debitCard.available) || 0;
+
+  if (amount < minAmount) {
+    appendMessage(guideMessage('<p>追加申购金额不能低于起购金额 ¥' + guidePlainMoney(minAmount) + '，请重新告诉我金额。</p>'));
+    scrollToBottom();
+    s.amount = 0;
+    s.stage = 'subSlots';
+    return;
+  }
+  if (amount > available) {
+    appendMessage(guideMessage('<p>可用余额 ¥' + guidePlainMoney(available) + ' 不足本次追加申购金额，请调整金额。</p>'));
+    scrollToBottom();
+    s.amount = 0;
+    s.stage = 'subSlots';
+    return;
+  }
+
+  GUIDE_HOLDING = null;
+  var risk = null;
+  if (typeof verifyAmountRisk === 'function') {
+    risk = await verifyAmountRisk(amount, '追加申购', [{ tool: 'wealth.buy', args: { product: name, amount: amount } }]);
+    if (risk && risk.pendingReview) return;
+    if (!risk || !risk.ok) {
+      appendMessage(guideMessage('<p>已取消本次追加申购，账户未发生扣款。</p>'));
+      scrollToBottom();
+      return;
+    }
+  }
+  var res = await callAgentTool('wealth.buy', { product: name, amount: amount });
+  if (res && res.ok !== false) {
+    appendMessage(guideMessage('<p>追加申购提交成功。</p>'));
+  } else {
+    appendMessage(guideMessage('<p>追加申购失败：' + guideHoldingEsc((res && res.summary) || '业务执行异常') + '</p>'));
+  }
+  scrollToBottom();
+}
+
+// 赎回确认卡（先查封闭期与持有金额）
+function guideHoldingRedeemConfirm() {
+  var s = GUIDE_HOLDING;
+  if (!s || !s.product) return;
+  var h = s.product;
+
+  if (guideHoldingClosed(h)) {
+    appendMessage(guideMessage('<p>【<b>' + guideHoldingEsc(h.name) + '</b>】当前处于封闭期，暂不支持赎回。</p>'));
+    scrollToBottom();
+    s.product = null;
+    s.amount = null;
+    s.full = false;
+    s.stage = 'redeemSlots';
+    return;
+  }
+
+  var amount = s.full ? Number(h.amount) || 0 : Number(s.amount) || 0;
+  if (amount <= 0) {
+    appendMessage(guideMessage('<p>请问您赎回多少金额？全额赎回可直接回复“全额”</p>'));
+    scrollToBottom();
+    s.stage = 'redeemSlots';
+    return;
+  }
+  if (amount > Number(h.amount)) {
+    appendMessage(guideMessage('<p>赎回金额不能大于持有金额 ¥' + guidePlainMoney(h.amount) + '，请重新告诉我金额。</p>'));
+    scrollToBottom();
+    s.amount = 0;
+    s.full = false;
+    return;
+  }
+
+  s.stage = 'redeemConfirm';
+  s.amount = amount;
+  appendMessage(guideMessage(
+    '<p>确认赎回【<b>' + guideHoldingEsc(h.name) + '</b>】<b>' + guidePlainMoney(amount) + '</b> 元，资金将返回活期主账户（尾号' +
+    guideHoldingAccountTail() + '），请确认</p>' +
+    (s.full ? '<p class="guide-tip">本次为全额赎回，赎回后该持仓清空。</p>' : '') +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideHoldingRedeemSubmit()">确认赎回</button>' +
+    '<button class="guide-chip" onclick="guideHoldingModify()">修改</button>' +
+    '<button class="guide-chip" onclick="guideHoldingCancel()">取消</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+async function guideHoldingRedeemSubmit() {
+  var s = GUIDE_HOLDING;
+  if (!s || s.stage !== 'redeemConfirm' || !s.product) return;
+  var name = s.product.name;
+  var amount = Number(s.amount) || 0;
+  GUIDE_HOLDING = null;
+  var res = await callAgentTool('wealth.redeem', { product: name, amount: amount });
+  if (res && res.ok !== false) {
+    appendMessage(guideMessage('<p>赎回提交成功，资金已回到活期主账户。</p>'));
+  } else {
+    appendMessage(guideMessage('<p>赎回失败：' + guideHoldingEsc((res && res.summary) || '业务执行异常') + '</p>'));
+  }
+  scrollToBottom();
+}
+
+// 一键赎回
+function guideHoldingRedeemAllConfirm() {
+  var s = GUIDE_HOLDING;
+  if (!s) return;
+  s.stage = 'redeemAllConfirm';
+  var closedNames = guideHoldingList().filter(guideHoldingClosed).map(function (h) { return h.name; });
+  appendMessage(guideMessage(
+    '<p>确认一键发起全部可赎回产品的赎回申请；封闭期内产品暂不支持赎回，资金到期后返还活期主账户（尾号' +
+    guideHoldingAccountTail() + '），是否继续？</p>' +
+    (closedNames.length ? '<p class="guide-tip">封闭期产品：' + guideHoldingEsc(closedNames.join('、')) + '</p>' : '') +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideHoldingRedeemAllSubmit()">确认一键赎回</button>' +
+    '<button class="guide-chip" onclick="guideHoldingCancel()">取消</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+async function guideHoldingRedeemAllSubmit() {
+  var s = GUIDE_HOLDING;
+  if (!s || s.stage !== 'redeemAllConfirm') return;
+  var list = guideHoldingList().slice();
+  var done = [], closed = [];
+  GUIDE_HOLDING = null;
+  for (var i = 0; i < list.length; i++) {
+    var h = list[i];
+    if (guideHoldingClosed(h)) { closed.push(h.name); continue; }
+    var res = await callAgentTool('wealth.redeem', { product: h.name, amount: h.amount });
+    if (res && res.ok !== false) done.push(h.name);
+  }
+  appendMessage(guideMessage(
+    '<p>一键赎回指令已提交，可赎回产品受理成功，封闭期产品无法赎回。</p>' +
+    (done.length ? '<p class="guide-tip">已受理：' + guideHoldingEsc(done.join('、')) + '</p>' : '') +
+    (closed.length ? '<p class="guide-tip">封闭期未赎回：' + guideHoldingEsc(closed.join('、')) + '</p>' : '')
+  ));
+  scrollToBottom();
+}
+
+function guideHoldingModify() {
+  var s = GUIDE_HOLDING;
+  if (!s) return;
+  if (s.mode === 'sub') {
+    s.stage = 'subSlots';
+    appendMessage(guideMessage('<p>请重新告诉我产品名称和申购金额（当前：' +
+      guideHoldingEsc(s.product ? s.product.name : '未选') + ' / ' + guidePlainMoney(s.amount || 0) + ' 元）。</p>'));
+  } else {
+    s.stage = 'redeemSlots';
+    appendMessage(guideMessage('<p>请重新告诉我赎回的产品名称和金额（当前：' +
+      guideHoldingEsc(s.product ? s.product.name : '未选') + ' / ' + guidePlainMoney(s.amount || 0) + ' 元，可回复“全额”）。</p>'));
+  }
+  scrollToBottom();
+}
+
+function guideHoldingCancel() {
+  GUIDE_HOLDING = null;
+  appendMessage(guideMessage('<p>已取消，持仓保持不变。</p>'));
   scrollToBottom();
 }

@@ -713,7 +713,7 @@ function quickAction(type) {
     case 'userinfo': showUserInfo(); break;
     case 'risk': startRiskAssessment(); break;
     case 'abnormal': showAbnormalAlert(); break;
-    case 'holdings': showHoldings(); break;
+    case 'holdings': guideStartHoldings(); break;
     case 'transferHistory': showTransferHistory(); break;
     case 'budget': showBudget(); break;
     case 'agent': runAgentWorkflow('帮我转账100元然后查询余额'); break;
