@@ -477,42 +477,39 @@ function showHoldings() {
   const totalAmount = holdings.reduce((s, h) => s + h.amount, 0);
   const totalProfit = holdings.reduce((s, h) => s + h.profit, 0);
   const totalProfitRate = totalAmount > 0 ? (totalProfit / totalAmount * 100).toFixed(2) : '0.00';
-  // 对话里只做「看」：概览压缩成三行，明细不带赎回/追加申购按钮
+
+  const rows = holdings.map((h, i) => {
+    const id = 'hold-detail-' + i;
+    const up = Number(h.profitRate) >= 0;
+    const color = up ? '#16a34a' : '#dc2626';
+    const rateText = (h.profitRate == null) ? (h.status || '持有中') : ((up ? '+' : '') + h.profitRate + '%');
+    return '<div class="hold-row" onclick="toggleHoldingDetail(\'' + id + '\')">' +
+      '<span class="hold-name">' + h.name + '</span>' +
+      '<span class="hold-amount">¥' + Number(h.amount).toLocaleString('zh-CN') + '</span>' +
+      '<b class="hold-rate" style="color:' + color + ';">' + rateText + '</b>' +
+      '</div>' +
+      '<div class="hold-detail" id="' + id + '" style="display:none;">' +
+      '<div>累计收益：<b style="color:' + color + ';">' + (Number(h.profit) >= 0 ? '+' : '') + '¥' + Number(h.profit).toFixed(2) + '</b></div>' +
+      '<div>买入日期：' + (h.buyDate || '—') + '</div>' +
+      '<div>当前状态：' + (h.status || '持有中') + '</div>' +
+      '</div>';
+  }).join('');
+
   const html = `
     <div class="message">
       <div class="msg-avatar ai">🤖</div>
       <div class="msg-content">
         <div class="msg-name">智能金融助手</div>
         <div class="msg-bubble">
-          <p><strong>持仓管理</strong><span style="font-size:12px;color:#8A97A8;margin-left:6px;">共 ${holdings.length} 只</span></p>
           <div class="data-card">
-            <div class="data-row"><span class="data-label">持仓总金额</span><span class="data-value" style="font-weight:700;">¥${totalAmount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
-            <div class="data-row"><span class="data-label">累计收益</span><span class="data-value ${totalProfit >= 0 ? 'income' : 'expense'}" style="font-weight:700;">${totalProfit >= 0 ? '+' : ''}¥${totalProfit.toLocaleString('zh-CN', {minimumFractionDigits: 2})}（${totalProfit >= 0 ? '+' : ''}${totalProfitRate}%）</span></div>
-          </div>
-          <p style="margin-top:12px;font-size:13px;font-weight:600;color:#333;">持仓明细</p>
-          ${holdings.map(h => `
-            <div class="holding-card">
-              <div class="holding-header">
-                <div class="holding-name">${h.name}</div>
-                <span class="holding-status">${h.status}</span>
-              </div>
-              <div class="holding-stats">
-                <div class="holding-stat">
-                  <div class="holding-stat-label">持有金额</div>
-                  <div class="holding-stat-value">¥${h.amount.toLocaleString()}</div>
-                </div>
-                <div class="holding-stat">
-                  <div class="holding-stat-label">累计收益</div>
-                  <div class="holding-stat-value ${h.profit >= 0 ? 'profit' : 'loss'}">${h.profit >= 0 ? '+' : ''}¥${h.profit.toFixed(2)}</div>
-                </div>
-                <div class="holding-stat">
-                  <div class="holding-stat-label">收益率</div>
-                  <div class="holding-stat-value ${h.profitRate >= 0 ? 'profit' : 'loss'}">${h.profitRate >= 0 ? '+' : ''}${h.profitRate}%</div>
-                </div>
-              </div>
-              <div style="margin-top:8px;font-size:11px;color:#999;">买入日期：${h.buyDate}</div>
+            <div class="data-card-title">持仓管理｜共 ${holdings.length} 只</div>
+            <div class="hold-total">总金额 ¥${totalAmount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}
+              <span class="hold-sep">｜</span>累计收益
+              <b style="color:${totalProfit >= 0 ? '#16a34a' : '#dc2626'};">${totalProfit >= 0 ? '+' : ''}¥${totalProfit.toLocaleString('zh-CN', {minimumFractionDigits: 2})}（${totalProfit >= 0 ? '+' : ''}${totalProfitRate}%）</b>
             </div>
-          `).join('')}
+            <div class="hold-list">${rows || '<div class="report-empty">暂无持仓</div>'}</div>
+            <div class="guide-tip" style="margin-top:10px;">点击单条可展开详情（收益、买入日期）</div>
+          </div>
         </div>
       </div>
     </div>
@@ -521,7 +518,12 @@ function showHoldings() {
   scrollToBottom();
 }
 
-
+// 点击单条持仓展开/收起详情
+function toggleHoldingDetail(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none';
+}
 // ========== 功能增强：基金定投 ==========
 // 初始化定投计划
 function initInvestmentPlans() {

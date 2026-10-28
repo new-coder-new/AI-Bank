@@ -2697,6 +2697,22 @@ body {
   .bill-donut-wrap { gap: 10px; }
   .bill-legend-right .report-legend-item { font-size: 10px; }
 }
+/* 持仓管理：紧凑列表，点击展开详情 */
+.hold-total { font-size: 13px; color: #334155; padding: 2px 0 12px; border-bottom: 1px solid #f1f3f6; }
+.hold-sep { color: #d1d5db; padding: 0 2px; }
+.hold-list { margin-top: 4px; }
+.hold-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid #f5f7fa; cursor: pointer; }
+.hold-row:last-of-type { border-bottom: 0; }
+.hold-row:active { background: #f8fafc; }
+.hold-name { flex: 1; min-width: 0; font-size: 13px; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hold-amount { font-size: 13px; color: #334155; font-variant-numeric: tabular-nums; }
+.hold-rate { font-size: 13px; font-weight: 600; min-width: 62px; text-align: right; font-variant-numeric: tabular-nums; }
+.hold-detail { padding: 2px 0 10px 0; font-size: 12px; color: #64748b; line-height: 1.9; }
+.dark-mode .hold-total { color: #C9D5E5; border-bottom-color: #243041; }
+.dark-mode .hold-row { border-bottom-color: #1F2C3D; }
+.dark-mode .hold-name { color: #E6EDF7; }
+.dark-mode .hold-amount { color: #C9D5E5; }
+.dark-mode .hold-detail { color: #94A3B8; }
 .bill-trend { width: 100%; overflow: hidden; }
 .bill-trend canvas { display: block; width: 100%; }
 
