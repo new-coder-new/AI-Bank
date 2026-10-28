@@ -4241,8 +4241,8 @@ async function guideSubAddStep(text) {
   if (s.preset && s.cycle) {
     s.stage = 'autoRenew';
     appendMessage(guideMessage('<p>是否开启自动续费？</p><div class="guide-chips">' +
-      '<button class="guide-chip" onclick="guideSubAddRenewChoice(true)">开启自动续费</button>' +
-      '<button class="guide-chip" onclick="guideSubAddRenewChoice(false)">关闭自动续费</button>' +
+      '<button class="guide-chip" onclick="guideSubAddRenewChoice(true)">是</button>' +
+      '<button class="guide-chip" onclick="guideSubAddRenewChoice(false)">否</button>' +
       '</div>'));
     scrollToBottom();
     return true;
@@ -4636,7 +4636,7 @@ async function guideSubSession(t) {
     if (yn === null) yn = await guideSubAIFlag(t);
     if (GUIDE_SUB !== s) return true;
     if (yn !== null) { guideSubAddRenewChoice(yn); return true; }
-    appendMessage(guideMessage('<p>是否开启自动续费？请回复「开启」或「关闭」。</p>'));
+    appendMessage(guideMessage('<p>是否开启自动续费？请回复「是」或「否」。</p>'));
     scrollToBottom();
     return true;
   }
