@@ -2477,7 +2477,8 @@ function guideCardLostStep(text) {
   s.stage = 'confirm';
   appendMessage(guideMessage(
     '<p>确认挂失尾号 <b>' + guideCardLostEsc(tail) + '</b> 的' + guideCardLostEsc(card.cardType || '信用卡') + '。</p>' +
-    '<p class="guide-tip">⚠️ 挂失后卡片立即冻结、无法继续交易；如需补卡，新卡预计 3-5 个工作日寄出。</p>' +
+    '<p class="guide-tip">⚠️ 挂失后卡片直接冻结、无法继续交易；如需补卡，新卡预计 3-5 个工作日寄出。</p>' +
+    '<p class="guide-tip">点击确认后需要通过交易密码或短信验证码完成风险验证。</p>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideCardLostSubmit()">确认挂失</button>' +
     '<button class="guide-chip" onclick="guideCardLostCancel()">取消</button>' +
@@ -2487,32 +2488,54 @@ function guideCardLostStep(text) {
   return true;
 }
 
+// 点击【确认挂失】：先做风险确认（交易密码 / 短信验证码 / 指纹），通过后才冻结卡片
 function guideCardLostSubmit() {
   var s = GUIDE_CARD_LOST;
   if (!s || s.stage !== 'confirm') return;
   var card = s.card || {};
+
+  if (typeof showSecurityVerification !== 'function') {
+    guideCardLostApply(card);
+    return;
+  }
+
+  showSecurityVerification(
+    '信用卡挂失 · ' + (card.cardType || '信用卡') + ' 尾号 ' + (card.tail || '****'),
+    function (ok) {
+      if (!ok) {
+        appendMessage(guideMessage('<p>未通过安全验证，已取消挂失，卡片状态保持不变。</p>'));
+        scrollToBottom();
+        return;
+      }
+      guideCardLostApply(card);
+    }
+  );
+}
+
+// 验证通过后真正冻结卡片并出结果卡
+function guideCardLostApply(card) {
+  var c = card || {};
   // 卡片状态：主卡走全局冻结标记，其余卡片标记本身状态
-  if (card.id === 'CARD-MAIN') {
+  if (c.id === 'CARD-MAIN') {
     cardFrozen = true;
     if (mockData.userProfile.creditCard) mockData.userProfile.creditCard.isFrozen = true;
   }
-  card.status = '已挂失';
-  card.frozenAt = new Date().toLocaleString('zh-CN');
+  c.status = '已挂失';
+  c.frozenAt = new Date().toLocaleString('zh-CN');
   saveUserData();
   GUIDE_CARD_LOST = null;
 
   appendMessage(guideMessage(
     '<p>挂失办理成功，卡片状态已更新。</p>' +
     '<div class="data-card"><div class="data-card-title">挂失信息</div>' +
-    '<div class="data-row"><span class="data-label">卡片</span><span class="data-value">' + guideCardLostEsc(card.cardType || '信用卡') + ' · 尾号 ' + guideCardLostEsc(card.tail || '****') + '</span></div>' +
+    '<div class="data-row"><span class="data-label">卡片</span><span class="data-value">' + guideCardLostEsc(c.cardType || '信用卡') + ' · 尾号 ' + guideCardLostEsc(c.tail || '****') + '</span></div>' +
     '<div class="data-row"><span class="data-label">当前状态</span><span class="data-value" style="color:#B42318;">已挂失</span></div>' +
-    '<div class="data-row"><span class="data-label">办理时间</span><span class="data-value">' + card.frozenAt + '</span></div>' +
+    '<div class="data-row"><span class="data-label">办理时间</span><span class="data-value">' + c.frozenAt + '</span></div>' +
     '</div>' +
     '<div class="guide-chips"><button class="guide-chip" onclick="showCardMyCards()">查看我的卡片</button></div>'
   ));
   scrollToBottom();
 }
-
 function guideCardLostCancel() {
   GUIDE_CARD_LOST = null;
   appendMessage(guideMessage('<p>已取消挂失，卡片状态保持不变。</p>'));

@@ -34,6 +34,9 @@ function cardApplyList() {
 function cardServiceCards() {
   if (!Array.isArray(mockData.userProfile.creditCards)) {
     var main = mockData.userProfile.creditCard || {};
+    // 尾号优先取卡片展示卡号（6228 **** **** 8888），与卡片页显示保持一致
+    var displayDigits = String((mockData.card && mockData.card.number) || '').replace(/\D/g, '');
+    var mainDigits = String(main.number || '').replace(/\D/g, '');
     mockData.userProfile.creditCards = [{
       id: 'CARD-MAIN',
       cardType: main.type || '白金信用卡',
@@ -41,7 +44,7 @@ function cardServiceCards() {
       purpose: '日常消费',
       status: '已发卡',
       issuedAt: main.issuedAt || '开户即持有',
-      tail: String(main.number || '').replace(/\D/g, '').slice(-4) || '8888'
+      tail: (displayDigits.slice(-4) || mainDigits.slice(-4) || '8888')
     }];
   }
   return mockData.userProfile.creditCards;
