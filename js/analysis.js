@@ -431,6 +431,28 @@ function detectAbnormalTxns() {
   return abnormal;
 }
 
+// 主菜单里的异常交易提示：只给条数与结论，详情点按钮再看
+function showAbnormalSummary() {
+  var abnormal = [];
+  try { abnormal = detectAbnormalTxns() || []; } catch (e) { abnormal = []; }
+  if (!abnormal.length) return;
+  var msg = '<div class="alert-banner">' +
+    '<div class="alert-banner-icon">!</div>' +
+    '<div class="alert-banner-content">' +
+    '<div class="alert-banner-title">检测到 ' + abnormal.length + ' 笔异常交易</div>' +
+    '<div class="alert-banner-desc">系统已自动识别大额消费、凌晨交易等风险行为</div>' +
+    '</div></div>' +
+    '<div class="guide-chips" style="margin-top:10px;">' +
+    '<button class="guide-chip" onclick="showAbnormalAlert()">查看异常交易</button>' +
+    '</div>';
+  if (typeof guideMessage === 'function') {
+    appendMessage(guideMessage(msg));
+  } else {
+    appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+      '<div class="msg-name">智能金融助手</div><div class="msg-bubble">' + msg + '</div></div></div>');
+  }
+  scrollToBottom();
+}
 function showAbnormalAlert() {
   const abnormal = detectAbnormalTxns();
   const html = `

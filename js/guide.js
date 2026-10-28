@@ -206,6 +206,10 @@ function renderServiceWelcome() {
     '<p class="guide-tip">你可以直接点击按钮，或者输入对应的功能名称。</p>' +
     '<div class="guide-chips">' + chips + overviewChip + '</div>'
   ));
+  // 主菜单直接给出异常交易提示（详情点按钮或直接说「查看异常交易」再看）
+  if (typeof showAbnormalSummary === 'function') {
+    try { showAbnormalSummary(); } catch (e) { /* 忽略检测失败 */ }
+  }
   scrollToBottom();
 }
 
