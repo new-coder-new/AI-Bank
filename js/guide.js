@@ -564,6 +564,10 @@ function guideHandleText(text) {
 
   // 信用卡调额意图：「我要调我的信用卡额度」→ 直接进入额度调整流程（问目标额度与原因）
   if (guideIsCardLimitAdjustIntent(t)) {
+    // 已经在额度调整流程里就不再重启（否则会把已输入的额度/原因清空）
+    if (GUIDE_CARD_LIMIT) {
+      return guideLockedRun(function () { return guideCardLimitStep(t); });
+    }
     if (typeof guideStartCardLimitAdjust === 'function') { guideStartCardLimitAdjust(); return true; }
   }
 
@@ -2779,7 +2783,8 @@ async function guideCardLimitStep(text) {
 
   // 明确说要调到 0 / 低于已用额度：直接提示，不再反复问目标额度
   var stNow = guideCardLimitState();
-  var explicitZero = Number(parsed.limit) === 0 && /(^|[^\d])0\s*(元|块)?/.test(t) && /(调整|调|改|降|设|改成|改为)/.test(t);
+  var zeroText = /^\s*0\s*(元|块)?\s*$/.test(t) || /(调整|调|改|降|设|改成|改为)/.test(t);
+  var explicitZero = Number(parsed.limit) === 0 && zeroText;
   if (explicitZero && stNow.min > 0) {
     appendMessage(guideMessage(
       '<p>目标额度不能低于已用额度 ¥' + stNow.min.toLocaleString('zh-CN') + '，请重新告诉我目标额度。</p>' +
