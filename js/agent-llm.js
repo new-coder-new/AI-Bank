@@ -949,14 +949,14 @@ async function agentLLMApprove(id) {
 async function agentLLMReject(id) {
   var rec = AGENT_LLM_PENDING[id];
   if (!rec || rec.status !== 'pending') return;
-  rec.status = 'rejected';
+  rec.status = 'cancelled';
   var state = rec.state;
   var batch = state.needsConfirm || [];
 
   var card = document.getElementById(id + '-confirm');
   if (card) {
     var actionsWrap = card.querySelector('.agent-confirm-actions');
-    if (actionsWrap) actionsWrap.innerHTML = '<div class="agent-reject-card" style="margin-top:0;">已暂停，未执行任何操作。方案已记入你的档案，随后可以直接对我说「继续执行」。</div>';
+    if (actionsWrap) actionsWrap.innerHTML = '<div class="agent-reject-card" style="margin-top:0;">已取消，本次未执行任何操作。</div>';
   }
   batch.forEach(function (a, i) {
     var row = document.getElementById(id + '-a' + i);
@@ -976,10 +976,6 @@ async function agentLLMReject(id) {
   agentTraceNote(state.trace, '用户取消了 ' + batch.length + ' 项操作，本次不做任何变更', 'fail');
   agentTraceComplete(state.trace);
 
-  if (AGENT_MEMORY) {
-    AGENT_MEMORY.notes.unshift({ at: new Date().toISOString(), text: '用户暂缓：' + batch.length + ' 项待执行操作' });
-    saveAgentMemory();
-  }
   AGENT_LLM_BUSY = false;
 }
 

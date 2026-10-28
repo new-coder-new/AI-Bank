@@ -392,7 +392,7 @@ function waitForPendingPlan(planId, timeoutMs) {
       const rec = (typeof AGENT_PENDING_PLANS !== 'undefined') ? AGENT_PENDING_PLANS[planId] : null;
       if (!rec) { clearInterval(timer); resolve(false); return; }
       if (rec.status === 'done') { clearInterval(timer); resolve(true); return; }
-      if (rec.status === 'rejected' || rec.status === 'failed' || rec.status === 'pending_review') { clearInterval(timer); resolve(false); return; }
+      if (rec.status === 'rejected' || rec.status === 'cancelled' || rec.status === 'failed' || rec.status === 'pending_review') { clearInterval(timer); resolve(false); return; }
       if (Date.now() - start > (timeoutMs || 120000)) { clearInterval(timer); resolve(false); }
     }, 400);
   });

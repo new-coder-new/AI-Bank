@@ -1406,17 +1406,14 @@ async function agentApprovePlan(id) {
   scrollToBottom();
 }
 
+// 暂不执行 = 直接取消：不记档案、不留待续方案
 function agentRejectPlan(id) {
   var rec = AGENT_PENDING_PLANS[id];
   if (!rec) return;
-  rec.status = 'rejected';
+  rec.status = 'cancelled';
   var footer = document.getElementById(id + '-footer');
   if (footer) {
-    footer.innerHTML = '<div class="agent-reject-card">已暂不执行。方案已记入你的档案，之后可以直接对我说「继续执行」。</div>';
-  }
-  if (AGENT_MEMORY) {
-    AGENT_MEMORY.notes.unshift({ at: new Date().toISOString(), text: '用户暂缓：' + rec.plan.title });
-    saveAgentMemory();
+    footer.innerHTML = '<div class="agent-reject-card">已取消，本次未发生任何交易。</div>';
   }
   scrollToBottom();
 }
