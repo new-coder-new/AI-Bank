@@ -83,6 +83,26 @@ function apiInjectSnapshot(snap) {
       mockData.userProfile = snap.userProfile;
     }
   }
+  // 信用卡：本地已有的按 id 保留，服务端（种子）新增的补进来，
+  // 避免旧 localStorage 只有一张卡时把种子里新加的卡挡住；同时修正历史 8888 尾号
+  (function mergeCreditCards() {
+    var snapCards = (snap.userProfile && snap.userProfile.creditCards) || null;
+    var u = mockData.userProfile || (mockData.userProfile = {});
+    if (!Array.isArray(snapCards) || !snapCards.length) return;
+    if (!Array.isArray(u.creditCards)) {
+      u.creditCards = snapCards.slice();
+      return;
+    }
+    snapCards.forEach(function (sc) {
+      var hit = u.creditCards.filter(function (lc) { return lc && sc && lc.id === sc.id; })[0];
+      if (!hit) { u.creditCards.push(sc); return; }
+      // 主卡尾号历史值 8888 属于旧数据，按服务端规范尾号纠正
+      if (String(hit.tail) === '8888' && sc.tail && String(sc.tail) !== '8888') {
+        hit.tail = sc.tail;
+        if (sc.cardType) hit.cardType = sc.cardType;
+      }
+    });
+  })();
   if (snap.bills) {
     if (!localLoaded || !window.__LOCAL_BILLS_LOADED) mockData.bills = snap.bills;
   }
