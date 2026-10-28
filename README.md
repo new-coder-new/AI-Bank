@@ -868,14 +868,22 @@ AI：确认挂失尾号 8888 的白金信用卡。
 
 ### 8.6 订阅
 
-订阅模块在对话里拆成三个入口（生活订购 → 添加订阅 / 订阅管理 / 取消订阅，`js/guide.js` 的 `GUIDE_SUB`）：
+订阅模块统一为一个入口「订阅管理」（生活订购 → 订阅管理，`js/guide.js` 的 `GUIDE_SUB`），第一句先问要做哪件事：
 
-- **添加订阅**（`guideStartSubAdd`）：先展示可订阅服务列表（某易云 VIP / 某讯 VIP / 某度网盘 VIP，含月/季/年价格），再按「服务 + 扣费周期 + 是否自动续费」收集，出确认卡【确认添加】【取消】。
+```
+AI：您想要添加订阅、取消订阅，还是管理自动续费？
+    【添加订阅】【取消订阅】【管理自动续费】
+```
+
+三个分支各自先展示数据、再提问：
+
+- **添加订阅**（`guideStartSubAdd`）：先展示「可订阅服务」列表（某易云 VIP / 某讯 VIP / 某度网盘 VIP，含月/季/年价格），再问「请选择订阅服务与扣费周期」，然后问是否开启自动续费，出确认卡【确认添加】【取消】。
   - 三种输入都支持：一次性给全 / 只给服务（追问周期）/ 只给周期（追问服务）；周期也认「年卡」「按月」等说法
   - 提交前做重复检测（同名有效订阅直接提示），扣费走 `verifyAmountRisk` + `addTransaction`，成功提示「某度网盘 VIP 添加成功，扣费周期按季扣费，自动续费已开启。」
-- **订阅管理**（`guideStartSubManage`）：展示有效订阅与历史记录，说「关闭某讯 VIP 的自动续费」即出【确认修改】卡，确认后改写 `autoRenew` 与详情文案。
-- **取消订阅**（`guideStartSubCancel`）：列出有效订阅 → 选中后出确认卡（服务 / 当前扣费周期 / 自动续费状态 / 操作：取消订阅）+【确认取消】【返回】；确认后从订阅列表移除并写入历史记录，按钮「返回」只提示「未执行取消，订阅状态保持原样」。
+- **取消订阅**（`guideStartSubCancel`）：先展示有效订阅列表，再问「请选择你想要取消的订阅项目」→ 确认卡（服务 / 当前扣费周期 / 自动续费状态 / 操作：取消订阅）+【确认取消】【返回】；确认后从订阅列表移除并写入历史记录，「返回」只提示「未执行取消，订阅状态保持原样」。
   - 无有效订阅时提示「当前没有可取消的有效订阅」并提供【查看总订阅情况】
+- **管理自动续费**（`guideStartSubAutoRenew`）：先展示有效订阅（含各自自动续费状态）与历史记录，再问「需要取消或开启哪一项的自动续费？例如「关闭某讯 VIP 的自动续费」」→【确认修改自动续费】卡（当前 / 修改后）→ 确认后改写 `autoRenew`。
+  - 在统一入口直接说完整意图（「关闭某讯 VIP 的自动续费」）会跳过选择，直接进确认卡
 - **区分两类操作**：关闭自动续费 = 不再扣费、权益用到本期结束；取消订阅 = 直接终止权益并进历史记录。
 - **历史记录**：`userProfile.subscriptionHistory`，展示 `服务・周期・自动续费：开启/关闭` + `已取消・时间`。
 - 全部数据来自模拟记录，界面标注「本系统为模拟演示，不等同第三方平台真实会员状态。」
@@ -1040,7 +1048,7 @@ AI：确认挂失尾号 8888 的白金信用卡。
   | 账单 | 消费统计 / 账单报告 / 异常交易 | `showBillAnalysis` / `showFinanceReport` / `showAbnormalAlert` |
   | 卡片 | 卡片申请 / 额度调整 / 交易限制 / 卡片挂失 | `showCardApplyForm` / `cardLimitDetailCard` / `showTxnLimitSettings`（含「查看限制规则」）/ `showCardFreezePanel` |
   | 理财 | 产品申购 / 风险评估 / 持仓管理 | `guideStartWealthPurchase` / `startRiskAssessment` / `guideStartHoldings` |
-  | 生活 | 添加订阅 / 订阅管理 / 取消订阅 / 鲜花订购 / 生日鲜花 | `guideStartSubAdd` / `guideStartSubManage` / `guideStartSubCancel` / `guideStartFlowerOrder` / `showBirthdayReminder` |
+  | 生活 | 订阅管理 / 鲜花订购 / 生日鲜花 | `guideStartSubAdd` / `guideStartSubManage` / `guideStartSubCancel` / `guideStartFlowerOrder` / `showBirthdayReminder` |
   | 更多 | 银行卡转账 / 转账记录 / 批量转账 / 预算管理 / 账单分期 / 复核审批 / 安全中心 | 银行卡转账为单模式表单；其余为原功能文字入口 |
 
   转账表单按入口收敛：**智能转账** 只含「按姓名 / 手机号 / 银行卡号」三种收款人识别方式；**定时转账** 与 **AA 收款** 各自独立成页（`showTransferForm('timed' | 'aa')`），不再以页签形式塞进同一张表单。

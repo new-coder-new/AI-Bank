@@ -66,9 +66,7 @@ var GUIDE_SERVICES = [
     aliases: ['生活', '生活服务'],
     prompt: '生活订购包含这些服务，请选择：',
     subs: [
-      { key: 'subAdd', label: '添加订阅', aliases: ['添加新订阅'], run: function () { guideStartSubAdd(); } },
       { key: 'subscribe', label: '订阅管理', aliases: ['我的订阅'], run: function () { guideStartSubManage(); } },
-      { key: 'subCancel', label: '取消订阅', aliases: ['退订'], run: function () { guideStartSubCancel(); } },
       { key: 'flower', label: '鲜花订购', aliases: ['订花', '买花'], run: function () { guideStartFlowerOrder(); } },
       { key: 'birthday', label: '生日鲜花', run: function () { showBirthdayReminder(); } }
     ]
@@ -416,9 +414,7 @@ var GUIDE_SUB_KEYWORDS = {
     holdings: ['持仓管理', '我的持仓', '持仓', '持有']
   },
   life: {
-    subAdd: ['添加订阅', '添加新订阅', '开通订阅', '新增订阅'],
-    subscribe: ['订阅管理', '订阅', '会员', '自动续费'],
-    subCancel: ['取消订阅', '退订', '终止订阅'],
+    subscribe: ['订阅管理', '订阅', '会员', '自动续费', '添加订阅', '取消订阅', '退订'],
     flower: ['鲜花订购', '订花', '买花', '鲜花订单'],
     birthday: ['生日鲜花', '生日', '鲜花']
   }
@@ -3582,21 +3578,45 @@ async function guideSubAddSubmit() {
 }
 
 // —— 订阅管理（自动续费）——
+// 订阅管理：统一入口，先问要做什么，再分别进入添加 / 取消 / 自动续费
 function guideStartSubManage() {
+  GUIDE_SUB = { mode: 'choose', stage: 'choose' };
+  currentModule = 'life';
+  appendMessage(guideMessage(
+    '<p>您想要添加订阅、取消订阅，还是管理自动续费？</p>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideSubChoose(\'add\')">添加订阅</button>' +
+    '<button class="guide-chip" onclick="guideSubChoose(\'cancel\')">取消订阅</button>' +
+    '<button class="guide-chip" onclick="guideSubChoose(\'renew\')">管理自动续费</button>' +
+    '</div>' +
+    '<p class="guide-tip">本系统为模拟演示，不等同第三方平台真实会员状态。</p>'
+  ));
+  scrollToBottom();
+}
+
+// 三个分支：添加（先展示可订阅产品）/ 取消（先展示现有订阅）/ 自动续费（先展示现有订阅）
+function guideSubChoose(kind) {
+  if (kind === 'add') { guideStartSubAdd(); return; }
+  if (kind === 'cancel') { guideStartSubCancel(); return; }
+  guideStartSubAutoRenew();
+}
+
+// 管理自动续费：先展示现有订阅，再问要开启/关闭哪一项
+function guideStartSubAutoRenew() {
   GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null };
   currentModule = 'life';
   var list = guideSubActive();
   var history = guideSubHistoryList();
-  if (!list.length && !history.length) {
-    appendMessage(guideMessage('<p>目前没有订阅记录。</p>' +
+  if (!list.length) {
+    appendMessage(guideMessage('<p>目前没有可管理自动续费的有效订阅。</p>' +
       '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubAdd()">添加新订阅</button></div>'));
     scrollToBottom();
     return;
   }
-  var rows = list.length ? list.map(function (sub) {
+  var rows = list.map(function (sub) {
     return '<div class="report-row"><span>' + guideSubEsc(sub.name) + '・' + guideSubCycleText(sub.cycle) + '</span>' +
       '<b>自动续费：' + (sub.autoRenew !== false ? '开启' : '关闭') + '</b></div>';
-  }).join('') : '<div class="report-empty">暂无有效订阅</div>';
+  }).join('');
   var historyHtml = history.length ? history.map(function (h) {
     return '<div class="report-row"><span>' + guideSubEsc(h.name) + '・' + guideSubCycleText(h.cycle) + '・自动续费：' + (h.autoRenew ? '开启' : '关闭') + '</span>' +
       '<b>已取消・' + guideSubEsc(h.cancelledAt) + '</b></div>';
@@ -3605,17 +3625,10 @@ function guideStartSubManage() {
     '<p>当前有效订阅如下：</p>' +
     '<div class="report-panel"><div class="report-panel-title">有效订阅</div>' + rows + '</div>' +
     (historyHtml ? '<div class="report-panel" style="margin-top:10px;"><div class="report-panel-title">历史记录</div>' + historyHtml + '</div>' : '') +
-    (list.length ? '<p>要管理哪一项的自动续费？例如「关闭某讯 VIP 的自动续费」。</p>' :
-      '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubAdd()">添加新订阅</button></div>') +
-    '<div class="guide-chips">' +
-    '<button class="guide-chip" onclick="guideStartSubAdd()">添加新订阅</button>' +
-    '<button class="guide-chip" onclick="guideStartSubCancel()">取消订阅</button>' +
-    '</div>' +
-    '<p class="guide-tip">本系统为模拟演示，不等同第三方平台真实会员状态。</p>'
+    '<p>需要取消或开启哪一项的自动续费？例如「关闭某讯 VIP 的自动续费」。</p>'
   ));
   scrollToBottom();
 }
-
 async function guideSubManageStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_SUB;
@@ -3774,6 +3787,27 @@ async function guideSubSession(t) {
   var s = GUIDE_SUB;
   if (!s) return true;
   var plain = String(t || '').replace(/[吧呢啊呀。.!！?？\s]/g, '');
+
+  // 统一入口：先选要做哪件事
+  if (s.mode === 'choose') {
+    if (/(添加|新增|开通|订一个|买一个)/.test(t)) { guideSubChoose('add'); return true; }
+    if (/(取消订阅|退订|终止|不要了|退掉)/.test(t)) { guideSubChoose('cancel'); return true; }
+    if (/(自动续费|续费|管理|开启|关闭)/.test(t)) {
+      // 「关闭某讯 VIP 的自动续费」这类直接说完整的，直接进自动续费流程
+      var svcQuick = guideSubFindService(t);
+      if (svcQuick) { guideStartSubAutoRenew(); return guideSubManageStep(t); }
+      guideSubChoose('renew');
+      return true;
+    }
+    appendMessage(guideMessage('<p>请选择：添加订阅 / 取消订阅 / 管理自动续费。</p>' +
+      '<div class="guide-chips">' +
+      '<button class="guide-chip" onclick="guideSubChoose(\'add\')">添加订阅</button>' +
+      '<button class="guide-chip" onclick="guideSubChoose(\'cancel\')">取消订阅</button>' +
+      '<button class="guide-chip" onclick="guideSubChoose(\'renew\')">管理自动续费</button>' +
+      '</div>'));
+    scrollToBottom();
+    return true;
+  }
 
   // 确认卡阶段：「返回 / 取消」表示放弃本次操作，不算回菜单
   if (s.stage === 'confirm') {
