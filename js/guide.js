@@ -985,6 +985,27 @@ function guideLooksLikeNewTransfer(text) {
   var hasTransferWord = /(转给|转账|汇款|打钱|转\s*\d|再转|付给|给.+转)/.test(t);
   return hasAmount && hasTransferWord;
 }
+// 确认卡收尾工具：完成就移除按钮并补状态行；取消就把整块折叠成一行
+function guideConfirmCardDone(boxId, statusText) {
+  var box = boxId ? document.getElementById(boxId) : null;
+  if (!box) return false;
+  var chips = box.querySelector('.guide-chips');
+  if (chips) chips.remove();
+  var card = box.querySelector('.data-card');
+  if (card && statusText) {
+    var row = document.createElement('div');
+    row.className = 'data-row';
+    row.innerHTML = '<span class="data-label">状态</span><span class="data-value" style="color:#16a34a;">' + statusText + '</span>';
+    card.appendChild(row);
+  }
+  return true;
+}
+
+function guideConfirmCardCollapse(boxId, text) {
+  var box = boxId ? document.getElementById(boxId) : null;
+  if (box) { box.innerHTML = '<p>' + text + '</p>'; return true; }
+  return false;
+}
 // 备注阶段统一处理（即时转账 / 定时转账共用）：
 // 问「是否需要添加备注？」时认「是 / 否」，其它文字直接当备注内容；等备注内容时这一句就是备注
 function guideTransferHandleRemarkStage(text) {
@@ -2437,7 +2458,9 @@ function guideCardApplyConfirm() {
   var s = GUIDE_CARD_APPLY;
   if (!s) return;
   s.stage = 'confirm';
+  s.boxId = s.boxId || ('card-apply-confirm-' + Date.now());
   appendMessage(guideMessage(
+    '<div id="' + s.boxId + '">' +
     '<p>已整理你的申请信息</p>' +
     '<div class="data-card"><div class="data-card-title">申请信息</div>' +
     '<div class="data-row"><span class="data-label">卡种</span><span class="data-value">' + guideCardApplyEsc(s.cardType) + '</span></div>' +
@@ -2447,6 +2470,7 @@ function guideCardApplyConfirm() {
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideCardApplySubmit()">提交申请</button>' +
     '<button class="guide-chip" onclick="guideCardApplyCancel()">取消</button>' +
+    '</div>' +
     '</div>'
   ));
   scrollToBottom();
@@ -2468,6 +2492,7 @@ function guideCardApplySubmit() {
   var record = { cardType: s.cardType, limit: s.limit, purpose: s.purpose, status: '审核中', appliedAt: at };
   list.push(record);
   saveUserData();
+  guideConfirmCardDone(s.boxId, '已提交审核');
   GUIDE_CARD_APPLY = null;
 
   // 申请同时进入「复核审批」队列；审批通过后才会核发新卡
@@ -2487,8 +2512,11 @@ function guideCardApplySubmit() {
 }
 
 function guideCardApplyCancel() {
+  var boxId = GUIDE_CARD_APPLY && GUIDE_CARD_APPLY.boxId;
   GUIDE_CARD_APPLY = null;
-  appendMessage(guideMessage('<p>已取消卡片申请，未提交任何资料。</p>'));
+  if (!guideConfirmCardCollapse(boxId, '已取消卡片申请，未提交任何资料。')) {
+    appendMessage(guideMessage('<p>已取消卡片申请，未提交任何资料。</p>'));
+  }
   scrollToBottom();
 }
 
@@ -4171,8 +4199,10 @@ function guideSubAddConfirm() {
   var s = GUIDE_SUB;
   if (!s || !s.preset || !s.cycle) return;
   s.stage = 'confirm';
+  s.boxId = s.boxId || ('sub-add-confirm-' + Date.now());
   var price = s.preset.prices[s.cycle];
   appendMessage(guideMessage(
+    '<div id="' + s.boxId + '">' +
     '<div class="data-card"><div class="data-card-title">确认新增订阅</div>' +
     '<div class="data-row"><span class="data-label">订阅服务</span><span class="data-value">' + guideSubEsc(s.preset.name) + '</span></div>' +
     '<div class="data-row"><span class="data-label">扣费周期</span><span class="data-value">' + guideSubCycleText(s.cycle) + '</span></div>' +
@@ -4182,6 +4212,7 @@ function guideSubAddConfirm() {
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideSubAddSubmit()">确认添加</button>' +
     '<button class="guide-chip" onclick="guideSubCancelOp()">取消</button>' +
+    '</div>' +
     '</div>'
   ));
   scrollToBottom();
@@ -4194,6 +4225,7 @@ async function guideSubAddSubmit() {
   var cycle = s.cycle;
   var autoRenew = s.autoRenew === true;
   var price = preset.prices[cycle];
+  var boxId = s.boxId;
 
   // 重复检测：已有有效订阅时提示，不再重复添加
   var dup = guideSubActive().filter(function (x) { return guideSubNormName(x.name) === guideSubNormName(preset.name); })[0];
@@ -4251,6 +4283,7 @@ async function guideSubAddSubmit() {
   });
   saveUserData();
 
+  guideConfirmCardDone(boxId, '已添加');
   appendMessage(guideMessage(
     '<p>' + guideSubEsc(preset.name) + ' 添加成功，扣费周期' + guideSubCycleText(cycle) + '，自动续费' + (autoRenew ? '已开启' : '已关闭') + '。</p>' +
     '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅管理</button></div>' +
@@ -4356,8 +4389,10 @@ function guideSubManageConfirm(want) {
   if (!s || !s.target) return;
   s.newAutoRenew = want;
   s.stage = 'confirm';
+  s.boxId = s.boxId || ('sub-manage-confirm-' + Date.now());
   var cur = s.target.autoRenew !== false;
   appendMessage(guideMessage(
+    '<div id="' + s.boxId + '">' +
     '<div class="data-card"><div class="data-card-title">确认修改自动续费</div>' +
     '<div class="data-row"><span class="data-label">订阅服务</span><span class="data-value">' + guideSubEsc(s.target.name) + '</span></div>' +
     '<div class="data-row"><span class="data-label">当前自动续费</span><span class="data-value">' + (cur ? '开启' : '关闭') + '</span></div>' +
@@ -4366,6 +4401,7 @@ function guideSubManageConfirm(want) {
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideSubManageSubmit()">确认修改</button>' +
     '<button class="guide-chip" onclick="guideSubCancelOp()">取消</button>' +
+    '</div>' +
     '</div>'
   ));
   scrollToBottom();
@@ -4379,6 +4415,7 @@ function guideSubManageSubmit() {
   sub.detail = String(sub.detail || '').replace(/自动续费|到期取消/, sub.autoRenew ? '自动续费' : '到期取消');
   saveUserData();
   var msg = sub.name + ' 的自动续费' + (sub.autoRenew ? '已开启' : '已关闭') + '。';
+  guideConfirmCardDone(s.boxId, '已修改');
   GUIDE_SUB = null;
   appendMessage(guideMessage('<p>' + guideSubEsc(msg) + '</p>' +
     (sub.autoRenew ? '' : '<p class="guide-tip">关闭自动续费后不再扣费，权益可用到本付费周期结束。</p>')));
@@ -4465,8 +4502,11 @@ function guideSubCancelSubmit() {
 }
 
 function guideSubCancelOp() {
+  var boxId = GUIDE_SUB && GUIDE_SUB.boxId;
   GUIDE_SUB = null;
-  appendMessage(guideMessage('<p>未执行取消，订阅状态保持原样。</p>'));
+  if (!guideConfirmCardCollapse(boxId, '未执行取消，订阅状态保持原样。')) {
+    appendMessage(guideMessage('<p>未执行取消，订阅状态保持原样。</p>'));
+  }
   scrollToBottom();
 }
 
@@ -4773,11 +4813,13 @@ function guideFlowerConfirm() {
     return;
   }
   s.stage = 'confirm';
-  appendMessage(guideMessage(guideFlowerOrderCard(s) +
+  s.boxId = s.boxId || ('flower-confirm-' + Date.now());
+  appendMessage(guideMessage('<div id="' + s.boxId + '">' + guideFlowerOrderCard(s) +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideFlowerSubmit()">提交订单</button>' +
     '<button class="guide-chip" onclick="guideFlowerPaySwitch()">' + (s.order.payMethod === '信用卡' ? '改用储蓄卡支付' : '改用信用卡支付') + '</button>' +
     '<button class="guide-chip" onclick="guideFlowerCancelOp()">取消</button>' +
+    '</div>' +
     '</div>'));
   scrollToBottom();
 }
@@ -4908,6 +4950,7 @@ async function guideFlowerSubmit() {
     }
   }
 
+  guideConfirmCardDone(s.boxId, '已提交');
   GUIDE_FLOWER = null;
   guideFlowerOrders().unshift({
     id: 'F' + Date.now(),
@@ -5128,8 +5171,11 @@ function guideFlowerCancelSubmit() {
 }
 
 function guideFlowerCancelOp() {
+  var boxId = GUIDE_FLOWER && GUIDE_FLOWER.boxId;
   GUIDE_FLOWER = null;
-  appendMessage(guideMessage('<p>已取消本次操作，鲜花订单保持不变。</p>'));
+  if (!guideConfirmCardCollapse(boxId, '已取消本次操作，鲜花订单保持不变。')) {
+    appendMessage(guideMessage('<p>已取消本次操作，鲜花订单保持不变。</p>'));
+  }
   scrollToBottom();
 }
 
