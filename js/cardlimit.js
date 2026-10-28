@@ -203,6 +203,34 @@ function cardLimitApply() {
 }
 
 // 写入复核队列（提额/降额共用）
+// 多卡场景：按选中的卡提交复核（主卡沿用原逻辑，其它卡自带卡标识）
+function cardLimitSubmitReviewFor(card, target, reason, current, direction) {
+  if (!card || card.id === 'CARD-MAIN') {
+    return cardLimitSubmitReview(target, reason, current, direction);
+  }
+  var cards = (mockData.userProfile && mockData.userProfile.creditCards) || [];
+  var c = cards.filter(function (x) { return x.id === card.id; })[0];
+  if (!c) return null;
+  c.appliedLimit = target;
+  c.limitApplyStatus = '待人工复核';
+  c.limitApplyReason = reason || '未填写';
+  c.limitApplyAt = new Date().toLocaleString('zh-CN');
+  c.limitApplyDirection = direction;
+  saveUserData();
+  if (typeof submitManualReview !== 'function') return null;
+  return submitManualReview({
+    amount: target,
+    purpose: '信用卡额度调整・' + (c.cardType || '信用卡') + '（尾号 ' + (c.tail || '----') + '）・' + (reason || '未填写'),
+    source: 'Card',
+    items: [
+      '卡片：' + (c.cardType || '信用卡') + '（尾号 ' + (c.tail || '----') + '）',
+      '当前额度 ¥' + agentFmtInt(current) + ' → 目标 ¥' + agentFmtInt(target),
+      '原因：' + (reason || '未填写')
+    ],
+    actions: [{ tool: 'card.applyLimit', args: { target: target, reason: reason, direction: direction, current: current, cardId: c.id } }],
+    silent: true
+  });
+}
 function cardLimitSubmitReview(target, reason, current, direction) {
   var c = mockData.userProfile.creditCard;
   var used = Number(c.used) || 0;
@@ -231,6 +259,30 @@ function cardLimitSubmitReview(target, reason, current, direction) {
 function applyCardLimitAdjustment(args) {
   var a = args || {};
   var target = Number(a.target) || 0;
+
+  // 多卡：带 cardId 时更新对应的那张卡
+  if (a.cardId && a.cardId !== 'CARD-MAIN') {
+    var list = (mockData.userProfile && mockData.userProfile.creditCards) || [];
+    var targetCard = list.filter(function (x) { return x.id === a.cardId; })[0];
+    if (!targetCard) return { ok: false, summary: '未找到该信用卡' };
+    var usedOther = Number(targetCard.used) || 0;
+    if (target <= 0) return { ok: false, summary: '目标额度无效' };
+    if (target < usedOther) return { ok: false, summary: '目标额度不能低于已用额度 ¥' + agentFmtInt(usedOther) };
+    var oldOther = Number(targetCard.limit) || 0;
+    targetCard.limit = target;
+    targetCard.available = Math.max(0, target - usedOther);
+    targetCard.limitApplyStatus = '已生效';
+    targetCard.limitApplyDirection = a.direction || (target > oldOther ? 'up' : 'down');
+    targetCard.limitApplyReason = a.reason || targetCard.limitApplyReason || '未填写';
+    targetCard.approvedAt = new Date().toLocaleString('zh-CN');
+    saveUserData();
+    return {
+      ok: true,
+      summary: (targetCard.cardType || '信用卡') + '（尾号 ' + (targetCard.tail || '----') + '）额度已' +
+        (target > oldOther ? '提高' : '降低') + '至 ¥' + agentFmtInt(target)
+    };
+  }
+
   var c = mockData.userProfile.creditCard;
   var used = Number(c.used) || 0;
   var old = c.effectiveLimit != null ? c.effectiveLimit : c.limit;

@@ -2507,6 +2507,12 @@ function guideCardLimitEsc(v) {
 }
 
 function guideCardLimitState() {
+  var s = GUIDE_CARD_LIMIT;
+  // 选中的不是主卡时，按该卡自身的额度与已用计算
+  if (s && s.card && s.card.id !== 'CARD-MAIN') {
+    var usedOther = Number(s.card.used) || 0;
+    return { current: Number(s.card.limit) || 0, used: usedOther, min: usedOther };
+  }
   var d = (typeof cardLimitData === 'function') ? cardLimitData() : {};
   return {
     current: Number(d.effectiveLimit) || 0,
@@ -2515,10 +2521,81 @@ function guideCardLimitState() {
   };
 }
 
+// 当前可选的信用卡列表（含主卡与已核发的新卡）
+function guideCardLimitCards() {
+  if (typeof cardServiceCards === 'function') {
+    try { return cardServiceCards() || []; } catch (e) { return []; }
+  }
+  return [];
+}
+
+function guideCardLabel(card) {
+  if (!card) return '信用卡';
+  return String(card.cardType || '信用卡') + '（尾号 ' + String(card.tail || '----') + '）';
+}
+
+// 从一句话里认卡：尾号 4 位 / 卡种关键词 / 第 N 张
+function guidePickCardFromText(text, cards) {
+  var t = String(text || '');
+  if (!cards || !cards.length) return null;
+  var byTail = cards.filter(function (x) { return x.tail && t.indexOf(String(x.tail)) !== -1; })[0];
+  if (byTail) return byTail;
+  var byType = cards.filter(function (x) {
+    var label = String(x.cardType || '');
+    return label && (t.indexOf(label) !== -1 || (label.indexOf('白金') !== -1 && /白金/.test(t)) || (label.indexOf('金卡') !== -1 && /金卡/.test(t)));
+  })[0];
+  if (byType) return byType;
+  var idx = t.match(/第?\s*([一二三1-3])\s*张/);
+  if (idx) {
+    var map = { '一': 0, '二': 1, '三': 2, '1': 0, '2': 1, '3': 2 };
+    var i = map[idx[1]];
+    if (cards[i]) return cards[i];
+  }
+  return null;
+}
+
+function guideCardLimitPickCardHtml(cards) {
+  var rows = cards.map(function (c, i) {
+    return '<div class="report-row"><span>' + (i + 1) + '. ' + guideCardLimitEsc(c.cardType || '信用卡') +
+      '　尾号 ' + guideCardLimitEsc(c.tail || '----') + '</span><b>¥' + Number(c.limit || 0).toLocaleString('zh-CN') + '</b></div>';
+  }).join('');
+  var chips = cards.map(function (c) {
+    return '<button class="guide-chip" onclick="guideCardLimitPickCard(\'' + c.id + '\')">' + guideCardLimitEsc(c.cardType || '信用卡') + ' ' + guideCardLimitEsc(c.tail || '') + '</button>';
+  }).join('');
+  return '<p>你有 ' + cards.length + ' 张信用卡，想调整哪一张的额度？</p>' +
+    '<div class="report-panel" style="margin-top:8px;"><div class="report-panel-title">我的信用卡</div>' + rows + '</div>' +
+    '<div class="guide-chips" style="margin-top:8px;">' + chips + '</div>';
+}
+
+// 选卡后进入额度收集
+function guideCardLimitPickCard(cardId) {
+  var s = GUIDE_CARD_LIMIT;
+  if (!s || !Array.isArray(s.cards)) return;
+  var card = s.cards.filter(function (c) { return c.id === cardId; })[0];
+  if (!card) return;
+  s.card = card;
+  s.stage = 'slots';
+  var st = guideCardLimitState();
+  appendMessage(guideMessage(
+    '<p>正在调整「<b>' + guideCardLimitEsc(guideCardLabel(card)) + '</b>」的额度。</p>' +
+    '<p>请告诉我想要调整到的目标额度，以及调整原因。</p>' +
+    '<p class="guide-tip">可选原因：' + CARD_LIMIT_REASONS.join('、') + '</p>' +
+    (st.current ? '<p class="guide-tip">当前额度 ¥' + st.current.toLocaleString('zh-CN') + '，最低可调至 ¥' + st.min.toLocaleString('zh-CN') + '</p>' : '')
+  ));
+  scrollToBottom();
+}
+
 function guideStartCardLimitAdjust() {
   guideResetAllSessions();
-  GUIDE_CARD_LIMIT = { stage: 'slots', limit: 0, reason: null };
   currentModule = 'card';
+  var cards = guideCardLimitCards();
+  if (cards.length > 1) {
+    GUIDE_CARD_LIMIT = { stage: 'pickCard', limit: 0, reason: null, cards: cards };
+    appendMessage(guideMessage(guideCardLimitPickCardHtml(cards)));
+    scrollToBottom();
+    return;
+  }
+  GUIDE_CARD_LIMIT = { stage: 'slots', limit: 0, reason: null, cards: cards, card: cards[0] || null };
   var st = guideCardLimitState();
   appendMessage(guideMessage(
     '<p>请告诉我想要调整到的目标额度，以及调整原因。</p>' +
@@ -2554,6 +2631,23 @@ async function guideCardLimitStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_CARD_LIMIT;
   var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
+
+  // 多卡时先选卡
+  if (s.stage === 'pickCard') {
+    if (/^(取消|不调了|算了|退出|返回|菜单)$/.test(plain)) {
+      GUIDE_CARD_LIMIT = null;
+      guideBackToMenu();
+      return true;
+    }
+    var picked = guidePickCardFromText(t, s.cards || []);
+    if (picked) {
+      guideCardLimitPickCard(picked.id);
+      return true;
+    }
+    appendMessage(guideMessage(guideCardLimitPickCardHtml(s.cards || [])));
+    scrollToBottom();
+    return true;
+  }
 
   // 确认阶段支持直接打字
   if (s.stage === 'confirm') {
@@ -2621,6 +2715,7 @@ function guideCardLimitConfirm() {
   appendMessage(guideMessage(
     '<p>确认额度调整申请</p>' +
     '<div class="data-card"><div class="data-card-title">申请信息</div>' +
+    (s.card ? '<div class="data-row"><span class="data-label">信用卡</span><span class="data-value">' + guideCardLimitEsc(guideCardLabel(s.card)) + '</span></div>' : '') +
     '<div class="data-row"><span class="data-label">目标额度</span><span class="data-value">' + Number(s.limit).toLocaleString('zh-CN') + ' 元</span></div>' +
     '<div class="data-row"><span class="data-label">调整原因</span><span class="data-value">' + guideCardLimitEsc(s.reason) + '</span></div>' +
     '<div class="data-row"><span class="data-label">调整方向</span><span class="data-value">' + direction + '（当前 ¥' + st.current.toLocaleString('zh-CN') + '）</span></div>' +
@@ -2649,7 +2744,9 @@ function guideCardLimitSubmit() {
   var direction = target > st.current ? 'up' : 'down';
   GUIDE_CARD_LIMIT = null;
 
-  if (typeof cardLimitSubmitReview === 'function') {
+  if (typeof cardLimitSubmitReviewFor === 'function') {
+    cardLimitSubmitReviewFor(s.card, target, s.reason, st.current, direction);
+  } else if (typeof cardLimitSubmitReview === 'function') {
     cardLimitSubmitReview(target, s.reason, st.current, direction);
   }
 
@@ -2657,7 +2754,7 @@ function guideCardLimitSubmit() {
     '<p>额度调整申请已提交，当前状态<b>待复核</b>，可点击入口查看复核进度。</p>' +
     '<div class="report-panel" style="margin-top:6px;">' +
     '<div class="report-panel-title">待复核</div>' +
-    '<div class="report-row"><span>信用卡额度调整・' + guideCardLimitEsc(s.reason) + '</span>' +
+    '<div class="report-row"><span>' + (s.card ? guideCardLimitEsc(guideCardLabel(s.card)) + '・' : '') + '额度调整・' + guideCardLimitEsc(s.reason) + '</span>' +
     '<b>待复核・' + new Date().toLocaleDateString('zh-CN') + '</b></div>' +
     '</div>' +
     '<div class="guide-chips">' +
