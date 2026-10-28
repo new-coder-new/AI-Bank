@@ -3035,12 +3035,56 @@ function guideTxnLimitNightQuestion(prefix) {
   return '<p>' + (prefix || '') + '是否允许夜间交易（23:00-06:00）？</p>';
 }
 
+// 交易限制：多卡时先选卡
+function guideTxnLimitPickHtml(cards) {
+  var rows = cards.map(function (c, i) {
+    var right = (c.txnLimit && Number(c.txnLimit.single) > 0)
+      ? ('单笔 ¥' + Number(c.txnLimit.single).toLocaleString('zh-CN'))
+      : '未单独设置';
+    return '<div class="report-row"><span>' + (i + 1) + '. ' + guideCardLimitEsc(c.cardType || '信用卡') +
+      '　尾号 ' + guideCardLimitEsc(c.tail || '----') + '</span><b>' + right + '</b></div>';
+  }).join('');
+  var chips = cards.map(function (c) {
+    return '<button class="guide-chip" onclick="guideTxnLimitPickCard(\'' + c.id + '\')">' + guideCardLimitEsc(c.cardType || '信用卡') + ' ' + guideCardLimitEsc(c.tail || '') + '</button>';
+  }).join('');
+  return '<p>你有 ' + cards.length + ' 张信用卡，要给哪一张设置交易限制？</p>' +
+    '<div class="report-panel" style="margin-top:8px;"><div class="report-panel-title">我的信用卡</div>' + rows + '</div>' +
+    '<div class="guide-chips" style="margin-top:8px;">' + chips + '</div>';
+}
+
+function guideTxnLimitAskLimits() {
+  var s = GUIDE_TXN_LIMIT;
+  if (!s) return;
+  var label = s.card ? guideCardLabel(s.card) : '';
+  appendMessage(guideMessage(
+    (label ? '<p>正在为「<b>' + guideCardLimitEsc(label) + '</b>」设置交易限制。</p>' : '') +
+    '<p>请设置单笔限额与每日限额。</p>'
+  ));
+  scrollToBottom();
+}
+
+function guideTxnLimitPickCard(cardId) {
+  var s = GUIDE_TXN_LIMIT;
+  if (!s || !Array.isArray(s.cards)) return;
+  var card = s.cards.filter(function (c) { return c.id === cardId; })[0];
+  if (!card) return;
+  s.card = card;
+  s.stage = 'limits';
+  guideTxnLimitAskLimits();
+}
+
 function guideStartTxnLimit() {
   guideResetAllSessions();
-  GUIDE_TXN_LIMIT = { stage: 'limits', single: null, daily: null, night: null, overseas: null };
   currentModule = 'card';
-  appendMessage(guideMessage('<p>请设置单笔限额与每日限额。</p>'));
-  scrollToBottom();
+  var cards = guideCardLimitCards();
+  if (cards.length > 1) {
+    GUIDE_TXN_LIMIT = { stage: 'pickCard', single: null, daily: null, night: null, overseas: null, cards: cards };
+    appendMessage(guideMessage(guideTxnLimitPickHtml(cards)));
+    scrollToBottom();
+    return;
+  }
+  GUIDE_TXN_LIMIT = { stage: 'limits', single: null, daily: null, night: null, overseas: null, cards: cards, card: cards[0] || null };
+  guideTxnLimitAskLimits();
 }
 
 // 等待 AI 解析时的占位气泡
@@ -3056,6 +3100,22 @@ function guideTypingBubble() {
 async function guideTxnLimitStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_TXN_LIMIT;
+  if (!s) return true;
+
+  // 多卡时先选卡
+  if (s.stage === 'pickCard') {
+    var plainPick = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
+    if (/^(取消|不改了|算了|退出|返回|菜单)$/.test(plainPick)) {
+      GUIDE_TXN_LIMIT = null;
+      guideBackToMenu();
+      return true;
+    }
+    var picked = guidePickCardFromText(t, s.cards || []);
+    if (picked) { guideTxnLimitPickCard(picked.id); return true; }
+    appendMessage(guideMessage(guideTxnLimitPickHtml(s.cards || [])));
+    scrollToBottom();
+    return true;
+  }
 
   // 确认阶段支持直接打字
   if (s.stage === 'confirm') {
@@ -3194,6 +3254,7 @@ function guideTxnLimitConfirm() {
   s.stage = 'confirm';
   appendMessage(guideMessage(
     '<div class="data-card">' +
+    (s.card ? '<div class="data-row"><span class="data-label">信用卡</span><span class="data-value">' + guideCardLimitEsc(guideCardLabel(s.card)) + '</span></div>' : '') +
     '<div class="data-row"><span class="data-label">单笔限额</span><span class="data-value">' + (Number(s.single) || 0).toLocaleString('zh-CN') + ' 元</span></div>' +
     '<div class="data-row"><span class="data-label">日累计限额</span><span class="data-value">' + (Number(s.daily) || 0).toLocaleString('zh-CN') + ' 元</span></div>' +
     '<div class="data-row"><span class="data-label">夜间交易（23:00-06:00）</span><span class="data-value">' + guideTxnLimitFlagText(s.night) + '</span></div>' +
@@ -3217,14 +3278,27 @@ function guideTxnLimitSubmit() {
     scrollToBottom();
     return;
   }
-  var l = (typeof txnLimitData === 'function') ? txnLimitData() : (mockData.userProfile.txnLimit = {});
-  l.single = singleV;
-  l.daily = dailyV;
-  l.night = s.night === 'allow' ? 'allow' : 'block';
-  l.overseas = s.overseas === 'allow' ? 'allow' : 'block';
+  var nightV = s.night === 'allow' ? 'allow' : 'block';
+  var overseasV = s.overseas === 'allow' ? 'allow' : 'block';
+  var cardLabel = s.card ? guideCardLabel(s.card) : '';
+  var isMain = !s.card || s.card.id === 'CARD-MAIN';
+  if (isMain) {
+    var l = (typeof txnLimitData === 'function') ? txnLimitData() : (mockData.userProfile.txnLimit = {});
+    l.single = singleV;
+    l.daily = dailyV;
+    l.night = nightV;
+    l.overseas = overseasV;
+  } else {
+    // 非主卡：限额记在该卡对象上，便于后续按卡校验
+    var cardsNow = guideCardLimitCards();
+    var target = cardsNow.filter(function (x) { return x.id === s.card.id; })[0];
+    if (target) {
+      target.txnLimit = { single: singleV, daily: dailyV, night: nightV, overseas: overseasV };
+    }
+  }
   saveUserData();
   GUIDE_TXN_LIMIT = null;
-  appendMessage(guideMessage('<p>交易限制已更新完成。</p>'));
+  appendMessage(guideMessage('<p>' + (cardLabel ? guideCardLimitEsc(cardLabel) + ' ' : '') + '交易限制已更新完成。</p>'));
   scrollToBottom();
 }
 
