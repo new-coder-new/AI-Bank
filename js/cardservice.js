@@ -242,7 +242,9 @@ function txnLimitData() {
 // 当日信用卡消费累计（演示口径：日期变化即清零）
 function cardDailySpend() {
   const u = mockData.userProfile;
-  const today = new Date().toISOString().slice(0, 10);
+  // 用本地日期，避免 UTC+8 凌晨把消费记到前一天导致日限额被重置
+  const now = new Date();
+  const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
   if (!u.cardDailySpend || u.cardDailySpend.date !== today) u.cardDailySpend = { date: today, amount: 0 };
   return u.cardDailySpend;
 }

@@ -99,7 +99,9 @@ function cardLimitDetailCard() {
 function cardLimitAdjustForm(currentLimit, presetTarget) {
   var pre = Number(presetTarget) || Number(currentLimit) || cardLimitData().effectiveLimit;
   var minLimit = cardLimitMinimum();
-  var html = '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+  // 旧表单的固定 id 会让 getElementById 读到旧值，先清掉再开新表单
+  document.querySelectorAll('.card-limit-form').forEach(function (el) { var m = el.closest('.message'); if (m) m.remove(); });
+  var html = '<div class="message card-limit-form"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手 · 调额申请</div>' +
     '<div class="msg-bubble agent-bubble">' +
     '<p style="margin-bottom:6px;font-weight:600;"> 信用卡额度调整申请</p>' +
@@ -152,6 +154,8 @@ function updateCardLimitHint() {
 }
 
 function cardLimitCancel() {
+  // 取消必须移除表单和提交按钮，否则旧表单仍可提交
+  document.querySelectorAll('.card-limit-form').forEach(function (el) { var m = el.closest('.message'); if (m) m.remove(); });
   agentReply('已取消调额申请，当前生效额度保持不变。');
 }
 
@@ -237,6 +241,12 @@ function applyCardLimitAdjustment(args) {
   c.approvedLimit = target;
   c.appliedLimit = target;
   c.available = Math.max(0, target - used);
+  // 卡片页/兼容字段同步，避免调额后仍显示旧额度
+  if (mockData.card) {
+    mockData.card.totalLimit = target;
+    mockData.card.availableLimit = c.available;
+    mockData.card.usedLimit = used;
+  }
   c.limitApplyStatus = '已生效';
   c.limitApplyDirection = a.direction || (target > old ? 'up' : 'down');
   c.limitApplyReason = a.reason || c.limitApplyReason || '未填写';

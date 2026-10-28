@@ -1,10 +1,14 @@
 ﻿// ========== 极致版：生日鲜花联动 ==========
 function calcDaysUntilBirthday(birthdayStr) {
   const today = new Date();
-  const [month, day] = birthdayStr.split('-').map(Number);
+  const parts = String(birthdayStr || '').split('-').map(Number);
+  const month = parts[0], day = parts[1];
+  if (!(month >= 1 && month <= 12 && day >= 1 && day <= 31)) return 999;
+  // 按“天”比较：生日当天应显示 0 天，而不是滚到明年变成 365 天
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   let nextBirthday = new Date(today.getFullYear(), month - 1, day);
-  if (nextBirthday < today) nextBirthday = new Date(today.getFullYear() + 1, month - 1, day);
-  return Math.ceil((nextBirthday - today) / (1000 * 60 * 60 * 24));
+  if (nextBirthday < todayMidnight) nextBirthday = new Date(today.getFullYear() + 1, month - 1, day);
+  return Math.round((nextBirthday - todayMidnight) / (1000 * 60 * 60 * 24));
 }
 
 function showBirthdayReminder() {

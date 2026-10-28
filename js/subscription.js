@@ -189,8 +189,11 @@ function updateSubPrice(el) {
 }
 
 async function confirmAddSubscribe(btn) {
+  // 防重复提交：处理中禁用按钮，避免连续点击重复首扣
+  if (btn && btn.dataset.busy === '1') return;
+  if (btn) { btn.dataset.busy = '1'; btn.disabled = true; }
   const form = btn ? btn.closest('.data-card') : document.querySelector('.data-card');
-  if (!form) return;
+  if (!form) { if (btn) { btn.dataset.busy = ''; btn.disabled = false; } return; }
   const preset = form.querySelector('#newSubPreset');
   const cycle = form.querySelector('#newSubCycle')?.value || '/月';
   const autoRenew = form.querySelector('#newSubAutoRenew')?.checked !== false;
@@ -209,12 +212,22 @@ async function confirmAddSubscribe(btn) {
     scrollToBottom();
     return;
   }
+  // 同名订阅（忽略空格）视为已存在，避免重复扣首月
+  const nameKey = String(name || '').replace(/\s+/g, '').toLowerCase();
+  const dup = mockData.subscriptions.some(s => String(s.name || '').replace(/\s+/g, '').toLowerCase() === nameKey);
+  if (dup) {
+    appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">「${name}」已在订阅列表中，无需重复添加。</div></div></div>`);
+    scrollToBottom();
+    if (btn) { btn.dataset.busy = ''; btn.disabled = false; }
+    return;
+  }
   const newId = Math.max(0, ...mockData.subscriptions.map(s => s.id)) + 1;
   const nextDate = new Date();
   if (cycle === '/月') nextDate.setMonth(nextDate.getMonth() + 1);
   else if (cycle === '/季') nextDate.setMonth(nextDate.getMonth() + 3);
   else nextDate.setFullYear(nextDate.getFullYear() + 1);
-  const nextDateStr = nextDate.toISOString().split('T')[0];
+  const nextDateStr = nextDate.getFullYear() + '-' + String(nextDate.getMonth() + 1).padStart(2, '0') + '-' + String(nextDate.getDate()).padStart(2, '0');
+  const chargeInDays = Math.max(1, Math.ceil((nextDate.getTime() - Date.now()) / 86400000));
   const cycleText = cycle === '/月' ? '包月' : cycle === '/季' ? '包季' : '包年';
   // 与转账一致的金额风险验证：T2 密码确认，T3 二次验证，T4 提交人工复核
   if (typeof verifyAmountRisk === 'function') {
@@ -240,7 +253,11 @@ async function confirmAddSubscribe(btn) {
     detail: `连续${cycleText} · ${autoRenew ? '自动续费' : '到期取消'} · 下次扣款${nextDateStr}`,
     price: price,
     cycle: cycle,
-    autoRenew: autoRenew
+    cycleLabel: '连续' + cycleText,
+    autoRenew: autoRenew,
+    chargeInDays: chargeInDays,
+    chargeDate: nextDateStr,
+    usage: '中'
   });
   const u = mockData.userProfile;
   saveUserData();

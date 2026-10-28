@@ -564,8 +564,18 @@ registerAgentTool('transfer.resolvePayee', {
 registerAgentTool('transfer.execute', {
   label: '执行转账', risk: 'high',
   run: function (args) {
-    var payee = args.payee, amount = Number(args.amount) || 0;
-    if (amount <= 0) return { ok: false, summary: '转账金额无效，未执行任何操作' };
+    var payee = String(args.payee || '').trim();
+    var amount = Number(args.amount) || 0;
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, summary: '转账金额无效，未执行任何操作' };
+    if (!payee) return { ok: false, summary: '缺少收款人，未执行转账' };
+    // 与规则层保持一致：姓名/智能转账只允许通讯录联系人；
+    // 手机号/银行卡/批量/定时等渠道有各自的身份核验路径。
+    var ch = args.channel || '智能转账';
+    var nameChannels = { '网银转账': 1, '智能转账': 1, '姓名转账': 1 };
+    if (nameChannels[ch]) {
+      var known = (mockData.contacts || []).some(function (c) { return c.name === payee; });
+      if (!known) return { ok: false, summary: '收款人「' + payee + '」不在通讯录，姓名转账已拒绝' };
+    }
 
     // 余额门禁：工具层再校验一次。工具有多个调用入口（Function Calling / 规则层 / 计划执行器），
     // 不能只靠 UI 拦截，否则新增入口就会漏。
@@ -579,13 +589,14 @@ registerAgentTool('transfer.execute', {
       };
     }
 
-    var txDesc = '转账给' + payee + (args.remark ? '（' + args.remark + '）' : '');
+    var phoneArg = String(args.phone || '').trim();
+    var txDesc = '转账给' + payee + (phoneArg ? '（' + phoneArg + '）' : '') + (args.remark ? '（' + args.remark + '）' : '');
     var recorded = addTransaction('expense', amount, txDesc, args.channel || '智能转账', true);
     if (recorded === false) {
       return { ok: false, summary: '扣款未成功（可用余额不足），账户未发生变动' };
     }
     // 写入转账记录：让「转账记录查询 / 撤销」能看到智能助手转出的账，否则只有 recentTxns 有记录
-    registerTransferRecord(payee, amount, args.channel || '智能转账');
+    registerTransferRecord(payee, amount, args.channel || '智能转账', phoneArg);
     if (typeof addRecentAction === 'function') addRecentAction('transfer', { payee: payee, amount: amount });
     saveUserData();
     // 数据真实化：同步到后端模拟银行核心（后端不可用时自动降级为纯本地）
@@ -604,7 +615,7 @@ registerAgentTool('card.overview', {
     var c = mockData.userProfile.creditCard;
     var util = c.limit ? Math.round(c.used / c.limit * 100) : 0;
     return {
-      summary: '信用卡额度使用率 ' + util + '%，可用 ¥' + agentFmtInt(c.available) + '，本期账单 ¥' + agentFmt(c.currentBill) + '，' + (c.dueDate || '') + ' 到期',
+      summary: '信用卡额度使用率 ' + util + '%，可用 ¥' + agentFmtInt(c.available) + '，本期账单 ¥' + agentFmt(c.currentBill) + '，每月 ' + (c.dueDay || 5) + ' 日到期',
       data: c
     };
   }
@@ -708,11 +719,15 @@ registerAgentTool('wealth.buy', {
     if (recorded === false) return { ok: false, summary: '扣款未成功（可用余额不足），未生成持仓' };
     if (!mockData.userProfile.holdings) mockData.userProfile.holdings = [];
     var exist = mockData.userProfile.holdings.filter(function (h) { return h.name === name; })[0];
-    if (exist) { exist.amount += amount; exist.cost += amount; }
-    else {
+    if (exist) {
+      exist.amount += amount;
+      exist.cost += amount;
+      exist.riskLevel = prod.riskLevel;
+    } else {
       mockData.userProfile.holdings.push({
         name: name, icon: prod.icon, amount: amount, cost: amount,
-        profit: 0, profitRate: 0, buyDate: agentDateStr(0), status: '持有中'
+        profit: 0, profitRate: 0, buyDate: agentDateStr(0), status: '持有中',
+        riskLevel: prod.riskLevel
       });
     }
     saveUserData();
@@ -729,23 +744,40 @@ registerAgentTool('wealth.redeem', {
     var name = args && args.product;
     var h = name ? holdings.filter(function (x) { return x.name === name || x.name.indexOf(name) > -1; })[0] : holdings.filter(function (x) { return x.status === '持有中'; })[0];
     if (!h) return { ok: false, summary: '未找到可赎回的持仓' + (name ? '：' + name : '') };
-    var amount = Number(args && args.amount) || h.amount;
-    if (amount > h.amount) amount = h.amount;
+    // 封闭期校验：90 天/3 年产品未到期不能赎回
+    var prodDef = (mockData.products || []).filter(function (p) { return p.name === h.name; })[0] || {};
+    var closedDays = Number(prodDef.closedDays) || 0;
+    if (closedDays > 0 && h.buyDate) {
+      var buyTs = new Date(String(h.buyDate) + 'T00:00:00').getTime();
+      var heldDays = isNaN(buyTs) ? closedDays : Math.floor((Date.now() - buyTs) / 86400000);
+      if (heldDays < closedDays) {
+        return { ok: false, summary: '「' + h.name + '」封闭期未满（已持有 ' + heldDays + ' 天 / 需 ' + closedDays + ' 天），暂不可赎回' };
+      }
+    }
+    var amount = (args && args.amount != null) ? Number(args.amount) : h.amount;
     if (!(amount > 0)) return { ok: false, summary: '赎回金额无效' };
-    h.amount = h.amount - amount;
-    h.cost = Math.max(0, (h.cost || 0) - amount);
+    if (amount > h.amount) amount = h.amount;
+    // 按比例结算累计收益：全额赎回时收益必须兑付，不能凭空消失
+    var ratio = amount / h.amount;
+    var profitPart = Math.round(((Number(h.profit) || 0) * ratio) * 100) / 100;
+    h.amount = Math.round((h.amount - amount) * 100) / 100;
+    h.cost = Math.max(0, Math.round(((Number(h.cost) || 0) - amount) * 100) / 100);
+    h.profit = Math.round(((Number(h.profit) || 0) - profitPart) * 100) / 100;
+    h.profitRate = h.cost > 0 ? Math.round((h.profit / h.cost) * 10000) / 100 : 0;
     if (h.amount <= 0) {
       h.status = '已赎回';
       mockData.userProfile.holdings = holdings.filter(function (x) { return x !== h; });
     }
-    // 用 addTransaction 统一回补本地余额；后端同步失败时也不会出现"持仓减了、余额没加"
-    addTransaction('income', amount, '赎回' + h.name, '理财账户', true);
+    // 用 addTransaction 统一回补本地余额（本金 + 已实现收益）
+    var credited = Math.round((amount + profitPart) * 100) / 100;
+    addTransaction('income', credited, '赎回' + h.name + (profitPart ? '（含收益 ¥' + profitPart + '）' : ''), '理财账户', true);
     saveUserData();
     // 数据真实化：同步后端（赎回资金回补余额）
     if (typeof apiWealthRedeem === 'function') apiWealthRedeem(h.name, amount);
     return {
-      summary: '已赎回「' + h.name + '」¥' + agentFmtInt(amount) + '，已回到可用余额，剩余持仓 ¥' + agentFmtInt(h.amount),
-      data: { name: h.name, amount: amount, remain: h.amount }
+      summary: '已赎回「' + h.name + '」本金 ¥' + agentFmtInt(amount) + (profitPart ? ' + 收益 ¥' + agentFmt(profitPart) : '') +
+        '，到账 ¥' + agentFmt(credited) + '，剩余持仓 ¥' + agentFmtInt(h.amount),
+      data: { name: h.name, amount: amount, profit: profitPart, credited: credited, remain: h.amount }
     };
   }
 });
@@ -801,15 +833,32 @@ registerAgentTool('budget.createFund', {
   label: '创建专项预算账户', risk: 'medium',
   run: function (args) {
     var u = mockData.userProfile;
+    var amount = Number(args.amount) || 0;
+    if (!(amount > 0)) return { ok: false, summary: '专项预算金额无效' };
+    var d = u.debitCard;
+    if ((Number(d.available) || 0) < amount) return { ok: false, summary: '可用余额不足，无法创建专项预算' };
     if (!u.funds) u.funds = [];
-    var fund = { name: args.name || '专项预算', amount: Number(args.amount) || 0, deadline: args.deadline || agentDateStr(30) };
+    // 真正冻结：可用余额减少、冻结金额增加；到期由 releaseLockedFunds() 解冻
+    d.available = Math.round(((Number(d.available) || 0) - amount) * 100) / 100;
+    d.frozen = Math.round(((Number(d.frozen) || 0) + amount) * 100) / 100;
+    var fund = {
+      name: args.name || '专项预算', amount: amount,
+      deadline: args.deadline || agentDateStr(30),
+      frozen: true, status: '进行中', createdAt: agentDateStr(0),
+      freezeId: 'FZ' + Date.now()
+    };
+    if (!d.frozenItems) d.frozenItems = [];
+    d.frozenItems.push({
+      id: fund.freezeId, type: '专项预算', reason: '专项预算-' + fund.name,
+      amount: amount, freezeDate: agentDateStr(0), releaseDate: fund.deadline, status: '冻结中'
+    });
     u.funds.push(fund);
     if (AGENT_MEMORY) {
       AGENT_MEMORY.goals.push({ id: 'g' + Date.now(), name: fund.name, target: fund.amount, saved: 0, deadline: fund.deadline });
       saveAgentMemory();
     }
     saveUserData();
-    return { summary: '已创建「' + fund.name + '」专项预算账户 ¥' + agentFmtInt(fund.amount), data: fund };
+    return { summary: '已创建「' + fund.name + '」专项预算 ¥' + agentFmtInt(amount) + '，资金已冻结，到期自动解冻', data: fund };
   }
 });
 
@@ -835,27 +884,93 @@ registerAgentTool('life.reserveDeposit', {
   label: '锁定活期资金', risk: 'medium',
   run: function (args) {
     var amount = Number(args.amount) || 0;
+    if (!(amount > 0)) return { ok: false, summary: '锁定金额无效' };
     var u = mockData.userProfile;
+    var d = u.debitCard;
+    if ((Number(d.available) || 0) < amount) return { ok: false, summary: '可用余额不足，无法锁定资金' };
     if (!u.lockedFunds) u.lockedFunds = [];
+    // 真正冻结可用余额，到期由 releaseLockedFunds() 自动解冻
+    d.available = Math.round(((Number(d.available) || 0) - amount) * 100) / 100;
+    d.frozen = Math.round(((Number(d.frozen) || 0) + amount) * 100) / 100;
+    var freezeId = 'FZ' + Date.now();
+    var releaseDate = args.date || agentDateStr(3);
+    if (!d.frozenItems) d.frozenItems = [];
+    d.frozenItems.push({
+      id: freezeId, type: '预留锁定', reason: args.purpose || '生日预留',
+      amount: amount, freezeDate: agentDateStr(0), releaseDate: releaseDate, status: '冻结中'
+    });
     u.lockedFunds.push({
       purpose: args.purpose || '生日预留', amount: amount,
-      freezeDate: agentDateStr(0), releaseDate: args.date || agentDateStr(3),
-      autoTransfer: !!args.autoTransfer, status: '已锁定'
+      freezeDate: agentDateStr(0), releaseDate: releaseDate,
+      autoTransfer: !!args.autoTransfer, frozen: true, status: '已锁定', freezeId: freezeId
     });
     saveUserData();
     return {
-      summary: '已锁定 ¥' + agentFmtInt(amount) + ' 活期，' + (args.date || '') + ' 09:00 自动转出，到期前可随时撤销',
+      summary: '已锁定 ¥' + agentFmtInt(amount) + ' 活期（可用余额已减少），' + (args.date || '') + ' 到期后自动解冻',
       data: u.lockedFunds[u.lockedFunds.length - 1]
     };
   }
 });
 
+// 到期解冻专项预算/预留资金（页面加载和每 30 秒执行一次）
+function releaseLockedFunds() {
+  var u = mockData.userProfile;
+  if (!u) return;
+  var today = agentDateStr(0);
+  var d = u.debitCard || {};
+  var changed = false;
+  function release(item, dateKey) {
+    if (!item || item.frozen !== true || item.status === '已解冻') return;
+    var date = item[dateKey];
+    if (!date || String(date) > today) return;
+    var amt = Number(item.amount) || 0;
+    if (!(amt > 0)) return;
+    d.available = Math.round(((Number(d.available) || 0) + amt) * 100) / 100;
+    d.frozen = Math.max(0, Math.round(((Number(d.frozen) || 0) - amt) * 100) / 100);
+    item.status = '已解冻';
+    item.releasedAt = new Date().toLocaleString('zh-CN');
+    if (Array.isArray(d.frozenItems) && item.freezeId) {
+      var fi = d.frozenItems.filter(function (x) { return x.id === item.freezeId; })[0];
+      if (fi) { fi.status = '已解冻'; fi.releasedAt = item.releasedAt; }
+    }
+    changed = true;
+  }
+  (u.lockedFunds || []).forEach(function (f) { release(f, 'releaseDate'); });
+  (u.funds || []).forEach(function (f) { release(f, 'deadline'); });
+  if (changed) {
+    saveUserData();
+    if (typeof showToast === 'function') showToast('有预留/专项资金到期，已自动解冻', 2600);
+  }
+}
+
 registerAgentTool('life.orderFlower', {
   label: '预订鲜花', risk: 'medium',
   run: function (args) {
-    var price = Number(args.price) || 168;
+    // 0/负数/非数字一律回落到标准价，避免“免费送”或负金额抵档位
+    var price = Number(args.price);
+    if (!Number.isFinite(price) || price <= 0) price = 168;
+    if (price > 100000) return { ok: false, summary: '鲜花金额异常，未执行' };
     var okTx = addTransaction('expense', price, '生日鲜花-' + (args.name || '') + '(' + (args.flower || '向日葵') + ')', '生活服务', true);
     if (okTx === false) return { ok: false, summary: '可用余额不足，鲜花预订未完成，账户未扣款' };
+    // 与向导下单共用同一份订单列表，避免 Agent 订的花在“鲜花订单”里看不到
+    var u = mockData.userProfile;
+    if (!Array.isArray(u.flowerOrders)) u.flowerOrders = [];
+    u.flowerOrders.unshift({
+      id: 'F' + Date.now(),
+      recipient: args.name || '联系人',
+      phone: '',
+      address: '',
+      bouquet: args.flower || '向日葵',
+      price: price,
+      date: args.deliverDate || agentDateStr(3),
+      slot: 'morning',
+      card: '',
+      payMethod: '储蓄卡',
+      paid: true,
+      paidAmount: price,
+      status: '待配送',
+      createdAt: new Date().toLocaleString('zh-CN')
+    });
     saveUserData();
     return {
       summary: '已预订 ' + (args.flower || '向日葵') + ' ¥' + agentFmtInt(price) + '，' + (args.deliverDate || '') + ' 上午送达',
@@ -867,7 +982,9 @@ registerAgentTool('life.orderFlower', {
 registerAgentTool('life.orderCake', {
   label: '预订蛋糕', risk: 'medium',
   run: function (args) {
-    var price = Number(args.price) || 238;
+    var price = Number(args.price);
+    if (!Number.isFinite(price) || price <= 0) price = 238;
+    if (price > 100000) return { ok: false, summary: '蛋糕金额异常，未执行' };
     var okTx = addTransaction('expense', price, '生日蛋糕-' + (args.name || ''), '生活服务', true);
     if (okTx === false) return { ok: false, summary: '可用余额不足，蛋糕预订未完成，账户未扣款' };
     saveUserData();
@@ -882,7 +999,8 @@ registerAgentTool('life.setReminder', {
     if (!u.reminders) u.reminders = [];
     u.reminders.push({ title: args.title || '生日提醒', date: args.date || agentDateStr(3) });
     saveUserData();
-    return { summary: '已设置「' + (args.title || '生日提醒') + '」提醒，并准备好祝福语草稿', data: args };
+    // 当前演示版没有系统级推送通道，不能声称已经会主动提醒
+    return { summary: '已登记「' + (args.title || '生日提醒') + '」提醒（演示版不会发送系统推送）', data: args };
   }
 });
 
@@ -1092,7 +1210,7 @@ function agentRenderPlanConfirm(id, plan, results) {
   var actionRows = actions.map(function (a, i) {
     return '<div class="agent-confirm-row" id="' + id + '-a' + i + '">' +
       '<span class="agent-confirm-idx">' + (i + 1) + '</span>' +
-      '<span class="agent-confirm-text">' + a.label + '</span>' +
+      '<span class="agent-confirm-text">' + ((typeof escapeHtml === 'function') ? escapeHtml(a.label) : a.label) + '</span>' +
       '<span class="agent-confirm-tag">待确认</span>' +
       '</div>';
   }).join('');
@@ -1608,10 +1726,11 @@ async function agentTransferFlow(payee, amount, rawText, channel, opts) {
   }
 
   var tier = agentTransferTier(amount, risk);
+  var phone = o.phone ? String(o.phone).trim() : '';
 
   var plan = {
     title: '正在为你处理转账',
-    subtitle: '目标：向 ' + payee + ' 转账 ¥' + agentFmt(amount),
+    subtitle: '目标：向 ' + ((typeof escapeHtml === 'function') ? escapeHtml(payee) : payee) + (phone ? '（' + ((typeof escapeHtml === 'function') ? escapeHtml(phone) : phone) + '）' : '') + ' 转账 ¥' + agentFmt(amount),
     steps: [
       { label: '理解你的指令', run: function () { return { summary: '意图：转账 / 收款人 ' + payee + ' / 金额 ¥' + agentFmt(amount) }; } },
       { label: '获取收款人账户', tool: 'transfer.resolvePayee', args: { payee: payee } },
@@ -1635,8 +1754,8 @@ async function agentTransferFlow(payee, amount, rawText, channel, opts) {
       footnote: '该笔交易已记入你的常用收款人，下次同类转账将自动降低风险等级。',
       risk: risk,
       actions: [
-        { label: '转账给 ' + payee + ' ¥' + agentFmt(amount) + (o.remark ? ' · 备注：' + o.remark : ''), tool: 'transfer.execute',
-          args: { payee: payee, amount: amount, channel: ch, remark: o.remark || '' }, amount: amount, risk: risk }
+        { label: '转账给 ' + ((typeof escapeHtml === 'function') ? escapeHtml(payee) : payee) + (phone ? '（' + ((typeof escapeHtml === 'function') ? escapeHtml(phone) : phone) + '）' : '') + ' ¥' + agentFmt(amount) + (o.remark ? ' · 备注：' + ((typeof escapeHtml === 'function') ? escapeHtml(o.remark) : o.remark) : ''), tool: 'transfer.execute',
+          args: { payee: payee, amount: amount, channel: ch, remark: o.remark || '', phone: phone }, amount: amount, risk: risk }
       ]
     },
     after: null
@@ -1652,7 +1771,7 @@ async function agentTransferFlow(payee, amount, rawText, channel, opts) {
   // T1 免确认：直接执行，但结果仍用卡片呈现，不再用一段纯文字替代
   // forceConfirm=true 时（服务向导的多轮转账）即使是 T1 也先出确认卡
   if (!tier.needConfirm && !o.forceConfirm) {
-    var res = await callAgentTool('transfer.execute', { payee: payee, amount: amount, channel: ch });
+    var res = await callAgentTool('transfer.execute', { payee: payee, amount: amount, channel: ch, remark: o.remark || '', phone: phone });
     if (res && res.ok === false) {
       appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
         '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
@@ -1702,7 +1821,7 @@ function agentRiskCardHtml(payee, amount, risk, tier) {
     badge.text + ' · 风险分 ' + risk.score + '/100</div>' +
     tierHtml +
     '<div class="agent-risk-rows">' +
-    '<div class="agent-risk-row"><span>收款人</span><span>' + payee + (risk.known ? '' : '（新联系人）') + '</span></div>' +
+    '<div class="agent-risk-row"><span>收款人</span><span>' + ((typeof escapeHtml === 'function') ? escapeHtml(payee) : payee) + (risk.known ? '' : '（新联系人）') + '</span></div>' +
     '<div class="agent-risk-row"><span>转账金额</span><span>¥' + agentFmt(amount) + '</span></div>' +
     risk.reasons.map(function (r) {
       return '<div class="agent-risk-reason"><span class="agent-risk-reason-name">' + r.label + '</span><span class="agent-risk-reason-desc">' + r.detail + '</span></div>';
@@ -1718,7 +1837,7 @@ function agentRiskCardHtml(payee, amount, risk, tier) {
 // 排序原则：优先「不借钱」方案（改金额 / 分批），贷款类放在后面，除非用户主动要。
 function agentShortageCardHtml(check, payee) {
   var cap = agentFmt(check.capAmount);
-  var safeName = String(payee || '').replace(/\\/g, '').replace(/'/g, '');
+  var safeName = String(payee || '').replace(/[\\'"<>&]/g, '');
   return '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手 · 资金不足提醒</div>' +
     '<div class="msg-bubble agent-bubble">' +

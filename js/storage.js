@@ -6,6 +6,10 @@ function saveUserData() {
     const data = {
       userProfile: mockData.userProfile,
       subscriptions: mockData.subscriptions,
+      // 联系人之前只存在内存里，刷新即回滚；现在纳入持久化
+      contacts: mockData.contacts,
+      bills: mockData.bills,
+      investmentPlans: mockData.investmentPlans,
       cardFrozen: cardFrozen,
       savedAt: new Date().toISOString()
     };
@@ -13,6 +17,33 @@ function saveUserData() {
   } catch (e) {
     console.warn('保存数据失败:', e);
   }
+}
+
+// 单条订阅补默认值：旧数据缺 chargeInDays 时按周期推算，
+// 不再因为一条缺字段就丢弃整份订阅清单。
+function normalizeStoredSubscription(sub) {
+  if (!sub || !sub.name) return null;
+  const out = Object.assign({}, sub);
+  if (typeof out.chargeInDays !== 'number') {
+    let date = null;
+    const raw = out.nextChargeDate || out.chargeDate || '';
+    if (raw) {
+      const d = new Date(String(raw).slice(0, 10) + 'T00:00:00');
+      if (!isNaN(d.getTime())) date = d;
+    }
+    if (!date) {
+      date = new Date();
+      if (out.cycle === '/季') date.setMonth(date.getMonth() + 3);
+      else if (out.cycle === '/年') date.setFullYear(date.getFullYear() + 1);
+      else date.setMonth(date.getMonth() + 1);
+    }
+    out.chargeInDays = Math.max(0, Math.ceil((date.getTime() - Date.now()) / 86400000));
+    out.chargeDate = out.chargeDate || (date.getFullYear() + '-' +
+      String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0'));
+  }
+  if (!out.cycleLabel) out.cycleLabel = out.cycle === '/季' ? '连续包季' : (out.cycle === '/年' ? '连续包年' : '连续包月');
+  if (!out.usage) out.usage = '中';
+  return out;
 }
 
 function loadUserData() {
@@ -53,12 +84,28 @@ function loadUserData() {
         // 恢复上次理财风险测评结果
         if (data.userProfile.riskProfile) riskProfile = data.userProfile.riskProfile;
       }
-      if (data.subscriptions) {
-        // 兼容：旧数据没有扣费周期字段时，改用新的订阅默认数据
-        const needRefresh = data.subscriptions.some(s => typeof s.chargeInDays !== 'number');
-        if (!needRefresh) mockData.subscriptions = data.subscriptions;
+      if (Array.isArray(data.subscriptions)) {
+        // 逐条补默认值；只有整份数据完全无效时才回退初始数据
+        const normalized = data.subscriptions.map(normalizeStoredSubscription).filter(Boolean);
+        if (normalized.length || data.subscriptions.length === 0) {
+          mockData.subscriptions = normalized;
+          window.__LOCAL_SUBS_LOADED = true;
+        }
+      }
+      if (Array.isArray(data.contacts)) {
+        mockData.contacts = data.contacts;
+        window.__LOCAL_CONTACTS_LOADED = true;
+      }
+      if (data.bills && Array.isArray(data.bills.expense)) {
+        mockData.bills = data.bills;
+        window.__LOCAL_BILLS_LOADED = true;
+      }
+      if (Array.isArray(data.investmentPlans)) {
+        mockData.investmentPlans = data.investmentPlans;
+        window.__LOCAL_PLANS_LOADED = true;
       }
       if (typeof data.cardFrozen === 'boolean') cardFrozen = data.cardFrozen;
+      window.__LOCAL_STATE_LOADED = true;
       return true;
     }
   } catch (e) {

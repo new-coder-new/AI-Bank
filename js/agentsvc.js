@@ -318,6 +318,7 @@ registerAgentTool('contact.add', {
     var account = String((args && (args.account || args.cardNo)) || '').replace(/\s+/g, '');
     var bank = args && (args.bank || args.bankName);
     if (!name || !account) return { ok: false, summary: '请同时提供姓名与银行卡号，例如「新增联系人，姓名叫李明，银行卡号 6222021234567890123，开户银行是中国工商银行」' };
+    if (!/^\d{10,25}$/.test(account)) return { ok: false, summary: '银行卡号格式不正确（应为 10-25 位数字）' };
     var dup = contactListData().some(function (c) { return String(c.account || '').replace(/\s+/g, '') === account; });
     if (dup) return { ok: false, summary: '该卡号已存在于联系人列表中，请勿重复添加' };
     mockData.contacts = mockData.contacts || [];

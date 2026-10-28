@@ -1240,8 +1240,9 @@ function agentKBRetrieve(query, limit) {
           return w.toLowerCase().indexOf(s) > -1 && q.indexOf(w.toLowerCase()) > -1;
         });
       });
-      // 专属因果条目（标题含因果词）加分更高，确保稳定压过泛化条目
-      if (causal) e.score += 12;
+      // 只有“已经命中查询词”的因果条目才加权；否则任何含“原因/影响”的条目
+      // 都会无条件冲到第一，导致「为什么定投能摊薄成本」返回“利率变化的原因”。
+      if (causal && e.score > 0) e.score += 6;
       else if (stemHits.length >= 2) e.score += 6;
     });
   }

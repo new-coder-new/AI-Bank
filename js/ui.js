@@ -339,6 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderFunctionSheet();
   checkTutorial();
   executeDueInvestments();
+  if (typeof releaseLockedFunds === 'function') releaseLockedFunds();
   showWelcomeMessage();
   if (typeof initScheduledTransferEngine === 'function') initScheduledTransferEngine();
 

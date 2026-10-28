@@ -75,11 +75,11 @@ function buildMonthlyHistory() {
 // 理财产品
 function buildProducts() {
   return [
-    { icon: '📈', name: '稳健增利90天', desc: '中低风险 · 固定收益 · 90天', rate: '3.85%', rateLabel: '近7日年化', riskLevel: 2, minAmount: 1000 },
-    { icon: '🏦', name: '天天盈货币基金', desc: '低风险 · 灵活存取 · T+1到账', rate: '2.15%', rateLabel: '7日年化', riskLevel: 1, minAmount: 1 },
-    { icon: '📊', name: '均衡配置混合基金', desc: '中风险 · 股债平衡 · 长期持有', rate: '5.62%', rateLabel: '近一年收益', riskLevel: 3, minAmount: 100 },
-    { icon: '🔒', name: '安享三年定期', desc: '低风险 · 保本保息 · 3年期', rate: '2.75%', rateLabel: '年利率', riskLevel: 1, minAmount: 50 },
-    { icon: '🚀', name: '成长先锋股票基金', desc: '中高风险 · 偏股型 · 波动较大', rate: '12.35%', rateLabel: '近一年收益', riskLevel: 4, minAmount: 1000 },
+    { icon: '📈', name: '稳健增利90天', desc: '中低风险 · 固定收益 · 90天', rate: '3.85%', rateLabel: '近7日年化', riskLevel: 2, minAmount: 1000, closedDays: 90 },
+    { icon: '🏦', name: '天天盈货币基金', desc: '低风险 · 灵活存取 · T+1到账', rate: '2.15%', rateLabel: '7日年化', riskLevel: 1, minAmount: 1, closedDays: 0 },
+    { icon: '📊', name: '均衡配置混合基金', desc: '中风险 · 股债平衡 · 长期持有', rate: '5.62%', rateLabel: '近一年收益', riskLevel: 3, minAmount: 100, closedDays: 0 },
+    { icon: '🔒', name: '安享三年定期', desc: '低风险 · 保本保息 · 3年期', rate: '2.75%', rateLabel: '年利率', riskLevel: 1, minAmount: 50, closedDays: 1095 },
+    { icon: '🚀', name: '成长先锋股票基金', desc: '中高风险 · 偏股型 · 波动较大', rate: '12.35%', rateLabel: '近一年收益', riskLevel: 4, minAmount: 1000, closedDays: 0 },
   ];
 }
 
@@ -184,9 +184,9 @@ function buildUserProfile() {
       { type: 'expense', amount: 1500.00, desc: '转账给-未知账户', time: daysAgo(4, 14, 30, 0), channel: '网银转账', abnormal: true, abnormalReason: '非常用收款人' },
     ],
     holdings: [
-      { name: '稳健增利90天', icon: '📈', amount: 10000, cost: 10000, profit: 95.20, profitRate: 0.95, buyDate: '2026-08-15', status: '持有中' },
-      { name: '天天盈货币基金', icon: '🏦', amount: 5000, cost: 5000, profit: 22.15, profitRate: 0.44, buyDate: '2026-09-01', status: '持有中' },
-      { name: '均衡配置混合基金', icon: '📊', amount: 8000, cost: 8000, profit: -156.80, profitRate: -1.96, buyDate: '2026-07-20', status: '持有中' },
+      { name: '稳健增利90天', icon: '📈', amount: 10000, cost: 10000, profit: 95.20, profitRate: 0.95, buyDate: '2026-08-15', status: '持有中', riskLevel: 2 },
+      { name: '天天盈货币基金', icon: '🏦', amount: 5000, cost: 5000, profit: 22.15, profitRate: 0.44, buyDate: '2026-09-01', status: '持有中', riskLevel: 1 },
+      { name: '均衡配置混合基金', icon: '📊', amount: 8000, cost: 8000, profit: -156.80, profitRate: -1.96, buyDate: '2026-07-20', status: '持有中', riskLevel: 3 },
     ],
     budgets: { day: 480, week: 3000, month: 12000, year: 144000 },
     transferHistory: [
@@ -219,7 +219,7 @@ function buildDB() {
     products: buildProducts(),
     card: {
       type: '白金信用卡',
-      number: '6228 **** **** 8888',
+      number: '6228 **** **** 6789',
       totalLimit: 90000,
       usedLimit: 23650,
       availableLimit: 66350,

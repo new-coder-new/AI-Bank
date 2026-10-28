@@ -542,7 +542,10 @@ async function handleReference(ref, text) {
     case 'query_recent':
       // 查询最近操作的结果
       if (action.type === 'transfer') {
-        appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">📋 <strong>刚才的转账详情：</strong><br>收款人：${action.data.payee}<br>金额：¥${action.data.amount.toLocaleString()}<br>状态：✅ 已成功<br>时间：${new Date(action.timestamp).toLocaleString('zh-CN')}</div></div></div>`);
+        const hist = (mockData.userProfile.transferHistory || []).find(t => t.payee === action.data.payee && Number(t.amount) === Number(action.data.amount));
+        const status = hist ? hist.status : '已完成';
+        const statusText = status === '已撤销' ? '↩️ 已撤销' : (status === '已完成' ? '✅ 已完成' : status);
+        appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">📋 <strong>刚才的转账详情：</strong><br>收款人：${escapeHtml(action.data.payee)}<br>金额：¥${Number(action.data.amount).toLocaleString()}<br>状态：${statusText}<br>时间：${new Date(action.timestamp).toLocaleString('zh-CN')}</div></div></div>`);
       } else if (action.type === 'query_balance') {
         appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">💰 <strong>刚才查询的余额：</strong>¥${action.data.balance.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div></div></div>`);
       } else {
@@ -588,19 +591,62 @@ async function handleReference(ref, text) {
           `;
           document.body.appendChild(confirmPopup);
           
-          document.getElementById(confirmId + '-ok').onclick = () => {
-            document.getElementById(confirmId).remove();
-            // 执行修正（撤销原转账记录，重新转账）
-            const okTx = addTransaction('expense', action.data.amount, `转账给${newPayee}（修正自${oldPayee}）`, '智能转账', true);
-            if (okTx === false) {
-              appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>修正未完成</strong><br>可用余额不足，本次未扣款。</div></div></div>`);
+          document.getElementById(confirmId + '-ok').onclick = async () => {
+            const amount = Number(action.data.amount) || 0;
+            // 修正先走金额分级：不能借“修正”绕过 T2/T3/T4
+            if (typeof verifyAmountRisk === 'function') {
+              const risk = await verifyAmountRisk(amount, '转账修正', [
+                { tool: 'transfer.execute', args: { payee: newPayee, amount: amount, channel: '智能转账' } }
+              ]);
+              if (risk && risk.pendingReview) {
+                // 先原路退回旧收款人，新转账进入人工复核
+                addTransaction('income', amount, `转账撤销-${oldPayee}（修正收款人）`, '转账修正', true);
+                if (typeof apiTransferReverse === 'function') apiTransferReverse(oldPayee, amount);
+                const origPending = (mockData.userProfile.transferHistory || []).find(t => t.payee === oldPayee && Number(t.amount) === amount && t.status === '已完成');
+                if (origPending) { origPending.status = '已撤销'; origPending.revokedAt = new Date().toLocaleString('zh-CN'); }
+                document.getElementById(confirmId).remove();
+                saveUserData();
+                appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">已撤销原转账 ¥${amount.toLocaleString()}（${oldPayee}），新转账已提交人工复核；复核通过后才会转给 ${newPayee}。</div></div></div>`);
+                scrollToBottom();
+                resolve(true);
+                return;
+              }
+              if (!risk || !risk.ok) {
+                document.getElementById(confirmId).remove();
+                appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">已取消修正，原转账与账户余额保持不变。</div></div></div>`);
+                scrollToBottom();
+                resolve(false);
+                return;
+              }
+            }
+            // 原转账冲正（加回余额），再做新转账（扣回余额），净额只扣一次
+            const reversal = addTransaction('income', amount, `转账撤销-${oldPayee}（修正收款人）`, '转账修正', true);
+            if (reversal === false) {
+              document.getElementById(confirmId).remove();
+              appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>修正未完成</strong><br>原转账撤销失败，本次未做任何变更。</div></div></div>`);
               scrollToBottom();
               resolve(false);
               return;
             }
-            if (typeof apiTransfer === 'function') apiTransfer(newPayee, action.data.amount);
-            addRecentAction('transfer', { payee: newPayee, amount: action.data.amount });
-            appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">✅ <strong>已修正收款人</strong><br>原收款人：${oldPayee}<br>新收款人：${newPayee}<br>金额：¥${action.data.amount.toLocaleString()}<br>当前余额：¥${mockData.userProfile.debitCard.balance.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div></div></div>`);
+            if (typeof apiTransferReverse === 'function') apiTransferReverse(oldPayee, amount);
+            const history = mockData.userProfile.transferHistory || [];
+            const orig = history.find(t => t.payee === oldPayee && Number(t.amount) === amount && t.status === '已完成');
+            if (orig) { orig.status = '已撤销'; orig.revokedAt = new Date().toLocaleString('zh-CN'); }
+            const okTx = addTransaction('expense', amount, `转账给${newPayee}（修正自${oldPayee}）`, '智能转账', true);
+            if (okTx === false) {
+              // 新转账失败则把冲正也退回，保持原状
+              addTransaction('expense', amount, `撤销修正冲正-${oldPayee}`, '转账修正', true);
+              document.getElementById(confirmId).remove();
+              appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>修正未完成</strong><br>可用余额不足，原转账已恢复。</div></div></div>`);
+              scrollToBottom();
+              resolve(false);
+              return;
+            }
+            if (typeof registerTransferRecord === 'function') registerTransferRecord(newPayee, amount, '转账修正');
+            if (typeof apiTransfer === 'function') apiTransfer(newPayee, amount);
+            addRecentAction('transfer', { payee: newPayee, amount: amount });
+            document.getElementById(confirmId).remove();
+            appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">✅ <strong>已修正收款人</strong><br>原收款人：${oldPayee}（已撤销并退回 ¥${amount.toLocaleString()}）<br>新收款人：${newPayee}<br>金额：¥${amount.toLocaleString()}<br>当前余额：¥${mockData.userProfile.debitCard.balance.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div></div></div>`);
             saveUserData();
             scrollToBottom();
             resolve(true);
@@ -967,7 +1013,7 @@ async function enhancedSendMessage(text) {
 async function callAIResponse(text) {
   try {
     // 未配置 Key：不发请求，直接给出本地可用提示
-    if (!DEEPSEEK_API_KEY) {
+    if (!bankHasLLMKey()) {
       appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">当前运行在<strong>本地规则模式</strong>（未配置 DeepSeek API Key），AI 自由对话不可用，但下面的指令都能正常执行：<br><br>• 给张三转账1000元<br>• 查询余额<br>• 先转500给张三，再查一下余额<br>• 本月消费统计<br><br><span style="font-size:12px;color:#999;">配置方法：复制 js/config.local.example.js 为 js/config.local.js 并填入 Key，或设置环境变量 DEEPSEEK_API_KEY。</span></div></div></div>`);
       scrollToBottom();
       return;
@@ -980,7 +1026,7 @@ async function callAIResponse(text) {
     
     const systemPrompt = `你是一个智能金融助手，支持转账、理财、订阅、信用卡管理、账单分析、预算管理等功能。用户可能会用自然语言提问，你需要理解意图并给出简洁有用的回答。如果用户问你能做什么，列出主要功能。`;
     
-    const response = await fetch(DEEPSEEK_API_URL, {
+    const response = await bankFetch(DEEPSEEK_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

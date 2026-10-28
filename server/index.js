@@ -7,6 +7,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { buildDB, fmtDate, fmtDateTime, now } = require('./db');
 
 let DB = buildDB();
@@ -15,6 +16,65 @@ const HOST = '0.0.0.0';
 
 // 前端静态资源根目录（单端口部署：由本服务同时提供 API 与静态文件）
 const STATIC_ROOT = path.join(__dirname, '..');
+
+// ---------------------------------------------------------------------------
+// 密钥只在服务端使用：优先读环境变量，其次读本地 js/config.local.js。
+// 浏览器永远不会拿到真实 Key；前端通过 /api/ai/* 代理调用模型与语音。
+// ---------------------------------------------------------------------------
+function loadLocalKeys() {
+  const out = {
+    deepseek: process.env.DEEPSEEK_API_KEY || '',
+    siliconflow: process.env.SILICONFLOW_API_KEY || ''
+  };
+  try {
+    const code = fs.readFileSync(path.join(STATIC_ROOT, 'js', 'config.local.js'), 'utf8');
+    const pick = (name) => {
+      const m = code.match(new RegExp(name + '\\s*:\\s*[\'"]([^\'"]+)[\'"]'));
+      return m ? m[1] : '';
+    };
+    out.deepseek = out.deepseek || pick('deepseekApiKey');
+    out.siliconflow = out.siliconflow || pick('siliconflowApiKey');
+  } catch (e) { }
+  return out;
+}
+const AI_KEYS = loadLocalKeys();
+const DEEPSEEK_UPSTREAM = 'https://api.deepseek.com/v1/chat/completions';
+const SILICONFLOW_UPSTREAM = 'https://api.siliconflow.cn/v1/audio/transcriptions';
+
+// 同源会话令牌：写接口必须携带，避免任意网页直接调用转账/重置接口。
+const SESSIONS = new Set();
+function issueSession() {
+  const token = crypto.randomBytes(24).toString('hex');
+  SESSIONS.add(token);
+  setTimeout(() => SESSIONS.delete(token), 12 * 3600 * 1000).unref();
+  return token;
+}
+function hasValidSession(req) {
+  const token = String(req.headers['x-bank-session'] || '');
+  return !!token && SESSIONS.has(token);
+}
+function isSameOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true; // 非浏览器客户端（curl/部署探活）；没有 Cookie，风险由令牌控制
+  try {
+    return new URL(origin).host === req.headers.host;
+  } catch (e) {
+    return false;
+  }
+}
+
+// 简易 AI 限流：防止代理接口被当成免费网关刷额度
+const AI_RATE = new Map();
+function aiRateLimited(req, bucket, max, windowMs) {
+  const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
+  const key = bucket + ':' + ip;
+  const nowTs = Date.now();
+  const arr = (AI_RATE.get(key) || []).filter((t) => nowTs - t < windowMs);
+  if (arr.length >= max) { AI_RATE.set(key, arr); return true; }
+  arr.push(nowTs);
+  AI_RATE.set(key, arr);
+  return false;
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -35,34 +95,50 @@ const MIME = {
   '.wav': 'audio/wav'
 };
 
+// 只暴露前端运行必需的静态资源；server/、logs/、.env、README/package 等一律不可下载
+function isAllowedStatic(pathname) {
+  if (pathname === '/index.html' || pathname === '/favicon.ico') return true;
+  if (pathname.endsWith('config.local.js')) return false;
+  return /^\/(css|js|preview)\//.test(pathname);
+}
+
 // 提供静态文件（目录穿越防护）
 function serveStatic(req, res) {
-  let pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+  let pathname;
+  try {
+    pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+  } catch (e) {
+    // 畸形 % 转义不能把进程打崩
+    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Bad Request');
+    return;
+  }
   if (pathname === '/') pathname = '/index.html';
+  if (!isAllowedStatic(pathname)) {
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('404 Not Found');
+    return;
+  }
   const filePath = path.normalize(path.join(STATIC_ROOT, pathname));
-  if (!filePath.startsWith(STATIC_ROOT)) { // 防目录穿越
+  const rel = path.relative(STATIC_ROOT, filePath);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) { // 防目录穿越
     res.writeHead(403); res.end('Forbidden'); return;
   }
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); res.end('404 Not Found'); return; }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-store' });
+    res.writeHead(200, {
+      'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff'
+    });
     res.end(data);
   });
 }
 
-// 密钥配置下发：js/config.local.js 存在于本机时原样返回（已 git 忽略，不入库）；
-// 文件不存在时回落到环境变量 DEEPSEEK_API_KEY / SILICONFLOW_API_KEY，
-// 保证部署环境不用提交 Key，同时避免浏览器控制台出现 404。
+// 不再向浏览器下发真实 Key；只告诉前端“走服务端代理”
 function serveKeyConfig(res) {
-  const localFile = path.join(STATIC_ROOT, 'js', 'config.local.js');
-  const envBody = 'window.__BANK_KEYS__ = ' + JSON.stringify({
-    deepseekApiKey: process.env.DEEPSEEK_API_KEY || '',
-    siliconflowApiKey: process.env.SILICONFLOW_API_KEY || ''
-  }) + ';\n';
-  fs.readFile(localFile, 'utf8', (err, code) => {
-    res.writeHead(200, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-store' });
-    res.end((!err && code) ? code : envBody);
-  });
+  res.writeHead(200, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-store' });
+  res.end('window.__BANK_KEYS__ = {};\nwindow.__BANK_AI_PROXY__ = true;\nwindow.__BANK_ASR_PROXY__ = true;\n');
 }
 
 // ------------------------------ 工具 ------------------------------
@@ -70,22 +146,115 @@ function sendJSON(res, code, data) {
   const body = JSON.stringify(data);
   res.writeHead(code, {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Cache-Control': 'no-store'
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY'
   });
   res.end(body);
 }
-function readBody(req) {
+function readBody(req, maxBytes) {
+  const limit = maxBytes || 1024 * 1024;
   return new Promise((resolve) => {
     let data = '';
-    req.on('data', (c) => { data += c; });
-    req.on('end', () => {
-      try { resolve(data ? JSON.parse(data) : {}); }
-      catch (e) { resolve({}); }
+    let size = 0;
+    let settled = false;
+    req.on('data', (c) => {
+      if (settled) return;
+      size += c.length;
+      if (size > limit) {
+        settled = true;
+        resolve({ __error: '请求体过大' });
+        req.destroy();
+        return;
+      }
+      data += c;
     });
+    req.on('end', () => {
+      if (settled) return;
+      try { resolve(data ? JSON.parse(data) : {}); }
+      catch (e) { resolve({ __error: 'JSON 格式不正确' }); }
+    });
+    req.on('error', () => { if (!settled) { settled = true; resolve({ __error: '读取请求失败' }); } });
   });
+}
+function readRawBody(req, maxBytes) {
+  const limit = maxBytes || 25 * 1024 * 1024;
+  return new Promise((resolve) => {
+    const chunks = [];
+    let size = 0;
+    let settled = false;
+    req.on('data', (c) => {
+      if (settled) return;
+      size += c.length;
+      if (size > limit) { settled = true; resolve(Buffer.alloc(0)); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => { if (!settled) { settled = true; resolve(Buffer.concat(chunks)); } });
+    req.on('error', () => { if (!settled) { settled = true; resolve(Buffer.alloc(0)); } });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// AI 代理：浏览器只调本服务，真实 Key 留在服务端环境变量/本机文件中
+// ---------------------------------------------------------------------------
+async function handleAIChat(req, res) {
+  if (!isSameOrigin(req)) return sendJSON(res, 403, { error: { message: 'Forbidden' } });
+  if (aiRateLimited(req, 'chat', 20, 60000)) return sendJSON(res, 429, { error: { message: '请求过于频繁，请稍后再试' } });
+  if (!AI_KEYS.deepseek) return sendJSON(res, 503, { error: { message: '服务端未配置 DEEPSEEK_API_KEY' } });
+  const body = await readBody(req, 512 * 1024);
+  if (body.__error) return sendJSON(res, 400, { error: { message: body.__error } });
+  if (!Array.isArray(body.messages) || !body.messages.length) {
+    return sendJSON(res, 400, { error: { message: 'messages 不能为空' } });
+  }
+  const payload = {
+    model: process.env.DEEPSEEK_MODEL || body.model || 'deepseek-chat',
+    messages: body.messages,
+    temperature: body.temperature,
+    max_tokens: body.max_tokens,
+    stream: false
+  };
+  Object.keys(payload).forEach((k) => { if (payload[k] === undefined) delete payload[k]; });
+  try {
+    const upstream = await fetch(DEEPSEEK_UPSTREAM, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AI_KEYS.deepseek },
+      body: JSON.stringify(payload)
+    });
+    const text = await upstream.text();
+    res.writeHead(upstream.status, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    res.end(text);
+  } catch (e) {
+    sendJSON(res, 502, { error: { message: '模型服务不可用：' + (e && e.message || e) } });
+  }
+}
+
+async function handleAITranscribe(req, res) {
+  if (!isSameOrigin(req)) return sendJSON(res, 403, { error: { message: 'Forbidden' } });
+  if (aiRateLimited(req, 'asr', 10, 60000)) return sendJSON(res, 429, { error: { message: '请求过于频繁，请稍后再试' } });
+  if (!AI_KEYS.siliconflow) return sendJSON(res, 503, { error: { message: '服务端未配置 SILICONFLOW_API_KEY' } });
+  const body = await readRawBody(req, 25 * 1024 * 1024);
+  if (!body || !body.length) return sendJSON(res, 400, { error: { message: '音频内容为空或过大' } });
+  const contentType = req.headers['content-type'] || 'application/octet-stream';
+  try {
+    const upstream = await fetch(SILICONFLOW_UPSTREAM, {
+      method: 'POST',
+      headers: { 'Content-Type': contentType, 'Authorization': 'Bearer ' + AI_KEYS.siliconflow },
+      body: body
+    });
+    const text = await upstream.text();
+    res.writeHead(upstream.status, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    res.end(text);
+  } catch (e) {
+    sendJSON(res, 502, { error: { message: '语音识别服务不可用：' + (e && e.message || e) } });
+  }
 }
 
 // 账单汇总
@@ -303,17 +472,49 @@ const routes = {
 
   // 转账（真实扣减）
   'POST /api/transfer': async (req) => {
-    const { payee, amount } = await readBody(req);
-    const amt = Number(amount) || 0;
-    if (amt <= 0) return { ok: false, error: '金额无效' };
+    const { payee, amount, idempotencyKey } = await readBody(req);
+    const amt = Math.round((Number(amount) || 0) * 100) / 100;
+    const payeeName = String(payee || '').trim();
+    if (!Number.isFinite(amt) || amt <= 0) return { ok: false, error: '金额无效' };
+    if (!payeeName) return { ok: false, error: '缺少收款人' };
+    // 幂等：同一笔提交（双击/重试）只扣一次。只在成功扣款后记录结果，
+    // 避免失败请求留下“成功”占位导致重试被误判为已完成。
+    const idemKey = idempotencyKey ? 'transfer:' + String(idempotencyKey) : null;
+    if (idemKey) {
+      DB.__idem = DB.__idem || {};
+      if (DB.__idem[idemKey]) return Object.assign({}, DB.__idem[idemKey], { duplicate: true });
+      // 清理 10 分钟前的幂等键
+      Object.keys(DB.__idem).forEach((k) => {
+        if (DB.__idem[k] && Date.now() - (DB.__idem[k].at || 0) > 600000) delete DB.__idem[k];
+      });
+    }
     const d = DB.userProfile.debitCard;
     if (amt > d.available) return { ok: false, error: '余额不足', available: d.available };
     d.available -= amt;
     d.balance -= amt;
     addTxn('expense', amt, `转账给${payee}`, '智能转账');
     const id = Math.max(0, ...DB.userProfile.transferHistory.map((t) => t.id)) + 1;
-    DB.userProfile.transferHistory.unshift({ id, payee, account: '****', amount: amt, time: fmtDateTime(now()), status: '已完成', channel: '智能转账' });
-    return { ok: true, balance: d.balance, available: d.available, transferId: id };
+    DB.userProfile.transferHistory.unshift({ id, payee: payeeName, account: '****', amount: amt, time: fmtDateTime(now()), status: '已完成', channel: '智能转账' });
+    const result = { ok: true, balance: d.balance, available: d.available, transferId: id };
+    if (idemKey && DB.__idem) DB.__idem[idemKey] = Object.assign({ at: Date.now() }, result);
+    return result;
+  },
+
+  // 撤销转账（修正收款人/撤销记录时，后端也要把钱退回，避免刷新后被扣两次）
+  'POST /api/transfer/reverse': async (req) => {
+    const { payee, amount } = await readBody(req);
+    const amt = Math.round((Number(amount) || 0) * 100) / 100;
+    if (!Number.isFinite(amt) || amt <= 0) return { ok: false, error: '撤销金额无效' };
+    const rec = DB.userProfile.transferHistory.find((t) =>
+      t.payee === String(payee || '').trim() && Number(t.amount) === amt && t.status === '已完成');
+    if (!rec) return { ok: false, error: '未找到可撤销的转账记录' };
+    rec.status = '已撤销';
+    rec.revokedAt = fmtDateTime(now());
+    const d = DB.userProfile.debitCard;
+    d.balance = Math.round((d.balance + amt) * 100) / 100;
+    d.available = Math.round((d.available + amt) * 100) / 100;
+    addTxn('income', amt, `转账撤销-${rec.payee}（原路退回）`, '转账撤销');
+    return { ok: true, balance: d.balance, available: d.available, transferId: rec.id };
   },
 
   // 理财申购（真实扣减余额，增加持仓）
@@ -338,14 +539,41 @@ const routes = {
     const { product, amount } = await readBody(req);
     const h = DB.userProfile.holdings.find((x) => x.name === product);
     if (!h) return { ok: false, error: '无此持仓' };
-    const amt = amount ? Number(amount) : h.amount;
-    if (amt > h.amount) return { ok: false, error: '赎回金额超过持仓' };
-    h.amount -= amt;
-    if (h.amount <= 0) DB.userProfile.holdings = DB.userProfile.holdings.filter((x) => x.name !== product);
+    const prodDef = DB.products.find((x) => x.name === product) || {};
+    const closedDays = Number(prodDef.closedDays) || 0;
+    if (closedDays > 0 && h.buyDate) {
+      const buyTs = new Date(String(h.buyDate) + 'T00:00:00').getTime();
+      const heldDays = isNaN(buyTs) ? closedDays : Math.floor((Date.now() - buyTs) / 86400000);
+      if (heldDays < closedDays) {
+        return { ok: false, error: `封闭期未满（已持有 ${heldDays} 天 / 需 ${closedDays} 天），暂不可赎回` };
+      }
+    }
+    // 省略 amount 表示全额赎回；显式传 0/负数/非数字一律拒绝，避免“0 元赎回全部”
+    const amt = (amount === undefined || amount === null || amount === '')
+      ? h.amount
+      : Math.round((Number(amount) || 0) * 100) / 100;
+    if (!Number.isFinite(amt) || amt <= 0) return { ok: false, error: '赎回金额必须大于 0' };
+    if (amt > h.amount + 0.001) return { ok: false, error: '赎回金额超过持仓' };
+
+    // 按赎回比例结算收益：全额赎回时累计收益必须兑付，不能凭空消失
+    const ratio = amt / h.amount;
+    const profitPart = Math.round(((Number(h.profit) || 0) * ratio) * 100) / 100;
+    const remain = Math.round((h.amount - amt) * 100) / 100;
+    h.amount = remain;
+    h.cost = Math.max(0, Math.round(((Number(h.cost) || 0) - amt) * 100) / 100);
+    h.profit = Math.round(((Number(h.profit) || 0) - profitPart) * 100) / 100;
+    h.profitRate = h.cost > 0 ? Math.round((h.profit / h.cost) * 10000) / 100 : 0;
+    if (remain <= 0) DB.userProfile.holdings = DB.userProfile.holdings.filter((x) => x.name !== product);
+
+    const credited = Math.round((amt + profitPart) * 100) / 100;
     const d = DB.userProfile.debitCard;
-    d.balance += amt; d.available += amt;
-    addTxn('income', amt, `赎回理财-${product}`, '理财赎回');
-    return { ok: true, balance: d.balance, available: d.available, holdings: DB.userProfile.holdings };
+    d.balance = Math.round((d.balance + credited) * 100) / 100;
+    d.available = Math.round((d.available + credited) * 100) / 100;
+    addTxn('income', credited, `赎回理财-${product}`, '理财赎回');
+    return {
+      ok: true, balance: d.balance, available: d.available,
+      credited, profit: profitPart, remain, holdings: DB.userProfile.holdings
+    };
   },
 
   // 预算设置
@@ -497,16 +725,40 @@ const routes = {
 
 // ------------------------------ 服务器 ------------------------------
 const server = http.createServer(async (req, res) => {
-  if (req.method === 'OPTIONS') { sendJSON(res, 200, {}); return; }
+  if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
-  const url = new URL(req.url, 'http://localhost');
-  const key = `${req.method} ${url.pathname}`;
+  let url;
+  try { url = new URL(req.url, 'http://localhost'); }
+  catch (e) { res.writeHead(400); res.end('Bad Request'); return; }
+  const pathname = url.pathname;
+
+  // 会话令牌：前端启动时领取，写接口和快照都必须携带
+  if (pathname === '/api/session') {
+    if (!isSameOrigin(req)) return sendJSON(res, 403, { ok: false, error: 'Forbidden' });
+    return sendJSON(res, 200, { ok: true, token: issueSession() });
+  }
+
+  // AI 代理（真实 Key 只在服务端）
+  if (pathname === '/api/ai/chat') { await handleAIChat(req, res); return; }
+  if (pathname === '/api/ai/transcribe') { await handleAITranscribe(req, res); return; }
+
+  // 无真实 Key 的配置脚本
+  if (pathname === '/js/config.local.js') { serveKeyConfig(res); return; }
+
+  // API 统一鉴权：/api/health 保持公开，其余必须同源 + 有效会话令牌
+  if (pathname.startsWith('/api/')) {
+    if (pathname !== '/api/health') {
+      if (!isSameOrigin(req)) return sendJSON(res, 403, { ok: false, error: 'Forbidden' });
+      if (!hasValidSession(req)) return sendJSON(res, 401, { ok: false, error: '会话已失效，请刷新页面' });
+    }
+  }
+
+  const key = `${req.method} ${pathname}`;
   const handler = routes[key];
 
   if (!handler) {
-    // 密钥配置单独下发（本机文件优先，其次环境变量）
-    if (url.pathname === '/js/config.local.js') { serveKeyConfig(res); return; }
-    // 无匹配 API 路由时，尝试作为静态文件服务（单端口部署：前端页面/资源）
+    if (pathname.startsWith('/api/')) return sendJSON(res, 404, { ok: false, error: '接口不存在' });
+    // 非 API 请求作为静态文件服务（白名单）
     serveStatic(req, res);
     return;
   }

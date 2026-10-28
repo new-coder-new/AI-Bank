@@ -17,6 +17,8 @@ function agentLLMConfig() {
   try {
     if (typeof DEEPSEEK_API_URL !== 'undefined' && DEEPSEEK_API_URL) cfg.url = DEEPSEEK_API_URL;
     if (typeof DEEPSEEK_API_KEY !== 'undefined' && DEEPSEEK_API_KEY) cfg.key = DEEPSEEK_API_KEY;
+    // 走同源代理时不需要浏览器 Key
+    if (!cfg.key && typeof window !== 'undefined' && window.__BANK_AI_PROXY__) cfg.key = 'proxy';
     if (typeof MODEL_NAME !== 'undefined' && MODEL_NAME) cfg.model = MODEL_NAME;
   } catch (e) { /* 配置未就绪 */ }
   return cfg;
@@ -261,7 +263,7 @@ async function agentLLMCall(messages, tools, opts) {
 
   var resp;
   try {
-    resp = await fetch(c.url, {
+    resp = await bankFetch(c.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + c.key },
       body: JSON.stringify(body)
@@ -409,28 +411,33 @@ function agentParseToolArgs(raw) {
 }
 
 function agentToolActionLabel(action) {
+  var esc = function (v) { return (typeof escapeHtml === 'function') ? escapeHtml(String(v)) : String(v); };
   var label = (action.tool && action.tool.label) || action.name;
   var ar = action.args || {};
   var parts = [];
-  if (ar.payee) parts.push(ar.payee);
-  if (ar.product) parts.push(ar.product);
-  if (ar.purpose) parts.push(ar.purpose);
-  if (ar.name) parts.push(ar.name);
-  if (ar.flower) parts.push(ar.flower);
-  if (ar.city) parts.push(ar.city);
-  if (ar.deliverDate) parts.push(ar.deliverDate + ' 送达');
-  if (ar.period) parts.push({ day: '每日', week: '每周', month: '每月', year: '每年' }[ar.period] || ar.period);
+  if (ar.payee) parts.push(esc(ar.payee));
+  if (ar.product) parts.push(esc(ar.product));
+  if (ar.purpose) parts.push(esc(ar.purpose));
+  if (ar.name) parts.push(esc(ar.name));
+  if (ar.flower) parts.push(esc(ar.flower));
+  if (ar.city) parts.push(esc(ar.city));
+  if (ar.deliverDate) parts.push(esc(ar.deliverDate) + ' 送达');
+  if (ar.period) parts.push(esc({ day: '每日', week: '每周', month: '每月', year: '每年' }[ar.period] || ar.period));
   if (ar.amount !== undefined && ar.amount !== null && ar.amount !== '') parts.push('¥' + agentFmt(ar.amount));
-  return label + (parts.length ? '：' + parts.join(' · ') : '');
+  return esc(label) + (parts.length ? '：' + parts.join(' · ') : '');
 }
 
 function agentActionAmount(action) {
   var ar = (action && action.args) || {};
-  // 鲜花/蛋糕工具用 price 字段，其余资金工具用 amount
+  // 鲜花/蛋糕工具用 price 字段，其余资金工具用 amount。
+  // 负数必须按 0 计：否则一笔 5000 转账 + 一笔 -4900 鲜花会被算成 100 元，绕过 T2/T3 验证。
+  var v;
   if (action && (action.name === 'life.orderFlower' || action.name === 'life.orderCake')) {
-    return Number(ar.price) || 0;
+    v = Number(ar.price) || 0;
+  } else {
+    v = Number(ar.amount) || 0;
   }
-  return Number(ar.amount) || 0;
+  return Number.isFinite(v) && v > 0 ? v : 0;
 }
 
 function agentRenderAgentReply(content) {
@@ -670,6 +677,9 @@ async function agentLLMHandle(text) {
     await agentSleep(700);
     agentTraceRemove(trace);
     return false;
+  } finally {
+    // 任何分支（含超时/异常）都必须释放重入锁，否则后续消息会被永久 toast 吞掉
+    AGENT_LLM_BUSY = false;
   }
 }
 
@@ -895,11 +905,12 @@ async function agentLLMApprove(id) {
         var tag = row.querySelector('.agent-confirm-tag');
         if (tag) { tag.textContent = '执行中'; tag.className = 'agent-confirm-tag running'; }
       }
-      var lineId = await agentTraceStep(state.trace, '正在' + (a.tool.label || a.name) + '……', { wait: 420 });
+      var toolLabel = (a.tool && a.tool.label) || a.name || '操作';
+      var lineId = await agentTraceStep(state.trace, '正在' + toolLabel + '……', { wait: 420 });
       var res = await callAgentTool(a.name, a.args || {});
       state.trace.tools++;
       var okState = (res.ok === false) ? 'fail' : 'done';
-      state.executed.push({ name: a.name, label: a.tool.label || a.name, ok: res.ok !== false, summary: res.summary || '' });
+      state.executed.push({ name: a.name, label: toolLabel, ok: res.ok !== false, summary: res.summary || '' });
       agentTraceSettle(state.trace, lineId, res.summary || (okState === 'fail' ? '执行失败' : '已完成'), okState);
       if (row) {
         var tag2 = row.querySelector('.agent-confirm-tag');

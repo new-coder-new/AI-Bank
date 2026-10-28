@@ -1,12 +1,16 @@
 // ========== 全局语音输入（对话框语音按钮） ==========
 let globalIsRecording = false;
+let globalIsStarting = false;
 let globalAudioChunks = [];
 let globalMediaRecorder = null;
+let globalMediaStream = null;
+let globalRecordingTimer = null;
+let globalInputBefore = '';
 
 function toggleGlobalVoice() {
   if (globalIsRecording) {
     stopGlobalVoiceRecording();
-  } else {
+  } else if (!globalIsStarting) {
     startGlobalVoiceRecording();
   }
 }
@@ -23,15 +27,21 @@ function startGlobalVoiceRecording() {
     return;
   }
 
+  globalIsStarting = true;
+  globalInputBefore = userInput ? userInput.value : '';
   navigator.mediaDevices.getUserMedia({ audio: true })
     .then(stream => {
+      globalIsStarting = false;
       globalIsRecording = true;
+      globalMediaStream = stream;
       globalAudioChunks = [];
       globalMediaRecorder = new MediaRecorder(stream);
       globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) globalAudioChunks.push(e.data); };
       globalMediaRecorder.onstop = () => {
         globalIsRecording = false;
+        if (globalRecordingTimer) { clearTimeout(globalRecordingTimer); globalRecordingTimer = null; }
         stream.getTracks().forEach(t => t.stop());
+        globalMediaStream = null;
         // 恢复UI
         voiceBtn.classList.remove('recording');
         voiceBtn.textContent = '🎤';
@@ -51,13 +61,20 @@ function startGlobalVoiceRecording() {
       recordingBar.classList.add('show');
       if (userInput) userInput.style.display = 'none';
 
-      // 自动停止（最长15秒）
-      setTimeout(() => {
+      // 自动停止（最长15秒）；保存句柄，重新录音时清掉旧定时器
+      globalRecordingTimer = setTimeout(() => {
         if (globalIsRecording) stopGlobalVoiceRecording();
       }, 15000);
     })
     .catch(err => {
       console.error('全局语音录音错误:', err);
+      globalIsStarting = false;
+      globalIsRecording = false;
+      if (globalMediaStream) {
+        try { globalMediaStream.getTracks().forEach(t => t.stop()); } catch (e) { }
+        globalMediaStream = null;
+      }
+      if (globalRecordingTimer) { clearTimeout(globalRecordingTimer); globalRecordingTimer = null; }
       if (err.name === 'NotAllowedError') {
         alert('麦克风权限被拒绝，请在浏览器设置中允许麦克风访问');
       } else {
@@ -75,14 +92,14 @@ function stopGlobalVoiceRecording() {
 async function transcribeGlobalAudio(audioBlob) {
   const recordingText = document.getElementById('voiceRecordingText');
   // 未配置语音识别 Key：不发起请求，直接走模拟识别，避免弹错误框
-  if (!SILICONFLOW_API_KEY) {
-    console.info('[voice] 未配置 SiliconFlow API Key，语音识别走模拟结果');
+  if (!bankHasASRKey()) {
+    // 不能把随机指令自动提交（尤其不能自动提交“转500元给张三”）
+    console.info('[voice] 未配置语音识别，提示用户手动输入');
     if (recordingText) {
-      recordingText.textContent = '未配置语音 Key，使用模拟识别';
+      recordingText.textContent = '语音识别未配置，请手动输入';
       recordingText.style.color = '#999';
     }
-    const mockTexts = ['查一下我的余额', '本月消费统计', '转500元给张三', '我的理财产品', '信用卡额度'];
-    setTimeout(() => handleGlobalVoiceResult(mockTexts[Math.floor(Math.random() * mockTexts.length)]), 400);
+    if (typeof showToast === 'function') showToast('语音识别不可用，请手动输入', 2600);
     return;
   }
   if (recordingText) {
@@ -93,7 +110,7 @@ async function transcribeGlobalAudio(audioBlob) {
     const formData = new FormData();
     formData.append('file', audioBlob, 'recording.webm');
     formData.append('model', VOICE_MODEL);
-    const response = await fetch(SILICONFLOW_API_URL, {
+    const response = await bankFetch(SILICONFLOW_API_URL, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${SILICONFLOW_API_KEY}` },
       body: formData
@@ -108,18 +125,19 @@ async function transcribeGlobalAudio(audioBlob) {
     }
   } catch (err) {
     console.error('全局语音识别错误:', err);
-    alert('语音识别失败：' + err.message + '\n将使用模拟识别');
-    // 降级：模拟识别
-    const mockTexts = ['查一下我的余额', '本月消费统计', '转500元给张三', '我的理财产品', '信用卡额度'];
-    const mockText = mockTexts[Math.floor(Math.random() * mockTexts.length)];
-    handleGlobalVoiceResult(mockText);
+    alert('语音识别失败：' + err.message + '\n请手动输入。');
+    // 不自动提交任何内容，避免把用户没说过的话当成指令执行
   }
 }
 
 function handleGlobalVoiceResult(text) {
   const userInput = document.getElementById('userInput');
   if (userInput) {
-    userInput.value = text;
+    // 录音期间用户如果手动输入了内容，追加而不是静默覆盖
+    const current = String(userInput.value || '').trim();
+    userInput.value = (current && current !== String(globalInputBefore || '').trim())
+      ? (current + ' ' + text)
+      : text;
     userInput.style.height = 'auto';
     userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
   }
@@ -141,7 +159,7 @@ function handleGlobalVoiceResult(text) {
 // 智能转账解析：支持姓名/手机号/定时/AA四种转账类型
 async function parseVoiceCommandSmart(text) {
   // 未配置 Key：跳过模型解析，直接把文本交给对话链路（本地规则/知识库）
-  if (!DEEPSEEK_API_KEY) {
+  if (!bankHasLLMKey()) {
     console.info('[voice] 未配置 DeepSeek API Key，跳过模型解析');
     const userInput = document.getElementById('userInput');
     if (userInput) userInput.value = text;
@@ -176,7 +194,7 @@ async function parseVoiceCommandSmart(text) {
 定时转账：{"type":"timed","amount":1000,"payee":"房东","date":"2026-10-01","time":"09:00","repeat":"每月"}
 AA收款：{"type":"aa","total":200,"count":4}`;
 
-    const response = await fetch(DEEPSEEK_API_URL, {
+    const response = await bankFetch(DEEPSEEK_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

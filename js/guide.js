@@ -96,6 +96,100 @@ function guideMessage(inner) {
 // 「账户概览」入口暂时屏蔽：需要恢复时把下面开关改成 true 即可
 var GUIDE_SHOW_OVERVIEW = false;
 
+// 统一重置所有向导会话。任何新的服务/子功能入口都先结束旧流程，
+// 避免「转账会话 + 理财会话」同时存在导致输入被旧会话抢走。
+function guideResetAllSessions() {
+  GUIDE_TRANSFER = null;
+  GUIDE_AA = null;
+  GUIDE_WEALTH = null;
+  GUIDE_CARD_APPLY = null;
+  GUIDE_CARD_LIMIT = null;
+  GUIDE_TXN_LIMIT = null;
+  GUIDE_CARD_LOST = null;
+  GUIDE_HOLDING = null;
+  GUIDE_SUB = null;
+  GUIDE_FLOWER = null;
+  if (typeof window !== 'undefined') window.__pendingScheduledTransfers = {};
+}
+
+// 只读查询不应被「打开功能菜单」或「调额申请」劫持：
+// 「查余额 / 查信用卡额度 / 看交易记录」交回主链路（chat/agent 的只读处理器）。
+function guideIsReadOnlyQuery(text) {
+  var s = String(text || '').trim();
+  if (!s) return false;
+  // 明确是变更类操作时不算只读查询
+  if (/(调整|提升|提高|降低|申请|办理|设置|修改|取消|关闭|开启|挂失|购买|申购|赎回)/.test(s)) return false;
+  if (!/(余额|额度|交易记录|最近交易|流水)/.test(s)) return false;
+  return /^(查|看|看看|查看|查询|显示|我的|我|帮我|麻烦|请问|还有|还剩)/.test(s) ||
+    /(多少|余额|额度)/.test(s);
+}
+
+// 一句话里已经带齐金额/收款人/产品时，直接进入业务流，不再先给二级菜单。
+// 这是「给张三转账1000元」被菜单吞掉的直接修复。
+function guideTryActionableCommand(text) {
+  var t = String(text || '').trim();
+  if (!t) return null;
+
+  if (/(转账|转帐|汇款|打钱|转钱|付款|转给)/.test(t)) {
+    var hasPhone = /1\d{10}/.test(t);
+    var kind = /定时|预约|计划/.test(t) ? 'timed' : ((/手机号|电话/.test(t) || hasPhone) ? 'phone' : 'name');
+    var parsed = guideTransferParse(t, kind);
+    if (parsed.amount > 0 || parsed.phone) {
+      GUIDE_TRANSFER = {
+        kind: kind, payee: null, phone: null, amount: null, remark: '', stage: 'slots'
+      };
+      if (kind === 'timed') {
+        GUIDE_TRANSFER.date = null;
+        GUIDE_TRANSFER.time = null;
+        GUIDE_TRANSFER.repeat = '不重复';
+      }
+      currentModule = 'transfer';
+      return guideTransferStep(t);
+    }
+  }
+
+  if (/(理财|基金|产品|申购|买入|购买|买)/.test(t) &&
+      !/(鲜花|花束|玫瑰|康乃馨|向日葵|百合|郁金香|蛋糕|订阅|会员)/.test(t)) {
+    var product = (typeof guideWealthFindProduct === 'function') ? guideWealthFindProduct(t) : null;
+    // 产品名里常带 90天/3年，先剔除再抽金额
+    var amountText = product ? String(t).replace(product.name, ' ') : t;
+    var wAmount = guideParseSimpleAmount(amountText);
+    if (wAmount > 0) {
+      if (!guideWealthValidProfile()) {
+        // 仍先走风险测评，但把产品和金额暂存，测评后可继续
+        GUIDE_WEALTH = { stage: 'risk', product: product, amount: wAmount };
+        guideStartWealthPurchase();
+        if (GUIDE_WEALTH && GUIDE_WEALTH.stage === 'risk') {
+          GUIDE_WEALTH.product = product;
+          GUIDE_WEALTH.amount = wAmount;
+        }
+        return true;
+      }
+      // 没说出具体产品时也保留金额，下一步只追问产品，用户不用重说金额
+      GUIDE_WEALTH = { stage: 'slots', product: product, amount: wAmount };
+      currentModule = 'wealth';
+      return guideLockedRun(function () { return guideWealthStep(t); });
+    }
+  }
+
+  return null;
+}
+
+// 供向导内部使用的轻量金额解析：支持千分位、亿/万/千，且跳过 11 位手机号。
+function guideParseSimpleAmount(text) {
+  var s = String(text || '').replace(/,/g, '');
+  s = s.replace(/1\d{10}/g, ' ');
+  var m = s.match(/(\d+(?:\.\d+)?)\s*(亿|万|w|W|千|k|K)?/);
+  if (!m) return 0;
+  var v = parseFloat(m[1]);
+  if (!(v > 0)) return 0;
+  var unit = m[2];
+  if (unit === '亿') v *= 100000000;
+  else if (unit === '万' || unit === 'w' || unit === 'W') v *= 10000;
+  else if (unit === '千' || unit === 'k' || unit === 'K') v *= 1000;
+  return v;
+}
+
 function renderServiceWelcome() {
   var list = GUIDE_SERVICES.map(function (s) {
     return '<div class="guide-item">🔹 ' + s.label + '</div>';
@@ -123,8 +217,13 @@ function guideOpenOverview() {
 
 // 二级菜单：某一类服务的子功能
 function guideOpenService(key) {
+  if (typeof guideActiveFlowLabel === 'function' && guideActiveFlowLabel()) {
+    guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。');
+    return;
+  }
   var s = guideServiceByKey(key);
   if (!s) return;
+  guideResetAllSessions();
   currentModule = s.key;
   var chips = s.subs.map(function (sub) {
     return guideChip(sub.label, "guidePickSub('" + s.key + "','" + sub.key + "')");
@@ -140,10 +239,15 @@ function guideOpenService(key) {
 
 // 进入某个子功能：执行对应流程，并保持模块上下文
 function guidePickSub(serviceKey, subKey) {
+  if (typeof guideActiveFlowLabel === 'function' && guideActiveFlowLabel()) {
+    guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。');
+    return;
+  }
   var s = guideServiceByKey(serviceKey);
   if (!s) return;
   var sub = s.subs.filter(function (x) { return x.key === subKey; })[0];
   if (!sub) return;
+  guideResetAllSessions();
   currentModule = s.key;
   try {
     sub.run();
@@ -153,8 +257,53 @@ function guidePickSub(serviceKey, subKey) {
 }
 
 function guideBackToMenu() {
+  guideResetAllSessions();
   currentModule = 'chat';
   renderServiceWelcome();
+}
+
+// 当前正在进行的对话流程（没有则返回空串）——用于「流程锁」：没走完就不许换功能 / 重开一单
+function guideActiveFlowLabel() {
+  if (GUIDE_TRANSFER) {
+    if (GUIDE_TRANSFER.kind === 'timed') return '定时转账';
+    if (GUIDE_TRANSFER.kind === 'phone') return '手机号转账';
+    if (GUIDE_TRANSFER.kind === 'bank') return '银行卡转账';
+    return '姓名转账';
+  }
+  if (GUIDE_AA) return 'AA 收款';
+  if (GUIDE_WEALTH) return '理财申购';
+  if (GUIDE_CARD_APPLY) return '信用卡申请';
+  if (GUIDE_CARD_LIMIT) return '额度调整';
+  if (GUIDE_TXN_LIMIT) return '交易限制设置';
+  if (GUIDE_CARD_LOST) return '卡片挂失';
+  if (GUIDE_HOLDING) return '持仓管理';
+  if (GUIDE_SUB) return '订阅管理';
+  if (GUIDE_FLOWER) return '鲜花订购';
+  return '';
+}
+
+// 流程锁提示：当前流程没走完，不允许跳去别的功能 / 重新开一单
+function guideFlowLockedNotice(extra) {
+  var label = guideActiveFlowLabel();
+  appendMessage(guideMessage(
+    '<p>当前正在「<b>' + (label || '业务') + '</b>」流程中，请先完成这次操作。</p>' +
+    (extra ? '<p class="guide-tip">' + extra + '</p>' : '') +
+    '<p class="guide-tip">如需放弃并重新开始，请回复「取消」。</p>'
+  ));
+  scrollToBottom();
+}
+
+// 会话步骤统一执行：步骤返回 false（表示没接住）时不交给主链路，而是提示先完成当前流程
+function guideLockedRun(fn) {
+  var r = fn();
+  if (r && typeof r.then === 'function') {
+    return r.then(function (v) {
+      if (v === false) guideFlowLockedNotice();
+      return true;
+    });
+  }
+  if (r === false || r === undefined || r === null) guideFlowLockedNotice();
+  return true;
 }
 
 // 文本解析：服务名 / 子功能名 / 返回菜单，命中则接管，返回 true
@@ -162,8 +311,17 @@ function guideHandleText(text) {
   var t = String(text || '').trim().replace(/[。.!！?？,，\s]+$/g, '');
   if (!t) return false;
 
+  // 流程锁预检：未完成流程里说到别的服务名，先挡下来
+  if (guideActiveFlowLabel()) {
+    var otherSvc = guideResolveService(t);
+    if (otherSvc) {
+      guideFlowLockedNotice('当前正在「' + guideActiveFlowLabel() + '」流程中，不能切换到「' + otherSvc.label + '」。');
+      return true;
+    }
+  }
+
   // 姓名转账多轮收集进行中：这一步的输入一律按「收款人 / 金额」解析
-  if (GUIDE_TRANSFER) return guideTransferStep(t);
+  if (GUIDE_TRANSFER) return guideLockedRun(function () { return guideTransferStep(t); });
 
   // AA 收款多轮收集进行中
   if (GUIDE_AA) {
@@ -172,22 +330,9 @@ function guideHandleText(text) {
       guideBackToMenu();
       return true;
     }
-    var aaSvc = guideResolveService(t);
-    if (aaSvc) {
-      GUIDE_AA = null;
-      guideOpenService(aaSvc.key);
-      return true;
-    }
-    var transferSvcAA = guideServiceByKey('transfer');
-    var aaSub = transferSvcAA && transferSvcAA.subs.filter(function (x) {
-      return x.label === t || (x.aliases || []).indexOf(t) !== -1;
-    })[0];
-    if (aaSub) {
-      GUIDE_AA = null;
-      guidePickSub('transfer', aaSub.key);
-      return true;
-    }
-    return guideAAStep(t);
+    if (guideResolveService(t)) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
+    if (guideServiceByKey('transfer') && guideServiceByKey('transfer').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
+    return guideLockedRun(function () { return guideAAStep(t); });
   }
 
   // 理财申购多轮收集进行中（风评 → 产品/金额 → 确认）
@@ -197,22 +342,9 @@ function guideHandleText(text) {
       guideBackToMenu();
       return true;
     }
-    var wSvc = guideResolveService(t);
-    if (wSvc) {
-      GUIDE_WEALTH = null;
-      guideOpenService(wSvc.key);
-      return true;
-    }
-    var wealthSvc = guideServiceByKey('wealth');
-    var wSub = wealthSvc && wealthSvc.subs.filter(function (x) {
-      return x.label === t || (x.aliases || []).indexOf(t) !== -1;
-    })[0];
-    if (wSub) {
-      GUIDE_WEALTH = null;
-      guidePickSub('wealth', wSub.key);
-      return true;
-    }
-    return guideWealthStep(t);
+    if (guideResolveService(t)) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
+    if (guideServiceByKey('wealth') && guideServiceByKey('wealth').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
+    return guideLockedRun(function () { return guideWealthStep(t); });
   }
 
   // 申请信用卡多轮收集进行中（卡种 / 额度 / 用途 → 确认）
@@ -222,22 +354,9 @@ function guideHandleText(text) {
       guideBackToMenu();
       return true;
     }
-    var cSvc = guideResolveService(t);
-    if (cSvc) {
-      GUIDE_CARD_APPLY = null;
-      guideOpenService(cSvc.key);
-      return true;
-    }
-    var cardSvc = guideServiceByKey('card');
-    var cSub = cardSvc && cardSvc.subs.filter(function (x) {
-      return x.label === t || (x.aliases || []).indexOf(t) !== -1;
-    })[0];
-    if (cSub) {
-      GUIDE_CARD_APPLY = null;
-      guidePickSub('card', cSub.key);
-      return true;
-    }
-    return guideCardApplyStep(t);
+    if (guideResolveService(t)) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
+    if (guideServiceByKey('card') && guideServiceByKey('card').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
+    return guideLockedRun(function () { return guideCardApplyStep(t); });
   }
 
   // 信用卡额度调整申请进行中（目标额度 + 调整原因 → 确认）
@@ -247,22 +366,9 @@ function guideHandleText(text) {
       guideBackToMenu();
       return true;
     }
-    var lSvc = guideResolveService(t);
-    if (lSvc) {
-      GUIDE_CARD_LIMIT = null;
-      guideOpenService(lSvc.key);
-      return true;
-    }
-    var limitCardSvc = guideServiceByKey('card');
-    var lSub = limitCardSvc && limitCardSvc.subs.filter(function (x) {
-      return x.label === t || (x.aliases || []).indexOf(t) !== -1;
-    })[0];
-    if (lSub) {
-      GUIDE_CARD_LIMIT = null;
-      guidePickSub('card', lSub.key);
-      return true;
-    }
-    return guideCardLimitStep(t);
+    if (guideResolveService(t)) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
+    if (guideServiceByKey('card') && guideServiceByKey('card').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice('当前流程还没走完，不能切换到别的功能。'); return true; }
+    return guideLockedRun(function () { return guideCardLimitStep(t); });
   }
 
   // 持仓管理：追加申购 / 赎回进行中
@@ -273,17 +379,17 @@ function guideHandleText(text) {
       guideBackToMenu();
       return true;
     }
-    return guideHoldingStep(t);
+    return guideLockedRun(function () { return guideHoldingStep(t); });
   }
 
   // 订阅：添加 / 管理自动续费 / 取消 进行中
   if (GUIDE_SUB) {
-    return guideSubSession(t);
+    return guideLockedRun(function () { return guideSubSession(t); });
   }
 
   // 鲜花订购 / 订单管理进行中
   if (GUIDE_FLOWER) {
-    return guideFlowerSession(t);
+    return guideLockedRun(function () { return guideFlowerSession(t); });
   }
 
   // 交易限制设置进行中
@@ -293,7 +399,7 @@ function guideHandleText(text) {
       guideBackToMenu();
       return true;
     }
-    return guideTxnLimitStep(t);
+    return guideLockedRun(function () { return guideTxnLimitStep(t); });
   }
 
   // 卡片挂失进行中
@@ -303,8 +409,17 @@ function guideHandleText(text) {
       guideBackToMenu();
       return true;
     }
-    return guideCardLostStep(t);
+    return guideLockedRun(function () { return guideCardLostStep(t); });
   }
+
+  // 只读查询交回主链路，避免「查余额 / 查信用卡额度」被菜单或调额流程劫持
+  if (guideIsReadOnlyQuery(t)) return false;
+
+  // 一句话里已经带齐金额/收款人/产品时，直接进入业务流，不再先给二级菜单。
+  // 有些步骤是 async（返回 Promise），同样视为已接管，不能再让 Agent 重复处理。
+  var actionable = guideTryActionableCommand(t);
+  if (actionable === true) return true;
+  if (actionable && typeof actionable.then === 'function') return true;
 
   // 返回一级菜单
   if (/^(返回|返回菜单|服务菜单|主菜单|菜单|首页|服务列表)$/.test(t)) {
@@ -497,7 +612,7 @@ async function guideAIIntentExtract(text) {
   }).join('\n');
 
   var payload = {
-    model: (typeof DEEPSEEK_MODEL !== 'undefined' && DEEPSEEK_MODEL) ? DEEPSEEK_MODEL : 'deepseek-chat',
+    model: (typeof MODEL_NAME !== 'undefined' && MODEL_NAME) ? MODEL_NAME : 'deepseek-chat',
     temperature: 0,
     max_tokens: 80,
     messages: [
@@ -506,7 +621,7 @@ async function guideAIIntentExtract(text) {
     ]
   };
 
-  var resp = await fetch(DEEPSEEK_API_URL, {
+  var resp = await bankFetch(DEEPSEEK_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (typeof DEEPSEEK_API_KEY !== 'undefined' ? DEEPSEEK_API_KEY : '') },
     body: JSON.stringify(payload)
@@ -549,6 +664,7 @@ function guidePlainMoney(n) {
 }
 
 function guideStartNameTransfer() {
+  guideResetAllSessions();
   GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' };
   currentModule = 'transfer';
   appendMessage(guideMessage(
@@ -559,6 +675,7 @@ function guideStartNameTransfer() {
 }
 
 function guideStartPhoneTransfer() {
+  guideResetAllSessions();
   GUIDE_TRANSFER = { kind: 'phone', payee: null, phone: null, amount: null, remark: '', stage: 'slots' };
   currentModule = 'transfer';
   appendMessage(guideMessage(
@@ -569,6 +686,7 @@ function guideStartPhoneTransfer() {
 }
 
 function guideStartTimedTransfer() {
+  guideResetAllSessions();
   GUIDE_TRANSFER = {
     kind: 'timed', payee: null, phone: null, amount: null,
     date: null, time: null, repeat: '不重复', remark: '', stage: 'slots'
@@ -597,10 +715,16 @@ function guideOffsetDate(days) {
 // month 为空表示「本月 D 号」，若已过则顺延到下月
 function guideMonthDayDate(month, day) {
   var now = new Date();
+  var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   var y = now.getFullYear();
   var m = month ? Number(month) : (now.getMonth() + 1);
   var d = new Date(y, m - 1, Number(day));
-  if (!month && d.getTime() < now.getTime()) d = new Date(y, m, Number(day));
+  if (month) {
+    // 指定了月份但日期已过 → 顺延到明年，避免「1月5日」在 10 月形成追问死循环
+    if (d.getTime() < todayStart) d = new Date(y + 1, m - 1, Number(day));
+  } else if (d.getTime() < todayStart) {
+    d = new Date(y, m, Number(day));
+  }
   return guideDateStr(d);
 }
 
@@ -624,6 +748,7 @@ function guideTimedExtract(text) {
     var zh = t.match(/(上午|下午|晚上|早上|中午)?\s*(\d{1,2})\s*点\s*(半)?/);
     if (zh) {
       var h = parseInt(zh[2], 10);
+      out.period = zh[1] || null;
       if ((zh[1] === '下午' || zh[1] === '晚上') && h < 12) h += 12;
       if (zh[1] === '中午' && h < 11) h += 12;
       out.time = guidePad2(h) + ':' + (zh[3] ? '30' : '00');
@@ -631,12 +756,12 @@ function guideTimedExtract(text) {
     }
   }
 
-  // 只有时间段、没有具体钟点（如「明天下午」）→ 记下 period，稍后追问「下午几点」
-  if (!out.time) {
+  // 时间段：既支持「明天下午」这种只有时间段，也支持「下午 15:00」这种带钟点的说法
+  if (!out.period) {
     var pd = t.match(/(凌晨|早上|上午|中午|下午|晚上)/);
     if (pd) {
       out.period = pd[1];
-      t = t.replace(pd[0], ' ');
+      if (!out.time) t = t.replace(pd[0], ' ');
     }
   }
 
@@ -659,9 +784,14 @@ function guideTimedExtract(text) {
     t = t.replace(/今天|今日/g, ' ');
   } else {
     var md = t.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?/);
-    if (md) {
+    var mdash = md ? null : t.match(/(\d{1,2})\s*[-/]\s*(\d{1,2})(?!\d)/);
+    if (md && Number(md[1]) >= 1 && Number(md[1]) <= 12 && Number(md[2]) >= 1 && Number(md[2]) <= 31) {
       out.date = guideMonthDayDate(md[1], md[2]);
       t = t.replace(md[0], ' ');
+    } else if (mdash && Number(mdash[1]) >= 1 && Number(mdash[1]) <= 12 && Number(mdash[2]) >= 1 && Number(mdash[2]) <= 31) {
+      // 支持 10-30 / 10/30；注释里一直写着支持，之前实现漏了
+      out.date = guideMonthDayDate(mdash[1], mdash[2]);
+      t = t.replace(mdash[0], ' ');
     } else {
       var dd = t.match(/(\d{1,2})\s*[日号]/);
       if (dd) {
@@ -692,10 +822,16 @@ function guideTransferParse(text, kind) {
   }
 
   var amount = null;
-  var m = t.match(/(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  // 负号开头的数字不当作金额（避免「转-100」变成 +100）
+  var negativeAmount = /[-负]\s*\d/.test(t);
+  var m = t.match(/(\d[\d,]*(?:\.\d+)?)\s*(亿|万|w|W|千|k|K)?/);
   if (m) {
-    amount = parseFloat(m[1]);
-    if (m[2]) amount = amount * 10000;
+    amount = parseFloat(m[1].replace(/,/g, ''));
+    var unit = m[2];
+    if (unit === '亿') amount *= 100000000;
+    else if (unit === '万' || unit === 'w' || unit === 'W') amount *= 10000;
+    else if (unit === '千' || unit === 'k' || unit === 'K') amount *= 1000;
+    if (!(amount > 0) || negativeAmount) amount = null;
     t = t.replace(m[0], ' ');
   }
   var rest = t
@@ -730,7 +866,9 @@ function guideIsContact(name) {
 }
 
 function guideContactNames() {
-  return (mockData.contacts || []).map(function (c) { return c.name; }).join('、') || '暂无联系人';
+  return (mockData.contacts || []).map(function (c) {
+    return (typeof escapeHtml === 'function') ? escapeHtml(c.name) : c.name;
+  }).join('、') || '暂无联系人';
 }
 
 function guideUnknownPayeeNotice(name) {
@@ -742,6 +880,14 @@ function guideUnknownPayeeNotice(name) {
   scrollToBottom();
 }
 
+// 这句话像不像「再转一笔」的转账指令（用于流程锁：不能被当成备注吞掉）
+function guideLooksLikeNewTransfer(text) {
+  var t = String(text || '').trim();
+  if (!t) return false;
+  var hasAmount = /\d/.test(t) || /[一二三四五六七八九十百千万两]+\s*(元|块)/.test(t);
+  var hasTransferWord = /(转给|转账|汇款|打钱|转\s*\d|再转|付给|给.+转)/.test(t);
+  return hasAmount && hasTransferWord;
+}
 function guideTransferStep(text) {
   var t = String(text || '').trim();
   if (/^(取消|不转了|算了|退出|返回|菜单)$/.test(t)) {
@@ -752,33 +898,29 @@ function guideTransferStep(text) {
 
   var bare = t.replace(/^(我要|我想|我想用|帮我|我要用|使用)/, '');
 
-  // 会话中说出服务名（如直接打字「转账」「账单分析」）→ 退出收集，进入该服务二级菜单
-  var svc = guideResolveService(bare);
-  if (svc) {
-    GUIDE_TRANSFER = null;
-    guideOpenService(svc.key);
+  // 流程锁：转账没走完之前，说别的服务 / 子功能都要先完成这次转账
+  if (guideResolveService(bare)) {
+    guideFlowLockedNotice('转账还没完成，不能切换到别的功能。');
     return true;
   }
-
-  // 说出转账模块内的其它子功能（手机号转账 / 定时转账 / AA收款 / 姓名转账）→ 直接切换过去
   var transferSvc = guideServiceByKey('transfer');
-  var subHit = transferSvc && transferSvc.subs.filter(function (x) {
+  var subHit = transferSvc && transferSvc.subs.some(function (x) {
     return x.label === bare || (x.aliases || []).indexOf(bare) !== -1;
-  })[0];
+  });
   if (subHit) {
-    GUIDE_TRANSFER = null;
-    guidePickSub('transfer', subHit.key);
+    guideFlowLockedNotice('转账还没完成，不能切换到别的转账方式。');
     return true;
   }
 
-  // 明显是别的业务 / 闲聊：不拦截，交回主链路作答（会话保留，下一句继续收槽位）
+  // 流程锁：别的业务 / 闲聊也不放行，避免一次转账没完成就跳走
   if (/(余额|账单|理财|基金|持仓|订阅|信用卡|额度|挂失|预算|鲜花|生日|安全|你好|您好|谢谢|再见|能做什么|怎么用|什么意思|为什么)/.test(t)) {
-    return false;
+    guideFlowLockedNotice('转账还没完成，先别切换到其他问题。');
+    return true;
   }
 
   // 定时转账走独立的多轮流程（收款人 / 金额 / 执行时间 → 重复方式 → 确认）
   if (GUIDE_TRANSFER && GUIDE_TRANSFER.kind === 'timed') {
-    return guideTimedStep(t);
+    return guideLockedRun(function () { return guideTimedStep(t); });
   }
 
   if (!GUIDE_TRANSFER) {
@@ -786,8 +928,12 @@ function guideTransferStep(text) {
   }
   var s = GUIDE_TRANSFER;
 
-  // ① 等备注内容：这一句就是备注
+  // ① 等备注内容：这一句就是备注；但如果明显是「再转一笔」的指令，锁住并要求先完成
   if (s.stage === 'remark') {
+    if (guideLooksLikeNewTransfer(t)) {
+      guideFlowLockedNotice('正在等你的备注内容：请直接写备注，或回复「不用了」跳过。');
+      return true;
+    }
     s.remark = t;
     guideCommitTransfer();
     return true;
@@ -817,6 +963,10 @@ function guideTransferStep(text) {
     if (/^(不用|不需要|不要|否|跳过|没有|不用了|不写|不加)$/.test(bare)) {
       s.remark = '';
       guideCommitTransfer();
+      return true;
+    }
+    if (guideLooksLikeNewTransfer(t)) {
+      guideFlowLockedNotice('当前这笔转账还没走完：请回复「添加备注」或「不用了」继续。');
       return true;
     }
     s.remark = t;
@@ -1031,6 +1181,7 @@ async function guideTimedStep(text) {
     var rep = guideTimedParseRepeat(t);
     if (!rep) {
       var aiRep = await guideTimedAIExtract(t);
+      if (GUIDE_TRANSFER !== s) return true;
       rep = aiRep && aiRep.repeat ? aiRep.repeat : null;
     }
     if (!rep) {
@@ -1049,6 +1200,7 @@ async function guideTimedStep(text) {
   // 本地没抽到日期/时间/重复（如「下周三」「月底下午三点」「一直」）→ 交给模型解析
   if (!parsed.date || !parsed.time || !parsed.repeat || !parsed.period) {
     var aiTime = await guideTimedAIExtract(t);
+    if (GUIDE_TRANSFER !== s) return true;
     if (aiTime) {
       if (!parsed.date && aiTime.date) parsed.date = aiTime.date;
       if (!parsed.time && aiTime.time) parsed.time = aiTime.time;
@@ -1073,7 +1225,8 @@ async function guideTimedStep(text) {
   if (parsed.time) s.time = parsed.time;
   if (parsed.period) s.period = parsed.period;
 
-  // 先只说「下午」再补「3点」→ 按时间段换算成 15:00
+  // 先只说「下午」再补「3点」→ 按时间段换算成 15:00；
+  // 如果本次已经明确说「上午9点」，parsed.period='上午' 会覆盖上一轮残留的「下午」。
   if (s.time && s.period) {
     var hh = parseInt(String(s.time).slice(0, 2), 10);
     if ((s.period === '下午' || s.period === '晚上') && hh < 12) {
@@ -1081,6 +1234,7 @@ async function guideTimedStep(text) {
     } else if (s.period === '中午' && hh < 11) {
       s.time = guidePad2(hh + 12) + String(s.time).slice(2);
     }
+    s.period = null;
   }
 
   // 有日期没钟点（如「明天下午」）→ 追问具体钟点
@@ -1151,7 +1305,7 @@ async function guideTransferAIExtract(text, session) {
   if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return null;
   if (typeof DEEPSEEK_API_URL === 'undefined' || !DEEPSEEK_API_URL) return null;
   var known = '已知收款人=' + (session.payee || '未知') + '；已知手机号=' + (session.phone || '未知') + '；已知金额=' + (session.amount || '未知');
-  var resp = await fetch(DEEPSEEK_API_URL, {
+  var resp = await bankFetch(DEEPSEEK_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + DEEPSEEK_API_KEY },
     body: JSON.stringify({
@@ -1194,6 +1348,8 @@ async function guideTransferAIFallback(text) {
   try { parsed = await guideTransferAIExtract(text, s); } catch (e) { parsed = null; }
   var el = document.getElementById(loadingId);
   if (el) el.remove();
+  // 异步返回时用户可能已经取消/切换到别的流程，旧结果不能再写入会话
+  if (GUIDE_TRANSFER !== s) return true;
 
   var payee = parsed && parsed.payee ? String(parsed.payee).trim() : '';
   var phone = parsed && parsed.phone ? String(parsed.phone).trim() : '';
@@ -1269,7 +1425,12 @@ function guideTransferConfirm() {
   ));
   scrollToBottom();
   if (typeof agentTransferFlow === 'function') {
-    agentTransferFlow(target, s.amount, '', channel, { forceConfirm: true, okLabel: '确认转账', remark: remark });
+    agentTransferFlow(target, s.amount, '', channel, {
+      forceConfirm: true,
+      okLabel: '确认转账',
+      remark: remark,
+      phone: s.kind === 'phone' ? (s.phone || '') : ''
+    });
   }
 }
 
@@ -1285,6 +1446,7 @@ function guideAAEsc(v) {
 }
 
 function guideStartAATransfer() {
+  guideResetAllSessions();
   GUIDE_AA = { total: 0, participants: [], stage: 'slots', pendingNames: [], pickOptions: [] };
   currentModule = 'transfer';
   appendMessage(guideMessage('<p>请告诉我你垫付的总金额和除你外需要收款的参与人</p>'));
@@ -1293,12 +1455,17 @@ function guideStartAATransfer() {
 
 // 从一句话里抽垫付总额与名单
 function guideAAParse(text) {
-  var t = String(text || '');
+  // 先剔除手机号，否则「张三 13800138000」会把 11 位号码当成垫付总额
+  var t = String(text || '').replace(/1\d{10}/g, ' ');
   var total = 0;
-  var m = t.match(/(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  var m = t.match(/(\d[\d,]*(?:\.\d+)?)\s*(亿|万|w|W|千|k|K)?/);
   if (m) {
-    total = parseFloat(m[1]);
-    if (m[2]) total *= 10000;
+    total = parseFloat(m[1].replace(/,/g, ''));
+    var unit = m[2];
+    if (unit === '亿') total *= 100000000;
+    else if (unit === '万' || unit === 'w' || unit === 'W') total *= 10000;
+    else if (unit === '千' || unit === 'k' || unit === 'K') total *= 1000;
+    if (!(total > 0)) total = 0;
     t = t.replace(m[0], ' ');
   }
   t = t.replace(/垫付|总额|总金额|总|收款|收|元|块|钱|包括|包含|和|还有|参与人|名单|aa/gi, ' ');
@@ -1516,18 +1683,21 @@ async function guideAAStep(text) {
   });
   if (!(parsed.total > 0) && !localNamesOk) {
     var aiAA = await guideAAAIExtract(t);
+    if (GUIDE_AA !== s) return true;
     if (aiAA) {
       if (aiAA.total > 0) parsed.total = aiAA.total;
       if (aiAA.names.length) parsed.names = aiAA.names;
     } else if (s.stage === 'askMore') {
       // 有「还有吗」语境但没说名单：可能是「没有了 / 就这些」这类结束语
       var aiMore = await guideAAAIHasMore(t);
+      if (GUIDE_AA !== s) return true;
       if (aiMore && aiMore.more === false) { guideAANoMore(); return true; }
       if (aiMore && aiMore.names && aiMore.names.length) parsed.names = aiMore.names;
     }
   } else if (parsed.names.length && !localNamesOk && s.stage === 'askMore') {
     // 通讯录里没有的「名字」不当参与人，按「还有吗」再问一次
     var aiMore2 = await guideAAAIHasMore(t);
+    if (GUIDE_AA !== s) return true;
     if (aiMore2 && aiMore2.more === false) { guideAANoMore(); return true; }
     if (aiMore2 && aiMore2.names && aiMore2.names.length) parsed.names = aiMore2.names;
   }
@@ -1658,6 +1828,7 @@ function guideWealthAccountTail() {
 }
 
 function guideStartWealthPurchase() {
+  guideResetAllSessions();
   GUIDE_WEALTH = { stage: 'slots', product: null, amount: null };
   currentModule = 'wealth';
 
@@ -1779,13 +1950,18 @@ async function guideWealthStep(text) {
   // 本地没匹配到产品名（或没有金额）时，交给模型识别简称/口语说法
   if ((!parsed.product || !(parsed.amount > 0)) && !/^\d+(\.\d+)?\s*(万|w|W)?$/.test(plain)) {
     var aiW = await guideWealthAIProduct(t);
+    if (GUIDE_WEALTH !== s) return true;
     if (aiW) {
       if (!parsed.product && aiW.product) parsed.product = aiW.product;
       if (!(parsed.amount > 0) && aiW.amount > 0) parsed.amount = aiW.amount;
     }
   }
 
-  if (parsed.product) s.product = parsed.product;
+  if (parsed.product) {
+    // 换了一只产品就必须重新确认风险，不能沿用上一只的 riskOverride
+    if (!s.product || s.product.name !== parsed.product.name) s.riskOverride = false;
+    s.product = parsed.product;
+  }
   if (parsed.amount > 0) s.amount = parsed.amount;
 
   if (s.product && Number(s.amount) > 0) { guideWealthConfirm(); return true; }
@@ -1823,6 +1999,12 @@ function guideWealthConfirm() {
   }
 
   var p = s.product;
+  if (!p) {
+    s.stage = 'slots';
+    appendMessage(guideMessage('<p>请告诉我您想申购的理财产品。</p>' + guideWealthProductListHtml()));
+    scrollToBottom();
+    return;
+  }
   if (Number(p.riskLevel) > Number(profile.level) && !s.riskOverride) {
     // 风险等级高于承受能力：不直接拦截，提醒风险并让用户自行确认
     appendMessage(guideMessage(
@@ -1881,6 +2063,9 @@ function guideWealthRiskCancel() {
   var s = GUIDE_WEALTH;
   if (!s) return;
   s.product = null;
+  s.amount = null;
+  s.stage = 'slots';
+  s.riskOverride = false;
   var profile = guideWealthValidProfile();
   appendMessage(guideMessage(
     '<p>好的，已取消这笔申购。以下是适配你风险等级的产品：</p>' +
@@ -1892,6 +2077,12 @@ function guideWealthRiskCancel() {
 function guideWealthSubmit() {
   var s = GUIDE_WEALTH;
   if (!s || s.stage !== 'confirm') return;
+  if (!s.product) {
+    s.stage = 'slots';
+    appendMessage(guideMessage('<p>申购产品已失效，请重新选择产品和金额。</p>'));
+    scrollToBottom();
+    return;
+  }
   var name = s.product.name;
   var amount = s.amount;
   GUIDE_WEALTH = null;
@@ -1920,6 +2111,7 @@ function guideCardApplyTypesText() { return CARD_APPLY_TYPES.join('、'); }
 function guideCardApplyPurposesText() { return CARD_APPLY_PURPOSES.join('、'); }
 
 function guideStartCardApply() {
+  guideResetAllSessions();
   GUIDE_CARD_APPLY = { stage: 'slots', cardType: null, limit: 0, purpose: null };
   currentModule = 'card';
   appendMessage(guideMessage(
@@ -2014,6 +2206,7 @@ async function guideCardApplyStep(text) {
   // 本地没认出卡种/用途（如「金卡」「主要出差用」）→ 交给模型映射到可选清单
   if ((!parsed.cardType || !parsed.purpose) && !parsed.unknownType) {
     var aiCard = await guideCardApplyAIType(t);
+    if (GUIDE_CARD_APPLY !== s) return true;
     if (aiCard) {
       if (!parsed.cardType && aiCard.cardType) parsed.cardType = aiCard.cardType;
       if (!parsed.purpose && aiCard.purpose) parsed.purpose = aiCard.purpose;
@@ -2145,6 +2338,7 @@ function guideCardLimitState() {
 }
 
 function guideStartCardLimitAdjust() {
+  guideResetAllSessions();
   GUIDE_CARD_LIMIT = { stage: 'slots', limit: 0, reason: null };
   currentModule = 'card';
   var st = guideCardLimitState();
@@ -2194,6 +2388,7 @@ async function guideCardLimitStep(text) {
   // 本地没认出原因/额度（如「最近开销大」「想提到八万」）→ 交给模型映射
   if (!parsed.reason || !(Number(parsed.limit) > 0)) {
     var aiLimit = await guideCardLimitAIReason(t);
+    if (GUIDE_CARD_LIMIT !== s) return true;
     if (aiLimit) {
       if (!parsed.reason && aiLimit.reason) parsed.reason = aiLimit.reason;
       if (!(Number(parsed.limit) > 0) && aiLimit.limit > 0) parsed.limit = aiLimit.limit;
@@ -2232,12 +2427,14 @@ function guideCardLimitConfirm() {
     appendMessage(guideMessage('<p>当前额度已经是 ¥' + st.current.toLocaleString('zh-CN') + '，请输入一个不同的目标额度。</p>'));
     scrollToBottom();
     s.limit = 0;
+    s.stage = 'slots';
     return;
   }
   if (Number(s.limit) < st.min) {
     appendMessage(guideMessage('<p>目标额度不能低于已用额度 ¥' + st.min.toLocaleString('zh-CN') + '，请重新告诉我目标额度。</p>'));
     scrollToBottom();
     s.limit = 0;
+    s.stage = 'slots';
     return;
   }
 
@@ -2263,6 +2460,14 @@ function guideCardLimitSubmit() {
   if (!s || s.stage !== 'confirm') return;
   var st = guideCardLimitState();
   var target = Number(s.limit) || 0;
+  // 提交前再校验一次：不能把校验失败后残留的 0 元申请送进复核队列
+  if (!(target > 0) || target < st.min || target === st.current) {
+    s.limit = 0;
+    s.stage = 'slots';
+    appendMessage(guideMessage('<p>目标额度无效，请重新告诉我目标额度（不能低于已用额度 ¥' + st.min.toLocaleString('zh-CN') + '，且不能等于当前额度）。</p>'));
+    scrollToBottom();
+    return;
+  }
   var direction = target > st.current ? 'up' : 'down';
   GUIDE_CARD_LIMIT = null;
 
@@ -2352,14 +2557,14 @@ async function guideLLMJson(system, user) {
   if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return null;
   if (typeof DEEPSEEK_API_URL === 'undefined' || !DEEPSEEK_API_URL) return null;
   try {
-    var resp = await fetch(DEEPSEEK_API_URL, {
+    var resp = await bankFetch(DEEPSEEK_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + (typeof DEEPSEEK_API_KEY !== 'undefined' ? DEEPSEEK_API_KEY : '')
       },
       body: JSON.stringify({
-        model: (typeof DEEPSEEK_MODEL !== 'undefined' && DEEPSEEK_MODEL) ? DEEPSEEK_MODEL : 'deepseek-chat',
+        model: (typeof MODEL_NAME !== 'undefined' && MODEL_NAME) ? MODEL_NAME : 'deepseek-chat',
         temperature: 0,
         max_tokens: 80,
         messages: [
@@ -2544,6 +2749,7 @@ function guideTxnLimitNightQuestion(prefix) {
 }
 
 function guideStartTxnLimit() {
+  guideResetAllSessions();
   GUIDE_TXN_LIMIT = { stage: 'limits', single: null, daily: null, night: null, overseas: null };
   currentModule = 'card';
   appendMessage(guideMessage('<p>请设置单笔限额与每日限额。</p>'));
@@ -2579,6 +2785,7 @@ async function guideTxnLimitStep(text) {
       var loadId = guideTypingBubble();
       var aiFlag = null;
       try { aiFlag = await guideTxnLimitAIFlag(t, which); } catch (e) { aiFlag = null; }
+      if (GUIDE_TXN_LIMIT !== s) return true;
       var el = document.getElementById(loadId);
       if (el) el.remove();
       flag = aiFlag;
@@ -2643,6 +2850,7 @@ async function guideTxnLimitStep(text) {
     var loadId2 = guideTypingBubble();
     var ai = null;
     try { ai = await guideTxnLimitAILimits(t); } catch (e) { ai = null; }
+    if (GUIDE_TXN_LIMIT !== s) return true;
     var el2 = document.getElementById(loadId2);
     if (el2) el2.remove();
     if (ai) {
@@ -2667,10 +2875,24 @@ async function guideTxnLimitStep(text) {
     return true;
   }
 
-  // 两项齐了：单笔 > 日累计只提示核对，不自动修改，继续采集夜间交易
-  var warn = Number(s.single) > Number(s.daily) ? '您设置的单笔限额大于日累计限额，请核对确认。' : '';
+  // 与卡片页表单保持同一套规则：单笔 ≥ ¥1,000，日累计 ≥ 单笔
+  var singleV = Number(s.single);
+  var dailyV = Number(s.daily);
+  if (!(singleV >= 1000)) {
+    s.single = null;
+    appendMessage(guideMessage('<p>单笔限额不能低于 ¥1,000，请重新输入单笔限额。</p>'));
+    scrollToBottom();
+    return true;
+  }
+  if (dailyV < singleV) {
+    s.daily = null;
+    appendMessage(guideMessage('<p>日累计限额不能低于单笔限额 ¥' + singleV.toLocaleString('zh-CN') + '，请重新输入每日限额。</p>'));
+    scrollToBottom();
+    return true;
+  }
+
   s.stage = 'night';
-  appendMessage(guideMessage(guideTxnLimitNightQuestion(warn)));
+  appendMessage(guideMessage(guideTxnLimitNightQuestion('')));
   scrollToBottom();
   return true;
 }
@@ -2696,9 +2918,16 @@ function guideTxnLimitConfirm() {
 function guideTxnLimitSubmit() {
   var s = GUIDE_TXN_LIMIT;
   if (!s || s.stage !== 'confirm') return;
+  var singleV = Number(s.single) || 0;
+  var dailyV = Number(s.daily) || 0;
+  if (singleV < 1000 || dailyV < singleV) {
+    appendMessage(guideMessage('<p>限额不符合规则：单笔不能低于 ¥1,000，且日累计不能低于单笔。请重新设置。</p>'));
+    scrollToBottom();
+    return;
+  }
   var l = (typeof txnLimitData === 'function') ? txnLimitData() : (mockData.userProfile.txnLimit = {});
-  l.single = Number(s.single) || 0;
-  l.daily = Number(s.daily) || 0;
+  l.single = singleV;
+  l.daily = dailyV;
   l.night = s.night === 'allow' ? 'allow' : 'block';
   l.overseas = s.overseas === 'allow' ? 'allow' : 'block';
   saveUserData();
@@ -2731,6 +2960,7 @@ function guideCardLostTailsText() {
 }
 
 function guideStartCardLost() {
+  guideResetAllSessions();
   GUIDE_CARD_LOST = { stage: 'slots', card: null };
   currentModule = 'card';
   appendMessage(guideMessage(
@@ -2813,10 +3043,19 @@ function guideCardLostSubmit() {
 // 验证通过后真正冻结卡片并出结果卡
 function guideCardLostApply(card) {
   var c = card || {};
+  if (c.status === '已挂失' || (c.id === 'CARD-MAIN' && (cardFrozen || (mockData.userProfile.creditCard && mockData.userProfile.creditCard.isFrozen)))) {
+    GUIDE_CARD_LOST = null;
+    appendMessage(guideMessage('<p>该卡片已经是挂失状态，无需重复挂失。</p>'));
+    scrollToBottom();
+    return;
+  }
   // 卡片状态：主卡走全局冻结标记，其余卡片标记本身状态
   if (c.id === 'CARD-MAIN') {
     cardFrozen = true;
-    if (mockData.userProfile.creditCard) mockData.userProfile.creditCard.isFrozen = true;
+    if (mockData.userProfile.creditCard) {
+      mockData.userProfile.creditCard.isFrozen = true;
+      mockData.userProfile.creditCard.status = '已挂失';
+    }
   }
   c.status = '已挂失';
   c.frozenAt = new Date().toLocaleString('zh-CN');
@@ -2910,6 +3149,7 @@ function guideHoldingClosed(h) {
 }
 
 function guideStartHoldings() {
+  guideResetAllSessions();
   GUIDE_HOLDING = { stage: 'choose', mode: null, product: null, amount: null, full: false, riskOverride: false };
   currentModule = 'wealth';
   showHoldings();
@@ -3293,13 +3533,18 @@ function guideHoldingModify() {
   var s = GUIDE_HOLDING;
   if (!s) return;
   if (s.mode === 'sub') {
+    // 清空旧金额，避免只改产品名时用旧金额直接重新确认
+    s.amount = null;
+    s.riskOverride = false;
     s.stage = 'subSlots';
-    appendMessage(guideMessage('<p>请重新告诉我产品名称和申购金额（当前：' +
-      guideHoldingEsc(s.product ? s.product.name : '未选') + ' / ' + guidePlainMoney(s.amount || 0) + ' 元）。</p>'));
+    appendMessage(guideMessage('<p>请重新告诉我产品名称和申购金额（当前产品：' +
+      guideHoldingEsc(s.product ? s.product.name : '未选') + '）。</p>'));
   } else {
+    s.amount = null;
+    s.full = false;
     s.stage = 'redeemSlots';
-    appendMessage(guideMessage('<p>请重新告诉我赎回的产品名称和金额（当前：' +
-      guideHoldingEsc(s.product ? s.product.name : '未选') + ' / ' + guidePlainMoney(s.amount || 0) + ' 元，可回复“全额”）。</p>'));
+    appendMessage(guideMessage('<p>请重新告诉我赎回的产品名称和金额（当前产品：' +
+      guideHoldingEsc(s.product ? s.product.name : '未选') + '，可回复“全额”）。</p>'));
   }
   scrollToBottom();
 }
@@ -3329,6 +3574,11 @@ function guideSubActive() {
   return mockData.subscriptions;
 }
 
+// 订阅名比较统一忽略空格和大小写：「某易云 VIP」与「某易云VIP」视为同一服务
+function guideSubNormName(n) {
+  return String(n == null ? '' : n).replace(/\s+/g, '').toLowerCase();
+}
+
 function guideSubCycleText(cycle) {
   return SUB_CYCLE_TEXT[cycle] || cycle || '';
 }
@@ -3348,7 +3598,7 @@ function guideSubFindService(text) {
     var key = p.name.replace(' VIP', '').replace('VIP', '');
     return t.indexOf(key) !== -1;
   })[0];
-  if (preset) return { kind: 'preset', preset: preset, name: preset.name };
+  if (preset) return { kind: 'preset', preset: preset, name: preset.name.replace(/\s+/g, '') };
 
   // ② 现有订阅全名（优先于关键词，避免「某视频平台VIP」被当成「某讯 VIP」）
   var active = guideSubActive().filter(function (s) { return t.indexOf(s.name) !== -1; })[0];
@@ -3426,6 +3676,7 @@ function guideSubPresetRows() {
 
 // —— 添加订阅 ——
 function guideStartSubAdd() {
+  guideResetAllSessions();
   GUIDE_SUB = { mode: 'add', stage: 'slots', preset: null, cycle: null, autoRenew: null };
   currentModule = 'life';
   appendMessage(guideMessage(
@@ -3445,6 +3696,7 @@ async function guideSubAddStep(text) {
 
   if (!svc || !cycle) {
     var ai = await guideSubAIExtract(t);
+    if (GUIDE_SUB !== s) return true;
     if (ai) {
       if (!svc && ai.preset) svc = { kind: 'preset', preset: ai.preset, name: ai.preset.name };
       if (!cycle && ai.cycle) cycle = ai.cycle;
@@ -3521,7 +3773,7 @@ async function guideSubAddSubmit() {
   var price = preset.prices[cycle];
 
   // 重复检测：已有有效订阅时提示，不再重复添加
-  var dup = guideSubActive().filter(function (x) { return x.name === preset.name; })[0];
+  var dup = guideSubActive().filter(function (x) { return guideSubNormName(x.name) === guideSubNormName(preset.name); })[0];
   if (dup) {
     appendMessage(guideMessage('<p>「<b>' + guideSubEsc(preset.name) + '</b>」已有有效订阅（' +
       guideSubCycleText(dup.cycle) + '，自动续费' + (dup.autoRenew !== false ? '开启' : '关闭') + '），无需重复添加。</p>'));
@@ -3554,7 +3806,9 @@ async function guideSubAddSubmit() {
   if (cycle === '/月') nextDate.setMonth(nextDate.getMonth() + 1);
   else if (cycle === '/季') nextDate.setMonth(nextDate.getMonth() + 3);
   else nextDate.setFullYear(nextDate.getFullYear() + 1);
-  var nextDateStr = nextDate.toISOString().split('T')[0];
+  // 用本地日期，避免 UTC+8 凌晨 toISOString() 少一天
+  var nextDateStr = guideDateStr(nextDate);
+  var chargeInDays = Math.max(1, Math.ceil((nextDate.getTime() - Date.now()) / 86400000));
   var ids = guideSubActive().map(function (x) { return Number(x.id) || 0; });
   ids.push(0);
   var newId = Math.max.apply(null, ids) + 1;
@@ -3562,11 +3816,15 @@ async function guideSubAddSubmit() {
   guideSubActive().push({
     id: newId,
     icon: '',
-    name: preset.name,
+    name: preset.name.replace(/\s+/g, ''),
     detail: '连续' + cycleText + ' · ' + (autoRenew ? '自动续费' : '到期取消') + ' · 下次扣款' + nextDateStr,
     price: price,
     cycle: cycle,
-    autoRenew: autoRenew
+    cycleLabel: '连续' + cycleText,
+    autoRenew: autoRenew,
+    chargeInDays: chargeInDays,
+    chargeDate: nextDateStr,
+    usage: '中'
   });
   saveUserData();
 
@@ -3581,6 +3839,7 @@ async function guideSubAddSubmit() {
 // —— 订阅管理（自动续费）——
 // 订阅管理：统一入口，先问要做什么，再分别进入添加 / 取消 / 自动续费
 function guideStartSubManage() {
+  guideResetAllSessions();
   GUIDE_SUB = { mode: 'choose', stage: 'choose' };
   currentModule = 'life';
   appendMessage(guideMessage(
@@ -3604,6 +3863,7 @@ function guideSubChoose(kind) {
 
 // 管理自动续费：先展示现有订阅，再问要开启/关闭哪一项
 function guideStartSubAutoRenew() {
+  guideResetAllSessions();
   GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null };
   currentModule = 'life';
   var list = guideSubActive();
@@ -3638,11 +3898,12 @@ async function guideSubManageStep(text) {
 
   if (!svc) {
     var ai = await guideSubAIExtract(t);
+    if (GUIDE_SUB !== s) return true;
     if (ai && ai.preset) svc = { kind: 'preset', preset: ai.preset, name: ai.preset.name };
   }
 
   var target = svc && svc.kind === 'active' ? svc.sub : null;
-  if (!target && svc) target = guideSubActive().filter(function (x) { return x.name === svc.name; })[0] || null;
+  if (!target && svc) target = guideSubActive().filter(function (x) { return guideSubNormName(x.name) === guideSubNormName(svc.name); })[0] || null;
   if (target) s.target = target;
   if (want !== null) s.newAutoRenew = want;
 
@@ -3703,6 +3964,7 @@ function guideSubManageSubmit() {
 
 // —— 取消订阅 ——
 function guideStartSubCancel() {
+  guideResetAllSessions();
   GUIDE_SUB = { mode: 'cancel', stage: 'slots', target: null };
   currentModule = 'life';
   var list = guideSubActive();
@@ -3730,9 +3992,10 @@ async function guideSubCancelStep(text) {
   var svc = guideSubFindService(t);
   if (!svc) {
     var ai = await guideSubAIExtract(t);
+    if (GUIDE_SUB !== s) return true;
     if (ai && ai.preset) svc = { kind: 'preset', preset: ai.preset, name: ai.preset.name };
   }
-  var target = svc && svc.kind === 'active' ? svc.sub : (svc ? guideSubActive().filter(function (x) { return x.name === svc.name; })[0] : null);
+  var target = svc && svc.kind === 'active' ? svc.sub : (svc ? guideSubActive().filter(function (x) { return guideSubNormName(x.name) === guideSubNormName(svc.name); })[0] : null);
   if (!target) {
     var hint2 = svc ? ('没有找到「' + guideSubEsc(svc.name) + '」的有效订阅。') : '';
     var names2 = guideSubActive().map(function (x) { return x.name; }).join('、') || '暂无订阅';
@@ -3770,6 +4033,7 @@ function guideSubCancelSubmit() {
     autoRenew: target.autoRenew !== false,
     cancelledAt: new Date().toLocaleString('zh-CN')
   });
+  if (typeof apiSubscriptionCancel === 'function') apiSubscriptionCancel(target.id);
   saveUserData();
   GUIDE_SUB = null;
   appendMessage(guideMessage('<p>' + guideSubEsc(target.name) + ' 已完成取消操作。</p>' +
@@ -3791,6 +4055,11 @@ async function guideSubSession(t) {
 
   // 统一入口：先选要做哪件事
   if (s.mode === 'choose') {
+    if (/^(返回|菜单|返回菜单|退出|取消|不看了)$/.test(plain)) {
+      GUIDE_SUB = null;
+      guideBackToMenu();
+      return true;
+    }
     if (/(添加|新增|开通|订一个|买一个)/.test(t)) { guideSubChoose('add'); return true; }
     if (/(取消订阅|退订|终止|不要了|退掉)/.test(t)) { guideSubChoose('cancel'); return true; }
     if (/(自动续费|续费|管理|开启|关闭)/.test(t)) {
@@ -3800,13 +4069,7 @@ async function guideSubSession(t) {
       guideSubChoose('renew');
       return true;
     }
-    appendMessage(guideMessage('<p>请选择：添加订阅 / 取消订阅 / 管理自动续费。</p>' +
-      '<div class="guide-chips">' +
-      '<button class="guide-chip" onclick="guideSubChoose(\'add\')">添加订阅</button>' +
-      '<button class="guide-chip" onclick="guideSubChoose(\'cancel\')">取消订阅</button>' +
-      '<button class="guide-chip" onclick="guideSubChoose(\'renew\')">管理自动续费</button>' +
-      '</div>'));
-    scrollToBottom();
+    guideFlowLockedNotice('请选择：添加订阅 / 取消订阅 / 管理自动续费。');
     return true;
   }
 
@@ -3831,6 +4094,7 @@ async function guideSubSession(t) {
   if (s.mode === 'add' && s.stage === 'autoRenew') {
     var yn = guideSubYesNo(t);
     if (yn === null) yn = await guideSubAIFlag(t);
+    if (GUIDE_SUB !== s) return true;
     if (yn !== null) { guideSubAddRenewChoice(yn); return true; }
     appendMessage(guideMessage('<p>是否开启自动续费？请回复「开启」或「关闭」。</p>'));
     scrollToBottom();
@@ -3845,11 +4109,14 @@ async function guideSubSession(t) {
 // ------------------------------ 鲜花订购：下单 / 查看 / 修改 / 取消 ------------------------------
 var GUIDE_FLOWER = null;
 
+// 与生日联系人里的推荐花价保持一致，避免生日卡显示 ¥168、下单卡显示 ¥229
 var FLOWER_BOUQUETS = [
-  { name: '简约玫瑰', price: 199 },
-  { name: '向日葵花束', price: 229 },
+  { name: '简约玫瑰', price: 299 },
+  { name: '向日葵花束', price: 168 },
   { name: '混搭小花束', price: 159 },
-  { name: '康乃馨礼盒', price: 259 }
+  { name: '康乃馨礼盒', price: 128 },
+  { name: '百合礼盒', price: 199 },
+  { name: '郁金香花束', price: 229 }
 ];
 var FLOWER_SLOTS = [
   { key: 'morning', label: '09:00–12:00', text: '上午9-12点' },
@@ -3901,7 +4168,9 @@ function guideFlowerBouquet(name) {
       (name.indexOf('玫瑰') !== -1 && b.name === '简约玫瑰') ||
       (name.indexOf('向日葵') !== -1 && b.name === '向日葵花束') ||
       (name.indexOf('混搭') !== -1 && b.name === '混搭小花束') ||
-      (name.indexOf('康乃馨') !== -1 && b.name === '康乃馨礼盒');
+      (name.indexOf('康乃馨') !== -1 && b.name === '康乃馨礼盒') ||
+      (name.indexOf('百合') !== -1 && b.name === '百合礼盒') ||
+      (name.indexOf('郁金香') !== -1 && b.name === '郁金香花束');
   })[0] || null;
 }
 
@@ -4014,6 +4283,7 @@ function guideFlowerContactsText() {
 
 // 生日鲜花（整合鲜花订购）：先展示生日联系人与近期生日，再给出订购入口
 function guideStartBirthdayFlower() {
+  guideResetAllSessions();
   currentModule = 'life';
   if (typeof showBirthdayReminder === 'function') showBirthdayReminder();
   appendMessage(guideMessage(
@@ -4028,6 +4298,7 @@ function guideStartBirthdayFlower() {
 }
 
 function guideStartFlowerOrder(opts) {
+  guideResetAllSessions();
   var pre = opts || {};
   GUIDE_FLOWER = {
     mode: 'order', stage: 'slots',
@@ -4082,7 +4353,7 @@ function guideFlowerConfirm() {
   appendMessage(guideMessage(guideFlowerOrderCard(s) +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideFlowerSubmit()">提交订单</button>' +
-    '<button class="guide-chip" onclick="guideFlowerPaySwitch()">改用信用卡支付</button>' +
+    '<button class="guide-chip" onclick="guideFlowerPaySwitch()">' + (s.order.payMethod === '信用卡' ? '改用储蓄卡支付' : '改用信用卡支付') + '</button>' +
     '<button class="guide-chip" onclick="guideFlowerCancelOp()">取消</button>' +
     '</div>'));
   scrollToBottom();
@@ -4167,15 +4438,51 @@ async function guideFlowerSubmit() {
     return true;
   }
 
+  if (!(price > 0)) {
+    appendMessage(guideMessage('<p>该花束没有有效价格，请重新选择款式。</p>'));
+    scrollToBottom();
+    s.stage = 'slots';
+    return true;
+  }
+
   var payMethod = o.payMethod === '信用卡' ? '信用卡' : '储蓄卡';
   var debit = (mockData.userProfile && mockData.userProfile.debitCard) || {};
   var available = Number(debit.available) || 0;
+  var cc = (mockData.userProfile && mockData.userProfile.creditCard) || {};
+  var creditAvailable = Number(cc.available) || 0;
   if (payMethod === '储蓄卡' && price > available) {
     appendMessage(guideMessage('<p>储蓄卡可用余额 ¥' + available.toLocaleString('zh-CN') + ' 不足支付本次鲜花订单（¥' + price + '），请改用信用卡支付。</p>' +
       '<div class="guide-chips"><button class="guide-chip" onclick="guideFlowerPaySwitch()">改用信用卡支付</button>' +
       '<button class="guide-chip" onclick="guideFlowerCancelOp()">取消</button></div>'));
     scrollToBottom();
     return true;
+  }
+  if (payMethod === '信用卡' && price > creditAvailable) {
+    appendMessage(guideMessage('<p>信用卡可用额度 ¥' + creditAvailable.toLocaleString('zh-CN') + ' 不足支付本次鲜花订单（¥' + price + '），请改用储蓄卡支付。</p>' +
+      '<div class="guide-chips"><button class="guide-chip" onclick="guideFlowerPaySwitch()">改用储蓄卡支付</button>' +
+      '<button class="guide-chip" onclick="guideFlowerCancelOp()">取消</button></div>'));
+    scrollToBottom();
+    return true;
+  }
+
+  // 下单即支付：储蓄卡走统一扣款门禁，信用卡占用额度并计入本期账单
+  if (payMethod === '储蓄卡') {
+    var paid = addTransaction('expense', price, '鲜花订单-' + o.recipient + '(' + o.bouquet + ')', '鲜花订购', true);
+    if (paid === false) {
+      appendMessage(guideMessage('<p>储蓄卡可用余额不足，鲜花订单未提交，账户未扣款。</p>'));
+      scrollToBottom();
+      return true;
+    }
+  } else {
+    cc.available = Math.max(0, Math.round((creditAvailable - price) * 100) / 100);
+    cc.used = Math.round(((Number(cc.used) || 0) + price) * 100) / 100;
+    cc.currentBill = Math.round(((Number(cc.currentBill) || 0) + price) * 100) / 100;
+    cc.minPayment = Math.round(cc.currentBill * 10) / 100;
+    if (mockData.card) {
+      mockData.card.usedLimit = cc.used;
+      mockData.card.availableLimit = cc.available;
+      mockData.card.billAmount = cc.currentBill;
+    }
   }
 
   GUIDE_FLOWER = null;
@@ -4190,17 +4497,20 @@ async function guideFlowerSubmit() {
     slot: o.slot,
     card: o.card || '',
     payMethod: payMethod,
+    paid: true,
+    paidAmount: price,
     status: '待配送',
     createdAt: new Date().toLocaleString('zh-CN')
   });
   saveUserData();
-  appendMessage(guideMessage('<p>鲜花订单提交成功，将在配送日按时派送，你可以在生活订购记录里查看订单状态。</p>' +
+  appendMessage(guideMessage('<p>鲜花订单提交成功，已从' + payMethod + '支付 ¥' + price + '，将在配送日按时派送。</p>' +
     '<div class="guide-chips"><button class="guide-chip" onclick="guideStartFlowerList()">查看鲜花订单</button></div>'));
   scrollToBottom();
   return true;
 }
 
 function guideStartFlowerList() {
+  guideResetAllSessions();
   GUIDE_FLOWER = { mode: 'list', stage: 'list' };
   currentModule = 'life';
   var list = guideFlowerOrders();
@@ -4251,10 +4561,14 @@ function guideFlowerModifyConfirm() {
   s.stage = 'modify-confirm';
   var bouquet = guideFlowerBouquet(s.newBouquet);
   s.newBouquet = bouquet ? bouquet.name : s.newBouquet;
+  var oldPrice = Number(s.order.paidAmount || s.order.price) || 0;
+  var newPrice = bouquet ? Number(bouquet.price) || 0 : oldPrice;
+  var diff = Math.round((newPrice - oldPrice) * 100) / 100;
   appendMessage(guideMessage(
     '<div class="data-card"><div class="data-card-title">确认修改订单</div>' +
     '<div class="data-row"><span class="data-label">原款式</span><span class="data-value">' + guideFlowerEsc(s.order.bouquet) + '</span></div>' +
-    '<div class="data-row"><span class="data-label">新款式</span><span class="data-value">' + guideFlowerEsc(s.newBouquet) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">新款式</span><span class="data-value">' + guideFlowerEsc(s.newBouquet) + '（¥' + newPrice + '）</span></div>' +
+    (s.order.paid === true && diff !== 0 ? '<div class="data-row"><span class="data-label">改单差价</span><span class="data-value ' + (diff > 0 ? 'expense' : 'income') + '">' + (diff > 0 ? '补 ¥' : '退 ¥') + Math.abs(diff) + '</span></div>' : '') +
     '<div class="data-row"><span class="data-label">其余信息</span><span class="data-value">保持不变</span></div>' +
     '<div class="data-row"><span class="data-label">支付方式</span><span class="data-value">' + guideFlowerEsc(s.order.payMethod || '储蓄卡') + '</span></div>' +
     '</div>' +
@@ -4271,8 +4585,42 @@ function guideFlowerModifySubmit() {
   if (!s || s.stage !== 'modify-confirm' || !s.order) return;
   var target = guideFlowerOrders().filter(function (x) { return x.id === s.order.id; })[0];
   var bouquet = guideFlowerBouquet(s.newBouquet);
-  if (target) {
-    if (bouquet) { target.bouquet = bouquet.name; target.price = bouquet.price; }
+  if (target && bouquet) {
+    var oldPrice = Number(target.paidAmount || target.price) || 0;
+    var newPrice = Number(bouquet.price) || 0;
+    var diff = Math.round((newPrice - oldPrice) * 100) / 100;
+    // 已支付的订单改款式必须补差价/退差价，不能只改展示价
+    if (target.paid === true && diff !== 0) {
+      if (String(target.payMethod) === '信用卡') {
+        var cc = mockData.userProfile.creditCard || {};
+        if (diff > 0 && (Number(cc.available) || 0) < diff) {
+          appendMessage(guideMessage('<p>信用卡可用额度不足以补差价 ¥' + diff + '，订单未修改。</p>'));
+          scrollToBottom();
+          return;
+        }
+        cc.available = Math.round(((Number(cc.available) || 0) - diff) * 100) / 100;
+        cc.used = Math.round(((Number(cc.used) || 0) + diff) * 100) / 100;
+        cc.currentBill = Math.round(((Number(cc.currentBill) || 0) + diff) * 100) / 100;
+        cc.minPayment = Math.round(cc.currentBill * 10) / 100;
+        if (mockData.card) {
+          mockData.card.availableLimit = cc.available;
+          mockData.card.usedLimit = cc.used;
+          mockData.card.billAmount = cc.currentBill;
+        }
+      } else if (diff > 0) {
+        var payDiff = addTransaction('expense', diff, '鲜花改单补差价-' + target.recipient, '鲜花订购', true);
+        if (payDiff === false) {
+          appendMessage(guideMessage('<p>储蓄卡可用余额不足以补差价 ¥' + diff + '，订单未修改。</p>'));
+          scrollToBottom();
+          return;
+        }
+      } else {
+        addTransaction('income', -diff, '鲜花改单退款-' + target.recipient, '鲜花订购', true);
+      }
+      target.paidAmount = newPrice;
+    }
+    target.bouquet = bouquet.name;
+    target.price = newPrice;
     target.updatedAt = new Date().toLocaleString('zh-CN');
     saveUserData();
   }
@@ -4308,13 +4656,51 @@ function guideFlowerCancelSubmit() {
   if (!s || s.stage !== 'cancel-confirm' || !s.order) return;
   var order = s.order;
   var hrs = guideFlowerHoursLeft(order);
-  var fee = hrs < 24 ? FLOWER_CANCEL_FEE : 0;
   var target = guideFlowerOrders().filter(function (x) { return x.id === order.id; })[0];
-  if (target) { target.status = '已取消'; target.cancelledAt = new Date().toLocaleString('zh-CN'); }
-  if (fee > 0 && typeof addTransaction === 'function') addTransaction('expense', fee, '鲜花订单取消服务费-' + order.recipient, '鲜花订购', true);
+  if (!target) {
+    appendMessage(guideMessage('<p>订单不存在，可能已被取消。</p>'));
+    GUIDE_FLOWER = null;
+    scrollToBottom();
+    return;
+  }
+  if (target.status === '已取消') {
+    appendMessage(guideMessage('<p>该订单已经取消过，不会重复退款。</p>'));
+    GUIDE_FLOWER = null;
+    scrollToBottom();
+    return;
+  }
+
+  var paid = target.paid === true;
+  var paidAmount = Number(target.paidAmount || target.price) || 0;
+  var fee = (paid && hrs < 24) ? FLOWER_CANCEL_FEE : 0;
+  var refund = paid ? Math.max(0, Math.round((paidAmount - fee) * 100) / 100) : 0;
+
+  if (paid && refund > 0) {
+    if (String(target.payMethod) === '信用卡') {
+      var cc = mockData.userProfile.creditCard || {};
+      cc.available = Math.round(((Number(cc.available) || 0) + refund) * 100) / 100;
+      cc.used = Math.max(0, Math.round(((Number(cc.used) || 0) - refund) * 100) / 100);
+      cc.currentBill = Math.max(0, Math.round(((Number(cc.currentBill) || 0) - refund) * 100) / 100);
+      cc.minPayment = Math.round(cc.currentBill * 10) / 100;
+      if (mockData.card) {
+        mockData.card.usedLimit = cc.used;
+        mockData.card.availableLimit = cc.available;
+        mockData.card.billAmount = cc.currentBill;
+      }
+    } else {
+      addTransaction('income', refund, '鲜花订单退款-' + target.recipient, '鲜花订购', true);
+    }
+  }
+
+  target.status = '已取消';
+  target.cancelledAt = new Date().toLocaleString('zh-CN');
+  target.cancelFee = fee;
+  target.refundAmount = refund;
   saveUserData();
   GUIDE_FLOWER = null;
-  appendMessage(guideMessage('<p>鲜花订单已取消' + (fee > 0 ? '，已收取服务费 ¥' + fee : '，未产生费用') + '。</p>'));
+  appendMessage(guideMessage('<p>鲜花订单已取消' +
+    (paid ? '，已退回 ¥' + refund + (fee > 0 ? '（扣除配送前 24 小时内取消服务费 ¥' + fee + '）' : '') : '，该订单未支付，无需退款') +
+    '。</p>'));
   scrollToBottom();
 }
 
@@ -4332,7 +4718,7 @@ async function guideFlowerSession(t) {
 
   if (s.mode === 'order') {
     if (s.stage === 'confirm' && /^(取消|不|算了)$/.test(plain)) { guideFlowerCancelOp(); return true; }
-    if (/^(返回|菜单|返回菜单|退出)$/.test(plain) && s.stage !== 'confirm') {
+    if (/^(返回|菜单|返回菜单|退出|取消|不订了|算了)$/.test(plain) && s.stage !== 'confirm') {
       GUIDE_FLOWER = null;
       guideBackToMenu();
       return true;
@@ -4360,6 +4746,12 @@ async function guideFlowerSession(t) {
   }
 
   if (s.mode === 'list') {
+    // 列表模式必须有出口：返回/菜单/退出/取消（未指定订单）都回到一级菜单
+    if (/^(返回|菜单|返回菜单|退出|取消|不看了|算了)$/.test(plain)) {
+      GUIDE_FLOWER = null;
+      guideBackToMenu();
+      return true;
+    }
     if (/修改|改一下|换款式|改款式/.test(t)) {
       var target2 = guideFlowerOrders().filter(function (x) { return x.status === '待配送' && t.indexOf(x.recipient) !== -1; })[0];
       if (target2) { guideFlowerModifyStart(target2.id); return true; }

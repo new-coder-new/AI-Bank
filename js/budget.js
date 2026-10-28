@@ -18,12 +18,23 @@ function calcPeriodUsed(period) {
     weekStart.setHours(0, 0, 0, 0);
     totalUsed = txns.filter(t => t.type === 'expense' && new Date(t.time) >= weekStart).reduce((s, t) => s + t.amount, 0);
   } else if (period === 'month') {
-    const monthStart = now.getFullYear() + '-' + pad(now.getMonth() + 1);
-    totalUsed = txns.filter(t => t.type === 'expense' && t.time.startsWith(monthStart)).reduce((s, t) => s + t.amount, 0);
+    // 月度口径与服务端/账单分析保持一致：用账单分类合计，而不是最近 50 条流水
+    const bills = mockData.bills && mockData.bills.expense;
+    if (Array.isArray(bills)) {
+      totalUsed = bills.reduce((s, x) => s + (Number(x.value) || 0), 0);
+    } else {
+      const monthStart = now.getFullYear() + '-' + pad(now.getMonth() + 1);
+      totalUsed = txns.filter(t => t.type === 'expense' && t.time.startsWith(monthStart)).reduce((s, t) => s + t.amount, 0);
+    }
   } else if (period === 'year') {
-    // 年度预算必须覆盖整年，不能只匹配 "YYYY-01"
-    const yearPrefix = String(now.getFullYear()) + '-';
-    totalUsed = txns.filter(t => t.type === 'expense' && t.time.startsWith(yearPrefix)).reduce((s, t) => s + t.amount, 0);
+    // 年度 = 历史月份（排除本月，避免与 bills 重复）+ 本月账单
+    const currentMonthLabel = now.getFullYear() + '年' + (now.getMonth() + 1) + '月';
+    const history = Array.isArray(mockData.monthlyHistory) ? mockData.monthlyHistory : [];
+    totalUsed = history
+      .filter(m => m && m.month !== currentMonthLabel)
+      .reduce((s, m) => s + (Number(m.expense) || 0), 0);
+    const bills = mockData.bills && mockData.bills.expense;
+    if (Array.isArray(bills)) totalUsed += bills.reduce((s, x) => s + (Number(x.value) || 0), 0);
   }
   return totalUsed;
 }
@@ -39,12 +50,19 @@ function smartBudgetSet(text) {
   else if (/每年|年度|年预算|按年/.test(text)) period = 'year';
   else if (/每月|月度|月预算|按月|这个月|本月/.test(text)) period = 'month';
 
-  // 解析金额
-  const amountMatch = text.match(/(\d+(\.\d+)?)\s*[元块]?/);
-  if (amountMatch) amount = parseFloat(amountMatch[1]);
+  // 解析金额：支持千分位与万/亿/千单位（「2万」不能只取 2）
+  const normalized = String(text || '').replace(/,/g, '');
+  const amountMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(亿|万|w|W|千|k|K)?/);
+  if (amountMatch) {
+    amount = parseFloat(amountMatch[1]);
+    const unit = amountMatch[2];
+    if (unit === '亿') amount *= 100000000;
+    else if (unit === '万' || unit === 'w' || unit === 'W') amount *= 10000;
+    else if (unit === '千' || unit === 'k' || unit === 'K') amount *= 1000;
+  }
 
   // 中文数字
-  if (amount === 0) {
+  if (!(amount > 0)) {
     const cnMatch = text.match(/([一二两三四五六七八九十百千万]+)\s*[元块]?/);
     if (cnMatch) {
       let cn = cnMatch[1];
@@ -185,6 +203,12 @@ function saveBudgetSetting() {
   });
   
   saveUserData();
+  // 同步后端，避免刷新后被服务端默认预算覆盖
+  if (typeof apiBudgetSet === 'function') {
+    PERIOD_ORDER.forEach(period => {
+      if (budgets[period] > 0) apiBudgetSet(budgets[period], period);
+    });
+  }
   const popup = document.getElementById('budgetSettingPopup');
   if (popup) popup.remove();
   

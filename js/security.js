@@ -1,18 +1,19 @@
 ﻿// ========== 通用安全验证弹窗 ==========
-// 验证状态
-let securityVerifyCallback = null;
-let securityVerifyPurpose = '';
-let smsCodeSent = false;
-let smsCountdown = 0;
+// 每个弹窗独立回调/验证码/失败次数：两个验证同时存在时不会互相覆盖
+let securityVerifyCallbacks = {};
+let securityVerifyPurposes = {};
+let securityAttempts = {};
+let smsTimers = {};
+let passwordInputs = {};
+let fingerprintEnabled = true;
 
 // 显示安全验证弹窗
 function showSecurityVerification(purpose, callback) {
-  securityVerifyCallback = callback;
-  securityVerifyPurpose = purpose;
-  smsCodeSent = false;
-  smsCountdown = 0;
+  const popupId = 'security-verify-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+  securityVerifyCallbacks[popupId] = callback;
+  securityVerifyPurposes[popupId] = String(purpose || '');
+  securityAttempts[popupId] = 0;
 
-  const popupId = 'security-verify-' + Date.now();
   const popup = document.createElement('div');
   popup.id = popupId;
   popup.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;';
@@ -21,7 +22,7 @@ function showSecurityVerification(purpose, callback) {
       <div style="text-align:center;margin-bottom:20px;">
         <div style="font-size:40px;margin-bottom:8px;"></div>
         <div style="font-size:16px;font-weight:700;color:#1a1a1a;">安全验证</div>
-        <div style="font-size:13px;color:#999;margin-top:4px;">${purpose}</div>
+        <div style="font-size:13px;color:#999;margin-top:4px;">${escapeHtml(purpose)}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;">
         <button onclick="showPasswordVerify('${popupId}')" style="display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;cursor:pointer;transition:all 0.2s;">
@@ -40,14 +41,14 @@ function showSecurityVerification(purpose, callback) {
           </div>
           <span style="color:#ccc;font-size:18px;">›</span>
         </button>
-        <button onclick="showFingerprintVerify('${popupId}')" style="display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;cursor:pointer;transition:all 0.2s;">
+        ${fingerprintEnabled ? `<button onclick="showFingerprintVerify('${popupId}')" style="display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;cursor:pointer;transition:all 0.2s;">
           <span style="font-size:24px;"></span>
           <div style="text-align:left;flex:1;">
             <div style="font-size:14px;font-weight:600;color:#1a1a1a;">指纹验证</div>
             <div style="font-size:11px;color:#999;">使用指纹快速验证</div>
           </div>
           <span style="color:#ccc;font-size:18px;">›</span>
-        </button>
+        </button>` : ''}
       </div>
       <button onclick="closeSecurityVerify('${popupId}', false)" style="width:100%;margin-top:16px;padding:10px;border:none;background:#f3f4f6;color:#666;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">取消</button>
     </div>
@@ -56,14 +57,19 @@ function showSecurityVerification(purpose, callback) {
 }
 
 // 密码验证
+function pwdScope(popupId, selector) {
+  const popup = document.getElementById(popupId);
+  return popup ? popup.querySelector(selector) : null;
+}
 function showPasswordVerify(popupId) {
   const popup = document.getElementById(popupId);
   if (!popup) return;
+  passwordInputs[popupId] = '';
   popup.querySelector('div > div').innerHTML = `
     <div style="text-align:center;margin-bottom:20px;">
       <div style="font-size:40px;margin-bottom:8px;"></div>
       <div style="font-size:16px;font-weight:700;color:#1a1a1a;">输入交易密码</div>
-      <div style="font-size:13px;color:#999;margin-top:4px;">${securityVerifyPurpose}</div>
+      <div style="font-size:13px;color:#999;margin-top:4px;">${escapeHtml(securityVerifyPurposes[popupId] || '')}</div>
     </div>
     <div style="display:flex;justify-content:center;gap:8px;margin-bottom:20px;" id="passwordDots">
       ${[1,2,3,4,5,6].map(i => `<div style="width:36px;height:44px;border:2px solid #e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#1a1a1a;" id="pwd-dot-${i}"></div>`).join('')}
@@ -77,21 +83,31 @@ function showPasswordVerify(popupId) {
     <div id="passwordError" style="color:#ef4444;font-size:12px;text-align:center;margin-bottom:10px;display:none;">密码错误，请重试（演示密码：123456）</div>
     <button onclick="closeSecurityVerify('${popupId}', false)" style="width:100%;padding:10px;border:none;background:#f3f4f6;color:#666;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">取消</button>
   `;
-  window.currentPasswordInput = '';
 }
 
 // 输入密码
 function inputPassword(num, popupId) {
-  if (window.currentPasswordInput.length >= 6) return;
-  window.currentPasswordInput += num;
-  document.getElementById('pwd-dot-' + window.currentPasswordInput.length).textContent = '•';
-  if (window.currentPasswordInput.length === 6) {
+  if (!document.getElementById(popupId)) return;
+  const value = passwordInputs[popupId] || '';
+  if (value.length >= 6) return;
+  passwordInputs[popupId] = value + num;
+  const dot = pwdScope(popupId, '#pwd-dot-' + passwordInputs[popupId].length);
+  if (dot) dot.textContent = '•';
+  if (passwordInputs[popupId].length === 6) {
     setTimeout(() => {
-      if (window.currentPasswordInput === '123456') {
+      if (!document.getElementById(popupId)) return;
+      if (passwordInputs[popupId] === '123456') {
         closeSecurityVerify(popupId, true);
       } else {
-        document.getElementById('passwordError').style.display = 'block';
-        setTimeout(() => clearPassword(popupId), 500);
+        securityAttempts[popupId] = (securityAttempts[popupId] || 0) + 1;
+        const err = pwdScope(popupId, '#passwordError');
+        if (err) err.style.display = 'block';
+        if (securityAttempts[popupId] >= 5) {
+          if (typeof showToast === 'function') showToast('验证失败次数过多，本次操作已取消', 2600);
+          setTimeout(() => closeSecurityVerify(popupId, false), 600);
+        } else {
+          setTimeout(() => clearPassword(popupId), 500);
+        }
       }
     }, 300);
   }
@@ -99,25 +115,33 @@ function inputPassword(num, popupId) {
 
 // 清除密码
 function clearPassword(popupId) {
-  window.currentPasswordInput = '';
+  passwordInputs[popupId] = '';
   for (let i = 1; i <= 6; i++) {
-    document.getElementById('pwd-dot-' + i).textContent = '';
+    const dot = pwdScope(popupId, '#pwd-dot-' + i);
+    if (dot) dot.textContent = '';
   }
-  document.getElementById('passwordError').style.display = 'none';
+  const err = pwdScope(popupId, '#passwordError');
+  if (err) err.style.display = 'none';
 }
 
 // 删除密码
 function deletePassword(popupId) {
-  if (window.currentPasswordInput.length === 0) return;
-  document.getElementById('pwd-dot-' + window.currentPasswordInput.length).textContent = '';
-  window.currentPasswordInput = window.currentPasswordInput.slice(0, -1);
+  const value = passwordInputs[popupId] || '';
+  if (!value.length) return;
+  const dot = pwdScope(popupId, '#pwd-dot-' + value.length);
+  if (dot) dot.textContent = '';
+  passwordInputs[popupId] = value.slice(0, -1);
 }
 
 // 短信验证
+function smsScope(popupId, selector) {
+  const popup = document.getElementById(popupId);
+  return popup ? popup.querySelector(selector) : null;
+}
 function showSmsVerify(popupId) {
   const popup = document.getElementById(popupId);
   if (!popup) return;
-  smsCodeSent = true;
+  if (smsTimers[popupId]) { clearInterval(smsTimers[popupId]); delete smsTimers[popupId]; }
   popup.querySelector('div > div').innerHTML = `
     <div style="text-align:center;margin-bottom:20px;">
       <div style="font-size:40px;margin-bottom:8px;"></div>
@@ -133,49 +157,69 @@ function showSmsVerify(popupId) {
     <div id="smsError" style="color:#ef4444;font-size:12px;text-align:center;margin-bottom:10px;display:none;">验证码错误，请重试（演示验证码：123456）</div>
     <button onclick="closeSecurityVerify('${popupId}', false)" style="width:100%;padding:10px;border:none;background:#f3f4f6;color:#666;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">取消</button>
   `;
-  document.getElementById('sms-code-1').focus();
-  startSmsCountdown();
+  const first = smsScope(popupId, '#sms-code-1');
+  if (first) first.focus();
+  startSmsCountdown(popupId);
 }
 
 // 处理短信验证码输入
 function handleSmsInput(index, popupId) {
-  const input = document.getElementById('sms-code-' + index);
-  if (input.value && index < 6) {
-    document.getElementById('sms-code-' + (index + 1)).focus();
+  const popup = document.getElementById(popupId);
+  if (!popup) return;
+  const input = popup.querySelector('#sms-code-' + index);
+  if (input && input.value && index < 6) {
+    const next = popup.querySelector('#sms-code-' + (index + 1));
+    if (next) next.focus();
   }
-  // 检查是否全部输入完成
   let code = '';
   for (let i = 1; i <= 6; i++) {
-    code += document.getElementById('sms-code-' + i).value;
+    const el = popup.querySelector('#sms-code-' + i);
+    code += el ? el.value : '';
   }
   if (code.length === 6) {
     setTimeout(() => {
-      if (code === '123456') {
+      if (!document.getElementById(popupId)) return;
+      let fresh = '';
+      for (let i = 1; i <= 6; i++) {
+        const el = popup.querySelector('#sms-code-' + i);
+        fresh += el ? el.value : '';
+      }
+      if (fresh === '123456') {
         closeSecurityVerify(popupId, true);
       } else {
-        document.getElementById('smsError').style.display = 'block';
+        securityAttempts[popupId] = (securityAttempts[popupId] || 0) + 1;
+        const err = popup.querySelector('#smsError');
+        if (err) err.style.display = 'block';
         for (let i = 1; i <= 6; i++) {
-          document.getElementById('sms-code-' + i).value = '';
+          const el = popup.querySelector('#sms-code-' + i);
+          if (el) el.value = '';
         }
-        document.getElementById('sms-code-1').focus();
+        const first = popup.querySelector('#sms-code-1');
+        if (first) first.focus();
+        if (securityAttempts[popupId] >= 5) {
+          if (typeof showToast === 'function') showToast('验证失败次数过多，本次操作已取消', 2600);
+          setTimeout(() => closeSecurityVerify(popupId, false), 600);
+        }
       }
     }, 300);
   }
 }
 
-// 短信倒计时
-function startSmsCountdown() {
-  smsCountdown = 60;
-  const btn = document.getElementById('smsResendBtn');
+// 短信倒计时：每个弹窗独立计时器，关闭/重发时清理
+function startSmsCountdown(popupId) {
+  if (smsTimers[popupId]) { clearInterval(smsTimers[popupId]); delete smsTimers[popupId]; }
+  let count = 60;
+  const btn = smsScope(popupId, '#smsResendBtn');
   if (!btn) return;
-  const timer = setInterval(() => {
-    smsCountdown--;
-    if (smsCountdown <= 0) {
-      clearInterval(timer);
+  smsTimers[popupId] = setInterval(() => {
+    count--;
+    if (count <= 0) {
+      clearInterval(smsTimers[popupId]);
+      delete smsTimers[popupId];
       btn.textContent = '重新发送';
       btn.disabled = false;
     } else {
-      btn.textContent = '重新发送 (' + smsCountdown + 's)';
+      btn.textContent = '重新发送 (' + count + 's)';
     }
   }, 1000);
 }
@@ -185,50 +229,47 @@ function resendSmsCode(popupId) {
   showSmsVerify(popupId);
 }
 
-// 指纹验证
+// 指纹验证：演示环境也必须由用户主动点击，不能倒计时自动通过
 function showFingerprintVerify(popupId) {
   const popup = document.getElementById(popupId);
   if (!popup) return;
+  if (!fingerprintEnabled) {
+    if (typeof showToast === 'function') showToast('指纹验证已在安全中心关闭', 2200);
+    return;
+  }
   popup.querySelector('div > div').innerHTML = `
     <div style="text-align:center;margin-bottom:20px;">
-      <div style="font-size:60px;margin-bottom:12px;animation:pulse 1.5s infinite;"></div>
+      <div style="font-size:60px;margin-bottom:12px;animation:pulse 1.5s infinite;">👆</div>
       <div style="font-size:16px;font-weight:700;color:#1a1a1a;">指纹验证</div>
-      <div style="font-size:13px;color:#999;margin-top:4px;">请将手指放在指纹识别区域</div>
+      <div style="font-size:13px;color:#999;margin-top:4px;">请点击下方按钮模拟指纹识别</div>
     </div>
-    <div style="background:#f9fafb;border-radius:10px;padding:16px;text-align:center;margin-bottom:16px;">
-      <div style="font-size:14px;color:#666;">正在识别指纹...</div>
-      <div style="margin-top:10px;height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden;">
-        <div style="height:100%;background:linear-gradient(90deg,#0B4F9C,#1F6FD0);width:0%;animation:progress 2s ease-out forwards;"></div>
-      </div>
+    <div style="background:#f9fafb;border-radius:10px;padding:16px;text-align:center;margin-bottom:16px;font-size:12px;color:#666;">
+      演示环境不会调用系统指纹传感器；点击按钮即代表验证通过。
     </div>
-    <button onclick="closeSecurityVerify('${popupId}', false)" style="width:100%;padding:10px;border:none;background:#f3f4f6;color:#666;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">取消</button>
+    <div style="display:flex;gap:10px;">
+      <button onclick="closeSecurityVerify('${popupId}', true)" style="flex:1;padding:12px;border:none;background:linear-gradient(135deg,#0B4F9C,#1F6FD0);color:#fff;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">模拟指纹验证</button>
+      <button onclick="closeSecurityVerify('${popupId}', false)" style="flex:1;padding:12px;border:none;background:#f3f4f6;color:#666;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">取消</button>
+    </div>
   `;
-  // 添加动画样式
   if (!document.getElementById('fingerprint-animation')) {
     const style = document.createElement('style');
     style.id = 'fingerprint-animation';
-    style.textContent = `
-      @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }
-      @keyframes progress { 0% { width: 0%; } 100% { width: 100%; } }
-    `;
+    style.textContent = '@keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }';
     document.head.appendChild(style);
   }
-  // 2秒后验证成功
-  setTimeout(() => {
-    if (document.getElementById(popupId)) {
-      closeSecurityVerify(popupId, true);
-    }
-  }, 2200);
 }
 
-// 关闭安全验证弹窗
+// 关闭安全验证弹窗：按 popupId 取自己的回调，避免两个验证弹窗互相覆盖
 function closeSecurityVerify(popupId, success) {
   const popup = document.getElementById(popupId);
   if (popup) popup.remove();
-  if (securityVerifyCallback) {
-    securityVerifyCallback(success);
-    securityVerifyCallback = null;
-  }
+  if (smsTimers[popupId]) { clearInterval(smsTimers[popupId]); delete smsTimers[popupId]; }
+  const cb = securityVerifyCallbacks[popupId];
+  delete securityVerifyCallbacks[popupId];
+  delete securityVerifyPurposes[popupId];
+  delete securityAttempts[popupId];
+  delete passwordInputs[popupId];
+  if (typeof cb === 'function') cb(success);
 }
 
 function maskUserInfoCard(num) {
@@ -526,10 +567,10 @@ function renderUserInfoContacts(u) {
       <div class="ui-contact-list">
         ${contacts.map((c, i) => `
           <div class="ui-contact-row">
-            <div class="ui-contact-avatar">${c.name.charAt(0)}</div>
+            <div class="ui-contact-avatar">${escapeHtml(String(c.name || '?').charAt(0))}</div>
             <div class="ui-contact-main">
-              <div class="ui-contact-name">${c.name}<span class="ui-contact-rel">${c.relation || '未设置关系'}</span></div>
-              <div class="ui-contact-meta">${c.phone}${c.bank ? ' · ' + c.bank : ''}${c.birthday ? ' · ' + c.birthday : ''}</div>
+              <div class="ui-contact-name">${escapeHtml(c.name)}<span class="ui-contact-rel">${escapeHtml(c.relation || '未设置关系')}</span></div>
+              <div class="ui-contact-meta">${escapeHtml(c.phone)}${c.bank ? ' · ' + escapeHtml(c.bank) : ''}${c.birthday ? ' · ' + escapeHtml(c.birthday) : ''}</div>
             </div>
             <div class="ui-contact-actions">
               <button class="ui-link" onclick="showContactForm(${i})">编辑</button>
@@ -614,6 +655,11 @@ function saveContact(index, popupId) {
   if (!name) { alert('请输入姓名'); return; }
   if (!phone) { alert('请输入手机号'); return; }
   if (phone.length !== 11) { alert('手机号应为11位'); return; }
+  if (birthday) {
+    const bp = String(birthday).split('-');
+    const mm = Number(bp[1]), dd = Number(bp[2]);
+    if (!(mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31)) { alert('生日格式不正确'); return; }
+  }
 
   if (!mockData.contacts) mockData.contacts = [];
   const contact = { name, phone, account: account || '**** **** **** ****', bank, relation, birthday, remark };
@@ -720,6 +766,18 @@ function addTransaction(type, amount, desc, channel, deductBalance) {
     String(now.getSeconds()).padStart(2, '0');
   u.recentTxns.unshift({ type, amount, desc, time: timeStr, channel });
   if (u.recentTxns.length > 50) u.recentTxns.pop();
+  // 同步账单分类，避免“预算/账单分析”和“交易流水”两套口径对不上
+  try {
+    if (amount > 0 && mockData.bills) {
+      const target = type === 'income' ? mockData.bills.income : mockData.bills.expense;
+      if (Array.isArray(target)) {
+        const label = type === 'income' ? '其他收入' : '其他支出';
+        let cat = target.find(x => x.label === label);
+        if (!cat) { cat = { label: label, value: 0, color: '#6b7280' }; target.push(cat); }
+        cat.value = Math.round((Number(cat.value) + amount) * 100) / 100;
+      }
+    }
+  } catch (e) { }
   if (deductBalance && amount > 0) {
     if (type === 'income') {
       u.debitCard.balance += amount;
@@ -736,6 +794,11 @@ function addTransaction(type, amount, desc, channel, deductBalance) {
 }
 
 function quickAction(type) {
+  // 流程锁：还有没走完的对话流程时，不允许从按钮跳到别的功能
+  if (typeof guideActiveFlowLabel === 'function' && guideActiveFlowLabel()) {
+    if (typeof guideFlowLockedNotice === 'function') guideFlowLockedNotice('功能按钮已暂时锁定，请先完成当前流程，或回复「取消」。');
+    return;
+  }
   const welcome = document.getElementById('welcome');
   if (welcome) welcome.style.display = 'none';
   switch(type) {
@@ -907,12 +970,19 @@ async function adminApproveReview(id) {
   }
 
   if (failed) {
-    record.status = '审批失败';
+    // 多动作执行是顺序的：前面已成功的动作无法自动回滚，
+    // 状态必须如实写成“部分执行”，不能笼统显示“审批失败”误导用户以为没扣款。
+    var partial = summaries.length > 0;
+    record.status = partial ? '部分执行' : '审批失败';
     record.reviewedAt = new Date().toLocaleString('zh-CN');
-    record.note = '执行失败：' + (failed.summary || '业务执行异常');
+    record.completedItems = summaries.slice();
+    record.note = (partial ? '已完成 ' + summaries.length + ' 项：' + summaries.join('；') + '；' : '') +
+      '失败：' + (failed.summary || '业务执行异常');
     saveUserData();
     showAdminReviewPanel();
-    appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">管理员审批</div><div class="msg-bubble agent-bubble"><div class="bank-result"><div class="bank-result-title" style="color:#B42318;">审批执行失败</div><div class="bank-result-note">' + manualReviewEsc(failed.summary || '业务执行异常') + '</div></div></div></div></div>');
+    appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">管理员审批</div><div class="msg-bubble agent-bubble"><div class="bank-result"><div class="bank-result-title" style="color:#B42318;">' + (partial ? '部分操作已执行，后续失败' : '审批执行失败') + '</div>' +
+      (partial ? '<div class="bank-result-note">已完成：' + manualReviewEsc(summaries.join('；')) + '</div>' : '') +
+      '<div class="bank-result-note">失败原因：' + manualReviewEsc(failed.summary || '业务执行异常') + '</div></div></div></div></div>');
     scrollToBottom();
     return;
   }
@@ -1156,6 +1226,8 @@ function performResetChat() {
   currentDialogState = null;
   // 清空 Agent 的多轮上下文与待确认计划
   if (typeof agentLLMClearHistory === 'function') agentLLMClearHistory();
+  // 清空服务向导的全部会话（转账/理财/订阅/鲜花等），否则欢迎语出现后旧流程仍会劫持输入
+  if (typeof guideResetAllSessions === 'function') guideResetAllSessions();
   // 清空会话级上下文记忆（画像/财务/决策/规划结论）
   if (typeof agentSessionReset === 'function') agentSessionReset();
   // 清空输入框
@@ -1247,14 +1319,12 @@ function showSecurityCenter() {
 }
 
 function toggleFingerprint(btn) {
-  if (btn.textContent === '开启') {
-    btn.textContent = '已开启';
-    btn.style.background = '#22c55e';
-    appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">👆 <strong>指纹验证已开启</strong><br>现在可以使用指纹快速完成支付验证，无需输入密码。</div></div></div>`);
-  } else {
-    btn.textContent = '开启';
-    btn.style.background = '';
+  fingerprintEnabled = !fingerprintEnabled;
+  if (btn) {
+    btn.textContent = fingerprintEnabled ? '已开启' : '开启';
+    btn.style.background = fingerprintEnabled ? '#22c55e' : '';
   }
+  appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">👆 <strong>指纹验证已${fingerprintEnabled ? '开启' : '关闭'}</strong><br>${fingerprintEnabled ? '现在可以在安全验证弹窗中选择指纹验证。' : '安全验证弹窗将不再提供指纹验证入口。'}</div></div></div>`);
   scrollToBottom();
 }
 

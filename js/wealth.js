@@ -134,12 +134,30 @@ function buyProduct(name, minAmount) {
 // 与一键式对话共用 wealth.buy 工具：同一套余额门禁、扣款、持仓写入与后端同步。
 async function executeBuyProduct(name, amount) {
   const product = mockData.products.find(p => p.name === name);
+  if (!product) {
+    appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ 未找到该理财产品。</div></div></div>');
+    scrollToBottom();
+    return;
+  }
   const minAmount = product?.minAmount || 0;
   const buyAmount = Number(amount) || 0;
-  if (buyAmount < minAmount) {
+  if (!(buyAmount > 0) || buyAmount < minAmount) {
     appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ 申购金额不能低于起购金额 ¥${minAmount}</div></div></div>`);
     scrollToBottom();
     return;
+  }
+
+  // 风险测评是申购前置条件：未测评/已过期必须先测评；风险等级高于承受能力需二次确认
+  const profile = (typeof riskProfile !== 'undefined' && riskProfile) || (mockData.userProfile && mockData.userProfile.riskProfile);
+  const valid = profile && ((typeof riskProfileValid === 'function') ? riskProfileValid(profile) : !!profile.level);
+  if (!valid) {
+    appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">按监管要求，申购前需要完成风险测评。' +
+      '<div class="guide-chips"><button class="guide-chip" onclick="startRiskAssessment(true)">立即测评</button></div></div></div>');
+    scrollToBottom();
+    return;
+  }
+  if (Number(product.riskLevel) > Number(profile.level)) {
+    if (!confirm('该产品风险等级 R' + product.riskLevel + ' 高于你的风险承受能力 R' + profile.level + '。\n\n是否仍然申购？')) return;
   }
   if (typeof callAgentTool !== 'function') {
     appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">⚠️ 理财服务暂时不可用，请稍后再试。</div></div></div>');
@@ -436,11 +454,20 @@ function showRiskResult() {
   appendMessage(html);
   scrollToBottom();
 
-  // 对话式申购：测评是从「理财申购」里发起的，测完接着推荐产品
+  // 对话式申购：测评是从「理财申购」里发起的，测完接着原流程；
+  // 如果用户一句话里已经带了产品+金额（如「买稳健增利90天 5000」），直接继续，不用重说。
   if (typeof GUIDE_WEALTH !== 'undefined' && GUIDE_WEALTH && GUIDE_WEALTH.stage === 'assessing') {
     GUIDE_WEALTH.stage = 'slots';
+    var pendingProduct = GUIDE_WEALTH.product;
+    var pendingAmount = GUIDE_WEALTH.amount;
     setTimeout(function () {
-      if (typeof guideWealthShowRecommendations === 'function') guideWealthShowRecommendations(riskProfile);
+      if (pendingAmount && typeof guideWealthStep === 'function') {
+        // 有金额没产品：保留金额，只追问产品
+        if (!pendingProduct) GUIDE_WEALTH.product = null;
+        guideWealthStep(String(pendingAmount));
+      } else if (typeof guideWealthShowRecommendations === 'function') {
+        guideWealthShowRecommendations(riskProfile);
+      }
     }, 300);
   }
 }
@@ -501,9 +528,15 @@ function showHoldings() {
 // 初始化定投计划
 function initInvestmentPlans() {
   if (!mockData.investmentPlans) {
-    mockData.investmentPlans = [
-      { id: 1, productName: '稳健增长混合A', amount: 500, cycle: 'monthly', day: 15, status: 'active', createdAt: '2026-08-15', totalInvested: 1000, totalShares: 980.5 }
-    ];
+    // 用户从未创建过计划时，不能自动生成一个 active 计划并扣款；
+    // 只放一条暂停状态的演示计划，用户主动启用后才会执行。
+    if (window.__LOCAL_PLANS_LOADED) {
+      mockData.investmentPlans = [];
+    } else {
+      mockData.investmentPlans = [
+        { id: 1, productName: '稳健增长混合A', amount: 500, cycle: 'monthly', day: 15, status: 'paused', createdAt: '2026-08-15', totalInvested: 0, totalShares: 0, lastExecuted: null }
+      ];
+    }
   }
 }
 
@@ -677,17 +710,32 @@ function executeDueInvestments() {
   const today = now.getDate();
   const dayOfWeek = now.getDay();
   
+  // 本地日期，避免 UTC+8 凌晨算成前一天
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
   mockData.investmentPlans.forEach(plan => {
     if (plan.status !== 'active') return;
     const shouldExecute = plan.cycle === 'monthly' ? plan.day === today : plan.day === dayOfWeek;
-    const todayStr = now.toISOString().split('T')[0];
     if (shouldExecute && plan.lastExecuted !== todayStr) {
       // 统一用 addTransaction 扣款一次；原实现先手动扣 balance、再 addTransaction 扣一次，会重复扣款
       const okTx = addTransaction('expense', plan.amount, `基金定投-${plan.productName}`, '自动定投', true);
       if (okTx === false) return;
       plan.totalInvested += plan.amount;
       plan.totalShares += plan.amount * 0.98;
-      plan.lastExecuted = now.toISOString().split('T')[0];
+      plan.lastExecuted = todayStr;
+      // 定投扣款必须生成/增加对应持仓，否则钱从账户消失但资产端没有份额
+      const prod = (mockData.products || []).find(p => p.name === plan.productName);
+      if (prod) {
+        if (!mockData.userProfile.holdings) mockData.userProfile.holdings = [];
+        let h = mockData.userProfile.holdings.find(x => x.name === prod.name);
+        if (h) { h.amount += plan.amount; h.cost += plan.amount; }
+        else {
+          mockData.userProfile.holdings.push({
+            name: prod.name, icon: prod.icon, amount: plan.amount, cost: plan.amount,
+            profit: 0, profitRate: 0, buyDate: todayStr, status: '持有中', riskLevel: prod.riskLevel
+          });
+        }
+      }
     }
   });
   saveUserData();

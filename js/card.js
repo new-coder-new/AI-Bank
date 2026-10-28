@@ -4,11 +4,23 @@ function showCardLimit() {
   if (mockData.userProfile.creditCard && typeof mockData.userProfile.creditCard.isFrozen === 'boolean') {
     cardFrozen = mockData.userProfile.creditCard.isFrozen;
   }
-  const card = mockData.card;
-  const effectiveLimit = Number(mockData.userProfile.creditCard.effectiveLimit != null
-    ? mockData.userProfile.creditCard.effectiveLimit
-    : mockData.userProfile.creditCard.limit) || Number(card.totalLimit) || 0;
-  const usagePercent = ((card.usedLimit / card.totalLimit) * 100).toFixed(1);
+  // 单一数据源：额度/账单/卡号全部读 creditCard，避免卡片页、额度页、用户中心三套数字
+  const cc = mockData.userProfile.creditCard || {};
+  const effectiveLimit = Number(cc.effectiveLimit != null ? cc.effectiveLimit : cc.limit) || 0;
+  const usedLimit = Number(cc.used) || 0;
+  const availableLimit = Number(cc.available != null ? cc.available : Math.max(0, effectiveLimit - usedLimit));
+  const billAmount = Number(cc.currentBill) || 0;
+  const dueDay = Number(cc.dueDay) || 5;
+  const card = {
+    type: cc.level || (mockData.card && mockData.card.type) || '白金信用卡',
+    number: cc.number || (mockData.card && mockData.card.number) || '****',
+    totalLimit: effectiveLimit,
+    usedLimit: usedLimit,
+    availableLimit: availableLimit,
+    billAmount: billAmount,
+    dueDate: '每月' + dueDay + '日'
+  };
+  const usagePercent = effectiveLimit > 0 ? ((usedLimit / effectiveLimit) * 100).toFixed(1) : '0.0';
   const statusHtml = cardFrozen
     ? '<span class="card-status status-frozen">已挂失</span>'
     : '<span class="card-status status-normal">正常</span>';
@@ -203,10 +215,18 @@ const installmentRates = {
 // 显示账单分期计算器
 function showInstallmentCalculator() {
   const c = mockData.userProfile.creditCard;
-  const billAmount = c.currentBill || 5000;
+  // 账单为 0 时不能凭空变出 5000 元可分期额度
+  const billAmount = Number(c.currentBill) || 0;
+  if (!(billAmount > 0)) {
+    appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">本期信用卡账单为 ¥0，暂无可分期的账单金额。</div></div></div>');
+    scrollToBottom();
+    return;
+  }
+  // 聊天记录只增不减，旧表单的固定 id（installAmount 等）会让 getElementById 读到旧值
+  document.querySelectorAll('.installment-calc').forEach(el => el.closest('.message')?.remove());
   
   const html = `
-    <div class="message">
+    <div class="message installment-calc">
       <div class="msg-avatar ai">🤖</div>
       <div class="msg-content">
         <div class="msg-name">智能金融助手</div>
@@ -242,7 +262,7 @@ function showInstallmentCalculator() {
             </div>
           </div>
           <div style="display:flex;gap:10px;">
-            <button class="btn btn-primary" style="flex:1;" onclick="confirmInstallment()">确认分期</button>
+            <button class="btn btn-primary" style="flex:1;" onclick="confirmInstallment(this)">确认分期</button>
             <button class="btn btn-secondary" style="flex:1;" onclick="appendMessage('<div class=\\'message\\'><div class=\\'msg-avatar user\\'>陈</div><div class=\\'msg-content\\'><div class=\\'msg-name\\'>小陈</div><div class=\\'msg-bubble\\'>暂不分期</div></div></div>');scrollToBottom();">暂不分期</button>
           </div>
           <p style="margin-top:10px;font-size:11px;color:#999;">账单分期成功后，本期账单只需还未分期部分，分期金额从下期开始偿还。</p>
@@ -295,12 +315,23 @@ function updateInstallmentPreview() {
 }
 
 // 确认账单分期
-function confirmInstallment() {
-  const amount = parseFloat(document.getElementById('installAmount')?.value) || 0;
+function confirmInstallment(btn) {
+  const form = btn && btn.closest ? btn.closest('.installment-calc') : document.querySelector('.installment-calc');
+  if (!form) return;
+  if (form.dataset.confirmed === '1') return;
+  const amount = parseFloat(form.querySelector('#installAmount')?.value) || 0;
   const period = window.currentInstallPeriod || 12;
   const rate = installmentRates[period] || 0.006;
-  
+  const c = mockData.userProfile.creditCard;
+  const billAmount = Number(c.currentBill) || 0;
+
+  if (cardFrozen || c.isFrozen) { alert('卡片已挂失/冻结，无法办理账单分期。'); return; }
+  if (!(amount > 0)) { alert('请输入有效的分期金额'); return; }
   if (amount < 100) { alert('分期金额最低100元'); return; }
+  if (amount > billAmount) {
+    alert('分期金额不能超过本期账单 ¥' + billAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2 }));
+    return;
+  }
 
   // 交易限制接入：分期属于信用卡消费，超过单笔限额直接拦截
   if (typeof cardTxnLimitCheck === 'function') {
@@ -312,10 +343,13 @@ function confirmInstallment() {
     }
   }
   
-  const c = mockData.userProfile.creditCard;
   const totalFee = amount * rate * period;
   const monthlyPayment = (amount + totalFee) / period;
-  
+
+  form.dataset.confirmed = '1';
+  const submitBtn = form.querySelector('.btn-primary');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '处理中…'; }
+
   if (!c.installments) c.installments = [];
   c.installments.push({
     id: Date.now(),
@@ -325,16 +359,23 @@ function confirmInstallment() {
     monthlyPayment,
     totalFee,
     rate,
-    createdAt: new Date().toISOString().split('T')[0],
+    createdAt: (function () { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(),
     status: 'active'
   });
   
-  c.currentBill = Math.max(0, (c.currentBill || 0) - amount);
+  c.currentBill = Math.max(0, Math.round(((Number(c.currentBill) || 0) - amount) * 100) / 100);
+  c.minPayment = Math.round(c.currentBill * 10) / 100;
+  // 卡片页读的是 mockData.card，必须同步，否则账单页/卡片页数字对不上
+  if (mockData.card) {
+    mockData.card.billAmount = c.currentBill;
+  }
   // 记入当日累计消费，供日累计限额判断
   if (typeof cardTxnLimitRecord === 'function') cardTxnLimitRecord(amount);
   saveUserData();
-  
-  appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">✅ <strong>账单分期成功</strong><br>分期金额：¥${amount.toLocaleString()}<br>分期期数：${period}期<br>每期应还：¥${monthlyPayment.toFixed(2)}<br>手续费总额：¥${totalFee.toFixed(2)}<br><br>本期账单已减少¥${amount.toLocaleString()}，分期金额从下期开始偿还。</div></div></div>`);
+
+  // 移除表单，杜绝重复点击重复分期；结果用新消息展示
+  form.remove();
+  appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">✅ <strong>账单分期成功</strong><br>分期金额：¥${amount.toLocaleString()}<br>分期期数：${period}期<br>每期应还：¥${monthlyPayment.toFixed(2)}<br>手续费总额：¥${totalFee.toFixed(2)}<br><br>本期账单已减少¥${amount.toLocaleString()}，剩余本期账单 ¥${c.currentBill.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}，分期金额从下期开始偿还。</div></div></div>`);
   scrollToBottom();
 }
 
