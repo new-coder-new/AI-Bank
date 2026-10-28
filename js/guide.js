@@ -2712,10 +2712,12 @@ function guideCardLimitConfirm() {
   }
 
   s.stage = 'confirm';
+  s.cardBoxId = s.cardBoxId || ('card-limit-confirm-' + Date.now());
   var direction = Number(s.limit) > st.current ? '提额' : '降额';
   appendMessage(guideMessage(
+    '<div id="' + s.cardBoxId + '-wrap">' +
     '<p>确认额度调整申请</p>' +
-    '<div class="data-card"><div class="data-card-title">申请信息</div>' +
+    '<div class="data-card" id="' + s.cardBoxId + '"><div class="data-card-title">申请信息</div>' +
     (s.card ? '<div class="data-row"><span class="data-label">信用卡</span><span class="data-value">' + guideCardLimitEsc(guideCardLabel(s.card)) + '</span></div>' : '') +
     '<div class="data-row"><span class="data-label">目标额度</span><span class="data-value">' + Number(s.limit).toLocaleString('zh-CN') + ' 元</span></div>' +
     '<div class="data-row"><span class="data-label">调整原因</span><span class="data-value">' + guideCardLimitEsc(s.reason) + '</span></div>' +
@@ -2724,6 +2726,7 @@ function guideCardLimitConfirm() {
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideCardLimitSubmit()">提交申请</button>' +
     '<button class="guide-chip" onclick="guideCardLimitCancel()">取消</button>' +
+    '</div>' +
     '</div>'
   ));
   scrollToBottom();
@@ -2766,8 +2769,16 @@ function guideCardLimitSubmit() {
 }
 
 function guideCardLimitCancel() {
+  var s = GUIDE_CARD_LIMIT;
+  var wrapId = s && s.cardBoxId ? (s.cardBoxId + '-wrap') : null;
   GUIDE_CARD_LIMIT = null;
-  appendMessage(guideMessage('<p>已取消额度调整申请，额度保持不变。</p>'));
+  var wrap = wrapId ? document.getElementById(wrapId) : null;
+  if (wrap) {
+    // 就地折叠：整块确认消息收成一行，不再追加新消息
+    wrap.innerHTML = '<p>已取消额度调整申请，额度保持不变。</p>';
+  } else {
+    appendMessage(guideMessage('<p>已取消额度调整申请，额度保持不变。</p>'));
+  }
   scrollToBottom();
 }
 
