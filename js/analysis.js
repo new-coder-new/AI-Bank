@@ -183,14 +183,16 @@ function showBillOverview() {
               <div><span>总支出</span><b class="expense">-${reportMoney(totalExpense)}</b></div>
             </div>
 
-            <div class="report-panel" style="margin-top:12px;">
+            <div class="report-panel" style="margin-top:8px;">
               <div class="report-panel-title">支出构成</div>
-              <div class="report-donut" style="display:flex;justify-content:center;"><canvas id="billPieChart"></canvas></div>
-              <div class="report-legend" id="billPieLegend"></div>
+              <div class="bill-donut-wrap">
+                <div class="report-donut"><canvas id="billPieChart"></canvas></div>
+                <div class="report-legend bill-legend-right" id="billPieLegend"></div>
+              </div>
             </div>
 
 
-            <div class="report-panel" style="margin-top:12px;">
+            <div class="report-panel" style="margin-top:8px;">
               <div class="report-panel-title">${trendTitle}</div>
               <div class="bill-trend"><canvas id="billTrendChart"></canvas></div>
             </div>
@@ -212,7 +214,7 @@ function showBillOverview() {
   `;
   appendMessage(html);
   setTimeout(() => {
-    drawReportDonut({ canvasId: 'billPieChart', legendId: 'billPieLegend', data: expenseList, centerLabel: '总支出', size: 240 });
+    drawReportDonut({ canvasId: 'billPieChart', legendId: 'billPieLegend', data: expenseList, centerLabel: '总支出', size: 200 });
     drawBillTrendChart({ canvasId: 'billTrendChart', data: trendData });
   }, 60);
   scrollToBottom();
