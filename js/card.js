@@ -369,7 +369,7 @@ function confirmInstallment(btn) {
   if (mockData.card) {
     mockData.card.billAmount = c.currentBill;
   }
-  // 记入当日累计消费，供日累计限额判断
+  // 记入当日累计消费，供每日限额判断
   if (typeof cardTxnLimitRecord === 'function') cardTxnLimitRecord(amount);
   saveUserData();
 

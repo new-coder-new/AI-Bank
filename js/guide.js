@@ -2950,7 +2950,7 @@ function showCardLimitRecords() {
 }
 
 // ------------------------------ 交易限制设置：单笔 / 日累计 / 夜间 / 境外 ------------------------------
-// 采集顺序严格按规则：单笔限额 → 日累计限额 → 夜间交易 → 境外交易 → 汇总确认。
+// 采集顺序严格按规则：单笔限额 → 每日限额 → 夜间交易 → 境外交易 → 汇总确认。
 // 校验：金额必须 ≥0 的有效数字；单笔 > 日累计只提示核对、不自动修改；夜间/境外只接受「允许 / 禁止」。
 var GUIDE_TXN_LIMIT = null;
 
@@ -3160,10 +3160,10 @@ async function guideTxnLimitAIFlag(text, which) {
 // AI 提取两项限额（支持中文数字）：返回 { single, daily } 或 null
 async function guideTxnLimitAILimits(text) {
   var obj = await guideLLMJson(
-    '你是银行 App 的数值抽取器。用户正在设置信用卡的「单笔限额」与「日累计限额」。' +
+    '你是银行 App 的数值抽取器。用户正在设置信用卡的「单笔限额」与「每日限额」。' +
     '从用户的话里抽取数字（中文数字要转成阿拉伯数字，例如「五千」=5000、「一万」=10000、「五百」=500）。' +
     '只输出 JSON：{"single": 数字或null, "daily": 数字或null}。' +
-    '若用户只给了一个数字且没说属于哪一项，把它当日累计限额（daily），single 返回 null。不要输出其它内容。',
+    '若用户只给了一个数字且没说属于哪一项，把它当单笔限额（single），daily 返回 null。不要输出其它内容。',
     text
   );
   if (!obj) return null;
@@ -3298,7 +3298,7 @@ async function guideTxnLimitStep(text) {
     return true;
   }
 
-  // ② 限额：句中带关键字的两项分别归位；只有一个裸数字时默认作为日累计限额
+  // ② 限额：句中带关键字的两项分别归位；只有一个裸数字时默认作为单笔限额
   var mSingle = t.match(/(?:单笔|每笔|单次)[^\d]{0,10}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
   var mDaily = t.match(/(?:日累计|每日|每天|一天|日限额)[^\d]{0,10}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
   var bare = guideTxnLimitValue(t);
@@ -3380,7 +3380,7 @@ async function guideTxnLimitStep(text) {
   if (dailyV < singleV) {
     s.single = null;
     s.daily = null;
-    appendMessage(guideMessage('<p>日累计限额不能低于单笔限额 ¥' + singleV.toLocaleString('zh-CN') + '，请重新输入单笔限额和每日限额。</p>' +
+    appendMessage(guideMessage('<p>每日限额不能低于单笔限额 ¥' + singleV.toLocaleString('zh-CN') + '，请重新输入单笔限额和每日限额。</p>' +
       '<p class="guide-tip">请设置单笔限额与每日限额。</p>'));
     scrollToBottom();
     return true;
@@ -3401,7 +3401,7 @@ function guideTxnLimitConfirm() {
     '<div class="data-card">' +
     (s.card ? '<div class="data-row"><span class="data-label">信用卡</span><span class="data-value">' + guideCardLimitEsc(guideCardLabel(s.card)) + '</span></div>' : '') +
     '<div class="data-row"><span class="data-label">单笔限额</span><span class="data-value">' + (Number(s.single) || 0).toLocaleString('zh-CN') + ' 元</span></div>' +
-    '<div class="data-row"><span class="data-label">日累计限额</span><span class="data-value">' + (Number(s.daily) || 0).toLocaleString('zh-CN') + ' 元</span></div>' +
+    '<div class="data-row"><span class="data-label">每日限额</span><span class="data-value">' + (Number(s.daily) || 0).toLocaleString('zh-CN') + ' 元</span></div>' +
     '<div class="data-row"><span class="data-label">夜间交易（23:00-06:00）</span><span class="data-value">' + guideTxnLimitFlagText(s.night) + '</span></div>' +
     '<div class="data-row"><span class="data-label">境外交易</span><span class="data-value">' + guideTxnLimitFlagText(s.overseas) + '</span></div>' +
     '</div>' +
