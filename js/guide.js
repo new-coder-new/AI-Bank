@@ -29,10 +29,9 @@ var GUIDE_SERVICES = [
   {
     key: 'bill', label: '账单分析', icon: 'bill',
     aliases: ['账单'],
-    prompt: '账单分析可以帮你看这些，请选择：',
+    prompt: '财务总览包含「资产概览」和「账单明细」，也可以直接看异常交易：',
     subs: [
-      { key: 'stat', label: '消费统计', run: function () { showBillAnalysis(); } },
-      { key: 'report', label: '账单报告', run: function () { showFinanceReport(); } },
+      { key: 'overview', label: '财务总览', aliases: ['消费统计', '账单报告', '账单'], run: function () { showFinancialOverview(); } },
       { key: 'abnormal', label: '异常交易', run: function () { showAbnormalAlert(); } }
     ]
   },
@@ -515,8 +514,7 @@ var GUIDE_SUB_KEYWORDS = {
     aa: ['AA收款', 'AA', '分摊', '收款']
   },
   bill: {
-    stat: ['消费统计', '消费汇总', '统计'],
-    report: ['账单报告', '月报', '报告'],
+    overview: ['财务总览', '资产概览', '账单明细', '消费统计', '账单报告', '月报', '报告', '消费汇总', '统计'],
     abnormal: ['异常交易', '异常', '可疑交易']
   },
   card: {
