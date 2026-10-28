@@ -732,8 +732,8 @@ function quickAction(type) {
     case 'cardApply': guideStartCardApply(); break;
     case 'myCards': showCardMyCards(); break;
     case 'cardLimit': guideStartCardLimitAdjust(); break;
-    case 'txnLimit': showTxnLimitSettings(); break;
-    case 'cardLost': showCardFreezePanel(); break;
+    case 'txnLimit': guideStartTxnLimit(); break;
+    case 'cardLost': guideStartCardLost(); break;
   }
 }
 

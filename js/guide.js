@@ -47,8 +47,8 @@ var GUIDE_SERVICES = [
         key: 'limit', label: '额度调整', aliases: ['申请调整信用卡额度', '信用卡额度调整', '调额'],
         run: function () { guideStartCardLimitAdjust(); }
       },
-      { key: 'txnlimit', label: '交易限制', run: function () { showTxnLimitSettings(); } },
-      { key: 'lost', label: '卡片挂失', run: function () { showCardFreezePanel(); } }
+      { key: 'txnlimit', label: '交易限制', run: function () { guideStartTxnLimit(); } },
+      { key: 'lost', label: '卡片挂失', run: function () { guideStartCardLost(); } }
     ]
   },
   {
@@ -260,6 +260,26 @@ function guideHandleText(text) {
       return true;
     }
     return guideCardLimitStep(t);
+  }
+
+  // 交易限制设置进行中
+  if (GUIDE_TXN_LIMIT) {
+    if (/^(取消|不设了|算了|退出|返回|菜单)$/.test(t)) {
+      GUIDE_TXN_LIMIT = null;
+      guideBackToMenu();
+      return true;
+    }
+    return guideTxnLimitStep(t);
+  }
+
+  // 卡片挂失进行中
+  if (GUIDE_CARD_LOST) {
+    if (/^(取消|不挂了|算了|退出|返回|菜单)$/.test(t)) {
+      GUIDE_CARD_LOST = null;
+      guideBackToMenu();
+      return true;
+    }
+    return guideCardLostStep(t);
   }
 
   // 返回一级菜单
@@ -2135,5 +2155,317 @@ function showCardLimitRecords() {
     '<p class="guide-tip">当前生效额度 ¥' + (Number(c.effectiveLimit) || 0).toLocaleString('zh-CN') +
     '，可用 ¥' + (Number(c.available) || 0).toLocaleString('zh-CN') + '</p>'
   ));
+  scrollToBottom();
+}
+
+// ------------------------------ 交易限制设置：单笔 / 日累计 / 夜间 / 境外 ------------------------------
+var GUIDE_TXN_LIMIT = null;
+
+function guideTxnLimitEsc(v) {
+  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
+}
+
+function guideTxnLimitMo(v) {
+  return '¥' + (Number(v) || 0).toLocaleString('zh-CN');
+}
+
+function guideTxnLimitFlagText(v) {
+  return v === 'allow' ? '允许' : '禁止';
+}
+
+function guideStartTxnLimit() {
+  GUIDE_TXN_LIMIT = { single: null, daily: null, night: null, overseas: null, stage: 'slots', askedReuse: false, basedOnCurrent: false };
+  currentModule = 'card';
+  appendMessage(guideMessage(
+    '<p>请设置单笔限额、日累计限额，同时选择夜间交易（23:00-06:00）、境外交易是禁止还是允许。</p>' +
+    '<p class="guide-tip">例如：单笔最多 5000 元，每天最多 10000 元，禁止夜间交易和境外交易</p>'
+  ));
+  scrollToBottom();
+}
+
+// 当前真实生效配置（读不到就返回 null，不编造）
+function guideTxnLimitCurrent() {
+  var d = mockData.userProfile && mockData.userProfile.txnLimit;
+  if (!d || !(Number(d.single) > 0) || !(Number(d.daily) > 0)) return null;
+  return {
+    single: Number(d.single),
+    daily: Number(d.daily),
+    night: d.night === 'allow' ? 'allow' : 'block',
+    overseas: d.overseas === 'allow' ? 'allow' : 'block'
+  };
+}
+
+function guideTxnLimitParse(text) {
+  var t = String(text || '');
+  var out = { single: null, daily: null, night: null, overseas: null, modify: false };
+  out.modify = /(改成|改为|改到|调整成|调整为|调成|调到|设置为|设置成|只改|仅改)/.test(t);
+
+  var ms = t.match(/(?:单笔|每笔|单次)[^\d]{0,10}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  if (ms) { out.single = parseFloat(ms[1]); if (ms[2]) out.single *= 10000; }
+  var md = t.match(/(?:日累计|每日|每天|当日|一天|一天内)[^\d]{0,10}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
+  if (md) { out.daily = parseFloat(md[1]); if (md[2]) out.daily *= 10000; }
+
+  function clauseFlag(c) {
+    if (/(禁止|不允许|关闭|关掉|锁定|拦截|不支持)/.test(c)) return 'block';
+    if (/(允许|开启|打开|放行|可用|支持)/.test(c)) return 'allow';
+    return null;
+  }
+  var clauses = t.split(/[。；;，,\n]/);
+  clauses.forEach(function (c) {
+    if (/夜间/.test(c) && !out.night) { var f = clauseFlag(c); if (f) out.night = f; }
+    if (/境外|海外/.test(c) && !out.overseas) { var f2 = clauseFlag(c); if (f2) out.overseas = f2; }
+  });
+
+  return out;
+}
+
+function guideTxnLimitMissingPrompt(s) {
+  var miss = [];
+  if (!(Number(s.single) > 0)) miss.push('单笔限额');
+  if (!(Number(s.daily) > 0)) miss.push('日累计限额');
+  if (!s.night) miss.push('夜间交易');
+  if (!s.overseas) miss.push('境外交易');
+  if (miss.length === 4) return '请设置单笔限额、日累计限额，同时选择夜间交易（23:00-06:00）、境外交易是禁止还是允许。';
+  if (miss.length === 3 && miss[0] === '日累计限额') return '还需要设置日累计限额，以及夜间交易、境外交易的权限。';
+  if (miss.length === 2 && miss[0] === '夜间交易' && miss[1] === '境外交易') return '还需要选择夜间交易、境外交易是禁止还是允许。';
+  return '还需要设置' + miss.join('、') + '。';
+}
+
+function guideTxnLimitStep(text) {
+  var t = String(text || '').trim();
+  var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
+  var s = GUIDE_TXN_LIMIT;
+
+  if (s.stage === 'askReuse') {
+    if (/^(是|对|可以|沿用|好的|好|行|嗯|是的|沿用当前|用当前的|保持不变)$/.test(plain)) {
+      var cur0 = guideTxnLimitCurrent();
+      if (cur0) {
+        if (!(Number(s.single) > 0)) s.single = cur0.single;
+        if (!(Number(s.daily) > 0)) s.daily = cur0.daily;
+        if (!s.night) s.night = cur0.night;
+        if (!s.overseas) s.overseas = cur0.overseas;
+        s.basedOnCurrent = true;
+      }
+      guideTxnLimitConfirm();
+      return true;
+    }
+    if (/^(不|否|不用|重新|不要|不沿用)$/.test(plain)) {
+      s.stage = 'slots';
+      appendMessage(guideMessage('<p>' + guideTxnLimitMissingPrompt(s) + '</p>'));
+      scrollToBottom();
+      return true;
+    }
+    s.stage = 'slots';
+  }
+
+  var p = guideTxnLimitParse(t);
+  if (p.single != null) s.single = p.single;
+  if (p.daily != null) s.daily = p.daily;
+  if (p.night) s.night = p.night;
+  if (p.overseas) s.overseas = p.overseas;
+
+  var complete = (Number(s.single) > 0 && Number(s.daily) > 0 && s.night && s.overseas);
+  if (complete) { guideTxnLimitConfirm(); return true; }
+
+  // 局部修改（「把单笔限额改成 3000 元」）：用当前生效配置补齐其余项
+  var cur = guideTxnLimitCurrent();
+  if (p.modify && cur) {
+    if (!(Number(s.single) > 0)) s.single = cur.single;
+    if (!(Number(s.daily) > 0)) s.daily = cur.daily;
+    if (!s.night) s.night = cur.night;
+    if (!s.overseas) s.overseas = cur.overseas;
+    s.basedOnCurrent = true;
+    guideTxnLimitConfirm();
+    return true;
+  }
+
+  // 只说了某个场景开关：确认是否沿用当前配置
+  if (cur && !s.askedReuse && (p.night || p.overseas) && !(Number(s.single) > 0 || Number(s.daily) > 0)) {
+    s.askedReuse = true;
+    s.stage = 'askReuse';
+    var changed = p.overseas ? '境外交易将设为' + guideTxnLimitFlagText(p.overseas) : '夜间交易将设为' + guideTxnLimitFlagText(p.night);
+    var rest = p.overseas ? '其余限额、夜间交易' : '其余限额、境外交易';
+    appendMessage(guideMessage(
+      '<p>' + changed + '。' + rest + '是否沿用当前已生效配置？</p>' +
+      '<div class="guide-chips">' +
+      '<button class="guide-chip" onclick="guideTxnLimitReuse(true)">沿用当前配置</button>' +
+      '<button class="guide-chip" onclick="guideTxnLimitReuse(false)">重新设置</button>' +
+      '</div>'
+    ));
+    scrollToBottom();
+    return true;
+  }
+
+  appendMessage(guideMessage('<p>' + guideTxnLimitMissingPrompt(s) + '</p>'));
+  scrollToBottom();
+  return true;
+}
+
+function guideTxnLimitReuse(yes) {
+  var s = GUIDE_TXN_LIMIT;
+  if (!s) return;
+  var cur = guideTxnLimitCurrent();
+  if (yes && cur) {
+    if (!(Number(s.single) > 0)) s.single = cur.single;
+    if (!(Number(s.daily) > 0)) s.daily = cur.daily;
+    if (!s.night) s.night = cur.night;
+    if (!s.overseas) s.overseas = cur.overseas;
+    s.basedOnCurrent = true;
+    s.stage = 'slots';
+    guideTxnLimitConfirm();
+    return;
+  }
+  s.stage = 'slots';
+  appendMessage(guideMessage('<p>' + guideTxnLimitMissingPrompt(s) + '</p>'));
+  scrollToBottom();
+}
+
+function guideTxnLimitConfirm() {
+  var s = GUIDE_TXN_LIMIT;
+  if (!s) return;
+
+  if (Number(s.single) > Number(s.daily)) {
+    appendMessage(guideMessage(
+      '<p>单笔限额 ' + guideTxnLimitMo(s.single) + ' 大于日累计限额 ' + guideTxnLimitMo(s.daily) + '，请核对后重新告诉我。</p>' +
+      '<p class="guide-tip">单笔限额不应超过日累计限额。</p>'
+    ));
+    scrollToBottom();
+    s.single = null;
+    s.daily = null;
+    return;
+  }
+
+  s.stage = 'confirm';
+  var note = s.basedOnCurrent ? '<p class="guide-tip">基于当前生效配置，仅修改你这次指定的项目。</p>' : '';
+  appendMessage(guideMessage(
+    '<p>确认交易限制配置</p>' +
+    '<div class="data-card"><div class="data-card-title">交易限制</div>' +
+    '<div class="data-row"><span class="data-label">单笔限额</span><span class="data-value">' + (Number(s.single) || 0).toLocaleString('zh-CN') + ' 元</span></div>' +
+    '<div class="data-row"><span class="data-label">日累计限额</span><span class="data-value">' + (Number(s.daily) || 0).toLocaleString('zh-CN') + ' 元</span></div>' +
+    '<div class="data-row"><span class="data-label">夜间交易（23:00-06:00）</span><span class="data-value">' + guideTxnLimitFlagText(s.night) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">境外交易</span><span class="data-value">' + guideTxnLimitFlagText(s.overseas) + '</span></div>' +
+    '</div>' + note +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideTxnLimitSubmit()">确认设置</button>' +
+    '<button class="guide-chip" onclick="guideTxnLimitCancel()">取消</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+function guideTxnLimitSubmit() {
+  var s = GUIDE_TXN_LIMIT;
+  if (!s || s.stage !== 'confirm') return;
+  var l = (typeof txnLimitData === 'function') ? txnLimitData() : (mockData.userProfile.txnLimit = {});
+  l.single = Number(s.single) || 0;
+  l.daily = Number(s.daily) || 0;
+  l.night = s.night === 'allow' ? 'allow' : 'block';
+  l.overseas = s.overseas === 'allow' ? 'allow' : 'block';
+  saveUserData();
+  GUIDE_TXN_LIMIT = null;
+  appendMessage(guideMessage('<p>交易限制已更新完成。</p>'));
+  scrollToBottom();
+}
+
+function guideTxnLimitCancel() {
+  GUIDE_TXN_LIMIT = null;
+  appendMessage(guideMessage('<p>已取消修改，交易限制保持原有配置。</p>'));
+  scrollToBottom();
+}
+
+// ------------------------------ 卡片挂失：尾号 + 二次确认（不区分临时/正式） ------------------------------
+var GUIDE_CARD_LOST = null;
+
+function guideCardLostEsc(v) {
+  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
+}
+
+function guideCardLostCards() {
+  if (typeof cardServiceCards === 'function') return cardServiceCards();
+  return [];
+}
+
+function guideCardLostTailsText() {
+  var list = guideCardLostCards();
+  if (!list.length) return '';
+  return '你名下的卡片尾号：' + list.map(function (c) { return c.tail || '****'; }).join('、') + '。';
+}
+
+function guideStartCardLost() {
+  GUIDE_CARD_LOST = { stage: 'slots', card: null };
+  currentModule = 'card';
+  appendMessage(guideMessage(
+    '<p>请提供需要挂失的卡片尾号。</p>' +
+    '<p class="guide-tip">' + (guideCardLostTailsText() || '例如：8888') + '</p>'
+  ));
+  scrollToBottom();
+}
+
+function guideCardLostStep(text) {
+  var t = String(text || '').trim();
+  var s = GUIDE_CARD_LOST;
+  var digits = t.replace(/\D/g, '');
+
+  if (digits.length < 4) {
+    appendMessage(guideMessage('<p>请提供 4 位卡片尾号。</p><p class="guide-tip">' + (guideCardLostTailsText() || '') + '</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  var tail = digits.slice(-4);
+  var card = guideCardLostCards().filter(function (c) { return String(c.tail) === tail; })[0];
+  if (!card) {
+    appendMessage(guideMessage(
+      '<p>未找到尾号 <b>' + guideCardLostEsc(tail) + '</b> 的卡片。</p>' +
+      '<p class="guide-tip">' + (guideCardLostTailsText() || '请确认卡号尾号后再试。') + '</p>'
+    ));
+    scrollToBottom();
+    return true;
+  }
+
+  s.card = card;
+  s.tail = tail;
+  s.stage = 'confirm';
+  appendMessage(guideMessage(
+    '<p>确认挂失尾号 <b>' + guideCardLostEsc(tail) + '</b> 的' + guideCardLostEsc(card.cardType || '信用卡') + '。</p>' +
+    '<p class="guide-tip">⚠️ 挂失后卡片立即冻结、无法继续交易；如需补卡，新卡预计 3-5 个工作日寄出。</p>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideCardLostSubmit()">确认挂失</button>' +
+    '<button class="guide-chip" onclick="guideCardLostCancel()">取消</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+  return true;
+}
+
+function guideCardLostSubmit() {
+  var s = GUIDE_CARD_LOST;
+  if (!s || s.stage !== 'confirm') return;
+  var card = s.card || {};
+  // 卡片状态：主卡走全局冻结标记，其余卡片标记本身状态
+  if (card.id === 'CARD-MAIN') {
+    cardFrozen = true;
+    if (mockData.userProfile.creditCard) mockData.userProfile.creditCard.isFrozen = true;
+  }
+  card.status = '已挂失';
+  card.frozenAt = new Date().toLocaleString('zh-CN');
+  saveUserData();
+  GUIDE_CARD_LOST = null;
+
+  appendMessage(guideMessage(
+    '<p>挂失办理成功，卡片状态已更新。</p>' +
+    '<div class="data-card"><div class="data-card-title">挂失信息</div>' +
+    '<div class="data-row"><span class="data-label">卡片</span><span class="data-value">' + guideCardLostEsc(card.cardType || '信用卡') + ' · 尾号 ' + guideCardLostEsc(card.tail || '****') + '</span></div>' +
+    '<div class="data-row"><span class="data-label">当前状态</span><span class="data-value" style="color:#B42318;">已挂失</span></div>' +
+    '<div class="data-row"><span class="data-label">办理时间</span><span class="data-value">' + card.frozenAt + '</span></div>' +
+    '</div>' +
+    '<div class="guide-chips"><button class="guide-chip" onclick="showCardMyCards()">查看我的卡片</button></div>'
+  ));
+  scrollToBottom();
+}
+
+function guideCardLostCancel() {
+  GUIDE_CARD_LOST = null;
+  appendMessage(guideMessage('<p>已取消挂失，卡片状态保持不变。</p>'));
   scrollToBottom();
 }
