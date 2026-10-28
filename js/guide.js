@@ -311,6 +311,13 @@ function guideLockedRun(fn) {
   return true;
 }
 
+// 「某度网盘年卡不续费了」→ 关闭自动续费（订阅管理·管理自动续费）
+function guideIsSubRenewOffPhrase(t) {
+  var s = String(t || '').trim();
+  if (!s) return false;
+  if (!/续费/.test(s)) return false;
+  return /(不续费|不想续费|不要续费|不打算续费|关闭续费|关掉续费|别续费|不用续费|不想再续|不自动续费|不再续费)/.test(s);
+}
 // 「我不想订阅某易云了 / 取消某讯会员」→ 直接进取消订阅并带上服务
 function guideIsSubCancelPhrase(t) {
   var s = String(t || '').trim();
@@ -478,8 +485,26 @@ function guideHandleText(text) {
     return guideLockedRun(function () { return guideCardLostStep(t); });
   }
 
+  // 「某度网盘年卡不续费了」→ 关闭自动续费；句中指定了服务就直接出确认卡
+  if (guideIsSubRenewOffPhrase(t)) {
+    var renewSvc = (typeof guideSubFindService === 'function') ? guideSubFindService(t) : null;
+    if (renewSvc) {
+      GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null };
+      return guideLockedRun(function () { return guideSubManageStep(t); });
+    }
+    if (typeof guideStartSubAutoRenew === 'function') {
+      guideStartSubAutoRenew();
+      return guideLockedRun(function () { return guideSubManageStep(t); });
+    }
+  }
+
   // 「我不想订阅某易云了」→ 直接进取消订阅并预选服务
   if (guideIsSubCancelPhrase(t)) {
+    var cancelSvc = (typeof guideSubFindService === 'function') ? guideSubFindService(t) : null;
+    if (cancelSvc) {
+      GUIDE_SUB = { mode: 'cancel', stage: 'slots', target: null };
+      return guideLockedRun(function () { return guideSubCancelStep(t); });
+    }
     if (typeof guideStartSubCancel === 'function') {
       guideStartSubCancel();
       return guideLockedRun(function () { return guideSubCancelStep(t); });
@@ -488,6 +513,12 @@ function guideHandleText(text) {
 
   // 「我想要订阅某易云年卡」→ 直接进添加订阅并预填服务/周期
   if (guideIsSubAddPhrase(t)) {
+    var addSvc = (typeof guideSubFindService === 'function') ? guideSubFindService(t) : null;
+    var addCycle = (typeof guideSubParseCycle === 'function') ? guideSubParseCycle(t) : null;
+    if (addSvc && addCycle) {
+      GUIDE_SUB = { mode: 'add', stage: 'slots', preset: null, cycle: null, autoRenew: null };
+      return guideLockedRun(function () { return guideSubAddStep(t); });
+    }
     if (typeof guideStartSubAdd === 'function') {
       guideStartSubAdd();
       return guideLockedRun(function () { return guideSubAddStep(t); });
@@ -4395,7 +4426,8 @@ async function guideSubManageStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_SUB;
   var svc = guideSubFindService(t);
-  var want = /(关闭|取消续费|关掉|停止|不要)/.test(t) ? false : (/(开启|打开|开一下|恢复|要)/.test(t) ? true : null);
+  var want = /(关闭|取消续费|关掉|停止|不要|不续费|不想续费|别续费|不用续费|不再续|不自动续费)/.test(t) ? false
+    : (/(开启|打开|开一下|恢复|要)/.test(t) ? true : null);
 
   if (!svc) {
     var ai = await guideSubAIExtract(t);
