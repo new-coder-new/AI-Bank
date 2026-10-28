@@ -3328,10 +3328,9 @@ async function guideTxnLimitStep(text) {
     if (s.single == null) s.single = restNums[0];
     if (s.daily == null) s.daily = restNums[1];
   } else if (restNums.length === 1) {
+    // 只给一个数时先当单笔限额，再问每日限额
     var only = restNums[0];
-    if (s.single != null && s.daily == null) s.daily = only;
-    else if (s.daily == null) s.daily = only;
-    else if (s.single == null) s.single = only;
+    if (s.single == null) s.single = only;
     else s.daily = only;
   }
 
@@ -3361,7 +3360,7 @@ async function guideTxnLimitStep(text) {
     return true;
   }
   if (s.daily == null) {
-    appendMessage(guideMessage('<p>请输入每日限额</p>'));
+    appendMessage(guideMessage('<p>单笔限额已记录 ¥' + Number(s.single).toLocaleString('zh-CN') + '，请输入每日限额（需不低于单笔）。</p>'));
     scrollToBottom();
     return true;
   }
