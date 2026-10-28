@@ -1005,8 +1005,18 @@ async function enhancedSendMessage(text) {
     return;
   }
   
-  // 6. 无法识别意图，交给AI处理
-  callAIResponse(text);
+  // 6. 无法识别意图：给固定兜底，不再交给模型（避免出现执行过程卡片）
+  var __plain = String(text || '').trim();
+  if (/^(你好|您好|hi|hello|在吗|谢谢|多谢|再见|拜拜|好久不见)[!！。.~～]*$/i.test(__plain)) {
+    appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+      '<div class="msg-name">智能金融助手</div><div class="msg-bubble">你好，我是 AI Bank 助手。你可以点击下面的服务按钮，或者直接说「给张三转100」「分析账单」「卡片管理」「理财」「生活订购」。</div></div></div>');
+    scrollToBottom();
+    return;
+  }
+  appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+    '<div class="msg-name">智能金融助手</div><div class="msg-bubble">抱歉，我暂时无法理解您的意图。<br>' +
+    '<span style="font-size:12px;color:#94A3B8;">可以试试：给张三转账1000元 / 分析账单 / 我现在有哪些卡 / 我要调我的信用卡额度 / 生活订购</span></div></div></div>');
+  scrollToBottom();
 }
 
 // 调用AI回复（保留原有的AI对话功能）

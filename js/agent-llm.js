@@ -298,9 +298,16 @@ async function agentLLMCall(messages, tools, opts) {
 var AGENT_TRACE_SEQ = 0;
 var AGENT_TRACE_TICK = 0;
 
+// 执行过程（理解需求 / 调取偏好 / 风险评估）不对用户展示，只保留最终回答或确认卡
+var AGENT_TRACE_VISIBLE = false;
+
 function agentTraceStart(title) {
   AGENT_TRACE_SEQ++;
   var id = 'agenttrace-' + AGENT_TRACE_SEQ + '-' + Date.now();
+  if (!AGENT_TRACE_VISIBLE) {
+    // 不渲染执行流，后续 agentTraceStep / Note / Complete 都会因 removed 而不做事
+    return { id: id, count: 0, startedAt: Date.now(), removed: true, tools: 0 };
+  }
   var html = '<div class="message" id="' + id + '-msg">' +
     '<div class="msg-avatar ai">🤖</div>' +
     '<div class="msg-content">' +

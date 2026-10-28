@@ -311,6 +311,14 @@ function guideLockedRun(fn) {
   return true;
 }
 
+// 「我现在有哪些卡 / 我的卡片 / 几张卡」→ 直接列出卡片
+function guideIsCardListQuery(t) {
+  var s = String(t || '').trim();
+  if (!/卡/.test(s)) return false;
+  if (/(办|申请|挂失|冻结|解冻|注销|限额|限额|额度调整|调额|提额)/.test(s)) return false;
+  return /(哪些|几张|什么|所有|全部|都有)/.test(s) && /(卡|信用卡)/.test(s) ||
+    /^(我的卡片|查看卡片|看看卡片|我的信用卡|看看我的卡|查看我的卡片|查一下我的卡)$/.test(s);
+}
 // 「我要调我的信用卡额度 / 提额」这类说法 → 直接进入额度调整对话，而不是只展示额度信息
 function guideIsCardLimitAdjustIntent(t) {
   var s = String(t || '');
@@ -442,6 +450,11 @@ function guideHandleText(text) {
       return true;
     }
     return guideLockedRun(function () { return guideCardLostStep(t); });
+  }
+
+  // 「我现在有哪些卡」直接列卡片
+  if (guideIsCardListQuery(t)) {
+    if (typeof showCardMyCards === 'function') { showCardMyCards(); return true; }
   }
 
   // 只读查询交回主链路，避免「查余额 / 查信用卡额度」被菜单或调额流程劫持
