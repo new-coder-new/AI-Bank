@@ -3394,10 +3394,17 @@ function guideStartCardLost() {
   guideResetAllSessions();
   GUIDE_CARD_LOST = { stage: 'slots', card: null };
   currentModule = 'card';
-  appendMessage(guideMessage(
-    '<p>请提供需要挂失的卡片尾号。</p>' +
-    '<p class="guide-tip">' + (guideCardLostTailsText() || '例如：8888') + '</p>'
-  ));
+  var cards = guideCardLostCards();
+  var listHtml = '';
+  if (cards.length) {
+    var rows = cards.map(function (c, i) {
+      var st = c.status === '已挂失' ? '已挂失' : '正常';
+      return '<div class="report-row"><span>' + (i + 1) + '. ' + guideCardLostEsc(c.cardType || '信用卡') +
+        '　尾号 ' + guideCardLostEsc(c.tail || '----') + '</span><b>' + st + '</b></div>';
+    }).join('');
+    listHtml = '<div class="report-panel" style="margin-top:8px;"><div class="report-panel-title">我的信用卡</div>' + rows + '</div>';
+  }
+  appendMessage(guideMessage(listHtml + '<p style="margin-top:10px;">请提供需要挂失的卡片尾号。</p>'));
   scrollToBottom();
 }
 
@@ -3415,7 +3422,7 @@ function guideCardLostStep(text) {
   var digits = t.replace(/\D/g, '');
 
   if (digits.length < 4) {
-    appendMessage(guideMessage('<p>请提供 4 位卡片尾号。</p><p class="guide-tip">' + (guideCardLostTailsText() || '') + '</p>'));
+    appendMessage(guideMessage('<p>请提供 4 位卡片尾号。</p>'));
     scrollToBottom();
     return true;
   }
@@ -3423,10 +3430,7 @@ function guideCardLostStep(text) {
   var tail = digits.slice(-4);
   var card = guideCardLostCards().filter(function (c) { return String(c.tail) === tail; })[0];
   if (!card) {
-    appendMessage(guideMessage(
-      '<p>未找到尾号 <b>' + guideCardLostEsc(tail) + '</b> 的卡片。</p>' +
-      '<p class="guide-tip">' + (guideCardLostTailsText() || '请确认卡号尾号后再试。') + '</p>'
-    ));
+    appendMessage(guideMessage('<p>未找到尾号 <b>' + guideCardLostEsc(tail) + '</b> 的卡片，请重新输入尾号。</p>'));
     scrollToBottom();
     return true;
   }
@@ -3437,9 +3441,8 @@ function guideCardLostStep(text) {
   s.confirmBoxId = 'card-lost-confirm-' + Date.now();
   appendMessage(guideMessage(
     '<div id="' + s.confirmBoxId + '">' +
-    '<p>确认挂失尾号 <b>' + guideCardLostEsc(tail) + '</b> 的' + guideCardLostEsc(card.cardType || '信用卡') + '。</p>' +
-    '<p class="guide-tip">⚠️ 挂失后卡片直接冻结、无法继续交易；如需补卡，新卡预计 3-5 个工作日寄出。</p>' +
-    '<p class="guide-tip">点击确认后需要通过交易密码或短信验证码完成风险验证。</p>' +
+    '<p>请确认挂失尾号 <b>' + guideCardLostEsc(tail) + '</b> 的信用卡。</p>' +
+    '<p class="guide-tip">挂失后卡片无法使用，资金交易需等补新卡后恢复正常。</p>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideCardLostSubmit()">确认挂失</button>' +
     '<button class="guide-chip" onclick="guideCardLostCancel()">取消</button>' +
