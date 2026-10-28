@@ -183,22 +183,10 @@ function showBillOverview() {
               <div><span>总支出</span><b class="expense">-${reportMoney(totalExpense)}</b></div>
             </div>
 
-            <div class="report-chart-grid cols-2" style="margin-top:12px;">
-              <div class="report-panel">
-                <div class="report-panel-title">支出构成</div>
-                <div class="report-donut"><canvas id="billPieChart"></canvas></div>
-                <div class="report-legend" id="billPieLegend"></div>
-              </div>
-              <div class="report-panel">
-                <div class="report-panel-title">收支与结余</div>
-                <div class="bill-meter">
-                  <div class="bill-meter-row"><span>支出 / 收入</span><b>${totalIncome > 0 ? Math.round((totalExpense / totalIncome) * 100) : 0}%</b></div>
-                  <div class="bill-meter-track"><i style="width:${totalIncome > 0 ? Math.min(100, Math.round((totalExpense / totalIncome) * 100)) : 0}%"></i></div>
-                  <div class="bill-meter-row"><span>储蓄率</span><b>${savingsRate.toFixed(1)}%</b></div>
-                  <div class="bill-meter-track alt"><i style="width:${Math.max(0, Math.min(100, Math.round(savingsRate)))}%"></i></div>
-                  <div class="bill-meter-row"><span>结余</span><b class="${netFlow >= 0 ? 'income' : 'expense'}">${netFlow >= 0 ? '+' : '-'}${reportMoney(Math.abs(netFlow))}</b></div>
-                </div>
-              </div>
+            <div class="report-panel" style="margin-top:12px;">
+              <div class="report-panel-title">支出构成</div>
+              <div class="report-donut" style="display:flex;justify-content:center;"><canvas id="billPieChart"></canvas></div>
+              <div class="report-legend" id="billPieLegend"></div>
             </div>
 
 
@@ -224,7 +212,7 @@ function showBillOverview() {
   `;
   appendMessage(html);
   setTimeout(() => {
-    drawReportDonut({ canvasId: 'billPieChart', legendId: 'billPieLegend', data: expenseList, centerLabel: '总支出' });
+    drawReportDonut({ canvasId: 'billPieChart', legendId: 'billPieLegend', data: expenseList, centerLabel: '总支出', size: 240 });
     drawBillTrendChart({ canvasId: 'billTrendChart', data: trendData });
   }, 60);
   scrollToBottom();
@@ -350,7 +338,7 @@ function drawReportDonut(opts) {
   const total = data.reduce((s, d) => s + d.value, 0);
   // 环心金额：默认取各部分合计，也可由调用方显式指定（如「本月收入」口径）
   const centerVal = (o.centerValue != null) ? Number(o.centerValue) : total;
-  const size = 180;
+  const size = Number(o.size) || 180;
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   canvas.width = Math.round(size * dpr);
   canvas.height = Math.round(size * dpr);

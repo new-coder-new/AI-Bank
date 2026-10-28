@@ -2689,12 +2689,7 @@ body {
 
 .bill-trend { width: 100%; overflow: hidden; }
 .bill-trend canvas { display: block; width: 100%; }
-.bill-meter { padding-top: 2px; }
-.bill-meter-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748B; padding: 6px 0 4px; }
-.bill-meter-row b { color: var(--bank-text-2); }
-.bill-meter-track { height: 7px; border-radius: 6px; background: #EEF2F7; overflow: hidden; margin-bottom: 6px; }
-.bill-meter-track i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #F97066, #DC2626); }
-.bill-meter-track.alt i { background: linear-gradient(90deg, #34D399, #059669); }
+
 /* 手机端：账单分析卡片两列收成单列、数字不截断 */
 @media (max-width: 600px) {
   .report-summary { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
@@ -2704,8 +2699,6 @@ body {
   .report-legend { flex-wrap: wrap; }
 
 }
-.dark-mode .bill-meter-track { background: #1F2C3D; }
-.dark-mode .bill-meter-row { color: #94A3B8; }
 .report-ai-line {
   display: flex;
   align-items: flex-start;
