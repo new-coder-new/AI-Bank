@@ -2703,7 +2703,8 @@ function guideCardLimitPickCard(cardId) {
     '<p>正在调整「<b>' + guideCardLimitEsc(guideCardLabel(card)) + '</b>」的额度。</p>' +
     '<p>请告诉我想要调整到的目标额度，以及调整原因。</p>' +
     '<p class="guide-tip">可选原因：' + CARD_LIMIT_REASONS.join('、') + '</p>' +
-    (st.current ? '<p class="guide-tip">当前额度 ¥' + st.current.toLocaleString('zh-CN') + '，最低可调至 ¥' + st.min.toLocaleString('zh-CN') + '</p>' : '')
+    (st.current ? '<p class="guide-tip">当前额度 ¥' + st.current.toLocaleString('zh-CN') +
+      (st.min > 0 ? '，最低可调至 ¥' + st.min.toLocaleString('zh-CN') + '（已用额度）' : '') + '</p>' : '')
   ));
   scrollToBottom();
 }
@@ -2724,7 +2725,8 @@ function guideStartCardLimitAdjust() {
     (cards[0] ? '<p>正在调整「<b>' + guideCardLimitEsc(guideCardLabel(cards[0])) + '</b>」的额度。</p>' : '') +
     '<p>请告诉我想要调整到的目标额度，以及调整原因。</p>' +
     '<p class="guide-tip">可选原因：' + CARD_LIMIT_REASONS.join('、') + '</p>' +
-    (st.current ? '<p class="guide-tip">当前额度 ¥' + st.current.toLocaleString('zh-CN') + '，最低可调至 ¥' + st.min.toLocaleString('zh-CN') + '（已用额度）</p>' : '')
+    (st.current ? '<p class="guide-tip">当前额度 ¥' + st.current.toLocaleString('zh-CN') +
+      (st.min > 0 ? '，最低可调至 ¥' + st.min.toLocaleString('zh-CN') + '（已用额度）' : '') + '</p>' : '')
   ));
   scrollToBottom();
 }
@@ -2785,11 +2787,13 @@ async function guideCardLimitStep(text) {
   var stNow = guideCardLimitState();
   var zeroText = /^\s*0\s*(元|块)?\s*$/.test(t) || /(调整|调|改|降|设|改成|改为)/.test(t);
   var explicitZero = Number(parsed.limit) === 0 && zeroText;
-  if (explicitZero && stNow.min > 0) {
-    appendMessage(guideMessage(
-      '<p>目标额度不能低于已用额度 ¥' + stNow.min.toLocaleString('zh-CN') + '，请重新告诉我目标额度。</p>' +
-      '<p class="guide-tip">当前额度 ¥' + stNow.current.toLocaleString('zh-CN') + '，最低可调至 ¥' + stNow.min.toLocaleString('zh-CN') + '（已用额度）。</p>'
-    ));
+  if (explicitZero) {
+    var zeroMsg = stNow.min > 0
+      ? ('<p>目标额度不能低于已用额度 ¥' + stNow.min.toLocaleString('zh-CN') + '，请重新告诉我目标额度。</p>' +
+         '<p class="guide-tip">当前额度 ¥' + stNow.current.toLocaleString('zh-CN') + '，最低可调至 ¥' + stNow.min.toLocaleString('zh-CN') + '（已用额度）。</p>')
+      : ('<p>目标额度需要大于 0，请重新告诉我目标额度。</p>' +
+         '<p class="guide-tip">当前额度 ¥' + stNow.current.toLocaleString('zh-CN') + '。</p>');
+    appendMessage(guideMessage(zeroMsg));
     scrollToBottom();
     s.limit = 0;
     s.stage = 'slots';
