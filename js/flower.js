@@ -42,7 +42,7 @@ function showBirthdayReminder() {
                   <div style="font-size:12px;color:#666;">生日：${c.birthday} · 还有 ${c.days} 天 · 推荐：${c.flower}（¥${c.price}）</div>
                 </div>
                 <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;">
-                  <button class="btn btn-primary btn-sm" onclick="confirmFlowerOrder('${c.name}','${c.flower}',${c.price}, this)">订鲜花</button>
+                  <button class="btn btn-primary btn-sm" onclick="guideStartFlowerOrder({ recipient: '${c.name}', bouquet: '${c.flower}' })">订鲜花</button>
                   <button class="btn btn-secondary btn-sm" onclick="deleteBirthdayContact('${c.name}')" style="padding:4px 8px;font-size:12px;">删除</button>
                 </div>
               </div>

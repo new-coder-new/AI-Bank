@@ -712,7 +712,7 @@ function quickAction(type) {
     case 'subscribe': guideStartSubManage(); break;
     case 'subAdd': guideStartSubAdd(); break;
     case 'subCancel': guideStartSubCancel(); break;
-    case 'flowerOrder': guideStartFlowerOrder(); break;
+    case 'flowerOrder': guideStartBirthdayFlower(); break;
     case 'userinfo': showUserInfo(); break;
     case 'risk': startRiskAssessment(); break;
     case 'abnormal': showAbnormalAlert(); break;
@@ -721,7 +721,7 @@ function quickAction(type) {
     case 'budget': showBudget(); break;
     case 'agent': runAgentWorkflow('帮我转账100元然后查询余额'); break;
     case 'smartLimit': showSmartLimit(); break;
-    case 'birthday': showBirthdayReminder(); break;
+    case 'birthday': guideStartBirthdayFlower(); break;
     case 'report': showFinanceReport(); break;
     case 'security': showSecurityCenter(); break;
     case 'batchTransfer': showBatchTransfer(); break;

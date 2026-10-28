@@ -908,9 +908,10 @@ AI：您想要添加订阅、取消订阅，还是管理自动续费？
 
 ### 8.9 鲜花订购 / 生日鲜花
 
-**鲜花订购（对话式，`guideStartFlowerOrder`）**：生活订购 → 鲜花订购，或输入「鲜花订购」。
+**鲜花订购（对话式，`guideStartFlowerOrder`）**：已并入「生日鲜花」——在生日鲜花页点【订购鲜花】，或直接说「鲜花订购 / 订花」。收花人只能是生日联系人，每个联系人生日行上的【订鲜花】按钮会带出该联系人与其推荐花束。
 
 - 采集字段：收花人、手机号、收货地址、花束款式、配送日期、配送时段、贺卡留言（≤30 字，可空）、支付方式（默认储蓄卡）
+- **收花人只能是联系人**：必须是生日联系人（userProfile.birthdayContacts，为空时回退通讯录），非联系人会提示「不在联系人里，鲜花只能为联系人下单」并列出可选收花人；预填联系人也同样校验
 - 可选花束：简约玫瑰 ¥199 / 向日葵花束 ¥229 / 混搭小花束 ¥159 / 康乃馨礼盒 ¥259
 - 配送时段：上午 09:00–12:00、下午 14:00–18:00、晚间 19:00–21:00
 - 三种输入都支持：一次说全 / 先给收花人再补其余 / 无贺卡（确认卡显示「贺卡留言：无」）
@@ -1048,7 +1049,7 @@ AI：您想要添加订阅、取消订阅，还是管理自动续费？
   | 账单 | 消费统计 / 账单报告 / 异常交易 | `showBillAnalysis` / `showFinanceReport` / `showAbnormalAlert` |
   | 卡片 | 卡片申请 / 额度调整 / 交易限制 / 卡片挂失 | `showCardApplyForm` / `cardLimitDetailCard` / `showTxnLimitSettings`（含「查看限制规则」）/ `showCardFreezePanel` |
   | 理财 | 产品申购 / 风险评估 / 持仓管理 | `guideStartWealthPurchase` / `startRiskAssessment` / `guideStartHoldings` |
-  | 生活 | 订阅管理 / 鲜花订购 / 生日鲜花 | `guideStartSubAdd` / `guideStartSubManage` / `guideStartSubCancel` / `guideStartFlowerOrder` / `showBirthdayReminder` |
+  | 生活 | 订阅管理 / 生日鲜花 | `guideStartSubManage`（统一入口）/ `guideStartBirthdayFlower`（生日鲜花 + 鲜花订购） |
   | 更多 | 银行卡转账 / 转账记录 / 批量转账 / 预算管理 / 账单分期 / 复核审批 / 安全中心 | 银行卡转账为单模式表单；其余为原功能文字入口 |
 
   转账表单按入口收敛：**智能转账** 只含「按姓名 / 手机号 / 银行卡号」三种收款人识别方式；**定时转账** 与 **AA 收款** 各自独立成页（`showTransferForm('timed' | 'aa')`），不再以页签形式塞进同一张表单。

@@ -64,7 +64,6 @@ var FUNC_GROUPS = [
   {
     title: '生活', items: [
       { key: 'subscribe', label: '订阅管理', icon: 'bell' },
-      { key: 'flowerOrder', label: '鲜花订购', icon: 'gift' },
       { key: 'birthday', label: '生日鲜花', icon: 'gift' }
     ]
   }

@@ -67,8 +67,10 @@ var GUIDE_SERVICES = [
     prompt: '生活订购包含这些服务，请选择：',
     subs: [
       { key: 'subscribe', label: '订阅管理', aliases: ['我的订阅'], run: function () { guideStartSubManage(); } },
-      { key: 'flower', label: '鲜花订购', aliases: ['订花', '买花'], run: function () { guideStartFlowerOrder(); } },
-      { key: 'birthday', label: '生日鲜花', run: function () { showBirthdayReminder(); } }
+      {
+        key: 'birthday', label: '生日鲜花', aliases: ['鲜花订购', '订花', '买花', '鲜花订单'],
+        run: function () { guideStartBirthdayFlower(); }
+      }
     ]
   }
 ];
@@ -415,8 +417,7 @@ var GUIDE_SUB_KEYWORDS = {
   },
   life: {
     subscribe: ['订阅管理', '订阅', '会员', '自动续费', '添加订阅', '取消订阅', '退订'],
-    flower: ['鲜花订购', '订花', '买花', '鲜花订单'],
-    birthday: ['生日鲜花', '生日', '鲜花']
+    birthday: ['生日鲜花', '鲜花订购', '订花', '买花', '鲜花订单', '生日', '鲜花']
   }
 };
 
@@ -3999,13 +4000,50 @@ function guideFlowerMissingPrompt(s) {
   return '请提供' + miss.join('、') + '。';
 }
 
-function guideStartFlowerOrder() {
-  GUIDE_FLOWER = { mode: 'order', stage: 'slots', order: { recipient: '', phone: '', address: '', bouquet: '', date: '', slot: '', card: '', payMethod: '储蓄卡' }, editing: null };
+// 允许收花的人：生日联系人（为空时退回通讯录联系人）
+function guideFlowerContacts() {
+  var b = (mockData.userProfile && mockData.userProfile.birthdayContacts) || [];
+  if (b.length) return b.map(function (x) { return x.name; });
+  return (mockData.contacts || []).map(function (x) { return x.name; });
+}
+
+function guideFlowerContactsText() {
+  var names = guideFlowerContacts();
+  return names.length ? names.join('、') : '暂无联系人';
+}
+
+// 生日鲜花（整合鲜花订购）：先展示生日联系人与近期生日，再给出订购入口
+function guideStartBirthdayFlower() {
+  currentModule = 'life';
+  if (typeof showBirthdayReminder === 'function') showBirthdayReminder();
+  appendMessage(guideMessage(
+    '<p>鲜花订购已并入这里，只能为联系人下单。</p>' +
+    '<p class="guide-tip">可选收花人：' + guideFlowerContactsText() + '</p>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideStartFlowerOrder()">订购鲜花</button>' +
+    '<button class="guide-chip" onclick="guideStartFlowerList()">查看鲜花订单</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+function guideStartFlowerOrder(opts) {
+  var pre = opts || {};
+  GUIDE_FLOWER = {
+    mode: 'order', stage: 'slots',
+    order: {
+      recipient: pre.recipient || '', phone: pre.phone || '', address: pre.address || '',
+      bouquet: pre.bouquet || '', date: pre.date || '', slot: pre.slot || '',
+      card: pre.card || '', payMethod: '储蓄卡'
+    },
+    editing: null
+  };
   currentModule = 'life';
   appendMessage(guideMessage(
     '<p>请告诉我收花人、手机号、收货地址、花束款式、配送日期和配送时段。</p>' +
     '<p class="guide-tip">可选花束：' + FLOWER_BOUQUETS.map(function (b) { return b.name; }).join('、') + '</p>' +
     '<p class="guide-tip">配送时段：' + FLOWER_SLOTS.map(function (s) { return s.text; }).join('、') + '</p>' +
+    '<p class="guide-tip">只能为联系人下单，可选收花人：' + guideFlowerContactsText() + '</p>' +
     '<p class="guide-tip">默认使用储蓄卡支付，可随时改成信用卡。</p>'
   ));
   scrollToBottom();
@@ -4031,6 +4069,15 @@ function guideFlowerOrderCard(s) {
 function guideFlowerConfirm() {
   var s = GUIDE_FLOWER;
   if (!s) return;
+  // 出确认卡之前再核一次：只能为联系人下单
+  if (guideFlowerContacts().indexOf(s.order.recipient) === -1) {
+    appendMessage(guideMessage('<p>收花人必须是联系人，当前「' + guideFlowerEsc(s.order.recipient) + '」不在联系人里，请重新选择收花人。</p>' +
+      '<p class="guide-tip">可选收花人：' + guideFlowerEsc(guideFlowerContactsText()) + '</p>'));
+    scrollToBottom();
+    s.order.recipient = '';
+    s.stage = 'slots';
+    return;
+  }
   s.stage = 'confirm';
   appendMessage(guideMessage(guideFlowerOrderCard(s) +
     '<div class="guide-chips">' +
@@ -4055,7 +4102,19 @@ async function guideFlowerOrderStep(text) {
     if (/^(取消|不|算了|返回)$/.test(t.replace(/[吧呢啊呀。.!！?？\s]/g, ''))) { guideFlowerCancelOp(); return true; }
   }
 
-  if (parsed.recipient) o.recipient = parsed.recipient;
+  if (parsed.recipient) {
+    var allowed = guideFlowerContacts();
+    if (allowed.indexOf(parsed.recipient) === -1) {
+      appendMessage(guideMessage(
+        '<p>「<b>' + guideFlowerEsc(parsed.recipient) + '</b>」不在联系人里，鲜花只能为联系人下单。</p>' +
+        '<p class="guide-tip">可选收花人：' + guideFlowerEsc(guideFlowerContactsText()) + '</p>' +
+        '<div class="guide-chips"><button class="guide-chip" onclick="guideStartBirthdayFlower()">查看生日联系人</button></div>'
+      ));
+      scrollToBottom();
+      return true;
+    }
+    o.recipient = parsed.recipient;
+  }
   if (parsed.phone) o.phone = parsed.phone;
   if (parsed.address) o.address = parsed.address;
   if (parsed.bouquet) o.bouquet = parsed.bouquet;
@@ -4099,6 +4158,14 @@ async function guideFlowerSubmit() {
     return true;
   }
   if (o.card && o.card.length > 30) o.card = o.card.slice(0, 30);
+  if (guideFlowerContacts().indexOf(o.recipient) === -1) {
+    appendMessage(guideMessage('<p>收花人必须是联系人，当前「' + guideFlowerEsc(o.recipient) + '」不在联系人里，请重新选择收花人。</p>' +
+      '<p class="guide-tip">可选收花人：' + guideFlowerEsc(guideFlowerContactsText()) + '</p>'));
+    scrollToBottom();
+    s.order.recipient = '';
+    s.stage = 'slots';
+    return true;
+  }
 
   var payMethod = o.payMethod === '信用卡' ? '信用卡' : '储蓄卡';
   var debit = (mockData.userProfile && mockData.userProfile.debitCard) || {};
