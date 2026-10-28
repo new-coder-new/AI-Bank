@@ -1,4 +1,4 @@
-﻿// ========== 极致版：生日鲜花联动 ==========
+// ========== 极致版：生日鲜花联动 ==========
 function calcDaysUntilBirthday(birthdayStr) {
   const today = new Date();
   const parts = String(birthdayStr || '').split('-').map(Number);

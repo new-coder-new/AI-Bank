@@ -1139,20 +1139,11 @@ function agentTierBadge(tier) {
 }
 
 // ------------------------------ 5. 计划执行器 + 可视化 ------------------------------
+// 只保留一句「正在为你处理…」，执行步骤（逻辑链）不再展示给用户
 function agentPlanShell(id, plan) {
-  var stepsHtml = plan.steps.map(function (s, i) {
-    return '<div class="agent-step" id="' + id + '-s' + i + '">' +
-      '<div class="agent-step-icon pending" id="' + id + '-i' + i + '">' + (i + 1) + '</div>' +
-      '<div class="agent-step-content">' +
-      '<div class="agent-step-title">' + s.label + '</div>' +
-      '<div class="agent-step-desc" id="' + id + '-d' + i + '"></div>' +
-      '</div></div>';
-  }).join('');
   return '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
-    '<div class="agent-plan-head"><span class="agent-plan-dot"></span>' + plan.title + '</div>' +
-    (plan.subtitle ? '<div class="agent-plan-sub">' + plan.subtitle + '</div>' : '') +
-    '<div class="agent-workflow" id="' + id + '">' + stepsHtml + '</div>' +
+    '<div class="agent-plan-head" id="' + id + '-head"><span class="agent-plan-dot"></span>' + plan.title + '</div>' +
     '<div id="' + id + '-footer"></div>' +
     '</div></div></div>';
 }
@@ -1171,21 +1162,21 @@ async function runAgentPlan(plan) {
   var id = 'agentplan-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
   appendMessage(agentPlanShell(id, plan));
   scrollToBottom();
-  await agentSleep(260);
+  await agentSleep(120);
 
   var results = [];
   for (var i = 0; i < plan.steps.length; i++) {
     var step = plan.steps[i];
     agentSetStep(id, i, 'running');
     scrollToBottom();
-    await agentSleep(step.delay || 420);
+    await agentSleep(step.delay || 120);
     var res = { ok: true, summary: '' };
     if (step.tool) res = await callAgentTool(step.tool, step.args || {});
     else if (typeof step.run === 'function') res = await step.run();
     results.push(res);
     agentSetStep(id, i, res.ok === false ? 'fail' : 'done', res.summary || '完成');
     scrollToBottom();
-    await agentSleep(140);
+    await agentSleep(60);
   }
 
   if (plan.confirm) {
@@ -1206,6 +1197,9 @@ function agentPlanActionAmount(a) {
 function agentRenderPlanConfirm(id, plan, results) {
   var footer = document.getElementById(id + '-footer');
   if (!footer) return;
+  // 只剩确认卡：处理中的状态行隐藏掉，避免用户看到内部流程
+  var head = document.getElementById(id + '-head');
+  if (head) head.style.display = 'none';
   var actions = plan.confirm.actions || [];
   var actionRows = actions.map(function (a, i) {
     return '<div class="agent-confirm-row" id="' + id + '-a' + i + '">' +

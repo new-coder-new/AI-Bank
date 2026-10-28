@@ -1,4 +1,4 @@
-﻿// ========== 用户体验优化：深色模式 ==========
+// ========== 用户体验优化：深色模式 ==========
 function toggleDarkMode() {
   const body = document.body;
   const isDark = body.classList.toggle('dark-mode');
