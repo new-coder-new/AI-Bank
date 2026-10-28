@@ -1612,14 +1612,51 @@ function guideAAConfirm() {
   var s = GUIDE_AA;
   if (!s) return;
   s.stage = 'confirm';
+  s.cardId = s.cardId || ('aa-confirm-' + Date.now());
   var splitCount = s.participants.length + 1;
   var per = s.total / splitCount;
   var names = s.participants.map(function (p) { return p.name; }).join('、');
-  appendMessage(guideMessage(
-    '<p>确认由你先行垫付 <b>' + guidePlainMoney(s.total) + '</b> 元，本次 AA 一共 <b>' + splitCount + '</b> 人（包含你）分摊，' +
-    '向 <b>' + guideAAEsc(names) + '</b> 收款，每人应付 <b>' + guidePlainMoney(per) + '</b> 元，请确认</p>' +
-    '<div class="guide-chips"><button class="guide-chip" onclick="guideAASubmit()">发起AA收款</button></div>'
-  ));
+  appendMessage(guideMessage(guideAAConfirmCardHtml(s, splitCount, per, names)));
+  scrollToBottom();
+}
+
+// 一张卡片承载「确认 → 已发起」，取消按钮就在卡里
+function guideAAConfirmCardHtml(s, splitCount, per, names) {
+  return '<div class="data-card" id="' + s.cardId + '">' +
+    '<div class="data-card-title">确认发起 AA 收款</div>' +
+    '<div class="data-row"><span class="data-label">垫付总额</span><span class="data-value">¥' + guidePlainMoney(s.total) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">参与人数</span><span class="data-value">' + splitCount + ' 人（含我）</span></div>' +
+    '<div class="data-row"><span class="data-label">收款名单</span><span class="data-value">' + guideAAEsc(names) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">每人应付</span><span class="data-value"><b>¥' + guidePlainMoney(per) + '</b></span></div>' +
+    '<div class="data-row"><span class="data-label">当前状态</span><span class="data-value">待发起</span></div>' +
+    '<div class="guide-chips" style="margin-top:10px;">' +
+    '<button class="guide-chip" onclick="guideAASubmit()">发起AA收款</button>' +
+    '<button class="guide-chip" onclick="guideAACancel()">取消</button>' +
+    '</div>' +
+    '</div>';
+}
+
+function guideAAConfirmDoneHtml(s, splitCount, per, names) {
+  return '<div class="data-card-title">已发起 AA 收款</div>' +
+    '<div class="data-row"><span class="data-label">每人应付</span><span class="data-value"><b>¥' + guidePlainMoney(per) + '</b></span></div>' +
+    '<div class="data-row"><span class="data-label">垫付总额</span><span class="data-value">¥' + guidePlainMoney(s.total) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">参与人数</span><span class="data-value">' + splitCount + ' 人（含我）</span></div>' +
+    '<div class="data-row"><span class="data-label">收款名单</span><span class="data-value">' + guideAAEsc(names) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">当前状态</span><span class="data-value" style="color:#B54708;">待收款</span></div>' +
+    '<div class="guide-chips" style="margin-top:10px;">' +
+    '<button class="guide-chip" onclick="showTransferHistory()">查看记录</button>' +
+    '</div>';
+}
+
+function guideAACancel() {
+  var s = GUIDE_AA;
+  if (s && s.cardId) {
+    var card = document.getElementById(s.cardId);
+    if (card) card.innerHTML = '<div class="data-card-title">已取消 AA 收款</div><div class="data-row"><span class="data-label">状态</span><span class="data-value">未发起任何收款</span></div>';
+  } else {
+    appendMessage(guideMessage('<p>已取消本次 AA 收款，未发起任何收款。</p>'));
+  }
+  GUIDE_AA = null;
   scrollToBottom();
 }
 
@@ -1644,26 +1681,17 @@ function guideAASubmit() {
     createdAt: new Date().toLocaleString('zh-CN')
   });
   saveUserData();
-  GUIDE_AA = null;
 
-  var rows = '<div class="bank-confirm-rows">' +
-    '<div><span>垫付总额</span><b>¥' + guidePlainMoney(s.total) + '</b></div>' +
-    '<div><span>参与人数</span><b>' + splitCount + ' 人（含我）</b></div>' +
-    '<div><span>收款名单</span><b>' + guideAAEsc(names.join('、')) + '</b></div>' +
-    '<div><span>每人应付</span><b>¥' + guidePlainMoney(per) + '</b></div>' +
-    '<div><span>当前状态</span><b style="color:#B54708;">待收款</b></div>' +
-    '</div>';
-  appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
-    '<div class="msg-name">AI Bank 助手</div><div class="msg-bubble agent-bubble">' +
-    '<div class="bank-result">' +
-    '<div class="bank-result-title">已发起 AA 收款</div>' +
-    '<div class="bank-result-amount">¥' + guidePlainMoney(per) + '</div>' +
-    rows +
-    '<div style="margin-top:10px;"><button class="ui-link" onclick="showTransferHistory()">查看记录</button></div>' +
-    '</div></div></div></div>');
+  // 同一张卡片就地变成「已发起」，不再多出一个气泡
+  var card = s.cardId ? document.getElementById(s.cardId) : null;
+  if (card) {
+    card.innerHTML = guideAAConfirmDoneHtml(s, splitCount, per, names.join('、'));
+  } else {
+    appendMessage(guideMessage(guideAAConfirmDoneHtml(s, splitCount, per, names.join('、'))));
+  }
+  GUIDE_AA = null;
   scrollToBottom();
 }
-
 async function guideAAStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_AA;
@@ -1673,9 +1701,7 @@ async function guideAAStep(text) {
     var plainAA = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
     if (/^(确认|确定|发起|发起AA收款|提交|是|好|好的|行|可以)$/.test(plainAA)) { guideAASubmit(); return true; }
     if (/^(取消|不|不要|算了|退出)$/.test(plainAA)) {
-      GUIDE_AA = null;
-      appendMessage(guideMessage('<p>已取消本次 AA 收款，未发起任何收款。</p>'));
-      scrollToBottom();
+      guideAACancel();
       return true;
     }
   }
