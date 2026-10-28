@@ -2183,13 +2183,77 @@ function guideTxnLimitValue(text) {
   return v;
 }
 
-// 只认「允许 / 禁止」，其它一律返回 null（由调用方提示重选）
+// 本地先认「允许 / 禁止」；认不出再交给 AI 理解「是/否/可以/算了」这类说法
 function guideTxnLimitFlag(text) {
   var t = String(text || '').trim().replace(/[。.!！?？,，、\s]/g, '');
   if (!t) return null;
-  if (/(禁止|不允许|不可以|不行|关闭)/.test(t)) return 'block';
-  if (/^(允许|可以|行)$/.test(t)) return 'allow';
+  if (/(禁止|不允许|不可以|不行|关闭|别允许|关掉)/.test(t)) return 'block';
+  if (/^(允许|可以|行|好|好的|是|是的|对|嗯|ok|OK)$/.test(t)) return 'allow';
   return null;
+}
+
+// 通用 LLM JSON 调用：无 Key / 失败时返回 null，调用方降级处理
+async function guideLLMJson(system, user) {
+  if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return null;
+  if (typeof DEEPSEEK_API_URL === 'undefined' || !DEEPSEEK_API_URL) return null;
+  try {
+    var resp = await fetch(DEEPSEEK_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (typeof DEEPSEEK_API_KEY !== 'undefined' ? DEEPSEEK_API_KEY : '')
+      },
+      body: JSON.stringify({
+        model: (typeof DEEPSEEK_MODEL !== 'undefined' && DEEPSEEK_MODEL) ? DEEPSEEK_MODEL : 'deepseek-chat',
+        temperature: 0,
+        max_tokens: 80,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user }
+        ]
+      })
+    });
+    if (!resp.ok) return null;
+    var data = await resp.json();
+    var content = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+    var m = content.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    return JSON.parse(m[0]);
+  } catch (e) {
+    return null;
+  }
+}
+
+// AI 理解「允许 / 禁止」：返回 'allow' | 'block' | null
+async function guideTxnLimitAIFlag(text, which) {
+  var obj = await guideLLMJson(
+    '你是银行 App 的选项解析器。用户在回答「是否允许' + (which === 'night' ? '夜间交易' : '境外交易') + '」，' +
+    '只能输出 JSON：{"allow": true|false|null}。表示同意的说法（是/可以/行/当然/没问题/允许）→ true；' +
+    '表示不同意的说法（不/否/不行/不要/禁止/关掉/不能）→ false；无法判断 → null。不要输出其它内容。',
+    text
+  );
+  if (!obj || obj.allow === null || obj.allow === undefined) return null;
+  if (obj.allow === true) return 'allow';
+  if (obj.allow === false) return 'block';
+  return null;
+}
+
+// AI 提取两项限额（支持中文数字）：返回 { single, daily } 或 null
+async function guideTxnLimitAILimits(text) {
+  var obj = await guideLLMJson(
+    '你是银行 App 的数值抽取器。用户正在设置信用卡的「单笔限额」与「日累计限额」。' +
+    '从用户的话里抽取数字（中文数字要转成阿拉伯数字，例如「五千」=5000、「一万」=10000、「五百」=500）。' +
+    '只输出 JSON：{"single": 数字或null, "daily": 数字或null}。' +
+    '若用户只给了一个数字且没说属于哪一项，把它当日累计限额（daily），single 返回 null。不要输出其它内容。',
+    text
+  );
+  if (!obj) return null;
+  var single = (obj.single === null || obj.single === undefined) ? null : Number(obj.single);
+  var daily = (obj.daily === null || obj.daily === undefined) ? null : Number(obj.daily);
+  if (single != null && !(single >= 0)) single = null;
+  if (daily != null && !(daily >= 0)) daily = null;
+  if (single == null && daily == null) return null;
+  return { single: single, daily: daily };
 }
 
 function guideTxnLimitNightQuestion(prefix) {
@@ -2203,19 +2267,38 @@ function guideStartTxnLimit() {
   scrollToBottom();
 }
 
-function guideTxnLimitStep(text) {
+// 等待 AI 解析时的占位气泡
+function guideTypingBubble() {
+  var id = 'guide-typing-' + Date.now();
+  appendMessage('<div class="message" id="' + id + '"><div class="msg-avatar ai">🤖</div>' +
+    '<div class="msg-content"><div class="msg-name">AI Bank 助手</div>' +
+    '<div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div></div></div>');
+  scrollToBottom();
+  return id;
+}
+
+async function guideTxnLimitStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_TXN_LIMIT;
 
-  // ① 夜间 / 境外：只接受「允许 / 禁止」
+  // ① 夜间 / 境外：本地先认「允许 / 禁止」，认不出用 AI 理解「是 / 否 / 可以 / 算了」
   if (s.stage === 'night' || s.stage === 'overseas') {
+    var which = s.stage;
     var flag = guideTxnLimitFlag(t);
+    if (!flag) {
+      var loadId = guideTypingBubble();
+      var aiFlag = null;
+      try { aiFlag = await guideTxnLimitAIFlag(t, which); } catch (e) { aiFlag = null; }
+      var el = document.getElementById(loadId);
+      if (el) el.remove();
+      flag = aiFlag;
+    }
     if (!flag) {
       appendMessage(guideMessage('<p>该选项仅可回复【允许】或【禁止】，请重新选择。</p>'));
       scrollToBottom();
       return true;
     }
-    if (s.stage === 'night') {
+    if (which === 'night') {
       s.night = flag;
       s.stage = 'overseas';
       appendMessage(guideMessage('<p>是否允许境外交易？</p>'));
@@ -2249,6 +2332,25 @@ function guideTxnLimitStep(text) {
     else s.daily = bare;
   }
 
+  // 本地没解析到数字，或句子里是中文数字（五千 / 一万 / 五百）→ 让 AI 抽取
+  var hasCnNum = /[一二三四五六七八九十百千万两零]/.test(t);
+  if ((!mSingle && !mDaily && bare == null) || hasCnNum) {
+    var loadId2 = guideTypingBubble();
+    var ai = null;
+    try { ai = await guideTxnLimitAILimits(t); } catch (e) { ai = null; }
+    var el2 = document.getElementById(loadId2);
+    if (el2) el2.remove();
+    if (ai) {
+      // 只补本地这次没解析到的字段，避免覆盖用户刚给出的其它字段
+      if (!mSingle && s.single == null && ai.single != null) s.single = ai.single;
+      if (!mDaily && s.daily == null && ai.daily != null) s.daily = ai.daily;
+      if (!mSingle && !mDaily && bare == null) {
+        if (s.single == null && ai.single != null) s.single = ai.single;
+        if (s.daily == null && ai.daily != null) s.daily = ai.daily;
+      }
+    }
+  }
+
   if (s.single == null) {
     appendMessage(guideMessage('<p>请输入单笔限额</p>'));
     scrollToBottom();
@@ -2267,7 +2369,6 @@ function guideTxnLimitStep(text) {
   scrollToBottom();
   return true;
 }
-
 function guideTxnLimitConfirm() {
   var s = GUIDE_TXN_LIMIT;
   if (!s) return;
