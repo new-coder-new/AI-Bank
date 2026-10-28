@@ -1086,7 +1086,7 @@ function guidePhoneResolvePayee() {
   s.stage = 'verifyName';
   appendMessage(guideMessage(
     '<p>该手机号不在通讯录中，请输入<b>收款人姓名</b>完成验证：</p>' +
-    '<p class="guide-tip">例如：李雷（填写后按姓名核验，仍可正常转账）</p>'
+    '<p class="guide-tip">例如：李雷</p>'
   ));
   scrollToBottom();
 }
