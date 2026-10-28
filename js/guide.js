@@ -1008,13 +1008,17 @@ function guideTimedWhenText(date, time) {
   return dayLabel + clock;
 }
 
-function guideTimedStep(text) {
+async function guideTimedStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_TRANSFER;
 
-  // 重复方式阶段：只认 不重复 / 每天 / 每周 / 每月 / 每年
+  // 重复方式阶段：本地先认，认不出交给模型理解（「一直」「按月来」等）
   if (s.stage === 'repeat') {
     var rep = guideTimedParseRepeat(t);
+    if (!rep) {
+      var aiRep = await guideTimedAIExtract(t);
+      rep = aiRep && aiRep.repeat ? aiRep.repeat : null;
+    }
     if (!rep) {
       appendMessage(guideMessage('<p>请回复：不重复 / 每天 / 每周 / 每月 / 每年</p>'));
       scrollToBottom();
@@ -1027,6 +1031,22 @@ function guideTimedStep(text) {
 
   // 槽位阶段
   var parsed = guideTransferParse(t, 'timed');
+
+  // 本地没抽到日期/时间/重复（如「下周三」「月底下午三点」「一直」）→ 交给模型解析
+  if (!parsed.date || !parsed.time || !parsed.repeat || !parsed.period) {
+    var aiTime = await guideTimedAIExtract(t);
+    if (aiTime) {
+      if (!parsed.date && aiTime.date) parsed.date = aiTime.date;
+      if (!parsed.time && aiTime.time) parsed.time = aiTime.time;
+      if (!parsed.period && aiTime.period) parsed.period = aiTime.period;
+      if (!parsed.repeat && aiTime.repeat) parsed.repeat = aiTime.repeat;
+      // 「下周三」「月底」这类时间说法会被本地误当成收款人，模型识别出时间后要撤销这个误判
+      if ((aiTime.date || aiTime.time || aiTime.period) && parsed.unknownName &&
+        /(周|星期|月|号|日|点|点|分|今天|明天|后天|上午|下午|晚上|中午|早上)/.test(parsed.unknownName)) {
+        parsed.unknownName = '';
+      }
+    }
+  }
 
   if (!parsed.payee && parsed.unknownName) {
     guideUnknownPayeeNotice(parsed.unknownName);
@@ -1420,7 +1440,7 @@ function guideAASubmit() {
   scrollToBottom();
 }
 
-function guideAAStep(text) {
+async function guideAAStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_AA;
   if (!s) return true;
@@ -1463,7 +1483,7 @@ function guideAAStep(text) {
     return true;
   }
 
-  // 「还有其他参与人吗」的回答
+  // 「还有其他参与人吗」的回答：本地先认常见说法，认不出交给模型判断
   if (s.stage === 'askMore' && /^(没有|没有了|没|无|否|不|不用|就这些|这些|够了|结束|是的|对)$/.test(t)) {
     if (/^(是的|对)$/.test(t)) {
       appendMessage(guideMessage('<p>请告诉我还要收谁？</p>'));
@@ -1475,6 +1495,29 @@ function guideAAStep(text) {
   }
 
   var parsed = guideAAParse(t);
+
+  // 本地解析出的名字必须真的在通讯录里，否则（如「就我们几个搓一顿」）交给模型理解
+  var localNamesOk = parsed.names.length && parsed.names.every(function (n) {
+    return (mockData.contacts || []).some(function (c) { return c.name === n; });
+  });
+  if (!(parsed.total > 0) && !localNamesOk) {
+    var aiAA = await guideAAAIExtract(t);
+    if (aiAA) {
+      if (aiAA.total > 0) parsed.total = aiAA.total;
+      if (aiAA.names.length) parsed.names = aiAA.names;
+    } else if (s.stage === 'askMore') {
+      // 有「还有吗」语境但没说名单：可能是「没有了 / 就这些」这类结束语
+      var aiMore = await guideAAAIHasMore(t);
+      if (aiMore && aiMore.more === false) { guideAANoMore(); return true; }
+      if (aiMore && aiMore.names && aiMore.names.length) parsed.names = aiMore.names;
+    }
+  } else if (parsed.names.length && !localNamesOk && s.stage === 'askMore') {
+    // 通讯录里没有的「名字」不当参与人，按「还有吗」再问一次
+    var aiMore2 = await guideAAAIHasMore(t);
+    if (aiMore2 && aiMore2.more === false) { guideAANoMore(); return true; }
+    if (aiMore2 && aiMore2.names && aiMore2.names.length) parsed.names = aiMore2.names;
+  }
+
   if (parsed.total > 0) s.total = parsed.total;
 
   // 有新名单：加入后继续问「还有其他参与人吗」
@@ -1687,7 +1730,7 @@ function guideWealthParse(text) {
   return { product: product, amount: amount };
 }
 
-function guideWealthStep(text) {
+async function guideWealthStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_WEALTH;
   var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
@@ -1718,6 +1761,16 @@ function guideWealthStep(text) {
   }
 
   var parsed = guideWealthParse(t);
+
+  // 本地没匹配到产品名（或没有金额）时，交给模型识别简称/口语说法
+  if ((!parsed.product || !(parsed.amount > 0)) && !/^\d+(\.\d+)?\s*(万|w|W)?$/.test(plain)) {
+    var aiW = await guideWealthAIProduct(t);
+    if (aiW) {
+      if (!parsed.product && aiW.product) parsed.product = aiW.product;
+      if (!(parsed.amount > 0) && aiW.amount > 0) parsed.amount = aiW.amount;
+    }
+  }
+
   if (parsed.product) s.product = parsed.product;
   if (parsed.amount > 0) s.amount = parsed.amount;
 
@@ -1931,7 +1984,7 @@ function guideCardApplyMoney(v) {
   return Number(v || 0).toLocaleString('zh-CN');
 }
 
-function guideCardApplyStep(text) {
+async function guideCardApplyStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_CARD_APPLY;
   var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
@@ -1943,6 +1996,15 @@ function guideCardApplyStep(text) {
   }
 
   var parsed = guideCardApplyParse(t);
+
+  // 本地没认出卡种/用途（如「金卡」「主要出差用」）→ 交给模型映射到可选清单
+  if ((!parsed.cardType || !parsed.purpose) && !parsed.unknownType) {
+    var aiCard = await guideCardApplyAIType(t);
+    if (aiCard) {
+      if (!parsed.cardType && aiCard.cardType) parsed.cardType = aiCard.cardType;
+      if (!parsed.purpose && aiCard.purpose) parsed.purpose = aiCard.purpose;
+    }
+  }
 
   // 不认识的卡种：提示可选范围，不污染已收集字段
   if (parsed.unknownType && !parsed.cardType) {
@@ -2102,7 +2164,7 @@ function guideCardLimitParse(text) {
   return { limit: limit, reason: reason };
 }
 
-function guideCardLimitStep(text) {
+async function guideCardLimitStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_CARD_LIMIT;
   var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
@@ -2114,6 +2176,15 @@ function guideCardLimitStep(text) {
   }
 
   var parsed = guideCardLimitParse(t);
+
+  // 本地没认出原因/额度（如「最近开销大」「想提到八万」）→ 交给模型映射
+  if (!parsed.reason || !(Number(parsed.limit) > 0)) {
+    var aiLimit = await guideCardLimitAIReason(t);
+    if (aiLimit) {
+      if (!parsed.reason && aiLimit.reason) parsed.reason = aiLimit.reason;
+      if (!(Number(parsed.limit) > 0) && aiLimit.limit > 0) parsed.limit = aiLimit.limit;
+    }
+  }
 
   if (Number(parsed.limit) > 0) s.limit = parsed.limit;
   if (parsed.reason) s.reason = parsed.reason;
@@ -2292,6 +2363,134 @@ async function guideLLMJson(system, user) {
   } catch (e) {
     return null;
   }
+}
+
+// ——————————————————————————————————————————————
+// 通用 AI 槽位识别：凡是「用户没有固定回答」的输入，本地规则认不出时统一交给模型。
+// 无 Key / 请求失败时一律返回 null，调用方回落到本地追问，不阻塞对话。
+// ——————————————————————————————————————————————
+async function guideAISlots(text, system, parse) {
+  var loadId = (typeof guideTypingBubble === 'function') ? guideTypingBubble() : null;
+  var obj = null;
+  try { obj = await guideLLMJson(system, text); } catch (e) { obj = null; }
+  var el = loadId ? document.getElementById(loadId) : null;
+  if (el) el.remove();
+  if (typeof parse === 'function') return parse(obj);
+  return obj || null;
+}
+
+// 定时转账：日期 / 时间 / 重复方式（支持「下周三」「月底」等自由说法）
+function guideTimedAIExtract(text) {
+  var today = guideOffsetDate(0);
+  return guideAISlots(
+    text,
+    '你是银行 App 的时间解析器。今天是 ' + today + '。用户在设置定时转账时间。' +
+    '请把相对说法换算成具体日期（如「明天」「下周三」「月底」「10月30号」），时间用 24 小时制（「下午三点」=15:00）。' +
+    '重复方式只能是 不重复/每天/每周/每月/每年。' +
+    '只说时间段没说钟点（如「明天下午」）时 time 返回空、period 填 上午/下午/晚上/中午/凌晨。' +
+    '只输出 JSON：{"date":"YYYY-MM-DD或空","time":"HH:MM或空","period":"或空","repeat":"不重复|每天|每周|每月|每年或空"}',
+    function (o) {
+      if (!o) return null;
+      var date = /^\d{4}-\d{1,2}-\d{1,2}$/.test(o.date || '') ? String(o.date) : null;
+      var time = /^\d{1,2}:\d{2}$/.test(o.time || '') ? guidePad2(String(o.time).split(':')[0]) + ':' + String(o.time).split(':')[1] : null;
+      var period = ['凌晨', '早上', '上午', '中午', '下午', '晚上'].indexOf(o.period) !== -1 ? o.period : null;
+      var repeat = ['不重复', '每天', '每周', '每月', '每年'].indexOf(o.repeat) !== -1 ? o.repeat : null;
+      if (!date && !time && !period && !repeat) return null;
+      return { date: date, time: time, period: period, repeat: repeat };
+    }
+  );
+}
+
+// AA 收款：垫付总额与参与人名单
+function guideAAAIExtract(text) {
+  var names = (mockData.contacts || []).map(function (c) { return c.name; }).join('、');
+  return guideAISlots(
+    text,
+    '你是银行 App 的信息抽取器。用户在发起 AA 收款，需要「垫付总金额」和「除自己之外要收款的参与人名单」。' +
+    '通讯录联系人只有：' + names + '。请只从通讯录里取名（没有就不要编）。' +
+    '只输出 JSON：{"total":数字或null,"names":["姓名",…]}。',
+    function (o) {
+      if (!o) return null;
+      var total = Number(o.total);
+      var list = Array.isArray(o.names) ? o.names.filter(function (n) { return typeof n === 'string' && n; }) : [];
+      if (!(total > 0)) total = null;
+      if (total === null && !list.length) return null;
+      return { total: total, names: list };
+    }
+  );
+}
+
+// AA 收款：回答「还有其他参与人吗？」——判断是否结束 + 补充名单
+function guideAAAIHasMore(text) {
+  var names = (mockData.contacts || []).map(function (c) { return c.name; }).join('、');
+  return guideAISlots(
+    text,
+    '你是银行 App 的意图解析器。系统在问「还有其他参与人吗？」，用户可能回答「没有了」「就这些人」「再加个李四」。' +
+    '通讯录联系人只有：' + names + '。只输出 JSON：{"more":true|false,"names":["补充的姓名",…]}。' +
+    '表示结束时 more 返回 false；无法判断时 more 返回 null。',
+    function (o) {
+      if (!o) return null;
+      var list = Array.isArray(o.names) ? o.names.filter(function (n) { return typeof n === 'string' && n; }) : [];
+      var more = (o.more === true) ? true : (o.more === false ? false : null);
+      if (more === null && !list.length) return null;
+      return { more: more, names: list };
+    }
+  );
+}
+
+// 信用卡申请：卡种与主要用途
+function guideCardApplyAIType(text) {
+  return guideAISlots(
+    text,
+    '你是银行 App 的信用卡申请解析器。卡种只能是 白金信用卡/标准金卡/旅行信用卡/青年卡；' +
+    '用途只能是 日常消费/出行差旅/教育培训/大额购物/其他。用户怎么说都要映射到这两个清单里。' +
+    '只输出 JSON：{"cardType":"或空","purpose":"或空"}。',
+    function (o) {
+      if (!o) return null;
+      var t = CARD_APPLY_TYPES.filter(function (n) { return o.cardType && String(o.cardType).indexOf(n) !== -1; })[0] || null;
+      var p = CARD_APPLY_PURPOSES.filter(function (n) { return o.purpose && String(o.purpose).indexOf(n) !== -1; })[0] || null;
+      if (!t && !p) return null;
+      return { cardType: t, purpose: p };
+    }
+  );
+}
+
+// 额度调整：调整原因 + 目标额度
+function guideCardLimitAIReason(text) {
+  return guideAISlots(
+    text,
+    '你是银行 App 的意图解析器。用户在申请信用卡额度调整，需要识别「调整原因」，' +
+    '只能从 消费需求增加/收入提升/信用记录良好/主动降低额度/长期不用/风险控制/其他 里选一个。' +
+    '也请抽取目标额度（中文数字转阿拉伯数字）。只输出 JSON：{"reason":"或空","limit":数字或null}。',
+    function (o) {
+      if (!o) return null;
+      var r = CARD_LIMIT_REASONS.indexOf(o.reason) !== -1 ? o.reason : null;
+      var l = Number(o.limit);
+      if (!(l > 0)) l = null;
+      if (!r && l === null) return null;
+      return { reason: r, limit: l };
+    }
+  );
+}
+
+// 理财申购：产品名与金额（支持简称、别称、口语说法）
+function guideWealthAIProduct(text) {
+  var list = (mockData.products || []).map(function (p) { return p.name; }).join('、');
+  return guideAISlots(
+    text,
+    '你是银行 App 的理财申购解析器。在售产品只有：' + list + '。' +
+    '用户可能用简称或口语描述，请匹配到清单里的产品名；也请抽取申购金额（中文数字转阿拉伯数字）。' +
+    '只输出 JSON：{"product":"或空","amount":数字或null}。',
+    function (o) {
+      if (!o) return null;
+      var name = o.product ? String(o.product) : '';
+      var hit = (mockData.products || []).filter(function (p) { return name && (name.indexOf(p.name) !== -1 || p.name.indexOf(name) !== -1); })[0] || null;
+      var amt = Number(o.amount);
+      if (!(amt > 0)) amt = null;
+      if (!hit && amt === null) return null;
+      return { product: hit, amount: amt };
+    }
+  );
 }
 
 // AI 理解「允许 / 禁止」：返回 'allow' | 'block' | null
