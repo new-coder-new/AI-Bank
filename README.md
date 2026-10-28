@@ -1,4 +1,4 @@
-﻿# 智能金融助手 · 项目说明
+# 智能金融助手 · 项目说明
 
 > 文档版本：v1.1（2026-10-25）  
 > 项目类型：AI Banking Agent 演示原型  
@@ -1038,10 +1038,10 @@ AI：确认挂失尾号 8888 的白金信用卡。
   |---|---|---|
   | 转账 | 姓名转账 / 手机号转账 / 定时转账 / AA收款 | 对话式姓名转账 / 手机号转账 / 定时转账（+重复方式）/ AA 收款 |
   | 账单 | 消费统计 / 账单报告 / 异常交易 | `showBillAnalysis` / `showFinanceReport` / `showAbnormalAlert` |
-  | 卡片 | 卡片申请 / 我的卡片 / 额度调整 / 交易限制 | `guideStartCardApply` / `showCardMyCards` / `guideStartCardLimitAdjust` / `guideStartTxnLimit` |
+  | 卡片 | 卡片申请 / 额度调整 / 交易限制 / 卡片挂失 | `showCardApplyForm` / `cardLimitDetailCard` / `showTxnLimitSettings`（含「查看限制规则」）/ `showCardFreezePanel` |
   | 理财 | 产品申购 / 风险评估 / 持仓管理 | `guideStartWealthPurchase` / `startRiskAssessment` / `guideStartHoldings` |
-  | 生活 | 订阅管理 / 鲜花订购 / 生日鲜花 | `guideStartSubManage`（内含添加/取消订阅入口）/ `guideStartFlowerOrder` / `showBirthdayReminder` |
-  | 更多 | 银行卡转账 / 卡片挂失 / 转账记录 / 批量转账 / 预算管理 / 账单分期 / 复核审批 / 安全中心 | 银行卡转账与卡片挂失为对话/单模式入口；其余为原功能文字入口 |
+  | 生活 | 添加订阅 / 订阅管理 / 取消订阅 / 鲜花订购 / 生日鲜花 | `guideStartSubAdd` / `guideStartSubManage` / `guideStartSubCancel` / `guideStartFlowerOrder` / `showBirthdayReminder` |
+  | 更多 | 银行卡转账 / 转账记录 / 批量转账 / 预算管理 / 账单分期 / 复核审批 / 安全中心 | 银行卡转账为单模式表单；其余为原功能文字入口 |
 
   转账表单按入口收敛：**智能转账** 只含「按姓名 / 手机号 / 银行卡号」三种收款人识别方式；**定时转账** 与 **AA 收款** 各自独立成页（`showTransferForm('timed' | 'aa')`），不再以页签形式塞进同一张表单。
 
@@ -1063,7 +1063,7 @@ AI：确认挂失尾号 8888 的白金信用卡。
 ```
 
 - **一级菜单**：五个服务按钮。`账户概览`入口（打开原财务驾驶舱）**暂时屏蔽**，由 `js/guide.js` 顶部的 `GUIDE_SHOW_OVERVIEW = false` 控制，需要恢复时改成 `true` 即可（`guideOpenOverview()` 函数保留）。
-- **二级菜单**：点「转账」→「您好，请问你需要姓名转账、手机号转账、定时转账，还是AA收款？」＋四个按钮；其余服务同理（账单分析 → 消费统计/账单报告/异常交易；卡片管理 → 卡片申请/我的卡片/额度调整/交易限制/卡片挂失；理财 → 产品申购/风险评估/持仓管理；生活订购 → 订阅管理/鲜花订购/生日鲜花）。菜单保持每组不超过 5 项，低频入口收进「更多」。
+- **二级菜单**：点「转账」→「您好，请问你需要姓名转账、手机号转账、定时转账，还是AA收款？」＋四个按钮；其余服务同理（账单分析 → 消费统计/账单报告/异常交易；卡片管理 → 卡片申请/额度调整/交易限制/卡片挂失；理财 → 产品/风险评估/持仓；生活订购 → 订阅管理/生日鲜花）。
 - **模块内上下文**：选定子项后 `currentModule` 记录当前模块，后续直接输入子功能名即可再次进入（如「定时转账」）；输入「返回 / 菜单」回到一级菜单；「新对话」重置上下文并重新显示起始菜单。
 - **意图识别（先精确、再模糊、最后 AI 兜底）**：用户不一定照着按钮说话，`guideHandleText` 按四步识别：
   1. **精确匹配**：整词等于服务名/别名/子功能名（`转账`、`账单分析`、`产品申购`）。

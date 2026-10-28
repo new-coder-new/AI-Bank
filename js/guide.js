@@ -66,7 +66,9 @@ var GUIDE_SERVICES = [
     aliases: ['生活', '生活服务'],
     prompt: '生活订购包含这些服务，请选择：',
     subs: [
+      { key: 'subAdd', label: '添加订阅', aliases: ['添加新订阅'], run: function () { guideStartSubAdd(); } },
       { key: 'subscribe', label: '订阅管理', aliases: ['我的订阅'], run: function () { guideStartSubManage(); } },
+      { key: 'subCancel', label: '取消订阅', aliases: ['退订'], run: function () { guideStartSubCancel(); } },
       { key: 'flower', label: '鲜花订购', aliases: ['订花', '买花'], run: function () { guideStartFlowerOrder(); } },
       { key: 'birthday', label: '生日鲜花', run: function () { showBirthdayReminder(); } }
     ]
@@ -313,16 +315,6 @@ function guideHandleText(text) {
   // 「你能做什么」类问题直接给服务菜单，不消耗模型额度
   if (/^(你能做什么|你能干啥|你会什么|你有什么功能|可以做什么|有哪些功能|有什么服务)$/.test(t)) {
     renderServiceWelcome();
-    return true;
-  }
-
-  // 订阅子操作：菜单里已合并到「订阅管理」，直接说出来仍然直达
-  if (/(添加新订阅|添加订阅|开通订阅|新增订阅)/.test(t)) {
-    guideStartSubAdd();
-    return true;
-  }
-  if (/(取消订阅|退订|终止订阅)/.test(t)) {
-    guideStartSubCancel();
     return true;
   }
 
