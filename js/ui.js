@@ -63,7 +63,9 @@ var FUNC_GROUPS = [
   },
   {
     title: '生活', items: [
+      { key: 'subAdd', label: '添加订阅', icon: 'bell' },
       { key: 'subscribe', label: '订阅管理', icon: 'bell' },
+      { key: 'subCancel', label: '取消订阅', icon: 'alert' },
       { key: 'birthday', label: '生日鲜花', icon: 'gift' }
     ]
   }

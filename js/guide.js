@@ -1,4 +1,4 @@
-// ==========================================================================
+﻿// ==========================================================================
 //  服务向导：起始欢迎语 + 五类服务二级菜单 + 模块内上下文
 //  交互约定：
 //   1. 对话起始由 AI 主动列出五类服务，并给出可点击按钮；
@@ -66,7 +66,9 @@ var GUIDE_SERVICES = [
     aliases: ['生活', '生活服务'],
     prompt: '生活订购包含这些服务，请选择：',
     subs: [
-      { key: 'subscribe', label: '订阅管理', run: function () { showSubscribeList(); } },
+      { key: 'subAdd', label: '添加订阅', aliases: ['添加新订阅'], run: function () { guideStartSubAdd(); } },
+      { key: 'subscribe', label: '订阅管理', aliases: ['我的订阅'], run: function () { guideStartSubManage(); } },
+      { key: 'subCancel', label: '取消订阅', aliases: ['退订'], run: function () { guideStartSubCancel(); } },
       { key: 'birthday', label: '生日鲜花', run: function () { showBirthdayReminder(); } }
     ]
   }
@@ -272,6 +274,12 @@ function guideHandleText(text) {
     }
     return guideHoldingStep(t);
   }
+
+  // 订阅：添加 / 管理自动续费 / 取消 进行中
+  if (GUIDE_SUB) {
+    return guideSubSession(t);
+  }
+
   // 交易限制设置进行中
   if (GUIDE_TXN_LIMIT) {
     if (/^(取消|不设了|算了|退出|返回|菜单)$/.test(t)) {
@@ -402,7 +410,9 @@ var GUIDE_SUB_KEYWORDS = {
     holdings: ['持仓管理', '我的持仓', '持仓', '持有']
   },
   life: {
-    subscribe: ['订阅管理', '订阅', '会员'],
+    subAdd: ['添加订阅', '添加新订阅', '开通订阅', '新增订阅'],
+    subscribe: ['订阅管理', '订阅', '会员', '自动续费'],
+    subCancel: ['取消订阅', '退订', '终止订阅'],
     birthday: ['生日鲜花', '生日', '鲜花']
   }
 };
@@ -3294,4 +3304,498 @@ function guideHoldingCancel() {
   GUIDE_HOLDING = null;
   appendMessage(guideMessage('<p>已取消，持仓保持不变。</p>'));
   scrollToBottom();
+}
+
+// ------------------------------ 订阅：添加订阅 / 订阅管理 / 取消订阅 ------------------------------
+var GUIDE_SUB = null;
+
+var SUB_PRESETS = [
+  { id: 'music', name: '某易云 VIP', prices: { '/月': 25, '/季': 60, '/年': 150 } },
+  { id: 'video', name: '某讯 VIP', prices: { '/月': 30, '/季': 80, '/年': 200 } },
+  { id: 'cloud', name: '某度网盘 VIP', prices: { '/月': 40, '/季': 120, '/年': 300 } }
+];
+var SUB_CYCLE_TEXT = { '/月': '按月扣费', '/季': '按季扣费', '/年': '按年扣费' };
+
+function guideSubEsc(v) {
+  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
+}
+
+function guideSubActive() {
+  if (!Array.isArray(mockData.subscriptions)) mockData.subscriptions = [];
+  return mockData.subscriptions;
+}
+
+function guideSubCycleText(cycle) {
+  return SUB_CYCLE_TEXT[cycle] || cycle || '';
+}
+
+function guideSubHistoryList() {
+  var u = mockData.userProfile || (mockData.userProfile = {});
+  if (!Array.isArray(u.subscriptionHistory)) u.subscriptionHistory = [];
+  return u.subscriptionHistory;
+}
+
+// 从一句话里识别订阅服务（预设服务 + 现有订阅名）
+function guideSubFindService(text) {
+  var t = String(text || '');
+  if (!t) return null;
+  // ① 预设服务全名
+  var preset = SUB_PRESETS.filter(function (p) {
+    var key = p.name.replace(' VIP', '').replace('VIP', '');
+    return t.indexOf(key) !== -1;
+  })[0];
+  if (preset) return { kind: 'preset', preset: preset, name: preset.name };
+
+  // ② 现有订阅全名（优先于关键词，避免「某视频平台VIP」被当成「某讯 VIP」）
+  var active = guideSubActive().filter(function (s) { return t.indexOf(s.name) !== -1; })[0];
+  if (active) return { kind: 'active', sub: active, name: active.name };
+  var fuzzy = guideSubActive().filter(function (s) {
+    var core = String(s.name || '').replace(/VIP|会员/g, '');
+    return core && t.indexOf(core) !== -1;
+  })[0];
+  if (fuzzy) return { kind: 'active', sub: fuzzy, name: fuzzy.name };
+
+  // ③ 预设服务关键词（易云 / 某讯 / 网盘…）
+  if (/易云|网易云|音乐/.test(t)) return { kind: 'preset', preset: SUB_PRESETS[0], name: SUB_PRESETS[0].name };
+  if (/某讯|腾讯|视频/.test(t)) return { kind: 'preset', preset: SUB_PRESETS[1], name: SUB_PRESETS[1].name };
+  if (/某度|百度|网盘/.test(t)) return { kind: 'preset', preset: SUB_PRESETS[2], name: SUB_PRESETS[2].name };
+  return null;
+}
+
+function guideSubParseCycle(text) {
+  var t = String(text || '');
+  if (/按年|每年|年卡|包年|一年|\/年/.test(t)) return '/年';
+  if (/按季|每季|季卡|包季|三个月|季度|\/季/.test(t)) return '/季';
+  if (/按月|每月|月卡|包月|一个月|\/月/.test(t)) return '/月';
+  return null;
+}
+
+// 「是 / 否」→ 开启 / 关闭；本地认不出再问模型
+function guideSubYesNo(text) {
+  var t = String(text || '').trim().replace(/[。.!！?？,，\s]/g, '');
+  if (!t) return null;
+  if (/(不开启|不要|不用|不需要|关闭|否|不|别)/.test(t)) return false;
+  if (/(开启|打开|需要|要|是|好|可以|续费)/.test(t)) return true;
+  return null;
+}
+
+async function guideSubAIFlag(text) {
+  var got = await guideAISlots(
+    text,
+    '你是银行 App 的选项解析器。系统在问「是否开启自动续费」，用户可能回答是/否/开启/关闭/算了。' +
+    '只输出 JSON：{"autoRenew": true|false|null}。同意→true，不同意→false，判断不出→null。',
+    function (o) {
+      if (!o || o.autoRenew === null || o.autoRenew === undefined) return null;
+      return { autoRenew: o.autoRenew === true };
+    }
+  );
+  return got ? got.autoRenew : null;
+}
+
+// 一句话里同时抽服务与周期（本地失败时交给模型）
+async function guideSubAIExtract(text) {
+  return guideAISlots(
+    text,
+    '你是银行 App 的订阅解析器。可订阅服务只有：某易云 VIP、某讯 VIP、某度网盘 VIP。' +
+    '扣费周期只有：按月扣费(/月)、按季扣费(/季)、按年扣费(/年)。' +
+    '只输出 JSON：{"service":"服务名或空","cycle":"/月|/季|/年或空"}。',
+    function (o) {
+      if (!o) return null;
+      var svc = o.service ? String(o.service) : '';
+      var preset = SUB_PRESETS.filter(function (p) {
+        var key = p.name.replace(' VIP', '');
+        return svc && (svc.indexOf(key) !== -1 || key.indexOf(svc.replace(/VIP/i, '').trim()) !== -1);
+      })[0] || null;
+      var cycle = ['/月', '/季', '/年'].indexOf(o.cycle) !== -1 ? o.cycle : null;
+      if (!preset && !cycle) return null;
+      return { preset: preset, cycle: cycle };
+    }
+  );
+}
+
+function guideSubPresetRows() {
+  return SUB_PRESETS.map(function (p) {
+    return '<div class="report-row"><span>' + guideSubEsc(p.name) + '</span>' +
+      '<b>月 ¥' + p.prices['/月'] + ' / 季 ¥' + p.prices['/季'] + ' / 年 ¥' + p.prices['/年'] + '</b></div>';
+  }).join('');
+}
+
+// —— 添加订阅 ——
+function guideStartSubAdd() {
+  GUIDE_SUB = { mode: 'add', stage: 'slots', preset: null, cycle: null, autoRenew: null };
+  currentModule = 'life';
+  appendMessage(guideMessage(
+    '<p>可订阅的服务如下：</p>' +
+    '<div class="report-panel"><div class="report-panel-title">可订阅服务</div>' + guideSubPresetRows() + '</div>' +
+    '<p>请选择订阅服务与扣费周期。</p>' +
+    '<p class="guide-tip">扣费周期：按月扣费 / 按季扣费 / 按年扣费</p>'
+  ));
+  scrollToBottom();
+}
+
+async function guideSubAddStep(text) {
+  var t = String(text || '').trim();
+  var s = GUIDE_SUB;
+  var svc = guideSubFindService(t);
+  var cycle = guideSubParseCycle(t);
+
+  if (!svc || !cycle) {
+    var ai = await guideSubAIExtract(t);
+    if (ai) {
+      if (!svc && ai.preset) svc = { kind: 'preset', preset: ai.preset, name: ai.preset.name };
+      if (!cycle && ai.cycle) cycle = ai.cycle;
+    }
+  }
+
+  if (svc && svc.kind === 'preset') s.preset = svc.preset;
+  if (svc && svc.kind === 'active') {
+    appendMessage(guideMessage('<p>「' + guideSubEsc(svc.name) + '」已在订阅列表中，无需重复添加。</p>'));
+    scrollToBottom();
+    return true;
+  }
+  if (cycle) s.cycle = cycle;
+
+  if (s.preset && s.cycle) {
+    s.stage = 'autoRenew';
+    appendMessage(guideMessage('<p>是否开启自动续费？</p><div class="guide-chips">' +
+      '<button class="guide-chip" onclick="guideSubAddRenewChoice(true)">开启自动续费</button>' +
+      '<button class="guide-chip" onclick="guideSubAddRenewChoice(false)">关闭自动续费</button>' +
+      '</div>'));
+    scrollToBottom();
+    return true;
+  }
+  if (s.preset) {
+    appendMessage(guideMessage('<p>请选择扣费周期。</p><p class="guide-tip">按月扣费 / 按季扣费 / 按年扣费</p>'));
+    scrollToBottom();
+    return true;
+  }
+  if (s.cycle) {
+    appendMessage(guideMessage('<p>请选择需要添加的订阅服务。</p>' +
+      '<div class="report-panel"><div class="report-panel-title">可订阅服务</div>' + guideSubPresetRows() + '</div>'));
+    scrollToBottom();
+    return true;
+  }
+  appendMessage(guideMessage('<p>请选择订阅服务与扣费周期。</p>' +
+    '<div class="report-panel"><div class="report-panel-title">可订阅服务</div>' + guideSubPresetRows() + '</div>'));
+  scrollToBottom();
+  return true;
+}
+
+function guideSubAddRenewChoice(yes) {
+  var s = GUIDE_SUB;
+  if (!s || s.mode !== 'add') return;
+  s.autoRenew = yes;
+  guideSubAddConfirm();
+}
+
+function guideSubAddConfirm() {
+  var s = GUIDE_SUB;
+  if (!s || !s.preset || !s.cycle) return;
+  s.stage = 'confirm';
+  var price = s.preset.prices[s.cycle];
+  appendMessage(guideMessage(
+    '<div class="data-card"><div class="data-card-title">确认新增订阅</div>' +
+    '<div class="data-row"><span class="data-label">订阅服务</span><span class="data-value">' + guideSubEsc(s.preset.name) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">扣费周期</span><span class="data-value">' + guideSubCycleText(s.cycle) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">自动续费</span><span class="data-value">' + (s.autoRenew ? '开启' : '关闭') + '</span></div>' +
+    '<div class="data-row"><span class="data-label">首次扣费</span><span class="data-value expense">¥ ' + price.toFixed(2) + '</span></div>' +
+    '</div>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideSubAddSubmit()">确认添加</button>' +
+    '<button class="guide-chip" onclick="guideSubCancelOp()">取消</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+async function guideSubAddSubmit() {
+  var s = GUIDE_SUB;
+  if (!s || s.stage !== 'confirm') return;
+  var preset = s.preset;
+  var cycle = s.cycle;
+  var autoRenew = s.autoRenew === true;
+  var price = preset.prices[cycle];
+
+  // 重复检测：已有有效订阅时提示，不再重复添加
+  var dup = guideSubActive().filter(function (x) { return x.name === preset.name; })[0];
+  if (dup) {
+    appendMessage(guideMessage('<p>「<b>' + guideSubEsc(preset.name) + '</b>」已有有效订阅（' +
+      guideSubCycleText(dup.cycle) + '，自动续费' + (dup.autoRenew !== false ? '开启' : '关闭') + '），无需重复添加。</p>'));
+    scrollToBottom();
+    GUIDE_SUB = null;
+    return;
+  }
+
+  GUIDE_SUB = null;
+  if (typeof verifyAmountRisk === 'function') {
+    var risk = await verifyAmountRisk(price, '订阅首次扣费');
+    if (risk && risk.pendingReview) return;
+    if (!risk || !risk.ok) {
+      appendMessage(guideMessage('<p>已取消订阅，账户未发生扣款。</p>'));
+      scrollToBottom();
+      return;
+    }
+  }
+  var cycleText = cycle === '/月' ? '包月' : cycle === '/季' ? '包季' : '包年';
+  var okTx = (typeof addTransaction === 'function')
+    ? addTransaction('expense', price, '订阅扣费-' + preset.name + '(' + cycleText + ')', '订阅扣费', true)
+    : true;
+  if (okTx === false) {
+    appendMessage(guideMessage('<p>❌ 订阅未开通：可用余额不足，首次扣费失败。</p>'));
+    scrollToBottom();
+    return;
+  }
+
+  var nextDate = new Date();
+  if (cycle === '/月') nextDate.setMonth(nextDate.getMonth() + 1);
+  else if (cycle === '/季') nextDate.setMonth(nextDate.getMonth() + 3);
+  else nextDate.setFullYear(nextDate.getFullYear() + 1);
+  var nextDateStr = nextDate.toISOString().split('T')[0];
+  var ids = guideSubActive().map(function (x) { return Number(x.id) || 0; });
+  ids.push(0);
+  var newId = Math.max.apply(null, ids) + 1;
+
+  guideSubActive().push({
+    id: newId,
+    icon: '',
+    name: preset.name,
+    detail: '连续' + cycleText + ' · ' + (autoRenew ? '自动续费' : '到期取消') + ' · 下次扣款' + nextDateStr,
+    price: price,
+    cycle: cycle,
+    autoRenew: autoRenew
+  });
+  saveUserData();
+
+  appendMessage(guideMessage(
+    '<p>' + guideSubEsc(preset.name) + ' 添加成功，扣费周期' + guideSubCycleText(cycle) + '，自动续费' + (autoRenew ? '已开启' : '已关闭') + '。</p>' +
+    '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅管理</button></div>' +
+    '<p class="guide-tip">本系统为模拟演示，不等同第三方平台真实会员状态。</p>'
+  ));
+  scrollToBottom();
+}
+
+// —— 订阅管理（自动续费）——
+function guideStartSubManage() {
+  GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null };
+  currentModule = 'life';
+  var list = guideSubActive();
+  var history = guideSubHistoryList();
+  if (!list.length && !history.length) {
+    appendMessage(guideMessage('<p>目前没有订阅记录。</p>' +
+      '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubAdd()">添加新订阅</button></div>'));
+    scrollToBottom();
+    return;
+  }
+  var rows = list.length ? list.map(function (sub) {
+    return '<div class="report-row"><span>' + guideSubEsc(sub.name) + '・' + guideSubCycleText(sub.cycle) + '</span>' +
+      '<b>自动续费：' + (sub.autoRenew !== false ? '开启' : '关闭') + '</b></div>';
+  }).join('') : '<div class="report-empty">暂无有效订阅</div>';
+  var historyHtml = history.length ? history.map(function (h) {
+    return '<div class="report-row"><span>' + guideSubEsc(h.name) + '・' + guideSubCycleText(h.cycle) + '・自动续费：' + (h.autoRenew ? '开启' : '关闭') + '</span>' +
+      '<b>已取消・' + guideSubEsc(h.cancelledAt) + '</b></div>';
+  }).join('') : '';
+  appendMessage(guideMessage(
+    '<p>当前有效订阅如下：</p>' +
+    '<div class="report-panel"><div class="report-panel-title">有效订阅</div>' + rows + '</div>' +
+    (historyHtml ? '<div class="report-panel" style="margin-top:10px;"><div class="report-panel-title">历史记录</div>' + historyHtml + '</div>' : '') +
+    (list.length ? '<p>要管理哪一项的自动续费？例如「关闭某讯 VIP 的自动续费」。</p>' :
+      '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubAdd()">添加新订阅</button></div>') +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideStartSubAdd()">添加新订阅</button>' +
+    '<button class="guide-chip" onclick="guideStartSubCancel()">取消订阅</button>' +
+    '</div>' +
+    '<p class="guide-tip">本系统为模拟演示，不等同第三方平台真实会员状态。</p>'
+  ));
+  scrollToBottom();
+}
+
+async function guideSubManageStep(text) {
+  var t = String(text || '').trim();
+  var s = GUIDE_SUB;
+  var svc = guideSubFindService(t);
+  var want = /(关闭|取消续费|关掉|停止|不要)/.test(t) ? false : (/(开启|打开|开一下|恢复|要)/.test(t) ? true : null);
+
+  if (!svc) {
+    var ai = await guideSubAIExtract(t);
+    if (ai && ai.preset) svc = { kind: 'preset', preset: ai.preset, name: ai.preset.name };
+  }
+
+  var target = svc && svc.kind === 'active' ? svc.sub : null;
+  if (!target && svc) target = guideSubActive().filter(function (x) { return x.name === svc.name; })[0] || null;
+  if (target) s.target = target;
+  if (want !== null) s.newAutoRenew = want;
+
+  if (!s.target) {
+    var hint = svc ? ('没有找到「' + guideSubEsc(svc.name) + '」的有效订阅。') : '';
+    var names = guideSubActive().map(function (x) { return x.name; }).join('、') || '暂无订阅';
+    appendMessage(guideMessage('<p>' + hint + '</p><p>请告诉我要管理哪一项订阅的自动续费。</p>' +
+      '<p class="guide-tip">当前有效订阅：' + guideSubEsc(names) + '</p>'));
+    scrollToBottom();
+    return true;
+  }
+  if (s.newAutoRenew === null) {
+    appendMessage(guideMessage('<p>是开启还是关闭「' + guideSubEsc(s.target.name) + '」的自动续费？</p>' +
+      '<div class="guide-chips">' +
+      '<button class="guide-chip" onclick="guideSubManageConfirm(true)">开启自动续费</button>' +
+      '<button class="guide-chip" onclick="guideSubManageConfirm(false)">关闭自动续费</button>' +
+      '</div>'));
+    scrollToBottom();
+    return true;
+  }
+  guideSubManageConfirm(s.newAutoRenew);
+  return true;
+}
+
+function guideSubManageConfirm(want) {
+  var s = GUIDE_SUB;
+  if (!s || !s.target) return;
+  s.newAutoRenew = want;
+  s.stage = 'confirm';
+  var cur = s.target.autoRenew !== false;
+  appendMessage(guideMessage(
+    '<div class="data-card"><div class="data-card-title">确认修改自动续费</div>' +
+    '<div class="data-row"><span class="data-label">订阅服务</span><span class="data-value">' + guideSubEsc(s.target.name) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">当前自动续费</span><span class="data-value">' + (cur ? '开启' : '关闭') + '</span></div>' +
+    '<div class="data-row"><span class="data-label">修改后自动续费</span><span class="data-value">' + (want ? '开启' : '关闭') + '</span></div>' +
+    '</div>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideSubManageSubmit()">确认修改</button>' +
+    '<button class="guide-chip" onclick="guideSubCancelOp()">取消</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
+function guideSubManageSubmit() {
+  var s = GUIDE_SUB;
+  if (!s || s.stage !== 'confirm' || !s.target) return;
+  var sub = guideSubActive().filter(function (x) { return x.id === s.target.id; })[0] || s.target;
+  sub.autoRenew = s.newAutoRenew === true;
+  sub.detail = String(sub.detail || '').replace(/自动续费|到期取消/, sub.autoRenew ? '自动续费' : '到期取消');
+  saveUserData();
+  var msg = sub.name + ' 的自动续费' + (sub.autoRenew ? '已开启' : '已关闭') + '。';
+  GUIDE_SUB = null;
+  appendMessage(guideMessage('<p>' + guideSubEsc(msg) + '</p>' +
+    (sub.autoRenew ? '' : '<p class="guide-tip">关闭自动续费后不再扣费，权益可用到本付费周期结束。</p>')));
+  scrollToBottom();
+}
+
+// —— 取消订阅 ——
+function guideStartSubCancel() {
+  GUIDE_SUB = { mode: 'cancel', stage: 'slots', target: null };
+  currentModule = 'life';
+  var list = guideSubActive();
+  if (!list.length) {
+    appendMessage(guideMessage('<p>当前没有可取消的有效订阅。</p>' +
+      '<div class="guide-chips">' +
+      '<button class="guide-chip" onclick="guideStartSubManage()">查看总订阅情况</button>' +
+      '<button class="guide-chip" onclick="guideStartSubAdd()">添加新订阅</button>' +
+      '</div>'));
+    scrollToBottom();
+    return;
+  }
+  var rows = list.map(function (sub) {
+    return '<div class="report-row"><span>' + guideSubEsc(sub.name) + '</span><b>' +
+      guideSubCycleText(sub.cycle) + '・' + (sub.autoRenew !== false ? '自动续费开启' : '自动续费关闭') + '</b></div>';
+  }).join('');
+  appendMessage(guideMessage('<p>请选择你想要取消的订阅项目。</p>' +
+    '<div class="report-panel"><div class="report-panel-title">有效订阅</div>' + rows + '</div>'));
+  scrollToBottom();
+}
+
+async function guideSubCancelStep(text) {
+  var t = String(text || '').trim();
+  var s = GUIDE_SUB;
+  var svc = guideSubFindService(t);
+  if (!svc) {
+    var ai = await guideSubAIExtract(t);
+    if (ai && ai.preset) svc = { kind: 'preset', preset: ai.preset, name: ai.preset.name };
+  }
+  var target = svc && svc.kind === 'active' ? svc.sub : (svc ? guideSubActive().filter(function (x) { return x.name === svc.name; })[0] : null);
+  if (!target) {
+    var hint2 = svc ? ('没有找到「' + guideSubEsc(svc.name) + '」的有效订阅。') : '';
+    var names2 = guideSubActive().map(function (x) { return x.name; }).join('、') || '暂无订阅';
+    appendMessage(guideMessage('<p>' + hint2 + '</p><p>请选择你想要取消的订阅项目。</p>' +
+      '<p class="guide-tip">当前有效订阅：' + guideSubEsc(names2) + '</p>'));
+    scrollToBottom();
+    return true;
+  }
+  s.target = target;
+  s.stage = 'confirm';
+  appendMessage(guideMessage(
+    '<div class="data-card"><div class="data-card-title">确认取消订阅</div>' +
+    '<div class="data-row"><span class="data-label">订阅服务</span><span class="data-value">' + guideSubEsc(target.name) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">当前扣费周期</span><span class="data-value">' + guideSubCycleText(target.cycle) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">自动续费状态</span><span class="data-value">' + (target.autoRenew !== false ? '开启' : '关闭') + '</span></div>' +
+    '<div class="data-row"><span class="data-label">操作</span><span class="data-value">取消订阅</span></div>' +
+    '</div>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideSubCancelSubmit()">确认取消</button>' +
+    '<button class="guide-chip" onclick="guideSubCancelOp()">返回</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+  return true;
+}
+
+function guideSubCancelSubmit() {
+  var s = GUIDE_SUB;
+  if (!s || s.stage !== 'confirm' || !s.target) return;
+  var target = s.target;
+  mockData.subscriptions = guideSubActive().filter(function (x) { return x.id !== target.id; });
+  guideSubHistoryList().unshift({
+    name: target.name,
+    cycle: target.cycle,
+    autoRenew: target.autoRenew !== false,
+    cancelledAt: new Date().toLocaleString('zh-CN')
+  });
+  saveUserData();
+  GUIDE_SUB = null;
+  appendMessage(guideMessage('<p>' + guideSubEsc(target.name) + ' 已完成取消操作。</p>' +
+    '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅总览</button></div>'));
+  scrollToBottom();
+}
+
+function guideSubCancelOp() {
+  GUIDE_SUB = null;
+  appendMessage(guideMessage('<p>未执行取消，订阅状态保持原样。</p>'));
+  scrollToBottom();
+}
+
+// 订阅会话统一入口（异步：自动续费的是/否可能要问模型）
+async function guideSubSession(t) {
+  var s = GUIDE_SUB;
+  if (!s) return true;
+  var plain = String(t || '').replace(/[吧呢啊呀。.!！?？\s]/g, '');
+
+  // 确认卡阶段：「返回 / 取消」表示放弃本次操作，不算回菜单
+  if (s.stage === 'confirm') {
+    if (/^(取消|不|算了|返回|不要|放弃)$/.test(plain)) { guideSubCancelOp(); return true; }
+    if (/^(确认|确定|确认添加|确认修改|确认取消|是|好|好的|行|可以)$/.test(plain)) {
+      if (s.mode === 'add') return guideSubAddSubmit();
+      if (s.mode === 'manage') { guideSubManageSubmit(); return true; }
+      guideSubCancelSubmit();
+      return true;
+    }
+  }
+
+  if (/^(返回|菜单|返回菜单|退出)$/.test(plain)) {
+    GUIDE_SUB = null;
+    guideBackToMenu();
+    return true;
+  }
+
+  // 添加订阅：问「是否开启自动续费」
+  if (s.mode === 'add' && s.stage === 'autoRenew') {
+    var yn = guideSubYesNo(t);
+    if (yn === null) yn = await guideSubAIFlag(t);
+    if (yn !== null) { guideSubAddRenewChoice(yn); return true; }
+    appendMessage(guideMessage('<p>是否开启自动续费？请回复「开启」或「关闭」。</p>'));
+    scrollToBottom();
+    return true;
+  }
+
+  if (s.mode === 'add') return guideSubAddStep(t);
+  if (s.mode === 'manage') return guideSubManageStep(t);
+  return guideSubCancelStep(t);
 }

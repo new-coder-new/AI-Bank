@@ -709,7 +709,9 @@ function quickAction(type) {
     case 'bill': showBillAnalysis(); break;
     case 'wealth': showProductList(); break;
     case 'card': showCardLimit(); break;
-    case 'subscribe': showSubscribeList(); break;
+    case 'subscribe': guideStartSubManage(); break;
+    case 'subAdd': guideStartSubAdd(); break;
+    case 'subCancel': guideStartSubCancel(); break;
     case 'userinfo': showUserInfo(); break;
     case 'risk': startRiskAssessment(); break;
     case 'abnormal': showAbnormalAlert(); break;
