@@ -121,22 +121,29 @@ function cardShortLabel(type) {
 }
 
 // 我的卡片：展示已持有卡片（申请通过后会增加）
-function showCardMyCards() {
-  var list = cardServiceCards();
+// 卡片列表统一渲染（我的卡片 / 卡片挂失等复用同一套样式）
+function cardServiceListHtml(opts) {
+  var o = opts || {};
+  var list = Array.isArray(o.list) ? o.list : cardServiceCards();
   var totalLimit = list.reduce(function (s, c) { return s + (Number(c.limit) || 0); }, 0);
   var rows = list.map(function (c) {
+    var statusCls = c.status === '已挂失' ? 'bank-status frozen' : 'bank-status approved';
     return '<div class="bank-sched-item">' +
       '<div class="bank-sched-date" style="background:#F5F8FD;color:#09407F;"><b>' + cardShortLabel(c.cardType) + '</b><small>尾号 ' + (c.tail || '****') + '</small></div>' +
       '<div class="bank-sched-main"><b>' + (c.cardType || '信用卡') + '</b><small>' + (c.issuedAt || '') + ' · ' + (c.purpose || '') + '</small></div>' +
-      '<div class="bank-sched-side"><span class="bank-status approved">' + (c.status || '已发卡') + '</span><b style="font-size:12px;color:#334155;">¥' + (Number(c.limit) || 0).toLocaleString('zh-CN') + '</b></div>' +
+      '<div class="bank-sched-side"><span class="' + statusCls + '">' + (c.status || '已发卡') + '</span><b style="font-size:12px;color:#334155;">¥' + (Number(c.limit) || 0).toLocaleString('zh-CN') + '</b></div>' +
       '</div>';
   }).join('');
+  return '<div class="bank-page-head"><div><div class="bank-page-title">' + (o.title || '我的卡片') + '</div>' +
+    '<div class="bank-page-sub">共 ' + list.length + ' 张 · 总额度 ¥' + totalLimit.toLocaleString('zh-CN') + '</div></div>' +
+    (o.hideApply ? '' : '<button class="ui-link" onclick="guideStartCardApply()">申请新卡</button>') + '</div>' +
+    '<div class="bank-sched-list">' + (rows || '<div class="bank-sched-empty">暂无信用卡</div>') + '</div>';
+}
+
+function showCardMyCards() {
   appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
-    '<div class="bank-page-head"><div><div class="bank-page-title">我的卡片</div>' +
-    '<div class="bank-page-sub">共 ' + list.length + ' 张 · 总额度 ¥' + totalLimit.toLocaleString('zh-CN') + '</div></div>' +
-    '<button class="ui-link" onclick="guideStartCardApply()">申请新卡</button></div>' +
-    '<div class="bank-sched-list">' + (rows || '<div class="bank-sched-empty">暂无信用卡</div>') + '</div>' +
+    cardServiceListHtml({}) +
     '</div></div></div>');
   scrollToBottom();
 }
