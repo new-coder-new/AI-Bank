@@ -1233,7 +1233,7 @@ async function guideTimedStep(text) {
       return true;
     }
     s.repeat = rep;
-    guideTimedConfirm();
+    guideTransferAskRemark();
     return true;
   }
 
