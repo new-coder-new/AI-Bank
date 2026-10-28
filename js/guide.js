@@ -311,6 +311,13 @@ function guideLockedRun(fn) {
   return true;
 }
 
+// 「我不想订阅某易云了 / 取消某讯会员」→ 直接进取消订阅并带上服务
+function guideIsSubCancelPhrase(t) {
+  var s = String(t || '').trim();
+  if (!s) return false;
+  if (!/(订阅|会员|vip|VIP|续费|某易云|易云|网易云|某讯|腾讯|某度|百度|网盘)/.test(s)) return false;
+  return /(取消|退订|不订阅|不想订阅|不要订阅|不订了|不想要了|不想续费|不要续费|关闭续费|别订了)/.test(s);
+}
 // 「我想要订阅某易云年卡 / 订购某度网盘年卡」→ 直接进添加订阅，并把服务与周期解析出来
 function guideIsSubAddPhrase(t) {
   var s = String(t || '').trim();
@@ -469,6 +476,14 @@ function guideHandleText(text) {
       return true;
     }
     return guideLockedRun(function () { return guideCardLostStep(t); });
+  }
+
+  // 「我不想订阅某易云了」→ 直接进取消订阅并预选服务
+  if (guideIsSubCancelPhrase(t)) {
+    if (typeof guideStartSubCancel === 'function') {
+      guideStartSubCancel();
+      return guideLockedRun(function () { return guideSubCancelStep(t); });
+    }
   }
 
   // 「我想要订阅某易云年卡」→ 直接进添加订阅并预填服务/周期
