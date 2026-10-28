@@ -2725,7 +2725,37 @@ function guideHoldingChoose(mode) {
   scrollToBottom();
 }
 
-function guideHoldingStep(text) {
+// 「全部赎回」类说法：卖/赎/取回/提现/清仓 + 全部/所有/一键/都
+function guideHoldingAllRedeemIntent(text) {
+  var s = String(text || '').replace(/\s/g, '');
+  if (!s) return false;
+  if (!/(卖|赎|取回|提现|清仓|退出)/.test(s)) return false;
+  return /(全部|所有|一键|都|清仓|全卖|全赎|整笔)/.test(s);
+}
+// AI 兜底：本地同义词没命中时，让模型判断是「追加申购 / 指定赎回 / 全部赎回」并抽产品与金额
+async function guideHoldingAIIntent(text) {
+  var loadId = (typeof guideTypingBubble === 'function') ? guideTypingBubble() : null;
+  var obj = null;
+  try {
+    obj = await guideLLMJson(
+      '你是银行 App 的意图解析器。用户在「持仓管理」页操作，可执行的动作只有三种：' +
+      'sub=追加申购、redeem=赎回指定产品、redeem_all=赎回全部持仓。' +
+      '请从用户这句话判断动作，并抽取产品名称与金额（中文数字转阿拉伯数字，例如「五千」=5000）。' +
+      '只输出 JSON：{"action":"sub|redeem|redeem_all|null","product":"产品名或空","amount":数字或null}。' +
+      '判断不出来时 action 返回 null。不要输出其它内容。',
+      text
+    );
+  } catch (e) { obj = null; }
+  var el = loadId ? document.getElementById(loadId) : null;
+  if (el) el.remove();
+  if (!obj || !obj.action) return null;
+  return {
+    action: obj.action,
+    product: obj.product ? String(obj.product).trim() : '',
+    amount: (obj.amount === null || obj.amount === undefined) ? 0 : Number(obj.amount)
+  };
+}
+async function guideHoldingStep(text) {
   var t = String(text || '').trim();
   var plain = t.replace(/[。.!！?？,，、\s]/g, '');
   var s = GUIDE_HOLDING;
@@ -2733,7 +2763,27 @@ function guideHoldingStep(text) {
   // ① 选择动作
   if (s.stage === 'choose') {
     if (/追加|申购|加仓|买入/.test(t)) { guideHoldingChoose('sub'); return true; }
-    if (/赎回|卖出|取出/.test(t)) { guideHoldingChoose('redeem'); return true; }
+    if (guideHoldingAllRedeemIntent(t)) {
+      s.mode = 'redeem';
+      s.all = true;
+      s.stage = 'redeemAllConfirm';
+      guideHoldingRedeemAllConfirm();
+      return true;
+    }
+    if (/赎回|卖出|取出|取回|提现/.test(t)) { guideHoldingChoose('redeem'); return true; }
+
+    // 本地没命中：让模型判断动作
+    var aiChoose = await guideHoldingAIIntent(t);
+    if (aiChoose && aiChoose.action === 'redeem_all') {
+      s.mode = 'redeem';
+      s.all = true;
+      s.stage = 'redeemAllConfirm';
+      guideHoldingRedeemAllConfirm();
+      return true;
+    }
+    if (aiChoose && aiChoose.action === 'redeem') { guideHoldingChoose('redeem'); return true; }
+    if (aiChoose && aiChoose.action === 'sub') { guideHoldingChoose('sub'); return true; }
+
     appendMessage(guideMessage('<p>需要赎回还是追加申购呢？</p>'));
     scrollToBottom();
     return true;
@@ -2748,6 +2798,16 @@ function guideHoldingStep(text) {
     if (s.product && Number(s.amount) > 0) { guideHoldingSubConfirm(); return true; }
     if (s.product) { appendMessage(guideMessage('<p>麻烦告诉我本次追加申购的金额</p>')); scrollToBottom(); return true; }
     if (Number(s.amount) > 0) { appendMessage(guideMessage('<p>麻烦告诉我您要追加申购的产品名称</p>')); scrollToBottom(); return true; }
+
+    var aiSub = await guideHoldingAIIntent(t);
+    if (aiSub && aiSub.action === 'sub') {
+      var subProd = guideHoldingFind(aiSub.product || '');
+      if (subProd) s.product = subProd;
+      if (aiSub.amount > 0) s.amount = aiSub.amount;
+      if (s.product && Number(s.amount) > 0) { guideHoldingSubConfirm(); return true; }
+      if (s.product) { appendMessage(guideMessage('<p>麻烦告诉我本次追加申购的金额</p>')); scrollToBottom(); return true; }
+    }
+
     appendMessage(guideMessage('<p>请告诉我要追加申购的产品名称以及申购金额。</p>'));
     scrollToBottom();
     return true;
@@ -2755,7 +2815,7 @@ function guideHoldingStep(text) {
 
   // ③ 赎回收槽位
   if (s.stage === 'redeemSlots') {
-    if (/赎回全部|全部赎回|一键赎回|全赎|都赎回|全部持仓/.test(t)) {
+    if (guideHoldingAllRedeemIntent(t) || /^(全部|所有|一键|清仓|都卖|全卖)$/.test(plain)) {
       s.all = true;
       guideHoldingRedeemAllConfirm();
       return true;
@@ -2778,6 +2838,26 @@ function guideHoldingStep(text) {
     if (s.product && (s.full || Number(s.amount) > 0)) { guideHoldingRedeemConfirm(); return true; }
     if (s.product) { appendMessage(guideMessage('<p>请问您赎回多少金额？全额赎回可直接回复“全额”</p>')); scrollToBottom(); return true; }
     if (Number(s.amount) > 0) { appendMessage(guideMessage('<p>麻烦告诉我需要赎回的产品名称</p>')); scrollToBottom(); return true; }
+
+    // 本地没命中：让模型判断动作与产品/金额
+    var aiRedeem = await guideHoldingAIIntent(t);
+    if (aiRedeem && aiRedeem.action === 'redeem_all') {
+      s.all = true;
+      guideHoldingRedeemAllConfirm();
+      return true;
+    }
+    if (aiRedeem && aiRedeem.action === 'redeem') {
+      var aiProduct = guideHoldingFind(aiRedeem.product || '') || (mockData.userProfile.holdings || []).filter(function (h) { return h.name === aiRedeem.product; })[0];
+      if (aiProduct) {
+        s.product = aiProduct;
+        if (aiRedeem.amount > 0) s.amount = aiRedeem.amount;
+        if (s.product && (s.full || Number(s.amount) > 0)) { guideHoldingRedeemConfirm(); return true; }
+        appendMessage(guideMessage('<p>请问您赎回多少金额？全额赎回可直接回复“全额”</p>'));
+        scrollToBottom();
+        return true;
+      }
+    }
+
     appendMessage(guideMessage('<p>您可以选择赎回全部持仓，或者指定产品并告知赎回金额（全额赎回可直接回复“全额”）。</p>'));
     scrollToBottom();
     return true;
