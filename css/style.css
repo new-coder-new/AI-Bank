@@ -2686,16 +2686,9 @@ body {
 .report-summary.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .report-chart-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 /* 账单分析：分类占比条 / 近 7 日趋势柱 / 收支比例条 */
-.bill-cat-row { margin-bottom: 10px; }
-.bill-cat-head { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: #64748B; margin-bottom: 5px; }
-.bill-cat-head b { color: var(--bank-text-2); font-weight: 600; }
-.bill-cat-track { height: 7px; border-radius: 6px; background: #EEF2F7; overflow: hidden; }
-.bill-cat-track i { display: block; height: 100%; border-radius: 6px; }
-.bill-bars { display: flex; align-items: flex-end; gap: 8px; height: 108px; padding-top: 6px; }
-.bill-bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
-.bill-bar i { width: 100%; max-width: 26px; background: linear-gradient(180deg, #7FB4E3, #0B4F9C); border-radius: 5px 5px 2px 2px; display: block; }
-.bill-bar em { font-style: normal; font-size: 10px; color: #94A3B8; height: 12px; }
-.bill-bar span { font-size: 10px; color: #94A3B8; }
+
+.bill-trend { width: 100%; overflow: hidden; }
+.bill-trend canvas { display: block; width: 100%; }
 .bill-meter { padding-top: 2px; }
 .bill-meter-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748B; padding: 6px 0 4px; }
 .bill-meter-row b { color: var(--bank-text-2); }
@@ -2709,11 +2702,10 @@ body {
   .report-summary > div { padding: 11px 10px; }
   .report-chart-grid.cols-2 { grid-template-columns: 1fr !important; }
   .report-legend { flex-wrap: wrap; }
-  .bill-bars { height: 92px; gap: 5px; }
-  .bill-bar em, .bill-bar span { font-size: 9px; }
+
 }
-.dark-mode .bill-cat-track, .dark-mode .bill-meter-track { background: #1F2C3D; }
-.dark-mode .bill-cat-head, .dark-mode .bill-meter-row, .dark-mode .bill-bar span, .dark-mode .bill-bar em { color: #94A3B8; }
+.dark-mode .bill-meter-track { background: #1F2C3D; }
+.dark-mode .bill-meter-row { color: #94A3B8; }
 .report-ai-line {
   display: flex;
   align-items: flex-start;

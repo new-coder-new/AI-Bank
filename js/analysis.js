@@ -130,14 +130,6 @@ function showBillOverview() {
     .sort((a, b) => b.value - a.value);
   window.billExpenseData = expenseList;
 
-  const catBars = expenseList.slice(0, 5).map((x, i) => {
-    const pct = totalExpense > 0 ? (x.value / totalExpense) * 100 : 0;
-    return '<div class="bill-cat-row">' +
-      '<div class="bill-cat-head"><span>' + reportEsc(x.label) + '</span><b>' + reportMoney(x.value) + '（' + pct.toFixed(1) + '%）</b></div>' +
-      '<div class="bill-cat-track"><i style="width:' + Math.max(2, Math.round(pct)) + '%;background:' + reportColor(i) + '"></i></div>' +
-      '</div>';
-  }).join('') || '<div class="report-empty">本月暂无支出记录</div>';
-
   // —— 近 7 日支出趋势 ——
   const days = [];
   for (let i = 6; i >= 0; i--) {
@@ -156,17 +148,13 @@ function showBillOverview() {
     const recentExpense = txns.filter(t => t.type === 'expense').slice(0, 7).reverse();
     if (recentExpense.length) {
       trendTitle = '最近 7 笔支出';
-      trendData = recentExpense.map(t => ({
-        label: String(t.date || '').slice(5, 10).replace('-', '/') || '—',
-        value: Number(t.amount) || 0
-      }));
+      trendData = recentExpense.map((t, i) => {
+      const d = String(t.date || '').slice(5, 10).replace('-', '/');
+      return { label: d || ('第' + (i + 1) + '笔'), value: Number(t.amount) || 0 };
+    });
     }
   }
-  const maxDay = Math.max.apply(null, trendData.map(d => d.value).concat([1]));
-  const trendBars = trendData.map(d => {
-    const h = Math.max(4, Math.round((d.value / maxDay) * 100));
-    return '<div class="bill-bar"><i style="height:' + h + '%"></i><em>' + (d.value > 0 ? Math.round(d.value) : '') + '</em><span>' + d.label + '</span></div>';
-  }).join('');
+  window.billTrendData = trendData;
 
   // —— 资产（两列，移动端不挤） ——
   const cash = Number(u.debitCard && u.debitCard.balance) || 0;
@@ -213,14 +201,10 @@ function showBillOverview() {
               </div>
             </div>
 
-            <div class="report-panel" style="margin-top:12px;">
-              <div class="report-panel-title">支出分类占比</div>
-              ${catBars}
-            </div>
 
             <div class="report-panel" style="margin-top:12px;">
               <div class="report-panel-title">${trendTitle}</div>
-              <div class="bill-bars">${trendBars}</div>
+              <div class="bill-trend"><canvas id="billTrendChart"></canvas></div>
             </div>
 
             <div class="report-panel" style="margin-top:12px;">
@@ -241,6 +225,7 @@ function showBillOverview() {
   appendMessage(html);
   setTimeout(() => {
     drawReportDonut({ canvasId: 'billPieChart', legendId: 'billPieLegend', data: expenseList, centerLabel: '总支出' });
+    drawBillTrendChart({ canvasId: 'billTrendChart', data: trendData });
   }, 60);
   scrollToBottom();
 }
@@ -248,6 +233,110 @@ function showBillOverview() {
 // 兼容旧入口名
 function showFinancialOverview() {
   return showBillOverview();
+}
+// 最近支出曲线：平滑折线 + 渐变填充 + 数据点（canvas 自适应宽度）
+function drawBillTrendChart(opts) {
+  var o = opts || {};
+  var canvas = document.getElementById(o.canvasId);
+  if (!canvas || !canvas.parentElement) return;
+  var data = (o.data || []).filter(function (d) { return isFinite(Number(d.value)); });
+  if (!data.length) return;
+
+  var boxW = canvas.parentElement.getBoundingClientRect().width || 320;
+  var w = Math.max(220, Math.round(boxW));
+  var h = Math.round(o.height || 150);
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  var ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  var padL = 10, padR = 10, padT = 20, padB = 24;
+  var innerW = w - padL - padR;
+  var innerH = h - padT - padB;
+  var max = Math.max.apply(null, data.map(function (d) { return Number(d.value) || 0; }).concat([1]));
+  var pts = data.map(function (d, i) {
+    var v = Number(d.value) || 0;
+    return {
+      x: data.length === 1 ? padL + innerW / 2 : padL + (innerW * i) / (data.length - 1),
+      y: padT + innerH - (v / max) * innerH,
+      v: v,
+      label: d.label || ''
+    };
+  });
+
+  // 网格线
+  ctx.strokeStyle = 'rgba(148,163,184,0.25)';
+  ctx.lineWidth = 1;
+  for (var g = 0; g <= 2; g++) {
+    var gy = padT + (innerH * g) / 2;
+    ctx.beginPath();
+    ctx.moveTo(padL, gy);
+    ctx.lineTo(w - padR, gy);
+    ctx.stroke();
+  }
+
+  // 平滑曲线（三次贝塞尔控制点取相邻中点的 x）
+  function tracePath() {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (var i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[i], p1 = pts[i + 1];
+      var mx = (p0.x + p1.x) / 2;
+      ctx.bezierCurveTo(mx, p0.y, mx, p1.y, p1.x, p1.y);
+    }
+  }
+
+  // 渐变填充
+  var grad = ctx.createLinearGradient(0, padT, 0, h - padB);
+  grad.addColorStop(0, 'rgba(11,79,156,0.20)');
+  grad.addColorStop(1, 'rgba(11,79,156,0.01)');
+  tracePath();
+  ctx.lineTo(pts[pts.length - 1].x, h - padB);
+  ctx.lineTo(pts[0].x, h - padB);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // 曲线
+  tracePath();
+  ctx.strokeStyle = '#0B4F9C';
+  ctx.lineWidth = 2.2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // 数据点 + 数值 + 横轴标签
+  var font = '10px system-ui, -apple-system, "PingFang SC", sans-serif';
+  pts.forEach(function (p) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = '#0B4F9C';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    var nearLeft = p.x < padL + 16;
+    var nearRight = p.x > w - padR - 16;
+    var align = nearLeft ? 'left' : (nearRight ? 'right' : 'center');
+    var tx = nearLeft ? padL : (nearRight ? w - padR : p.x);
+
+    if (p.v > 0) {
+      ctx.fillStyle = '#0F172A';
+      ctx.font = '600 ' + font;
+      ctx.textAlign = align;
+      ctx.fillText(String(Math.round(p.v)), tx, Math.max(11, p.y - 8));
+    }
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = font;
+    ctx.textAlign = align;
+    ctx.fillText(p.label, tx, h - 7);
+  });
 }
 // 通用环形图绘制：支出构成 / 收入构成共用（canvasId、legendId、data、centerLabel 可配）
 function drawReportDonut(opts) {
