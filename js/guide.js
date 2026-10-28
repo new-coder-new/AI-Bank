@@ -3042,15 +3042,20 @@ async function guideTxnLimitStep(text) {
   // 与卡片页表单保持同一套规则：单笔 ≥ ¥1,000，日累计 ≥ 单笔
   var singleV = Number(s.single);
   var dailyV = Number(s.daily);
+  // 校验不通过就整组重填：清掉单笔与每日，重新问「请设置单笔限额与每日限额。」
   if (!(singleV >= 1000)) {
     s.single = null;
-    appendMessage(guideMessage('<p>单笔限额不能低于 ¥1,000，请重新输入单笔限额。</p>'));
+    s.daily = null;
+    appendMessage(guideMessage('<p>单笔限额不能低于 ¥1,000，请重新输入单笔限额和每日限额。</p>' +
+      '<p class="guide-tip">请设置单笔限额与每日限额。</p>'));
     scrollToBottom();
     return true;
   }
   if (dailyV < singleV) {
+    s.single = null;
     s.daily = null;
-    appendMessage(guideMessage('<p>日累计限额不能低于单笔限额 ¥' + singleV.toLocaleString('zh-CN') + '，请重新输入每日限额。</p>'));
+    appendMessage(guideMessage('<p>日累计限额不能低于单笔限额 ¥' + singleV.toLocaleString('zh-CN') + '，请重新输入单笔限额和每日限额。</p>' +
+      '<p class="guide-tip">请设置单笔限额与每日限额。</p>'));
     scrollToBottom();
     return true;
   }
