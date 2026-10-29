@@ -2697,6 +2697,13 @@ body {
   .bill-donut-wrap { gap: 10px; }
   .bill-legend-right .report-legend-item { font-size: 10px; }
 }
+/* 鲜花确认卡：字段可直接编辑 */
+.flower-form .data-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.flower-form .data-label { flex: 0 0 72px; color: #64748B; }
+.flower-form .data-value { flex: 1 1 auto; min-width: 0; display: block; }
+.flower-form .flower-input { width: 100%; padding: 6px 10px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 12.5px; color: #0F172A; background: #fff; text-align: left; box-sizing: border-box; }
+.flower-form .flower-input:focus { outline: none; border-color: #1D4ED8; box-shadow: 0 0 0 2px rgba(29,78,216,.12); }
+.dark-mode .flower-form .flower-input { background: #16202E; border-color: #2A3A4F; color: #E6EDF7; }
 /* 持仓管理：紧凑列表，点击展开详情 */
 .hold-total { font-size: 13px; color: #334155; padding: 2px 0 12px; border-bottom: 1px solid #f1f3f6; }
 .hold-sep { color: #d1d5db; padding: 0 2px; }

@@ -5079,21 +5079,63 @@ function guideStartFlowerOrder(opts) {
   scrollToBottom();
 }
 
+// 确认卡：字段都可直接点开修改（下拉 / 输入框 / 日期选择）
 function guideFlowerOrderCard(s) {
   var o = s.order;
   var slot = guideFlowerSlot(o.slot);
-  var pay = o.payMethod === '信用卡' ? '信用卡' : '储蓄卡（默认）';
-  var bouquet = guideFlowerBouquet(o.bouquet);
-  var price = bouquet ? bouquet.price : 0;
-  return '<div class="data-card"><div class="data-card-title">确认鲜花订单</div>' +
-    '<div class="data-row"><span class="data-label">收花人</span><span class="data-value">' + guideFlowerEsc(o.recipient) + '</span></div>' +
-    '<div class="data-row"><span class="data-label">联系电话</span><span class="data-value">' + guideFlowerEsc(o.phone) + '</span></div>' +
-    '<div class="data-row"><span class="data-label">收货地址</span><span class="data-value">' + guideFlowerEsc(o.address) + '</span></div>' +
-    '<div class="data-row"><span class="data-label">花束款式</span><span class="data-value">' + guideFlowerEsc(o.bouquet) + (price ? '（¥' + price + '）' : '') + '</span></div>' +
-    '<div class="data-row"><span class="data-label">配送时间</span><span class="data-value">' + guideFlowerDisplayDate(o.date) + ' ' + slot.label + '</span></div>' +
-    '<div class="data-row"><span class="data-label">贺卡留言</span><span class="data-value">' + (o.card ? guideFlowerEsc(o.card) : '无') + '</span></div>' +
-    '<div class="data-row"><span class="data-label">支付方式</span><span class="data-value">' + pay + '</span></div>' +
+  var contacts = guideFlowerContacts();
+  var recipientOpts = contacts.map(function (n) {
+    return '<option value="' + guideFlowerEsc(n) + '"' + (n === o.recipient ? ' selected' : '') + '>' + guideFlowerEsc(n) + '</option>';
+  }).join('');
+  var bouquetOpts = FLOWER_BOUQUETS.map(function (b) {
+    return '<option value="' + guideFlowerEsc(b.name) + '"' + (b.name === o.bouquet ? ' selected' : '') + '>' +
+      guideFlowerEsc(b.name) + '（¥' + b.price + '）</option>';
+  }).join('');
+  var slotOpts = FLOWER_SLOTS.map(function (x) {
+    return '<option value="' + x.key + '"' + (x.key === o.slot ? ' selected' : '') + '>' + x.text + '</option>';
+  }).join('');
+  var payOpts = ['储蓄卡', '信用卡'].map(function (p) {
+    return '<option value="' + p + '"' + (p === (o.payMethod === '信用卡' ? '信用卡' : '储蓄卡') ? ' selected' : '') + '>' + p + '</option>';
+  }).join('');
+  var dateVal = o.date || guideFlowerDateStr(0);
+  return '<div class="data-card flower-form"><div class="data-card-title">确认鲜花订单</div>' +
+    '<div class="data-row"><span class="data-label">收花人</span><span class="data-value">' +
+      '<select class="flower-input" id="flRecipient">' + recipientOpts + '</select></span></div>' +
+    '<div class="data-row"><span class="data-label">联系电话</span><span class="data-value">' +
+      '<input class="flower-input" id="flPhone" value="' + guideFlowerEsc(o.phone) + '" placeholder="收花人手机号"></span></div>' +
+    '<div class="data-row"><span class="data-label">收货地址</span><span class="data-value">' +
+      '<input class="flower-input" id="flAddress" value="' + guideFlowerEsc(o.address) + '" placeholder="详细收货地址"></span></div>' +
+    '<div class="data-row"><span class="data-label">花束款式</span><span class="data-value">' +
+      '<select class="flower-input" id="flBouquet" onchange="guideFlowerFormChanged()">' + bouquetOpts + '</select></span></div>' +
+    '<div class="data-row"><span class="data-label">配送日期</span><span class="data-value">' +
+      '<input class="flower-input" type="date" id="flDate" value="' + guideFlowerEsc(dateVal) + '" min="' + guideFlowerDateStr(0) + '"></span></div>' +
+    '<div class="data-row"><span class="data-label">配送时段</span><span class="data-value">' +
+      '<select class="flower-input" id="flSlot">' + slotOpts + '</select></span></div>' +
+    '<div class="data-row"><span class="data-label">贺卡留言</span><span class="data-value">' +
+      '<input class="flower-input" id="flCard" maxlength="30" value="' + guideFlowerEsc(o.card || '') + '" placeholder="选填"></span></div>' +
+    '<div class="data-row"><span class="data-label">支付方式</span><span class="data-value">' +
+      '<select class="flower-input" id="flPay">' + payOpts + '</select></span></div>' +
     '</div>';
+}
+
+// 花束改选后同步价格提示（当前只改显示，提交时以表单为准）
+function guideFlowerFormChanged() {}
+
+// 提交前把表单里的值同步回 order
+function guideFlowerSyncForm() {
+  var s = GUIDE_FLOWER;
+  if (!s || !s.order) return;
+  var o = s.order;
+  function val(id) { var el = document.getElementById(id); return el ? String(el.value || '').trim() : null; }
+  var v;
+  v = val('flRecipient'); if (v) o.recipient = v;
+  v = val('flPhone'); if (v !== null) o.phone = v;
+  v = val('flAddress'); if (v !== null) o.address = v;
+  v = val('flBouquet'); if (v) o.bouquet = v;
+  v = val('flDate'); if (v) o.date = v;
+  v = val('flSlot'); if (v) o.slot = v;
+  v = val('flCard'); if (v !== null) o.card = v;
+  v = val('flPay'); if (v) o.payMethod = v;
 }
 
 function guideFlowerConfirm() {
@@ -5186,6 +5228,7 @@ function guideFlowerPaySwitch() {
 async function guideFlowerSubmit() {
   var s = GUIDE_FLOWER;
   if (!s || s.stage !== 'confirm') return true;
+  guideFlowerSyncForm();
   var o = s.order;
   var bouquet = guideFlowerBouquet(o.bouquet);
   var price = bouquet ? bouquet.price : 0;
