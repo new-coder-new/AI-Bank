@@ -115,6 +115,15 @@ function apiInjectSnapshot(snap) {
   }
   if (snap.contacts) {
     if (!localLoaded || !window.__LOCAL_CONTACTS_LOADED) mockData.contacts = snap.contacts;
+    else if (Array.isArray(mockData.contacts)) {
+      // 本地已存的联系人缺少新字段（如完整手机号）时，用服务端的补齐
+      snap.contacts.forEach(function (sc) {
+        var hit = mockData.contacts.filter(function (lc) { return lc && sc && lc.name === sc.name; })[0];
+        if (!hit) return;
+        if (!hit.phoneFull && sc.phoneFull) hit.phoneFull = sc.phoneFull;
+        if (!hit.address && sc.address) hit.address = sc.address;
+      });
+    }
   }
   if (snap.card) {
     if (!localLoaded || !mockData.card) mockData.card = snap.card;

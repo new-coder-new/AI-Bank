@@ -283,7 +283,7 @@ function guideStartFlowerForContact(name) {
     mode: 'order', stage: 'slots',
     order: {
       recipient: target,
-      phone: c.phone || '',
+      phone: c.phoneFull || c.phone || '',
       address: c.address || '清远市清城区XX小区',
       bouquet: bouquet ? bouquet.name : '',
       date: date,
@@ -295,7 +295,7 @@ function guideStartFlowerForContact(name) {
   };
   currentModule = 'life';
   var filled = [];
-  if (c.phone) filled.push('手机号 ' + c.phone);
+  if (c.phoneFull || c.phone) filled.push('手机号 ' + (c.phoneFull || c.phone));
   filled.push('收货地址 ' + GUIDE_FLOWER.order.address);
   if (bouquet) filled.push('花束 ' + bouquet.name);
   appendMessage(guideMessage(
@@ -5155,7 +5155,6 @@ function guideFlowerConfirm() {
   appendMessage(guideMessage('<div id="' + s.boxId + '">' + guideFlowerOrderCard(s) +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideFlowerSubmit()">提交订单</button>' +
-    '<button class="guide-chip" onclick="guideFlowerPaySwitch()">' + (s.order.payMethod === '信用卡' ? '改用储蓄卡支付' : '改用信用卡支付') + '</button>' +
     '<button class="guide-chip" onclick="guideFlowerCancelOp()">取消</button>' +
     '</div>' +
     '</div>'));
