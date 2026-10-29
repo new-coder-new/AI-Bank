@@ -3776,7 +3776,8 @@ function guideTxnLimitAskLimits() {
   var label = s.card ? guideCardLabel(s.card) : '';
   appendMessage(guideMessage(
     (label ? '<p>正在为「<b>' + guideCardLimitEsc(label) + '</b>」设置交易限制。</p>' : '') +
-    '<p>请设置单笔限额与每日限额。</p>'
+    '<p>请设置单笔限额与每日限额。</p>' +
+    '<p class="guide-tip">只改一项时，另一项回复「不变」即可，例如「1000，不变」。</p>'
   ));
   scrollToBottom();
 }
@@ -3873,6 +3874,32 @@ async function guideTxnLimitStep(text) {
     return true;
   }
 
+  // ①.5 「不变 / 保持原样」：支持只改其中一项，另一项沿用当前值
+  var KEEP_RE = /^(不变|保持不变|不变动|不改|不改了|不修改|不用改|原样|照旧|维持|维持不变|不变了|保持)$/;
+  var keepSingle = false;
+  var keepDaily = false;
+  if (/(不变|保持不变|不变动|不改|不修改|原样|照旧|维持)/.test(t)) {
+    if (/(单笔|每笔|单次)[^，,、/\s]{0,6}(不变|不改|原样|照旧|维持)/.test(t)) keepSingle = true;
+    if (/(每日|日累计|每天|一天)[^，,、/\s]{0,6}(不变|不改|原样|照旧|维持)/.test(t)) keepDaily = true;
+    if (!keepSingle && !keepDaily) {
+      // 位置映射：第一个片段 → 单笔，第二个片段 → 每日（如「1000，不变」）
+      var parts = t.split(/[，,、\/\s]+/).filter(function (x) { return x; });
+      var keepIdx = -1;
+      for (var pi = 0; pi < parts.length; pi++) {
+        if (KEEP_RE.test(parts[pi].replace(/[。.!！?？]/g, ''))) { keepIdx = pi; break; }
+      }
+      if (keepIdx === 0) keepSingle = true;
+      else if (keepIdx === 1) keepDaily = true;
+      else if (keepIdx === -1) { /* 含关键词但认不出位置，下面按数字处理 */ }
+      else keepDaily = true;
+      // 只出现一个「不变」且没有数字 → 两项都保持不变
+      if (keepIdx === 0 && !/\d/.test(t)) { keepDaily = true; }
+    }
+    var cur = guideTxnLimitCurrentValues(s.card);
+    if (keepSingle) { s.single = cur.single; s.keptSingle = true; }
+    if (keepDaily) { s.daily = cur.daily; s.keptDaily = true; }
+  }
+
   // ② 限额：句中带关键字的两项分别归位；只有一个裸数字时默认作为单笔限额
   var mSingle = t.match(/(?:单笔|每笔|单次)[^\d]{0,10}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
   var mDaily = t.match(/(?:日累计|每日|每天|一天|日限额)[^\d]{0,10}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
@@ -3947,6 +3974,8 @@ async function guideTxnLimitStep(text) {
   if (!(singleV >= 1000)) {
     s.single = null;
     s.daily = null;
+    s.keptSingle = false;
+    s.keptDaily = false;
     appendMessage(guideMessage('<p>单笔限额不能低于 ¥1,000，请重新输入单笔限额和每日限额。</p>' +
       '<p class="guide-tip">请设置单笔限额与每日限额。</p>'));
     scrollToBottom();
@@ -3955,6 +3984,8 @@ async function guideTxnLimitStep(text) {
   if (dailyV < singleV) {
     s.single = null;
     s.daily = null;
+    s.keptSingle = false;
+    s.keptDaily = false;
     appendMessage(guideMessage('<p>每日限额不能低于单笔限额 ¥' + singleV.toLocaleString('zh-CN') + '，请重新输入单笔限额和每日限额。</p>' +
       '<p class="guide-tip">请设置单笔限额与每日限额。</p>'));
     scrollToBottom();
@@ -3966,6 +3997,17 @@ async function guideTxnLimitStep(text) {
   scrollToBottom();
   return true;
 }
+// 当前生效的限额（用于「不变」）：优先该卡自己的设置，否则继承账户默认
+function guideTxnLimitCurrentValues(card) {
+  if (card && card.txnLimit) {
+    return {
+      single: Number(card.txnLimit.single) || null,
+      daily: Number(card.txnLimit.daily) || null
+    };
+  }
+  var l = (typeof txnLimitData === 'function') ? (txnLimitData() || {}) : ((mockData.userProfile && mockData.userProfile.txnLimit) || {});
+  return { single: Number(l.single) || null, daily: Number(l.daily) || null };
+}
 function guideTxnLimitConfirm() {
   var s = GUIDE_TXN_LIMIT;
   if (!s) return;
@@ -3975,8 +4017,8 @@ function guideTxnLimitConfirm() {
     '<div id="' + s.confirmBoxId + '-wrap">' +
     '<div class="data-card">' +
     (s.card ? '<div class="data-row"><span class="data-label">信用卡</span><span class="data-value">' + guideCardLimitEsc(guideCardLabel(s.card)) + '</span></div>' : '') +
-    '<div class="data-row"><span class="data-label">单笔限额</span><span class="data-value">' + (Number(s.single) || 0).toLocaleString('zh-CN') + ' 元</span></div>' +
-    '<div class="data-row"><span class="data-label">每日限额</span><span class="data-value">' + (Number(s.daily) || 0).toLocaleString('zh-CN') + ' 元</span></div>' +
+    '<div class="data-row"><span class="data-label">单笔限额</span><span class="data-value">' + (Number(s.single) || 0).toLocaleString('zh-CN') + ' 元' + (s.keptSingle ? '<span style="color:#94A3B8;">（不变）</span>' : '') + '</span></div>' +
+    '<div class="data-row"><span class="data-label">每日限额</span><span class="data-value">' + (Number(s.daily) || 0).toLocaleString('zh-CN') + ' 元' + (s.keptDaily ? '<span style="color:#94A3B8;">（不变）</span>' : '') + '</span></div>' +
     '<div class="data-row"><span class="data-label">夜间交易（23:00-06:00）</span><span class="data-value">' + guideTxnLimitFlagText(s.night) + '</span></div>' +
     '<div class="data-row"><span class="data-label">境外交易</span><span class="data-value">' + guideTxnLimitFlagText(s.overseas) + '</span></div>' +
     '</div>' +
