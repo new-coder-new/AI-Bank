@@ -203,6 +203,8 @@ function buildUserProfile() {
       { name: '张三', birthday: '09-15', relation: '朋友', flower: '向日葵', price: 168 },
       { name: '李四', birthday: '09-20', relation: '同事', flower: '康乃馨', price: 128 },
       { name: '王五', birthday: '10-01', relation: '家人', flower: '玫瑰', price: 299 },
+      { name: '陈爸爸', birthday: '06-05', relation: '父亲', flower: '百合', price: 199 },
+      { name: '陈妈妈', birthday: '05-08', relation: '母亲', flower: '康乃馨', price: 128 },
     ]
   };
 }
@@ -217,6 +219,8 @@ function buildDB() {
       { name: '张三', phone: '138****1234', phoneFull: '13812341234', account: '6222 **** **** 1234', bank: '工商银行' },
       { name: '李四', phone: '139****5678', phoneFull: '13956785678', account: '6225 **** **** 5678', bank: '招商银行' },
       { name: '王五', phone: '137****9012', phoneFull: '13790129012', account: '6217 **** **** 9012', bank: '建设银行' },
+      { name: '陈爸爸', phone: '135****2233', phoneFull: '13522332233', account: '6228 **** **** 2233', bank: '工商银行', relation: '父亲', birthday: '2027-06-05' },
+      { name: '陈妈妈', phone: '135****4455', phoneFull: '13544554455', account: '6228 **** **** 4455', bank: '工商银行', relation: '母亲', birthday: '2027-05-08' },
     ],
     bills: buildBills(),
     monthlyHistory: buildMonthlyHistory(),

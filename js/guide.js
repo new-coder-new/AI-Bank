@@ -221,6 +221,25 @@ function guideDaysUntilMonthDay(m, d) {
   return Math.round((next - todayMid) / 86400000);
 }
 
+// 某年某月第 n 个周日；若已过则顺延到明年
+function guideNthSundayNext(month, nth) {
+  function nthSunday(y) {
+    var first = new Date(y, month - 1, 1);
+    var offset = (7 - first.getDay()) % 7;   // 第一个周日
+    return new Date(y, month - 1, 1 + offset + (nth - 1) * 7);
+  }
+  var now = new Date();
+  var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var d = nthSunday(now.getFullYear());
+  if (d < todayMid) d = nthSunday(now.getFullYear() + 1);
+  var days = Math.round((d - todayMid) / 86400000);
+  return {
+    date: d,
+    str: d.getFullYear() + '-' + guidePad2(String(d.getMonth() + 1)) + '-' + guidePad2(String(d.getDate())),
+    days: days,
+    text: days === 0 ? '就是今天' : '还有 ' + days + ' 天'
+  };
+}
 // 主菜单提醒卡：一张卡里放「异常交易 / 生日 / 情人节」三类提醒
 function guideHomeRemindersHtml() {
   var rows = [];
@@ -253,6 +272,18 @@ function guideHomeRemindersHtml() {
     '<div class="mini-row-title">💐 情人节：2 月 14 日，' + vText + '</div>' +
     '<div class="mini-row-sub">推荐：简约玫瑰 ¥299</div></div>' +
     '<button class="mini-link" onclick="guideStartValentineFlower()">订情人节鲜花</button></div>');
+
+  // ④ 母亲节（5 月第二个周日） / 父亲节（6 月第三个周日）
+  var momDate = guideNthSundayNext(5, 2);
+  var dadDate = guideNthSundayNext(6, 3);
+  rows.push('<div class="mini-row"><div class="mini-row-main">' +
+    '<div class="mini-row-title">🌷 母亲节：' + guideFlowerDisplayDate(momDate.str) + '，' + momDate.text + '</div>' +
+    '<div class="mini-row-sub">推荐：康乃馨礼盒 ¥128</div></div>' +
+    '<button class="mini-link" onclick="guideStartParentsDayFlower(\'mother\')">订母亲节鲜花</button></div>');
+  rows.push('<div class="mini-row"><div class="mini-row-main">' +
+    '<div class="mini-row-title">🌿 父亲节：' + guideFlowerDisplayDate(dadDate.str) + '，' + dadDate.text + '</div>' +
+    '<div class="mini-row-sub">推荐：百合礼盒 ¥199</div></div>' +
+    '<button class="mini-link" onclick="guideStartParentsDayFlower(\'father\')">订父亲节鲜花</button></div>');
 
   if (!rows.length) return '';
   return '<div class="mini-card home-reminders"><div class="mini-card-title">今日提醒</div>' + rows.join('') + '</div>';
@@ -306,6 +337,36 @@ function guideStartValentineFlower() {
   guideStartFlowerPreset(name, { bouquet: '简约玫瑰', monthDay: [2, 14], slot: 'afternoon', card: '情人节快乐', note: '情人节' });
 }
 
+// 母亲节 / 父亲节下单：优先对应关系的联系人
+function guideStartParentsDayFlower(kind) {
+  guideResetAllSessions();
+  var isMom = kind === 'mother';
+  var wantRel = isMom ? '母亲' : '父亲';
+  var bday = (mockData.userProfile && mockData.userProfile.birthdayContacts) || [];
+  var contacts = guideFlowerContacts();
+  var pick = bday.filter(function (x) { return x && x.relation === wantRel && contacts.indexOf(x.name) !== -1; })[0];
+  // 关系写「家人」但名字像父母的也兜底匹配
+  if (!pick) {
+    pick = bday.filter(function (x) {
+      if (!x || contacts.indexOf(x.name) === -1) return false;
+      return isMom ? /妈|母/.test(x.name) : /爸|父/.test(x.name);
+    })[0];
+  }
+  var name = pick ? pick.name : (contacts[0] || '');
+  if (!name) {
+    appendMessage(guideMessage('<p>还没有可下单的联系人，请先在「联系人」里添加收花人。</p>'));
+    scrollToBottom();
+    return;
+  }
+  var fest = guideNthSundayNext(isMom ? 5 : 6, isMom ? 2 : 3);
+  guideStartFlowerPreset(name, {
+    bouquet: isMom ? '康乃馨礼盒' : '百合礼盒',
+    dateStr: fest.str,
+    slot: 'morning',
+    card: isMom ? '母亲节快乐' : '父亲节快乐',
+    note: isMom ? '母亲节' : '父亲节'
+  });
+}
 // 按联系人生成预填订单（通用）：opts.bouquet / opts.monthDay / opts.slot / opts.card / opts.note
 function guideStartFlowerPreset(name, opts) {
   var o = opts || {};
@@ -319,7 +380,9 @@ function guideStartFlowerPreset(name, opts) {
   // 配送日期：优先指定「月-日」，否则用联系人生日
   var date = '';
   var md = o.monthDay || (bd.birthday ? [Number(String(bd.birthday).split('-')[0]), Number(String(bd.birthday).split('-')[1])] : null);
-  if (md && md[0] >= 1 && md[1] >= 1) {
+  if (o.dateStr) {
+    date = o.dateStr;
+  } else if (md && md[0] >= 1 && md[1] >= 1) {
     var now = new Date();
     var cand = new Date(now.getFullYear(), md[0] - 1, md[1]);
     var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
