@@ -3295,12 +3295,9 @@ function guideCardLimitPickCardHtml(cards) {
     return '<div class="report-row"><span>' + (i + 1) + '. ' + guideCardLimitEsc(c.cardType || '信用卡') +
       '　尾号 ' + guideCardLimitEsc(c.tail || '----') + '</span><b>¥' + Number(c.limit || 0).toLocaleString('zh-CN') + '</b></div>';
   }).join('');
-  var chips = cards.map(function (c) {
-    return '<button class="guide-chip" onclick="guideCardLimitPickCard(\'' + c.id + '\')">' + guideCardLimitEsc(c.cardType || '信用卡') + ' ' + guideCardLimitEsc(c.tail || '') + '</button>';
-  }).join('');
   return '<p>你有 ' + cards.length + ' 张信用卡，想调整哪一张的额度？</p>' +
     '<div class="report-panel" style="margin-top:8px;"><div class="report-panel-title">我的信用卡</div>' + rows + '</div>' +
-    '<div class="guide-chips" style="margin-top:8px;">' + chips + '</div>';
+    '<p class="guide-tip">回复卡片尾号（如 6789）或卡种（白金 / 金卡）即可。</p>';
 }
 
 // 选卡后进入额度收集
@@ -3384,7 +3381,7 @@ async function guideCardLimitStep(text) {
       return true;
     }
     if (s.listShown) { s.listShown = false; return true; }
-    appendMessage(guideMessage(guideCardLimitPickCardHtml(s.cards || [])));
+    appendMessage(guideMessage('<p>请回复卡片尾号（如 6789）或卡种（白金 / 金卡）。</p>'));
     scrollToBottom();
     return true;
   }
@@ -3808,12 +3805,9 @@ function guideTxnLimitPickHtml(cards) {
     return '<div class="report-row"><span>' + (i + 1) + '. ' + guideCardLimitEsc(c.cardType || '信用卡') +
       '　尾号 ' + guideCardLimitEsc(c.tail || '----') + '</span><b>' + right + '</b></div>';
   }).join('');
-  var chips = cards.map(function (c) {
-    return '<button class="guide-chip" onclick="guideTxnLimitPickCard(\'' + c.id + '\')">' + guideCardLimitEsc(c.cardType || '信用卡') + ' ' + guideCardLimitEsc(c.tail || '') + '</button>';
-  }).join('');
   return '<p>你有 ' + cards.length + ' 张信用卡，要给哪一张设置交易限制？</p>' +
     '<div class="report-panel" style="margin-top:8px;"><div class="report-panel-title">我的信用卡</div>' + rows + '</div>' +
-    '<div class="guide-chips" style="margin-top:8px;">' + chips + '</div>';
+    '<p class="guide-tip">回复卡片尾号（如 6789）或卡种（白金 / 金卡）即可。</p>';
 }
 
 function guideTxnLimitAskLimits() {
@@ -3877,7 +3871,7 @@ async function guideTxnLimitStep(text) {
     var picked = guidePickCardFromText(t, s.cards || []);
     if (picked) { guideTxnLimitPickCard(picked.id); return true; }
     if (s.listShown) { s.listShown = false; return true; }
-    appendMessage(guideMessage(guideTxnLimitPickHtml(s.cards || [])));
+    appendMessage(guideMessage('<p>请回复卡片尾号（如 6789）或卡种（白金 / 金卡）。</p>'));
     scrollToBottom();
     return true;
   }
