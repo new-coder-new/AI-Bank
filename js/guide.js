@@ -670,7 +670,7 @@ function guideFlowLockedNotice(extra) {
   appendMessage(guideMessage(
     '<p>正在' + label + '流程，请先完成本轮操作。</p>' +
     (extra ? '<p class="guide-tip">' + extra + '</p>' : '') +
-    '<p class="guide-tip">如需退出，请回复「取消」。</p>'
+    '<p class="guide-tip">如需退出，请回复「退出」。</p>'
   ));
   scrollToBottom();
 }
@@ -925,6 +925,13 @@ function guideAIFirstSkipped(t) {
 async function guideHandleText(text) {
   var t = String(text || '').trim().replace(/[。.!！?？,，\s]+$/g, '');
   if (!t) return false;
+
+  // 任意进行中的流程：回复「退出」直接结束本轮
+  if (/^(退出|退出流程|不办了|不做了)$/.test(t.replace(/[。.!！?？\s]/g, '')) && guideActiveFlowLabel()) {
+    guideResetAllSessions();
+    guideBackToMenu();
+    return true;
+  }
 
   // 停在确认卡上：没点按钮又说了别的话，只提醒一句「请完成上述操作。」
   if (guideAwaitingFinalAction() && !guideIsFinalActionText(t)) {
@@ -2683,25 +2690,9 @@ function guideWealthProductLine(p, i) {
     guideWealthEsc(guideWealthTerm(p)) + '，参考' + guideWealthEsc(p.rateLabel || '年化') + ' ' + guideWealthEsc(p.rate) + '）</div>';
 }
 
-// 全部在售产品（带风险适配标记），供「查询所有产品」按钮与意图触发
+// 全部在售产品（展开版，不折叠）；「查询所有产品」意图仍可用
 function guideWealthShowAllProducts() {
-  var profile = guideWealthValidProfile();
-  var level = profile ? Number(profile.level) : 0;
-  var list = mockData.products || [];
-  var rows = list.map(function (p, i) {
-    var fit = profile ? (Number(p.riskLevel) <= level) : false;
-    var tag = profile
-      ? ' <span style="font-size:11px;color:' + (fit ? '#16A34A' : '#8A97A8') + ';">' +
-        (fit ? '· 适配' : '· 超出您当前 R' + level + ' 承受能力') + '</span>'
-      : '';
-    return guideWealthProductLine(p, i).replace('</div>', '，起购 ¥' + guidePlainMoney(p.minAmount || 0) + tag + '</div>');
-  }).join('');
-
-  appendMessage(guideMessage(
-    '<p>当前在售产品共 <b>' + list.length + '</b> 款' + (profile ? '（您的风险等级：R' + level + '）' : '') + '：</p>' +
-    '<div class="guide-list">' + rows + '</div>' +
-    '<p class="guide-tip">告诉我产品名称和申购金额即可，例如「稳健增利90天，50000」。</p>'
-  ));
+  appendMessage(guideMessage(guideWealthProductsHtml(guideWealthValidProfile(), { showAll: true })));
   scrollToBottom();
 }
 
@@ -2750,17 +2741,74 @@ function guideStartWealthPurchase() {
   guideWealthShowRecommendations(profile);
 }
 
+// 产品行：左侧风险色条 + 名称/标签，右侧起购额与推荐标记
+function guideWealthProdRow(p, i, recSet, opts) {
+  var o = opts || {};
+  var level = Number(p.riskLevel) || 1;
+  var fit = o.userLevel >= level;
+  var isRec = recSet && recSet[p.name];
+  var riskColor = { 1: '#16A34A', 2: '#0E7490', 3: '#B45309', 4: '#B42318', 5: '#7F1D1D' }[level] || '#64748B';
+  var hidden = (o.hiddenStart != null && i >= o.hiddenStart) ? ' list-hidden' : '';
+  return '<div class="prod-item' + hidden + '" style="border-left-color:' + riskColor + ';">' +
+    '<div class="prod-main">' +
+      '<b class="prod-name">' + guideWealthEsc(p.name) + '</b>' +
+      '<span class="prod-tag" style="color:' + riskColor + ';">R' + level + '</span>' +
+      (isRec ? '<span class="prod-badge">推荐</span>' : '') +
+      (o.userLevel ? '<span class="prod-fit" style="color:' + (fit ? '#16A34A' : '#94A3B8') + ';">' + (fit ? '适配' : '超出承受力') + '</span>' : '') +
+      '<div class="prod-sub">' + guideWealthEsc(guideWealthTerm(p)) + ' · 参考' + guideWealthEsc(p.rateLabel || '年化') + ' ' + guideWealthEsc(p.rate) + '</div>' +
+    '</div>' +
+    '<div class="prod-side">起购 ¥' + guidePlainMoney(p.minAmount || 0) + '</div>' +
+    '</div>';
+}
+
+// 一张卡展示产品：推荐置顶，默认只显示 3 款，其余折叠
+function guideWealthProductsHtml(profile, opts) {
+  var o = opts || {};
+  var p = profile || guideWealthValidProfile();
+  var level = p ? Number(p.level) || 0 : 0;
+  var all = (mockData.products || []).slice();
+  var recs = p ? guideWealthRecommendations(p) : [];
+  var recNames = {};
+  recs.forEach(function (r) { recNames[r.name] = true; });
+  // 推荐在前（按收益率降序），其余按风险等级从低到高
+  var rest = all.filter(function (x) { return !recNames[x.name]; })
+    .sort(function (a, b) { return (Number(a.riskLevel) || 9) - (Number(b.riskLevel) || 9); });
+  var ordered = recs.concat(rest);
+  var boxId = 'wealth-products-' + Date.now();
+  var shown = o.showAll ? ordered.length : Math.min(3, ordered.length);
+  var rows = ordered.map(function (x, i) {
+    return guideWealthProdRow(x, i, recNames, { userLevel: level, hiddenStart: shown });
+  }).join('');
+  var moreBtn = (!o.showAll && ordered.length > shown)
+    ? '<button class="card-more" onclick="guideWealthProductsShowAll(\'' + boxId + '\')">展开更多 ' + (ordered.length - shown) + ' 款产品</button>'
+    : '';
+  var head = p
+    ? '<p>您的风险测评结果：<b>' + guideWealthEsc(p.name) + ' R' + p.level + '</b>，以下为在售产品（推荐置顶）：</p>'
+    : '<p>当前在售产品：</p>';
+  var inner = '<div class="data-card prod-card">' + head +
+    '<div class="prod-list">' + rows + '</div>' + moreBtn +
+    '<p class="guide-tip">直接说「产品名称 + 金额」即可，例如「稳健增利90天 50000」。</p>' +
+    '</div>';
+  window.__wealthProducts = window.__wealthProducts || {};
+  window.__wealthProducts[boxId] = inner;
+  return '<div id="' + boxId + '">' + inner + '</div>';
+}
+
+// 展开全部产品
+function guideWealthProductsShowAll(boxId) {
+  var box = document.getElementById(boxId);
+  var p = guideWealthValidProfile();
+  if (!box) return;
+  var tmp = document.createElement('div');
+  tmp.innerHTML = guideWealthProductsHtml(p, { showAll: true });
+  box.innerHTML = tmp.innerHTML;
+  scrollToBottom();
+}
+
 function guideWealthShowRecommendations(profile) {
   var p = profile || guideWealthValidProfile();
   if (!p) return;
-  var recs = guideWealthRecommendations(p);
-  var lines = recs.map(guideWealthProductLine).join('');
-  appendMessage(guideMessage(
-    '<p>您的风险测评结果：<b>' + guideWealthEsc(p.name) + ' R' + p.level + '</b>。结合您当前资产情况，为您推荐适配产品：</p>' +
-    (lines ? '<div class="guide-list">' + lines + '</div>' : '') +
-    '<p>您可以选择以上推荐产品，也可以自行指定理财产品，并告诉我申购金额</p>' +
-    '<div class="guide-chips"><button class="guide-chip" onclick="guideWealthShowAllProducts()">查询所有产品</button></div>'
-  ));
+  appendMessage(guideMessage(guideWealthProductsHtml(p, {})));
   scrollToBottom();
 }
 

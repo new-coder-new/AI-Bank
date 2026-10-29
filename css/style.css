@@ -2980,3 +2980,38 @@ body {
   line-height: 1.7;
 }
 .dark-mode .guide-ai-tag { background: #1B2738 !important; color: #9DC4EA !important; }
+
+/* 理财产品：一卡多行，按风险着色 */
+.msg-bubble .prod-card { background: #FAFBFD; }
+.msg-bubble .prod-list { margin: 8px 0 2px; }
+.msg-bubble .prod-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; margin-bottom: 6px;
+  background: #fff; border: 1px solid #EDF1F6; border-left: 3px solid #64748B;
+  border-radius: 10px;
+}
+.msg-bubble .prod-item:last-child { margin-bottom: 0; }
+.msg-bubble .prod-main { flex: 1; min-width: 0; }
+.msg-bubble .prod-name { font-size: 13px; color: #0F172A; font-weight: 700; }
+.msg-bubble .prod-tag { font-size: 11px; font-weight: 700; margin-left: 6px; }
+.msg-bubble .prod-badge {
+  font-size: 10.5px; font-weight: 700; color: #B45309; background: #FEF3C7;
+  border-radius: 8px; padding: 1px 6px; margin-left: 6px;
+}
+.msg-bubble .prod-fit { font-size: 10.5px; margin-left: 6px; }
+.msg-bubble .prod-sub { font-size: 11.5px; color: #64748B; margin-top: 2px; }
+.msg-bubble .prod-side { font-size: 11.5px; color: #334155; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dark-mode .msg-bubble .prod-card { background: #131E2C !important; }
+.dark-mode .msg-bubble .prod-item { background: #172335 !important; border-color: #243041 !important; }
+.dark-mode .msg-bubble .prod-name { color: #E6EDF7 !important; }
+.dark-mode .msg-bubble .prod-sub,
+.dark-mode .msg-bubble .prod-side { color: #94A3B8 !important; }
+/* 列表折叠与「展开更多」 */
+.list-hidden { display: none !important; }
+.card-more {
+  display: block; width: 100%; margin: 6px 0 0; padding: 6px 0;
+  border: 0; background: none; color: var(--bank-primary);
+  font-family: inherit; font-size: 12px; cursor: pointer; text-align: left;
+}
+.card-more:hover { text-decoration: underline; }
+.dark-mode .card-more { color: #7DA7FF !important; }
