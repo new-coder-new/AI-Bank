@@ -40,6 +40,10 @@ function loadLocalKeys() {
 const AI_KEYS = loadLocalKeys();
 const DEEPSEEK_UPSTREAM = 'https://api.deepseek.com/v1/chat/completions';
 const SILICONFLOW_UPSTREAM = 'https://api.siliconflow.cn/v1/audio/transcriptions';
+const SILICONFLOW_CHAT_UPSTREAM = 'https://api.siliconflow.cn/v1/chat/completions';
+const SILICONFLOW_CHAT_MODEL = process.env.SILICONFLOW_MODEL || 'Qwen/Qwen3-30B-A3B-Instruct-2507';
+// 对话模型提供方：AI_PROVIDER=siliconflow|deepseek；默认硅基流动（有 Key 时）
+const AI_PROVIDER = String(process.env.AI_PROVIDER || (AI_KEYS.siliconflow ? 'siliconflow' : 'deepseek')).toLowerCase();
 
 // 同源会话令牌：写接口必须携带，避免任意网页直接调用转账/重置接口。
 const SESSIONS = new Set();
@@ -138,7 +142,8 @@ function serveStatic(req, res) {
 // 不再向浏览器下发真实 Key；只告诉前端“走服务端代理”
 function serveKeyConfig(res) {
   res.writeHead(200, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-store' });
-  res.end('window.__BANK_KEYS__ = {};\nwindow.__BANK_AI_PROXY__ = true;\nwindow.__BANK_ASR_PROXY__ = true;\n');
+  res.end('window.__BANK_KEYS__ = {};\nwindow.__BANK_AI_PROXY__ = true;\nwindow.__BANK_ASR_PROXY__ = true;\n' +
+    'window.__BANK_MODEL__ = ' + JSON.stringify(AI_PROVIDER === 'siliconflow' ? SILICONFLOW_CHAT_MODEL : (process.env.DEEPSEEK_MODEL || 'deepseek-chat')) + ';\n');
 }
 
 // ------------------------------ 工具 ------------------------------
@@ -200,14 +205,20 @@ function readRawBody(req, maxBytes) {
 async function handleAIChat(req, res) {
   if (!isSameOrigin(req)) return sendJSON(res, 403, { error: { message: 'Forbidden' } });
   if (aiRateLimited(req, 'chat', 20, 60000)) return sendJSON(res, 429, { error: { message: '请求过于频繁，请稍后再试' } });
-  if (!AI_KEYS.deepseek) return sendJSON(res, 503, { error: { message: '服务端未配置 DEEPSEEK_API_KEY' } });
+  const useSilicon = AI_PROVIDER === 'siliconflow';
+  const chatKey = useSilicon ? AI_KEYS.siliconflow : AI_KEYS.deepseek;
+  if (!chatKey) {
+    return sendJSON(res, 503, { error: { message: '服务端未配置 ' + (useSilicon ? 'SILICONFLOW_API_KEY' : 'DEEPSEEK_API_KEY') } });
+  }
   const body = await readBody(req, 512 * 1024);
   if (body.__error) return sendJSON(res, 400, { error: { message: body.__error } });
   if (!Array.isArray(body.messages) || !body.messages.length) {
     return sendJSON(res, 400, { error: { message: 'messages 不能为空' } });
   }
   const payload = {
-    model: process.env.DEEPSEEK_MODEL || body.model || 'deepseek-chat',
+    model: useSilicon
+      ? SILICONFLOW_CHAT_MODEL
+      : (process.env.DEEPSEEK_MODEL || body.model || 'deepseek-chat'),
     messages: body.messages,
     temperature: body.temperature,
     max_tokens: body.max_tokens,
@@ -215,9 +226,9 @@ async function handleAIChat(req, res) {
   };
   Object.keys(payload).forEach((k) => { if (payload[k] === undefined) delete payload[k]; });
   try {
-    const upstream = await fetch(DEEPSEEK_UPSTREAM, {
+    const upstream = await fetch(useSilicon ? SILICONFLOW_CHAT_UPSTREAM : DEEPSEEK_UPSTREAM, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AI_KEYS.deepseek },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + chatKey },
       body: JSON.stringify(payload)
     });
     const text = await upstream.text();
