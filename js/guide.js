@@ -125,11 +125,25 @@ function guideIsReadOnlyQuery(text) {
     /(多少|余额|额度)/.test(s);
 }
 
+// 回答后把这一步的按钮收起来（保留一句已选项）
+function guideChipsDone(boxId, note) {
+  var box = boxId ? document.getElementById(boxId) : null;
+  if (!box) return;
+  var chips = box.querySelector('.guide-chips');
+  if (chips) chips.remove();
+  if (note) {
+    var tip = document.createElement('div');
+    tip.className = 'guide-tip';
+    tip.textContent = note;
+    box.appendChild(tip);
+  }
+}
 // 重复方式按钮
 function guideTimedRepeatChoose(repeat) {
   var s = GUIDE_TRANSFER;
   if (!s || s.stage !== 'repeat') return;
   s.repeat = repeat;
+  guideChipsDone(s.repeatBoxId, '重复方式：' + repeat);
   guideTransferAskRemark();
 }
 // 「我要申请一张信用卡 / 办张金卡」→ 直接进卡片申请并解析卡种/额度/用途
@@ -1526,12 +1540,14 @@ function guideTransferHandleRemarkStage(text) {
   var noRe = /^(不用|不需要|不要|不|否|不是|不用了|不写|不加|跳过|没有|算了|no|n|nope)$/i;
   if (yesRe.test(plain)) {
     s.stage = 'remark';
+    guideChipsDone(s.remarkBoxId, '是否添加备注：是');
     appendMessage(guideMessage('<p>请输入备注内容</p><p class="guide-tip">例如：房租 / 还款 / AA（最多 20 字）</p>'));
     scrollToBottom();
     return true;
   }
   if (noRe.test(plain)) {
     s.remark = '';
+    guideChipsDone(s.remarkBoxId, '是否添加备注：否');
     guideCommitTransfer();
     return true;
   }
@@ -1754,12 +1770,14 @@ function guideTransferAskRemark() {
   var s = GUIDE_TRANSFER;
   if (!s) return;
   s.stage = 'askRemark';
+  s.remarkBoxId = 'transfer-remark-' + Date.now();
   appendMessage(guideMessage(
+    '<div id="' + s.remarkBoxId + '">' +
     '<p>是否需要添加备注？</p>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideTransferRemarkChoice(true)">是</button>' +
     '<button class="guide-chip" onclick="guideTransferRemarkChoice(false)">否</button>' +
-    '</div>'
+    '</div></div>'
   ));
   scrollToBottom();
 }
@@ -1767,6 +1785,7 @@ function guideTransferAskRemark() {
 function guideTransferRemarkChoice(need) {
   var s = GUIDE_TRANSFER;
   if (!s) return;
+  if (typeof guideChipsDone === 'function') guideChipsDone(s.remarkBoxId, '是否添加备注：' + (need ? '是' : '否'));
   if (need) {
     s.stage = 'remark';
     appendMessage(guideMessage('<p>请输入备注内容</p><p class="guide-tip">例如：房租 / 还款 / AA（最多 20 字）</p>'));
@@ -1875,6 +1894,7 @@ async function guideTimedStep(text) {
       return true;
     }
     s.repeat = rep;
+    if (typeof guideChipsDone === 'function') guideChipsDone(s.repeatBoxId, '重复方式：' + rep);
     guideTransferAskRemark();
     return true;
   }
@@ -1931,13 +1951,14 @@ async function guideTimedStep(text) {
 
   if (s.payee && Number(s.amount) > 0 && s.date && s.time) {
     s.stage = 'repeat';
-    appendMessage(guideMessage('<p>是否重复？</p><div class="guide-chips">' +
+    s.repeatBoxId = 'transfer-repeat-' + Date.now();
+    appendMessage(guideMessage('<div id="' + s.repeatBoxId + '"><p>是否重复？</p><div class="guide-chips">' +
       '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'不重复\')">不重复</button>' +
       '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每天\')">每天</button>' +
       '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每周\')">每周</button>' +
       '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每月\')">每月</button>' +
       '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每年\')">每年</button>' +
-      '</div>'));
+      '</div></div>'));
     scrollToBottom();
     return true;
   }
@@ -2062,13 +2083,14 @@ async function guideTransferAIFallback(text) {
       // 定时转账：AI 只补齐收款人/金额，时间与重复仍按对话规则继续追问
       if (s.date && s.time) {
         s.stage = 'repeat';
-        appendMessage(guideMessage('<p>' + aiTag + '是否重复？</p><div class="guide-chips">' +
+        s.repeatBoxId = 'transfer-repeat-' + Date.now();
+        appendMessage(guideMessage('<div id="' + s.repeatBoxId + '"><p>' + aiTag + '是否重复？</p><div class="guide-chips">' +
           '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'不重复\')">不重复</button>' +
           '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每天\')">每天</button>' +
           '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每周\')">每周</button>' +
           '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每月\')">每月</button>' +
           '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每年\')">每年</button>' +
-          '</div>'));
+          '</div></div>'));
       } else {
         appendMessage(guideMessage('<p>' + aiTag + guideTimedMissingPrompt(s) + '</p>'));
       }
