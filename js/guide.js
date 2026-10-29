@@ -510,7 +510,7 @@ function guideHandleText(text) {
     }
     if (typeof guideStartSubAutoRenew === 'function') {
       guideStartSubAutoRenew();
-      return guideLockedRun(function () { return guideSubManageStep(t); });
+      return true;  // 清单已问过，等待用户指定服务
     }
   }
 
@@ -523,7 +523,7 @@ function guideHandleText(text) {
     }
     if (typeof guideStartSubAutoRenew === 'function') {
       guideStartSubAutoRenew();
-      return guideLockedRun(function () { return guideSubManageStep(t); });
+      return true;  // 清单已问过，等待用户指定服务
     }
   }
 
@@ -536,7 +536,7 @@ function guideHandleText(text) {
     }
     if (typeof guideStartSubCancel === 'function') {
       guideStartSubCancel();
-      return guideLockedRun(function () { return guideSubCancelStep(t); });
+      return true;  // 没点名服务就不用再解析一次
     }
   }
 
@@ -4585,6 +4585,7 @@ function guideStartSubCancel() {
     return '<div class="report-row"><span>' + guideSubEsc(sub.name) + '</span><b>' +
       guideSubCycleText(sub.cycle) + '・' + (sub.autoRenew !== false ? '自动续费开启' : '自动续费关闭') + '</b></div>';
   }).join('');
+  if (GUIDE_SUB && GUIDE_SUB.mode === 'cancel') GUIDE_SUB.listShown = true;
   appendMessage(guideMessage('<p>请选择你想要取消的订阅项目。</p>' +
     '<div class="report-panel"><div class="report-panel-title">有效订阅</div>' + rows + '</div>'));
   scrollToBottom();
@@ -4601,6 +4602,7 @@ async function guideSubCancelStep(text) {
   }
   var target = svc && svc.kind === 'active' ? svc.sub : (svc ? guideSubActive().filter(function (x) { return guideSubNormName(x.name) === guideSubNormName(svc.name); })[0] : null);
   if (!target) {
+    if (s.listShown && !svc) { s.listShown = false; return true; }
     var hint2 = svc ? ('没有找到「' + guideSubEsc(svc.name) + '」的有效订阅。') : '';
     var names2 = guideSubActive().map(function (x) { return x.name; }).join('、') || '暂无订阅';
     appendMessage(guideMessage('<p>' + hint2 + '</p><p>请选择你想要取消的订阅项目。</p>' +
