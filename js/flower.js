@@ -49,6 +49,9 @@ function showAddBirthdayContactForm() {
         <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">关系</label>
         <select id="newContactRelation" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;box-sizing:border-box;">
           <option value="家人">家人</option>
+          <option value="爱人">爱人</option>
+          <option value="父亲">父亲</option>
+          <option value="母亲">母亲</option>
           <option value="朋友">朋友</option>
           <option value="同事">同事</option>
           <option value="恋人">恋人</option>

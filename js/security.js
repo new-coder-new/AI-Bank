@@ -618,6 +618,9 @@ function showContactForm(index) {
           <select id="contactRelation" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;background:white;">
             <option value="">请选择关系</option>
             <option value="家人" ${c.relation === '家人' ? 'selected' : ''}>家人</option>
+            <option value="爱人" ${c.relation === '爱人' ? 'selected' : ''}>爱人</option>
+            <option value="父亲" ${c.relation === '父亲' ? 'selected' : ''}>父亲</option>
+            <option value="母亲" ${c.relation === '母亲' ? 'selected' : ''}>母亲</option>
             <option value="朋友" ${c.relation === '朋友' ? 'selected' : ''}>朋友</option>
             <option value="同事" ${c.relation === '同事' ? 'selected' : ''}>同事</option>
             <option value="客户" ${c.relation === '客户' ? 'selected' : ''}>客户</option>
