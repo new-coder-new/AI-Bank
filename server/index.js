@@ -8,9 +8,10 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { buildDB, fmtDate, fmtDateTime, now } = require('./db');
+const { buildDB, fmtDate, fmtDateTime, now, loadDB, saveDB, dbFilePath } = require('./db');
 
-let DB = buildDB();
+// 有 data/db.json 就读回上次的数据，没有才用初始种子
+let DB = loadDB();
 const PORT = process.env.PORT || 8787;
 const HOST = '0.0.0.0';
 
@@ -763,6 +764,7 @@ const routes = {
   // 重置数据
   'POST /api/reset': () => {
     DB = buildDB();
+    saveDB(DB);
     return { ok: true, message: '数据已重置' };
   }
 };
@@ -808,6 +810,8 @@ const server = http.createServer(async (req, res) => {
   }
   try {
     const result = await handler(req, res);
+    // 写接口成功后立刻持久化，重启/重新部署不丢数据
+    if (req.method !== 'GET' && result && result.ok !== false) saveDB(DB);
     sendJSON(res, 200, result);
   } catch (e) {
     sendJSON(res, 500, { ok: false, error: String(e && e.message || e) });
@@ -815,6 +819,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
+  console.log('[db] 数据文件：' + dbFilePath());
   console.log(`[bank-core] 模拟银行核心系统已启动: http://127.0.0.1:${PORT}`);
   console.log(`[bank-core] 健康检查: http://127.0.0.1:${PORT}/api/health`);
 });

@@ -5,6 +5,9 @@
 //  转账、理财申购/赎回、预算调整等操作都会真实改变这份数据。
 // ==========================================================================
 
+const fs = require('fs');
+const path = require('path');
+
 // 用时间戳保证"数据是活的"，每次启动都以当前日期重锚定账单/扣费日期
 function now() { return new Date(); }
 function fmtDate(d) {
@@ -243,4 +246,59 @@ function buildDB() {
   };
 }
 
-module.exports = { buildDB, fmtDate, fmtDateTime, now, daysAgo };
+// ---------------------------------------------------------------------------
+// 持久化：把内存库落到 data/db.json，重启 / 重新部署后自动读回，
+// 不再每次启动都回到初始种子数据。
+// 可用环境变量 BANK_DB_FILE 指定文件位置（容器里建议挂载卷）。
+// ---------------------------------------------------------------------------
+const DB_FILE = process.env.BANK_DB_FILE || path.join(__dirname, '..', 'data', 'db.json');
+
+function isPlainObject(v) {
+  return v && typeof v === 'object' && !Array.isArray(v);
+}
+
+// 用保存下来的数据覆盖种子，同时保留种子里的新字段（升级不丢结构）
+function mergeSaved(base, saved) {
+  if (Array.isArray(base)) return Array.isArray(saved) ? saved : base;
+  if (!isPlainObject(base)) return saved === undefined || saved === null ? base : saved;
+  if (!isPlainObject(saved)) return base;
+  const out = Object.assign({}, base);
+  Object.keys(saved).forEach((k) => {
+    out[k] = Object.prototype.hasOwnProperty.call(base, k) ? mergeSaved(base[k], saved[k]) : saved[k];
+  });
+  return out;
+}
+
+function loadDB() {
+  const base = buildDB();
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const saved = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+      if (isPlainObject(saved)) {
+        console.log('[db] 已加载持久化数据：' + DB_FILE);
+        return mergeSaved(base, saved);
+      }
+    }
+  } catch (e) {
+    console.warn('[db] 持久化数据读取失败，使用初始数据：' + e.message);
+  }
+  return base;
+}
+
+// 原子写入：先写临时文件再改名，避免进程中断留下半个 JSON
+function saveDB(db) {
+  try {
+    fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
+    const tmp = DB_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(db, null, 2), 'utf8');
+    fs.renameSync(tmp, DB_FILE);
+    return true;
+  } catch (e) {
+    console.warn('[db] 持久化写入失败：' + e.message);
+    return false;
+  }
+}
+
+function dbFilePath() { return DB_FILE; }
+
+module.exports = { buildDB, fmtDate, fmtDateTime, now, daysAgo, loadDB, saveDB, dbFilePath };

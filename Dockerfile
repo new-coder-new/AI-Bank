@@ -11,4 +11,9 @@ COPY . /app
 ENV PORT=8080
 EXPOSE 8080
 
+# 持久化数据卷：/app/data/db.json 保存业务数据
+# 部署时挂载云盘/卷到此目录，容器重建或重新部署都不会丢数据
+VOLUME ["/app/data"]
+ENV BANK_DB_FILE=/app/data/db.json
+
 CMD ["node", "/app/server/index.js"]
