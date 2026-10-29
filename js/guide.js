@@ -1912,7 +1912,10 @@ async function guideTimedStep(text) {
     var aiTime = await guideTimedAIExtract(t);
     if (GUIDE_TRANSFER !== s) return true;
     if (aiTime) {
-      if (!parsed.date && aiTime.date) parsed.date = aiTime.date;
+      // 只有这句话本身提到日期时，才采用模型补的日期；
+      // 否则（如只回「3点」）模型可能把日期填成「今天」，会把上一轮已经确认的「明天」冲掉。
+      var saysDate = /(今天|明天|后天|大后天|下周|下个?周|周[一二三四五六日天]|星期[一二三四五六日天]|月底|月初|下月|明年|\d{1,2}\s*月\s*\d{1,2}\s*[日号]|\d{1,2}\s*[日号]|\d{4}\s*[-/]\s*\d{1,2}\s*[-/]\s*\d{1,2})/.test(t);
+      if (!parsed.date && aiTime.date && (saysDate || !s.date)) parsed.date = aiTime.date;
       if (!parsed.time && aiTime.time) parsed.time = aiTime.time;
       if (!parsed.period && aiTime.period) parsed.period = aiTime.period;
       if (!parsed.repeat && aiTime.repeat) parsed.repeat = aiTime.repeat;
