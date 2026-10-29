@@ -4265,7 +4265,7 @@ function guideSubPresetRows() {
 // —— 添加订阅 ——
 function guideStartSubAdd() {
   guideResetAllSessions();
-  GUIDE_SUB = { mode: 'add', stage: 'slots', preset: null, cycle: null, autoRenew: null };
+  GUIDE_SUB = { mode: 'add', stage: 'slots', preset: null, cycle: null, autoRenew: null, listShown: true };
   currentModule = 'life';
   appendMessage(guideMessage(
     '<p>可订阅的服务如下：</p>' +
@@ -4319,6 +4319,8 @@ async function guideSubAddStep(text) {
     scrollToBottom();
     return true;
   }
+  // 入口刚展示过服务和价格（含扣费周期说明），这里不再重复一遍
+  if (s.listShown) { s.listShown = false; return true; }
   appendMessage(guideMessage('<p>请选择订阅服务与扣费周期。</p>' +
     '<div class="report-panel"><div class="report-panel-title">可订阅服务</div>' + guideSubPresetRows() + '</div>'));
   scrollToBottom();
