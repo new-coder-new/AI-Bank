@@ -2,7 +2,7 @@
 // 用法：node tests/confirm-guard-suite.js
 const fs = require('fs');
 const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'guide.js'), 'utf8');
+const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide.js'), 'utf8');
 
 const logs = [];
 const calls = [];

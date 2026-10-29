@@ -1,7 +1,7 @@
 // 快速检验「意图路由」提示词：node tests/router-probe.js
 const KEY = (() => {
   const fs = require('fs'); const path = require('path');
-  const code = fs.readFileSync(path.join(__dirname, '..', 'js', 'config.local.js'), 'utf8');
+  const code = fs.readFileSync(path.join(__dirname, '..', 'js', 'core', 'config.local.js'), 'utf8');
   const m = code.match(/siliconflowApiKey\s*:\s*['"]([^'"]+)['"]/);
   return m ? m[1] : '';
 })();

@@ -136,19 +136,19 @@ curl http://127.0.0.1:8787/api/health
 **浏览器不再持有真实 Key**。AI 能力（对话 / 意图分类 / Agent function calling / 语音识别）统一走服务端同源代理：
 
 - 前端只调用 `/api/ai/chat` 和 `/api/ai/transcribe`；
-- `server/index.js` 从环境变量或本机 `js/config.local.js` 读取 Key，在服务端转发到 DeepSeek / 硅基流动；
-- 浏览器拿到的 `js/config.local.js` 只有 `window.__BANK_KEYS__ = {}` 和代理开关，永远不会包含真实 Key；
+- `server/index.js` 从环境变量或本机 `js/core/config.local.js` 读取 Key，在服务端转发到 DeepSeek / 硅基流动；
+- 浏览器拿到的 `js/core/config.local.js` 只有 `window.__BANK_KEYS__ = {}` 和代理开关，永远不会包含真实 Key；
 - 代理接口带同源校验和按 IP 限流（对话 20 次/分钟，语音 10 次/分钟）。
 
 | 优先级 | 来源 | 说明 |
 |---|---|---|
 | 1 | 环境变量 | `DEEPSEEK_API_KEY` / `SILICONFLOW_API_KEY`（部署环境推荐） |
-| 2 | `js/config.local.js` | 本机文件，已被 `.gitignore` 忽略；只由服务端读取，不发送给浏览器 |
+| 2 | `js/core/config.local.js` | 本机文件，已被 `.gitignore` 忽略；只由服务端读取，不发送给浏览器 |
 
 首次使用：
 
 ```bash
-cp js/config.local.example.js js/config.local.js   # 然后填入自己的 Key
+cp js/core/config.local.example.js js/core/config.local.js   # 然后填入自己的 Key
 ```
 
 无 Key 时的降级行为（演示主流程不受影响）：
@@ -277,7 +277,7 @@ icons → config → api → visualization → storage → security
 
 ### 6.1 前端 `mockData`
 
-`js/config.js` 定义了前端默认数据 `mockData`，包括：
+`js/core/config.js` 定义了前端默认数据 `mockData`，包括：
 
 - `contacts`：联系人（张三、李四、王五）。
 - `bills`：当前月收入/支出分类。
@@ -325,7 +325,7 @@ icons → config → api → visualization → storage → security
 
 ### 6.4 API 快照与离线降级
 
-`js/api.js` 的策略：
+`js/core/api.js` 的策略：
 
 1. 页面启动时请求 `GET /api/health`。
 2. 如果后端可达，请求 `GET /api/snapshot`。
@@ -872,7 +872,7 @@ AI：确认挂失尾号 8888 的白金信用卡。
 
 ### 8.6 订阅
 
-订阅模块统一为一个入口「订阅管理」（生活订购 → 订阅管理，`js/guide.js` 的 `GUIDE_SUB`），第一句先问要做哪件事：
+订阅模块统一为一个入口「订阅管理」（生活订购 → 订阅管理，`js/flows/guide.js` 的 `GUIDE_SUB`），第一句先问要做哪件事：
 
 ```
 AI：您想要添加订阅、取消订阅，还是管理自动续费？
@@ -1037,7 +1037,7 @@ AI：您想要添加订阅、取消订阅，还是管理自动续费？
 - 支出：红色；收入：绿色。
 - 提示/风险：琥珀色、红色。
 - 字体：系统字体栈，数字使用等宽数字。
-- 图标：`js/icons.js` 统一线性 SVG，品牌与 AI 头像使用 “AI” 字标。
+- 图标：`js/core/icons.js` 统一线性 SVG，品牌与 AI 头像使用 “AI” 字标。
 
 ### 10.1.1 卡片统一层（v10）
 
@@ -1079,7 +1079,7 @@ AI：您想要添加订阅、取消订阅，还是管理自动续费？
 
 ### 10.3 首页
 
-对话起始现在是 **AI 服务向导**（`js/guide.js`），不再是财务驾驶舱：
+对话起始现在是 **AI 服务向导**（`js/flows/guide.js`），不再是财务驾驶舱：
 
 ```
 你好，我是 AI Bank 助手
@@ -1090,7 +1090,7 @@ AI：您想要添加订阅、取消订阅，还是管理自动续费？
 [转账] [账单分析] [卡片管理] [理财] [生活订购]
 ```
 
-- **一级菜单**：五个服务按钮。`账户概览`入口（打开原财务驾驶舱）**暂时屏蔽**，由 `js/guide.js` 顶部的 `GUIDE_SHOW_OVERVIEW = false` 控制，需要恢复时改成 `true` 即可（`guideOpenOverview()` 函数保留）。
+- **一级菜单**：五个服务按钮。`账户概览`入口（打开原财务驾驶舱）**暂时屏蔽**，由 `js/flows/guide.js` 顶部的 `GUIDE_SHOW_OVERVIEW = false` 控制，需要恢复时改成 `true` 即可（`guideOpenOverview()` 函数保留）。
 - **二级菜单**：点「转账」→「您好，请问你需要姓名转账、手机号转账、定时转账，还是AA收款？」＋四个按钮；其余服务同理（账单分析 → 账单分析/异常交易；卡片管理 → 卡片申请/额度调整/交易限制/卡片挂失；理财 → 产品/风险评估/持仓；生活订购 → 订阅管理/生日鲜花）。
 - **模块内上下文**：选定子项后 `currentModule` 记录当前模块，后续直接输入子功能名即可再次进入（如「定时转账」）；输入「返回 / 菜单」回到一级菜单；「新对话」重置上下文并重新显示起始菜单。
 - **意图识别（先精确、再模糊、最后 AI 兜底）**：用户不一定照着按钮说话，`guideHandleText` 按四步识别：
@@ -1246,7 +1246,7 @@ docker run -p 8080:8080 \
   ai-banking-agent
 ```
 
-镜像内不含任何 Key：容器启动后 `GET /js/config.local.js` 会由环境变量即时生成配置。
+镜像内不含任何 Key：容器启动后 `GET /js/core/config.local.js` 会由环境变量即时生成配置。
 
 ### 13.3 腾讯云 CloudBase CloudRun
 
@@ -1271,7 +1271,7 @@ https://ai-banking-agent-335169-11-1386930579.sh.run.tcloudbase.com/
 
 ### 13.4 生产化建议
 
-- ✅ 已删除前端硬编码 API Key：Key 外置到 `js/config.local.js`（git 忽略）或环境变量注入；生产环境建议进一步改为服务端代理，前端完全不接触 Key。
+- ✅ 已删除前端硬编码 API Key：Key 外置到 `js/core/config.local.js`（git 忽略）或环境变量注入；生产环境建议进一步改为服务端代理，前端完全不接触 Key。
 - 增加登录、会话、权限、审计与限流。
 - 使用真实数据库替代内存数据库。
 - 使用服务端定时任务替代前端定时器。
@@ -1311,26 +1311,26 @@ https://ai-banking-agent-335169-11-1386930579.sh.run.tcloudbase.com/
 |---|---|
 | `index.html` | 页面骨架、顶部栏、抽屉、聊天区、输入区、服务面板 |
 | `css/style.css` | 基础样式 + 银行 App 主题 + 深色模式 + 响应式 |
-| `js/config.js` | API Key、模型、mockData、通用工具 |
-| `js/api.js` | 健康检查、快照注入、写操作同步、离线降级 |
-| `js/storage.js` | localStorage、页面切换、抽屉、服务面板、用户信息页 |
-| `js/security.js` | `addTransaction`、安全验证、金额风险验证、人工复核与管理员审批、`quickAction`、新对话 |
-| `js/chat.js` | 主对话流水线、多轮补全、复杂指令、统一转账入口 |
-| `js/guide.js` | 服务向导：起始欢迎语、五类服务二级菜单、模块内上下文（`guideHandleText`） |
-| `js/agent.js` | 记忆、工具注册、余额门禁、风险分级、计划执行 |
-| `js/agent-llm.js` | Function Calling、工具 Schema、确认卡、执行循环 |
-| `js/transfer.js` | 转账、批量、AA、定时转账、转账记录 |
-| `js/wealth.js` | 理财、风险测评、申赎、持仓、定投 |
-| `js/card.js` | 卡片、挂失、账单分期 |
-| `js/cardlimit.js` | 额度分层、调额申请、额度查询前置 |
-| `js/subscription.js` | 订阅列表、取消、添加 |
-| `js/budget.js` | 多周期预算 |
-| `js/analysis.js` | 账单分析与图表 |
-| `js/flower.js` | 生日与鲜花 |
-| `js/voice.js` | 录音、ASR、语音转账 |
-| `js/insights.js` | 首页简报、AI 发现、主动推送 |
-| `js/ui.js` | 深色模式、Toast、服务面板、使用手册、教程 |
-| `js/icons.js` | 线性 SVG 图标 |
+| `js/core/config.js` | API Key、模型、mockData、通用工具 |
+| `js/core/api.js` | 健康检查、快照注入、写操作同步、离线降级 |
+| `js/core/storage.js` | localStorage、页面切换、抽屉、服务面板、用户信息页 |
+| `js/flows/security.js` | `addTransaction`、安全验证、金额风险验证、人工复核与管理员审批、`quickAction`、新对话 |
+| `js/flows/chat.js` | 主对话流水线、多轮补全、复杂指令、统一转账入口 |
+| `js/flows/guide.js` | 服务向导：起始欢迎语、五类服务二级菜单、模块内上下文（`guideHandleText`） |
+| `js/agent/agent.js` | 记忆、工具注册、余额门禁、风险分级、计划执行 |
+| `js/agent/agent-llm.js` | Function Calling、工具 Schema、确认卡、执行循环 |
+| `js/flows/transfer.js` | 转账、批量、AA、定时转账、转账记录 |
+| `js/flows/wealth.js` | 理财、风险测评、申赎、持仓、定投 |
+| `js/flows/card.js` | 卡片、挂失、账单分期 |
+| `js/flows/cardlimit.js` | 额度分层、调额申请、额度查询前置 |
+| `js/flows/subscription.js` | 订阅列表、取消、添加 |
+| `js/flows/budget.js` | 多周期预算 |
+| `js/flows/analysis.js` | 账单分析与图表 |
+| `js/flows/flower.js` | 生日与鲜花 |
+| `js/core/voice.js` | 录音、ASR、语音转账 |
+| `js/agent/insights.js` | 首页简报、AI 发现、主动推送 |
+| `js/core/ui.js` | 深色模式、Toast、服务面板、使用手册、教程 |
+| `js/core/icons.js` | 线性 SVG 图标 |
 | `server/index.js` | HTTP 服务、静态资源、银行核心 API |
 | `server/db.js` | 内存数据库初始数据 |
 | `Dockerfile` | CloudRun 容器构建 |

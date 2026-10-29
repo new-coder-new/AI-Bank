@@ -26,4 +26,4 @@ desktop.ini
 .env.*
 !.env.example
 # 本地真实 API Key（模板 config.local.example.js 需要入库）
-js/config.local.js
+js/core/config.local.js

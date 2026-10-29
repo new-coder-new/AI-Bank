@@ -4,7 +4,7 @@
 // 检查：① 是否路由到正确的细分模块；② 关键字段是否被抽取。
 const fs = require('fs');
 const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'guide.js'), 'utf8');
+const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide.js'), 'utf8');
 
 const calls = [];
 const logs = [];

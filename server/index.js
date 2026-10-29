@@ -27,7 +27,7 @@ function loadLocalKeys() {
     siliconflow: process.env.SILICONFLOW_API_KEY || ''
   };
   try {
-    const code = fs.readFileSync(path.join(STATIC_ROOT, 'js', 'config.local.js'), 'utf8');
+    const code = fs.readFileSync(path.join(STATIC_ROOT, 'js', 'core', 'config.local.js'), 'utf8');
     const pick = (name) => {
       const m = code.match(new RegExp(name + '\\s*:\\s*[\'"]([^\'"]+)[\'"]'));
       return m ? m[1] : '';
@@ -754,7 +754,7 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/ai/transcribe') { await handleAITranscribe(req, res); return; }
 
   // 无真实 Key 的配置脚本
-  if (pathname === '/js/config.local.js') { serveKeyConfig(res); return; }
+  if (pathname === '/js/core/config.local.js') { serveKeyConfig(res); return; }
 
   // API 统一鉴权：/api/health 保持公开，其余必须同源 + 有效会话令牌
   if (pathname.startsWith('/api/')) {
