@@ -221,9 +221,19 @@ function guideParseSimpleAmount(text) {
   return v;
 }
 
+// 主菜单按钮：生活订购拆成「订阅管理」「生日鲜花」两个入口
+var GUIDE_HOME_ENTRIES = [
+  { label: '转账', action: "guideOpenService('transfer')" },
+  { label: '账单分析', action: "guideOpenService('bill')" },
+  { label: '卡片管理', action: "guideOpenService('card')" },
+  { label: '理财', action: "guideOpenService('wealth')" },
+  { label: '订阅管理', action: 'guideStartSubManage()' },
+  { label: '生日鲜花', action: 'guideStartBirthdayFlower()' }
+];
+
 function renderServiceWelcome() {
-  var chips = GUIDE_SERVICES.map(function (s) {
-    return guideChip(s.label, "guideOpenService('" + s.key + "')");
+  var chips = GUIDE_HOME_ENTRIES.map(function (e) {
+    return guideChip(e.label, e.action);
   }).join('');
   var overviewChip = GUIDE_SHOW_OVERVIEW
     ? '<button class="guide-chip guide-chip-ghost" onclick="guideOpenOverview()">账户概览</button>'
