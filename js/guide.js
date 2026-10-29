@@ -2774,13 +2774,15 @@ function guideWealthProductsHtml(profile, opts) {
   var rest = all.filter(function (x) { return !recNames[x.name]; })
     .sort(function (a, b) { return (Number(a.riskLevel) || 9) - (Number(b.riskLevel) || 9); });
   var ordered = recs.concat(rest);
-  var boxId = 'wealth-products-' + Date.now();
+  var boxId = o.boxId || ('wealth-products-' + Date.now());
   var shown = o.showAll ? ordered.length : Math.min(3, ordered.length);
   var rows = ordered.map(function (x, i) {
     return guideWealthProdRow(x, i, recNames, { userLevel: level, hiddenStart: shown });
   }).join('');
-  var moreBtn = (!o.showAll && ordered.length > shown)
-    ? '<button class="card-more" onclick="guideWealthProductsShowAll(\'' + boxId + '\')">展开更多 ' + (ordered.length - shown) + ' 款产品</button>'
+  var moreBtn = (ordered.length > 3)
+    ? (o.showAll
+        ? '<button class="card-more" onclick="guideWealthProductsToggle(\'' + boxId + '\')">收起产品列表</button>'
+        : '<button class="card-more" onclick="guideWealthProductsToggle(\'' + boxId + '\')">展开更多 ' + (ordered.length - 3) + ' 款产品</button>')
     : '';
   var head = p
     ? '<p>您的风险测评结果：<b>' + guideWealthEsc(p.name) + ' R' + p.level + '</b>，以下为在售产品（推荐置顶）：</p>'
@@ -2791,18 +2793,24 @@ function guideWealthProductsHtml(profile, opts) {
     '</div>';
   window.__wealthProducts = window.__wealthProducts || {};
   window.__wealthProducts[boxId] = inner;
+  if (o.innerOnly) return inner;
   return '<div id="' + boxId + '">' + inner + '</div>';
 }
 
-// 展开全部产品
-function guideWealthProductsShowAll(boxId) {
+// 展开 / 收起产品列表（同一按钮来回切换）
+function guideWealthProductsToggle(boxId) {
   var box = document.getElementById(boxId);
-  var p = guideWealthValidProfile();
   if (!box) return;
-  var tmp = document.createElement('div');
-  tmp.innerHTML = guideWealthProductsHtml(p, { showAll: true });
-  box.innerHTML = tmp.innerHTML;
+  var expanded = box.getAttribute('data-expanded') === '1';
+  var p = guideWealthValidProfile();
+  box.innerHTML = guideWealthProductsHtml(p, { showAll: !expanded, boxId: boxId, innerOnly: true });
+  box.setAttribute('data-expanded', expanded ? '0' : '1');
   scrollToBottom();
+}
+
+// 兼容旧调用：展开全部
+function guideWealthProductsShowAll(boxId) {
+  guideWealthProductsToggle(boxId);
 }
 
 function guideWealthShowRecommendations(profile) {
@@ -5950,13 +5958,41 @@ function guideStartFlowerList() {
         '</div>';
     }).join('');
   };
-  appendMessage(guideMessage(
-    '<p>鲜花订单列表：</p>' +
-    '<div class="report-panel"><div class="report-panel-title">待配送</div>' + (rows(pending) || '<div class="report-empty">暂无待配送订单</div>') + '</div>' +
-    '<div class="report-panel" style="margin-top:10px;"><div class="report-panel-title">已完成</div>' + (rows(done) || '<div class="report-empty">暂无历史订单</div>') + '</div>'
-  ));
+  var boxId = 'flower-list-' + Date.now();
+  var more = function (count, expanded) {
+    if (count <= 2) return '';
+    return '<button class="card-more" onclick="guideFlowerListToggle(\'' + boxId + '\')">' +
+      (expanded ? '收起列表' : '查看全部 ' + count + ' 笔') + '</button>';
+  };
+  var build = function (expanded) {
+    var limit = expanded ? 999 : 2;
+    return '<p>鲜花订单列表：</p>' +
+      '<div class="report-panel"><div class="report-panel-title">待配送</div>' +
+        (rows(pending.slice(0, limit)) || '<div class="report-empty">暂无待配送订单</div>') +
+        more(pending.length, expanded) +
+      '</div>' +
+      '<div class="report-panel" style="margin-top:10px;"><div class="report-panel-title">已完成</div>' +
+        (rows(done.slice(0, limit)) || '<div class="report-empty">暂无历史订单</div>') +
+        more(done.length, expanded) +
+      '</div>';
+  };
+  appendMessage(guideMessage('<div id="' + boxId + '">' + build(false) + '</div>'));
+  scrollToBottom();
+  window.__flowerListBuild = window.__flowerListBuild || {};
+  window.__flowerListBuild[boxId] = build;
+}
+
+// 展开 / 收起鲜花订单列表
+function guideFlowerListToggle(boxId) {
+  var box = document.getElementById(boxId);
+  var build = (window.__flowerListBuild || {})[boxId];
+  if (!box || !build) return;
+  var expanded = box.getAttribute('data-expanded') === '1';
+  box.innerHTML = build(!expanded);
+  box.setAttribute('data-expanded', expanded ? '0' : '1');
   scrollToBottom();
 }
+function guideFlowerListShowAll(boxId) { guideFlowerListToggle(boxId); }
 
 // 删除一条鲜花订单记录（待配送的需先取消）
 function guideFlowerDeleteOrder(orderId) {
