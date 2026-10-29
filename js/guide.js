@@ -265,25 +265,33 @@ function guideHomeRemindersHtml() {
       '</div><button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">为 TA 订鲜花</button></div>');
   }
 
-  // ③ 情人节
-  var vDays = guideDaysUntilMonthDay(2, 14);
-  var vText = vDays === 0 ? '今天就是情人节' : '还有 ' + vDays + ' 天';
-  rows.push('<div class="mini-row"><div class="mini-row-main">' +
-    '<div class="mini-row-title">💐 情人节：2 月 14 日，' + vText + '</div>' +
-    '<div class="mini-row-sub">推荐：简约玫瑰 ¥299</div></div>' +
-    '<button class="mini-link" onclick="guideStartValentineFlower()">订情人节鲜花</button></div>');
+  // ③④⑤ 节日鲜花：只在临近（≤2 天）时才提醒，避免常年占版面
+  var FEST_WARN_DAYS = 2;
 
-  // ④ 母亲节（5 月第二个周日） / 父亲节（6 月第三个周日）
+  var vDays = guideDaysUntilMonthDay(2, 14);
+  if (vDays <= FEST_WARN_DAYS) {
+    var vText = vDays === 0 ? '今天就是情人节' : '还有 ' + vDays + ' 天';
+    rows.push('<div class="mini-row"><div class="mini-row-main">' +
+      '<div class="mini-row-title">💐 情人节：2 月 14 日，' + vText + '</div>' +
+      '<div class="mini-row-sub">推荐：简约玫瑰 ¥299</div></div>' +
+      '<button class="mini-link" onclick="guideStartValentineFlower()">订情人节鲜花</button></div>');
+  }
+
   var momDate = guideNthSundayNext(5, 2);
+  if (momDate.days <= FEST_WARN_DAYS) {
+    rows.push('<div class="mini-row"><div class="mini-row-main">' +
+      '<div class="mini-row-title">🌷 母亲节：' + guideFlowerDisplayDate(momDate.str) + '，' + momDate.text + '</div>' +
+      '<div class="mini-row-sub">推荐：康乃馨礼盒 ¥128</div></div>' +
+      '<button class="mini-link" onclick="guideStartParentsDayFlower(\'mother\')">订母亲节鲜花</button></div>');
+  }
+
   var dadDate = guideNthSundayNext(6, 3);
-  rows.push('<div class="mini-row"><div class="mini-row-main">' +
-    '<div class="mini-row-title">🌷 母亲节：' + guideFlowerDisplayDate(momDate.str) + '，' + momDate.text + '</div>' +
-    '<div class="mini-row-sub">推荐：康乃馨礼盒 ¥128</div></div>' +
-    '<button class="mini-link" onclick="guideStartParentsDayFlower(\'mother\')">订母亲节鲜花</button></div>');
-  rows.push('<div class="mini-row"><div class="mini-row-main">' +
-    '<div class="mini-row-title">🌿 父亲节：' + guideFlowerDisplayDate(dadDate.str) + '，' + dadDate.text + '</div>' +
-    '<div class="mini-row-sub">推荐：百合礼盒 ¥199</div></div>' +
-    '<button class="mini-link" onclick="guideStartParentsDayFlower(\'father\')">订父亲节鲜花</button></div>');
+  if (dadDate.days <= FEST_WARN_DAYS) {
+    rows.push('<div class="mini-row"><div class="mini-row-main">' +
+      '<div class="mini-row-title">🌿 父亲节：' + guideFlowerDisplayDate(dadDate.str) + '，' + dadDate.text + '</div>' +
+      '<div class="mini-row-sub">推荐：百合礼盒 ¥199</div></div>' +
+      '<button class="mini-link" onclick="guideStartParentsDayFlower(\'father\')">订父亲节鲜花</button></div>');
+  }
 
   if (!rows.length) return '';
   return '<div class="mini-card home-reminders"><div class="mini-card-title">今日提醒</div>' + rows.join('') + '</div>';
