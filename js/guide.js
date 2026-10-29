@@ -3438,7 +3438,13 @@ function guideTxnLimitFlag(text) {
 }
 
 // 通用 LLM JSON 调用：无 Key / 失败时返回 null，调用方降级处理
+// 说明：按钮点击一律传固定枚举，不经过这里；只有「用户打字」且本地规则认不出时才调用模型。
 async function guideLLMJson(system, user) {
+  // 兜底开关：按钮驱动的路径可临时置为 true，杜绝任何模型调用
+  if (typeof window !== 'undefined' && window.__GUIDE_NO_AI__) return null;
+  if (typeof window !== 'undefined') {
+    window.__GUIDE_AI_CALLS__ = (window.__GUIDE_AI_CALLS__ || 0) + 1;
+  }
   if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return null;
   if (typeof DEEPSEEK_API_URL === 'undefined' || !DEEPSEEK_API_URL) return null;
   try {
