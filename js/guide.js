@@ -5588,8 +5588,7 @@ function guideStartFlowerList() {
         '<div class="bank-sched-date" style="background:#F5F8FD;color:#09407F;"><b>' + guideFlowerEsc(o2.status) + '</b><small>' + guideFlowerEsc(guideFlowerDisplayDate(o2.date)) + '</small></div>' +
         '<div class="bank-sched-main"><b>' + guideFlowerEsc(o2.bouquet) + '｜收件：' + guideFlowerEsc(o2.recipient) + '</b>' +
         '<small>' + guideFlowerDisplayDate(o2.date) + ' ' + slot.text + ' · ' + guideFlowerEsc(o2.payMethod || '储蓄卡') + '</small></div>' +
-        (o2.status === '待配送' ? '<div class="bank-sched-side" style="gap:6px;display:flex;"><button class="ui-link" onclick="guideFlowerModifyStart(\'' + o2.id + '\')">修改订单</button>' +
-          '<button class="ui-link" onclick="guideFlowerCancelStart(\'' + o2.id + '\')">取消订单</button></div>' : '') +
+        (o2.status === '待配送' ? '<div class="bank-sched-side"><button class="ui-link" onclick="guideFlowerCancelStart(\'' + o2.id + '\')">取消订单</button></div>' : '') +
         '</div>';
     }).join('');
   };
@@ -5698,11 +5697,12 @@ function guideFlowerModifySubmit() {
 function guideFlowerCancelStart(orderId) {
   var order = guideFlowerOrders().filter(function (x) { return x.id === orderId; })[0];
   if (!order) return;
-  GUIDE_FLOWER = { mode: 'cancel', stage: 'cancel-confirm', order: order };
+  GUIDE_FLOWER = { mode: 'cancel', stage: 'cancel-confirm', order: order, boxId: 'flower-cancel-' + Date.now() };
   currentModule = 'life';
   var slot = guideFlowerSlot(order.slot);
   var hrs = guideFlowerHoursLeft(order);
   appendMessage(guideMessage(
+    '<div id="' + GUIDE_FLOWER.boxId + '-wrap">' +
     '<div class="data-card"><div class="data-card-title">确认取消这条鲜花订单</div>' +
     '<div class="data-row"><span class="data-label">收花人</span><span class="data-value">' + guideFlowerEsc(order.recipient) + '</span></div>' +
     '<div class="data-row"><span class="data-label">配送时间</span><span class="data-value">' + guideFlowerDisplayDate(order.date) + ' ' + slot.text + '</span></div>' +
@@ -5711,6 +5711,7 @@ function guideFlowerCancelStart(orderId) {
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideFlowerCancelSubmit()">确认取消</button>' +
     '<button class="guide-chip" onclick="guideFlowerCancelOp()">返回</button>' +
+    '</div>' +
     '</div>'
   ));
   scrollToBottom();
@@ -5762,6 +5763,7 @@ function guideFlowerCancelSubmit() {
   target.cancelFee = fee;
   target.refundAmount = refund;
   saveUserData();
+  guideConfirmCardDone(s.boxId ? (s.boxId + '-wrap') : null, '已取消');
   GUIDE_FLOWER = null;
   appendMessage(guideMessage('<p>鲜花订单已取消' +
     (paid ? '，已退回 ¥' + refund + (fee > 0 ? '（扣除配送前 24 小时内取消服务费 ¥' + fee + '）' : '') : '，该订单未支付，无需退款') +
@@ -5828,7 +5830,7 @@ async function guideFlowerSession(t) {
       var target3 = guideFlowerOrders().filter(function (x) { return x.status === '待配送' && t.indexOf(x.recipient) !== -1; })[0];
       if (target3) { guideFlowerCancelStart(target3.id); return true; }
     }
-    appendMessage(guideMessage('<p>请点订单上的【修改订单】/【取消订单】，或告诉我「修改李四的鲜花订单」「取消李四的鲜花订单」。</p>'));
+    appendMessage(guideMessage('<p>请点订单上的【取消订单】，或告诉我「取消李四的鲜花订单」。</p>'));
     scrollToBottom();
     return true;
   }
