@@ -132,6 +132,17 @@ function guideTimedRepeatChoose(repeat) {
   s.repeat = repeat;
   guideTransferAskRemark();
 }
+// 「我要申请一张信用卡 / 办张金卡」→ 直接进卡片申请并解析卡种/额度/用途
+function guideIsCardApplyPhrase(t) {
+  var s = String(t || '').trim();
+  if (!s) return false;
+  if (/(挂失|冻结|限额|额度调整|调额|提额|解挂|注销)/.test(s)) return false;
+  if (/(信用卡|白金卡|金卡|青年卡|旅行卡|新卡|卡片|钻石卡|黑卡|普通卡)/.test(s)) {
+    return /(申请|办|开通|新办|再来一张|要一张|想办)/.test(s);
+  }
+  // 「办一张卡 / 申请张卡」这类没点卡种的说法，也进申请流程（再由可选范围兜底）
+  return /(办|申请|开通|新办).{0,3}卡/.test(s);
+}
 // 句子里带时间/日期说法 → 视为定时转账
 function guideLooksTimedTransfer(t) {
   var s = String(t || '');
@@ -898,6 +909,14 @@ function guideHandleText(text) {
       guideStartSubAdd();
       if (plainSvc) return guideLockedRun(function () { return guideSubAddStep(t); });
       return true;
+    }
+  }
+
+  // 「我要申请一张信用卡」→ 直接进卡片申请并解析卡种/额度/用途
+  if (guideIsCardApplyPhrase(t)) {
+    if (typeof guideStartCardApply === 'function') {
+      guideStartCardApply();
+      return guideLockedRun(function () { return guideCardApplyStep(t); });
     }
   }
 
