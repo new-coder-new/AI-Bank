@@ -11,56 +11,25 @@ function calcDaysUntilBirthday(birthdayStr) {
   return Math.round((nextBirthday - todayMidnight) / (1000 * 60 * 60 * 24));
 }
 
+// 生日提醒：只保留一张紧凑卡（最近生日的人 + 一键订花），完整名单在「我的-联系人」
 function showBirthdayReminder() {
   if (typeof syncContactsBirthdays === 'function') syncContactsBirthdays();
-  const contacts = mockData.userProfile.birthdayContacts || [];
-  const contactsWithDays = contacts.map(c => ({ ...c, days: calcDaysUntilBirthday(c.birthday) }));
-  const upcoming = contactsWithDays.filter(c => c.days <= 7);
-  const html = `
-    <div class="message">
-      <div class="msg-avatar ai">🤖</div>
-      <div class="msg-content">
-        <div class="msg-name">智能金融助手</div>
-        <div class="msg-bubble">
-          <p><strong>生日提醒与鲜花订购</strong></p>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <span style="font-size:13px;color:#666;">共 ${contactsWithDays.length} 位联系人</span>
-            <div style="display:flex;gap:6px;">
-              <button class="btn btn-secondary btn-sm" onclick="goToContactsTab()" style="padding:4px 10px;font-size:12px;">管理联系人</button>
-              <button class="btn btn-primary btn-sm" onclick="showAddBirthdayContactForm()">添加</button>
-            </div>
-          </div>
-          ${upcoming.length > 0 ? `<div class="data-card" style="background:#fef2f2;border-color:#fecaca;margin-bottom:12px;">
-            <div class="data-card-title">近期生日提醒（7天内）</div>
-            ${upcoming.map(c => `<div class="data-row"><span class="data-label">${c.name}（${c.relation}）</span><span class="data-value" style="color:#ef4444;font-weight:600;">还有 ${c.days} 天（${c.birthday}）</span></div>`).join('')}
-            <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-              <div style="font-size:12px;color:#B42318;">${upcoming[0].name}生日快要到啦，要不要订购鲜花？</div>
-              <button class="btn btn-primary btn-sm" onclick="guideStartFlowerOrder()">去订购鲜花</button>
-            </div>
-          </div>` : ''}
-          <div class="data-card">
-            <div class="data-card-title">联系人生日列表</div>
-            ${contactsWithDays.length === 0 ? '<div style="text-align:center;padding:20px;color:#999;font-size:13px;">暂无联系人，点击上方"添加联系人"按钮添加</div>' : contactsWithDays.map(c => `
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0;">
-                <div style="flex:1;">
-                  <div style="font-weight:600;">${c.name} <span style="font-size:11px;color:#999;">${c.relation}</span></div>
-                  <div style="font-size:12px;color:#666;">生日：${c.birthday} · 还有 ${c.days} 天 · 推荐：${c.flower}（¥${c.price}）</div>
-                </div>
-                <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;">
-                  <button class="btn btn-primary btn-sm" onclick="guideStartFlowerOrder({ recipient: '${c.name}', bouquet: '${c.flower}' })">订鲜花</button>
-                  <button class="btn btn-secondary btn-sm" onclick="deleteBirthdayContact('${c.name}')" style="padding:4px 8px;font-size:12px;">删除</button>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  appendMessage(html);
+  var html = '';
+  if (typeof guideBirthdayCardHtml === 'function') {
+    var card = guideBirthdayCardHtml();
+    if (card) html = card;
+  }
+  if (!html) {
+    html = '<div class="data-card"><div class="data-card-title">🎂 生日提醒</div>' +
+      '<div class="data-row"><span class="data-label">联系人</span><span class="data-value">暂无生日联系人</span></div>' +
+      '<div class="guide-chips" style="margin-top:6px;">' +
+      '<button class="guide-chip" onclick="goToContactsTab()">管理联系人</button>' +
+      '</div></div>';
+  }
+  appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+    '<div class="msg-name">智能金融助手</div><div class="msg-bubble">' + html + '</div></div></div>');
   scrollToBottom();
 }
-
 function showAddBirthdayContactForm() {
   const formDiv = document.createElement('div');
   formDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';

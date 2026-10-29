@@ -212,7 +212,97 @@ function renderServiceWelcome() {
   if (typeof showAbnormalSummary === 'function') {
     try { showAbnormalSummary(); } catch (e) { /* 忽略检测失败 */ }
   }
+  // 主菜单生日提醒卡片：点进去直接为最近过生日的联系人订鲜花
+  try {
+    var bdayHtml = guideBirthdayCardHtml();
+    if (bdayHtml) appendMessage(guideMessage(bdayHtml));
+  } catch (e) { /* 忽略生日数据异常 */ }
   scrollToBottom();
+}
+
+// 最近要过生日的联系人（含距离天数）
+function guideNearestBirthday() {
+  if (typeof syncContactsBirthdays === 'function') syncContactsBirthdays();
+  var list = (mockData.userProfile && mockData.userProfile.birthdayContacts) || [];
+  var today = new Date();
+  var todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  var items = list.map(function (c) {
+    var parts = String(c.birthday || '').split('-').map(Number);
+    var m = parts.length >= 2 ? parts[parts.length - 2] : NaN;
+    var d = parts.length >= 2 ? parts[parts.length - 1] : NaN;
+    if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+    var next = new Date(today.getFullYear(), m - 1, d);
+    if (next < todayMid) next = new Date(today.getFullYear() + 1, m - 1, d);
+    var days = Math.round((next - todayMid) / 86400000);
+    return { name: c.name, relation: c.relation || '', birthday: m + '-' + d, days: days, flower: c.flower || '', price: c.price || 0, next: next };
+  }).filter(Boolean).sort(function (a, b) { return a.days - b.days; });
+  return items[0] || null;
+}
+
+// 主菜单生日提醒卡（紧凑一行 + 一个按钮）
+function guideBirthdayCardHtml() {
+  var n = guideNearestBirthday();
+  if (!n) return '';
+  return '<div class="data-card"><div class="data-card-title">🎂 生日提醒</div>' +
+    '<div class="data-row"><span class="data-label">' + guideFlowerEsc(n.name) + (n.relation ? '（' + guideFlowerEsc(n.relation) + '）' : '') + '</span>' +
+    '<span class="data-value">' + n.birthday.replace('-', '月') + '日 · 还有 ' + n.days + ' 天</span></div>' +
+    (n.flower ? '<div class="data-row"><span class="data-label">推荐花束</span><span class="data-value">' + guideFlowerEsc(n.flower) + '（¥' + n.price + '）</span></div>' : '') +
+    '<div class="guide-chips" style="margin-top:6px;">' +
+    '<button class="guide-chip" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">为 TA 订鲜花</button>' +
+    '</div></div>';
+}
+
+// 点生日提醒直接进鲜花确认（收花人/手机号/地址按联系人自动填好，可改）
+function guideStartFlowerForContact(name) {
+  guideResetAllSessions();
+  var contacts = guideFlowerContacts();
+  var target = String(name || '');
+  if (contacts.indexOf(target) === -1) {
+    guideStartFlowerOrder();
+    return;
+  }
+  var c = (mockData.contacts || []).filter(function (x) { return x && x.name === target; })[0] || {};
+  var bd = ((mockData.userProfile && mockData.userProfile.birthdayContacts) || []).filter(function (x) { return x && x.name === target; })[0] || {};
+  var bouquet = bd.flower ? guideFlowerBouquet(bd.flower) : null;
+  var n = guideNearestBirthday();
+  var date = '';
+  if (bd.birthday) {
+    var mm = String(bd.birthday).split('-').map(Number);
+    var m = mm.length >= 2 ? mm[mm.length - 2] : NaN;
+    var d = mm.length >= 2 ? mm[mm.length - 1] : NaN;
+    if (m >= 1 && d >= 1) {
+      var now = new Date();
+      var y = now.getFullYear();
+      var cand = new Date(y, m - 1, d);
+      var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (cand < todayMid) cand = new Date(y + 1, m - 1, d);
+      date = cand.getFullYear() + '-' + guidePad2(String(cand.getMonth() + 1)) + '-' + guidePad2(String(cand.getDate()));
+    }
+  }
+  GUIDE_FLOWER = {
+    mode: 'order', stage: 'slots',
+    order: {
+      recipient: target,
+      phone: c.phone || '',
+      address: c.address || '清远市清城区XX小区',
+      bouquet: bouquet ? bouquet.name : '',
+      date: date,
+      slot: 'afternoon',
+      card: '生日快乐',
+      payMethod: '储蓄卡'
+    },
+    editing: null
+  };
+  currentModule = 'life';
+  var filled = [];
+  if (c.phone) filled.push('手机号 ' + c.phone);
+  filled.push('收货地址 ' + GUIDE_FLOWER.order.address);
+  if (bouquet) filled.push('花束 ' + bouquet.name);
+  appendMessage(guideMessage(
+    '<p>已按「' + guideFlowerEsc(target) + '」的联系人信息自动填写：' + guideFlowerEsc(filled.join('、')) + '。</p>' +
+    '<p class="guide-tip">配送日期默认生日当天（' + (date ? guideFlowerDisplayDate(date) : '待定') + '）下午时段；如需修改，直接回复要改的内容（如「换成百合礼盒」「改到上午」）。</p>'
+  ));
+  guideFlowerConfirm();
 }
 
 // 起始页的「账户概览」入口：按需打开原来的财务驾驶舱，不占起始版面
