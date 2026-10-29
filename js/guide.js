@@ -4900,12 +4900,13 @@ function guideStartSubManage() {
   GUIDE_SUB = { mode: 'choose', stage: 'choose' };
   currentModule = 'life';
   appendMessage(guideMessage(
-    '<p>您想要添加订阅、取消订阅，还是管理自动续费？</p>' +
-    '<div class="guide-chips">' +
-    '<button class="guide-chip" onclick="guideSubChoose(\'add\')">添加订阅</button>' +
-    '<button class="guide-chip" onclick="guideSubChoose(\'cancel\')">取消订阅</button>' +
-    '<button class="guide-chip" onclick="guideSubChoose(\'renew\')">管理自动续费</button>' +
+    '<p>订阅管理包含这些操作：</p>' +
+    '<div class="guide-rows">' +
+    '<div class="guide-row"><div class="guide-row-title">添加订阅</div><div class="guide-row-example">例如：我想要订阅某易云年卡</div></div>' +
+    '<div class="guide-row"><div class="guide-row-title">取消订阅</div><div class="guide-row-example">例如：我不想订阅某易云了</div></div>' +
+    '<div class="guide-row"><div class="guide-row-title">管理自动续费</div><div class="guide-row-example">例如：某度网盘年卡不续费了</div></div>' +
     '</div>' +
+    '<p class="guide-tip">直接说出你的需求即可（照示例说也行）。</p>' +
     '<p class="guide-tip">本系统为模拟演示，不等同第三方平台真实会员状态。</p>'
   ));
   scrollToBottom();
