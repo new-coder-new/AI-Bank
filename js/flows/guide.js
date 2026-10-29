@@ -779,14 +779,6 @@ async function guideAIRouteIntent(text) {
   return true;
 }
 
-// 供 guideHandleText 末尾调用：能接管就返回 true（异步执行）
-function guideTryAIRoute(text) {
-  if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return false;
-  // 明显的闲聊/寒暄不浪费额度
-  if (/^(你好|您好|hi|hello|在吗|谢谢|多谢|再见|拜拜)[!！。.~～]*$/i.test(String(text || '').trim())) return false;
-  guideAIRouteIntent(text);
-  return true;
-}
 // 是否停在「最后一步的确认卡」上（等用户点按钮 / 填验证码）
 function guideAwaitingFinalAction() {
   if (typeof AGENT_PENDING_PLANS === 'object' && AGENT_PENDING_PLANS) {
@@ -1165,9 +1157,6 @@ async function guideHandleText(text) {
     guideAIIntent(t);
     return true;
   }
-
-  // ⑤ 规则全部失配：让模型做一次意图路由（无 Key 时自动跳过，返回 false）
-  if (guideTryAIRoute(t)) return true;
 
   return false;
 }

@@ -1024,7 +1024,7 @@ async function enhancedSendMessage(text) {
   
   // 6. 无法识别意图：给固定兜底，不再交给模型（避免出现执行过程卡片）
   var __plain = String(text || '').trim();
-  if (/^(你好|您好|hi|hello|在吗|谢谢|多谢|再见|拜拜|好久不见)[!！。.~～]*$/i.test(__plain)) {
+  if (/^(你好|您好|hi|hello|哈喽|哈啰|在吗|谢谢|多谢|再见|拜拜|好久不见)[!！。.~～]*$/i.test(__plain)) {
     appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
       '<div class="msg-name">智能金融助手</div><div class="msg-bubble">你好，我是 AI Bank 助手。你可以点击下面的服务按钮，或者直接说「给张三转100」「分析账单」「卡片管理」「理财」「生活订购」。</div></div></div>');
     scrollToBottom();
