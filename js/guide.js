@@ -785,16 +785,40 @@ var GUIDE_INTENT_MODULES = {
   'transfer.aa': function (t) { GUIDE_AA = { total: 0, participants: [], stage: 'slots', pendingNames: [], pickOptions: [] }; guideAAStep(t); },
   'bill.analysis': function () { if (typeof showBillOverview === 'function') showBillOverview(); },
   'bill.abnormal': function () { if (typeof showAbnormalAlert === 'function') showAbnormalAlert(); },
-  'card.apply': function (t) { guideStartCardApply(); guideCardApplyStep(t); },
-  'card.limit': function (t) { guideStartCardLimitAdjust(); guideCardLimitStep(t); },
-  'card.txn': function (t) { guideStartTxnLimit(); guideTxnLimitStep(t); },
+  'card.apply': function (t) {
+    guideStartCardApply();
+    if (/(白金|金卡|旅行|青年|\d|消费|差旅|教育|购物)/.test(String(t || ''))) guideCardApplyStep(t);
+  },
+  'card.limit': function (t) {
+    guideStartCardLimitAdjust();
+    if (/\d/.test(String(t || ''))) guideCardLimitStep(t);
+  },
+  'card.txn': function (t) {
+    guideStartTxnLimit();
+    if (/\d/.test(String(t || ''))) guideTxnLimitStep(t);
+  },
   'card.lost': function () { guideStartCardLost(); },
-  'wealth.buy': function (t) { guideStartWealthPurchase(); guideWealthStep(t); },
+  'wealth.buy': function (t) {
+    guideStartWealthPurchase();
+    if (typeof guideWealthFindProduct === 'function' && guideWealthFindProduct(t)) guideWealthStep(t);
+  },
   'wealth.risk': function () { if (typeof startRiskAssessment === 'function') startRiskAssessment(); },
   'wealth.holding': function () { guideStartHoldings(); },
-  'sub.add': function (t) { GUIDE_SUB = { mode: 'add', stage: 'slots', preset: null, cycle: null, autoRenew: null }; guideSubAddStep(t); },
-  'sub.cancel': function (t) { GUIDE_SUB = { mode: 'cancel', stage: 'slots', target: null }; guideSubCancelStep(t); },
-  'sub.renew': function (t) { GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null }; guideSubManageStep(t); }
+  'sub.add': function (t) {
+    GUIDE_SUB = { mode: 'add', stage: 'slots', preset: null, cycle: null, autoRenew: null, listShown: true };
+    guideStartSubAdd();
+    if (typeof guideSubFindService === 'function' && guideSubFindService(t)) guideSubAddStep(t);
+  },
+  'sub.cancel': function (t) {
+    GUIDE_SUB = { mode: 'cancel', stage: 'slots', target: null };
+    guideStartSubCancel();
+    if (typeof guideSubFindService === 'function' && guideSubFindService(t)) guideSubCancelStep(t);
+  },
+  'sub.renew': function (t) {
+    GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null };
+    guideStartSubAutoRenew();
+    if (typeof guideSubFindService === 'function' && guideSubFindService(t)) guideSubManageStep(t);
+  }
 };
 
 async function guideAIRouteIntent(text) {
@@ -1071,7 +1095,11 @@ async function guideHandleText(text) {
   if (guideIsCardApplyPhrase(t)) {
     if (typeof guideStartCardApply === 'function') {
       guideStartCardApply();
-      return guideLockedRun(function () { return guideCardApplyStep(t); });
+      // 句子里没有卡种/额度/用途时，入口提问已经够了，不再追问一遍
+      if (/(白金|金卡|旅行|青年|\d|消费|差旅|教育|购物)/.test(t)) {
+        return guideLockedRun(function () { return guideCardApplyStep(t); });
+      }
+      return true;
     }
   }
 
@@ -3010,6 +3038,9 @@ function guideCardApplyParse(text) {
   for (var i = 0; i < tokens.length; i++) {
     var tok = tokens[i];
     if (tok === '信用卡') continue;
+    // 「办张卡 / 办个卡 / 办款卡」这类量词+卡不是卡种，别误判为「不支持的卡种」
+    if (/^[张个款种这那的每]?卡$/.test(tok)) continue;
+    if (/^(一张|两张|几张)/.test(tok)) continue;
     var ok = CARD_APPLY_TYPES.some(function (n) { return n.indexOf(tok) !== -1 || tok.indexOf(n) !== -1; });
     if (!ok) { unknownType = tok; break; }
   }
