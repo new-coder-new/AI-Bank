@@ -446,6 +446,13 @@ function guideStartFlowerPreset(name, opts) {
   if (c.phoneFull || c.phone) filled.push('手机号 ' + (c.phoneFull || c.phone));
   filled.push('收货地址 ' + GUIDE_FLOWER.order.address);
   if (bouquet) filled.push('花束 ' + bouquet.name);
+  // 已为该联系人在同一天下过单 → 直接提示，不再走确认卡
+  var dupAtStart = guideFlowerDuplicate(target, date);
+  if (dupAtStart) {
+    GUIDE_FLOWER = null;
+    guideFlowerWarnDuplicate(dupAtStart);
+    return;
+  }
   appendMessage(guideMessage(
     '<p>已按「' + guideFlowerEsc(target) + '」的联系人信息自动填写：' + guideFlowerEsc(filled.join('、')) + '。</p>' +
     '<p class="guide-tip">' + (o.note ? o.note + '配送日期默认 ' : '配送日期默认') + (date ? guideFlowerDisplayDate(date) : '待定') +
@@ -505,6 +512,13 @@ function guideStartFlowerForContactLegacy(name) {
   if (c.phoneFull || c.phone) filled.push('手机号 ' + (c.phoneFull || c.phone));
   filled.push('收货地址 ' + GUIDE_FLOWER.order.address);
   if (bouquet) filled.push('花束 ' + bouquet.name);
+  // 已为该联系人在同一天下过单 → 直接提示，不再走确认卡
+  var dupAtStart = guideFlowerDuplicate(target, date);
+  if (dupAtStart) {
+    GUIDE_FLOWER = null;
+    guideFlowerWarnDuplicate(dupAtStart);
+    return;
+  }
   appendMessage(guideMessage(
     '<p>已按「' + guideFlowerEsc(target) + '」的联系人信息自动填写：' + guideFlowerEsc(filled.join('、')) + '。</p>' +
     '<p class="guide-tip">配送日期默认生日当天（' + (date ? guideFlowerDisplayDate(date) : '待定') + '）下午时段；如需修改，直接回复要改的内容（如「换成百合礼盒」「改到上午」）。</p>'
@@ -5303,6 +5317,27 @@ function guideStartFlowerOrder(opts) {
   scrollToBottom();
 }
 
+// 同一收花人、同一配送日已有待配送订单 → 视为重复
+function guideFlowerDuplicate(recipient, date) {
+  if (!recipient || !date) return null;
+  var list = guideFlowerOrders().filter(function (o) {
+    return o && o.status === '待配送' && o.recipient === recipient && o.date === date;
+  });
+  return list[0] || null;
+}
+
+// 重复下单时的统一提示
+function guideFlowerWarnDuplicate(order) {
+  appendMessage(guideMessage(
+    '<p>「' + guideFlowerEsc(order.recipient) + '」在 ' + guideFlowerDisplayDate(order.date) + ' 已有一束待配送的鲜花（' +
+    guideFlowerEsc(order.bouquet) + (order.cake && order.cake !== '无蛋糕' ? ' + ' + guideFlowerEsc(order.cake) : '') +
+    '），同一人同一天不能重复下单。</p>' +
+    '<p class="guide-tip">如需更换款式，请先取消原订单再重新下单。</p>' +
+    '<div class="guide-chips"><button class="guide-chip" onclick="guideStartFlowerList()">查看鲜花订单</button>' +
+    '<button class="guide-chip" onclick="guideFlowerCancelStart(\'' + order.id + '\')">取消原订单</button></div>'
+  ));
+  scrollToBottom();
+}
 // 确认卡：字段都可直接点开修改（下拉 / 输入框 / 日期选择）
 function guideFlowerOrderCard(s) {
   var o = s.order;
@@ -5495,6 +5530,15 @@ async function guideFlowerSubmit() {
     scrollToBottom();
     s.order.recipient = '';
     s.stage = 'slots';
+    return true;
+  }
+
+  // 同一人同一天不允许重复下单
+  var dupOrder = guideFlowerDuplicate(o.recipient, o.date);
+  if (dupOrder) {
+    guideConfirmCardDone(s.boxId, '未提交');
+    GUIDE_FLOWER = null;
+    guideFlowerWarnDuplicate(dupOrder);
     return true;
   }
 
