@@ -4887,8 +4887,7 @@ async function guideSubAddSubmit() {
   guideConfirmCardDone(boxId, '已添加');
   appendMessage(guideMessage(
     '<p>' + guideSubEsc(preset.name) + ' 添加成功，扣费周期' + guideSubCycleText(cycle) + '，自动续费' + (autoRenew ? '已开启' : '已关闭') + '。</p>' +
-    '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅管理</button></div>' +
-    '<p class="guide-tip">本系统为模拟演示，不等同第三方平台真实会员状态。</p>'
+    '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅管理</button></div>'
   ));
   scrollToBottom();
 }
@@ -4906,8 +4905,7 @@ function guideStartSubManage() {
     '<div class="guide-row"><div class="guide-row-title">取消订阅</div><div class="guide-row-example">例如：我不想订阅某易云了</div></div>' +
     '<div class="guide-row"><div class="guide-row-title">管理自动续费</div><div class="guide-row-example">例如：某度网盘年卡不续费了</div></div>' +
     '</div>' +
-    '<p class="guide-tip">直接说出你的需求即可（照示例说也行）。</p>' +
-    '<p class="guide-tip">本系统为模拟演示，不等同第三方平台真实会员状态。</p>'
+    '<p class="guide-tip">直接说出你的需求即可（照示例说也行）。</p>'
   ));
   scrollToBottom();
 }
