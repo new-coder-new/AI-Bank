@@ -727,6 +727,39 @@ const routes = {
     return { ok: true, contact: item, total: DB.contacts.length };
   },
 
+  // 整表保存联系人（前端增删改后同步，服务端与本地不再分叉）
+  'POST /api/contacts/save': async (req) => {
+    const body = await readBody(req);
+    const list = Array.isArray(body && body.contacts) ? body.contacts : null;
+    if (!list) return { ok: false, error: '缺少 contacts 数组' };
+    DB.contacts = list.filter((c) => c && String(c.name || '').trim()).map((c) => ({
+      name: String(c.name).trim(),
+      phone: String(c.phone || '').trim(),
+      phoneFull: String(c.phoneFull || '').trim(),
+      account: String(c.account || '').replace(/\s+/g, ''),
+      bank: String(c.bank || '').trim(),
+      relation: String(c.relation || '').trim(),
+      birthday: String(c.birthday || '').trim(),
+      remark: String(c.remark || '').trim()
+    }));
+    return { ok: true, total: DB.contacts.length };
+  },
+
+  // 删除一位联系人（按姓名或卡号）
+  'POST /api/contact/delete': async (req) => {
+    const body = await readBody(req);
+    const nm = String((body && body.name) || '').trim();
+    const acc = String((body && body.account) || '').replace(/\s+/g, '');
+    if (!nm && !acc) return { ok: false, error: '缺少姓名或卡号' };
+    const before = DB.contacts.length;
+    DB.contacts = DB.contacts.filter((c) => {
+      if (nm && String(c.name || '').trim() === nm) return false;
+      if (acc && String(c.account || '').replace(/\s+/g, '') === acc) return false;
+      return true;
+    });
+    return { ok: true, removed: before - DB.contacts.length, total: DB.contacts.length };
+  },
+
   // 重置数据
   'POST /api/reset': () => {
     DB = buildDB();

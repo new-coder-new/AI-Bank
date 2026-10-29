@@ -671,13 +671,24 @@ function saveContact(index, popupId) {
     if (!(mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31)) { alert('生日格式不正确'); return; }
   }
 
-  if (!mockData.contacts) mockData.contacts = [];
+  if (!Array.isArray(mockData.contacts)) mockData.contacts = [];
   const contact = { name, phone, account: account || '**** **** **** ****', bank, relation, birthday, remark };
 
   if (index >= 0) {
-    mockData.contacts[index] = contact;
+    // 按「原来的姓名」定位，避免列表顺序变化时改错人
+    const oldName = (mockData.contacts[index] && mockData.contacts[index].name) || '';
+    const targetIdx = mockData.contacts.findIndex(function (x) { return x && x.name === oldName; });
+    const at = targetIdx >= 0 ? targetIdx : index;
+    const prev = mockData.contacts[at] || {};
+    // 保留编辑表单里没有的字段（完整手机号、地址等）
+    const merged = Object.assign({}, prev, contact);
+    if (prev.phoneFull && phone && String(prev.phoneFull).slice(-4) === String(phone).slice(-4)) merged.phoneFull = prev.phoneFull;
+    mockData.contacts[at] = merged;
   } else {
-    mockData.contacts.push(contact);
+    // 新增：同名的直接更新，避免重复插入
+    const dup = mockData.contacts.findIndex(function (x) { return x && x.name === name; });
+    if (dup >= 0) mockData.contacts[dup] = Object.assign({}, mockData.contacts[dup], contact);
+    else mockData.contacts.push(contact);
   }
 
   // 同步到鲜花模块的生日联系人（如果有生日）
@@ -703,6 +714,7 @@ function saveContact(index, popupId) {
 
   if (typeof syncContactsBirthdays === 'function') syncContactsBirthdays();
   saveUserData();
+  if (typeof apiSaveContacts === 'function') apiSaveContacts(mockData.contacts);
   document.getElementById(popupId)?.remove();
   renderUserInfoPage();
 }
@@ -711,12 +723,15 @@ function saveContact(index, popupId) {
 function deleteContact(index) {
   if (!confirm('确定要删除该联系人吗？')) return;
   const contact = mockData.contacts[index];
-  mockData.contacts.splice(index, 1);
+  if (!contact) return;
+  const name = contact.name;
+  mockData.contacts = mockData.contacts.filter(function (x) { return x && x.name !== name; });
   // 同步从鲜花模块的生日联系人中删除
-  if (mockData.userProfile.birthdayContacts && contact) {
-    mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter(c => c.name !== contact.name);
+  if (mockData.userProfile.birthdayContacts) {
+    mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter(c => c.name !== name);
   }
   saveUserData();
+  if (typeof apiDeleteContactByName === 'function') apiDeleteContactByName(name);
   renderUserInfoPage();
 }
 

@@ -6,13 +6,14 @@ function saveUserData() {
     const data = {
       userProfile: mockData.userProfile,
       subscriptions: mockData.subscriptions,
-      // 联系人之前只存在内存里，刷新即回滚；现在纳入持久化
-      contacts: mockData.contacts,
+      // 联系人：只有拿到数组时才写入，避免某次流程里 contacts 还没初始化就把本地数据清空
+      contacts: Array.isArray(mockData.contacts) ? mockData.contacts : undefined,
       bills: mockData.bills,
       investmentPlans: mockData.investmentPlans,
       cardFrozen: cardFrozen,
       savedAt: new Date().toISOString()
     };
+    Object.keys(data).forEach(function (k) { if (data[k] === undefined) delete data[k]; });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {
     console.warn('保存数据失败:', e);

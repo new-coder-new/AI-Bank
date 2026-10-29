@@ -113,15 +113,26 @@ function apiInjectSnapshot(snap) {
       mockData.subscriptions = snap.subscriptions;
     }
   }
-  if (snap.contacts) {
-    if (!localLoaded || !window.__LOCAL_CONTACTS_LOADED) mockData.contacts = snap.contacts;
-    else if (Array.isArray(mockData.contacts)) {
-      // 本地已存的联系人缺少新字段（如完整手机号）时，用服务端的补齐
+  if (Array.isArray(snap.contacts)) {
+    if (!Array.isArray(mockData.contacts)) mockData.contacts = [];
+    var localHad = window.__LOCAL_CONTACTS_LOADED === true && mockData.contacts.length > 0;
+    if (!localHad) {
+      // 本地没有存过联系人（首次访问 / 旧版本数据 / 清过缓存）→ 直接用服务端
+      mockData.contacts = snap.contacts.slice();
+      window.__LOCAL_CONTACTS_LOADED = mockData.contacts.length > 0;
+    } else {
+      // 本地已有：做并集，本地条目优先，服务端多出来的人补进来（不再整表覆盖）
       snap.contacts.forEach(function (sc) {
-        var hit = mockData.contacts.filter(function (lc) { return lc && sc && lc.name === sc.name; })[0];
-        if (!hit) return;
+        if (!sc || !sc.name) return;
+        var hit = mockData.contacts.filter(function (lc) {
+          return lc && (lc.name === sc.name ||
+            (sc.account && lc.account && String(lc.account).replace(/\s+/g, '') === String(sc.account).replace(/\s+/g, '')));
+        })[0];
+        if (!hit) { mockData.contacts.push(Object.assign({}, sc)); return; }
         if (!hit.phoneFull && sc.phoneFull) hit.phoneFull = sc.phoneFull;
-        if (!hit.address && sc.address) hit.address = sc.address;
+        if (!hit.phone && sc.phone) hit.phone = sc.phone;
+        if (!hit.relation && sc.relation) hit.relation = sc.relation;
+        if (!hit.birthday && sc.birthday) hit.birthday = sc.birthday;
       });
     }
   }
@@ -195,6 +206,22 @@ function apiCardLimitApprove(target, reason, direction) {
 // 冻结金额明细（GET，只读）
 // 联系人列表（GET，只读）
 // 新增联系人同步（乐观本地更新由调用方完成）
+// 联系人整表同步（新增/编辑/删除后都调用一次，保证服务端与本地一致）
+function apiSaveContacts(list) {
+  var arr = Array.isArray(list) ? list : (mockData.contacts || []);
+  if (API.enabled) {
+    apiRequest('POST', '/api/contacts/save', { contacts: arr }).catch(function () { });
+  }
+}
+
+// 删除单个联系人（按姓名，服务端同步）
+function apiDeleteContactByName(name) {
+  if (!name) return;
+  if (API.enabled) {
+    apiRequest('POST', '/api/contact/delete', { name: name }).catch(function () { });
+  }
+}
+
 function apiContactAdd(name, account, bank, phone) {
   return apiPost('/api/contact/add', { name: name, account: account, bank: bank, phone: phone });
 }
