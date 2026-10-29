@@ -724,21 +724,9 @@ function agentPendingPlanGuard(text) {
     return AGENT_PENDING_PLANS[k] && AGENT_PENDING_PLANS[k].status === 'pending';
   });
   if (!ids.length) return false;
-  var id = ids[ids.length - 1];
-  var plain = String(text || '').replace(/[。！？!?，,\s]/g, '');
-  if (/^(确认|确定|确认执行|确认转账|执行|好|好的|是|yes|ok)$/i.test(plain)) {
-    if (typeof agentApprovePlan === 'function') { agentApprovePlan(id); return true; }
-  }
-  if (/^(退出|取消|不执行|暂不执行|算了|放弃)$/.test(plain)) {
-    if (typeof agentRejectPlan === 'function') { agentRejectPlan(id); return true; }
-  }
+  // 有卡没处理完：只提醒一句，不做语义识别、不给按钮，强制点卡片上的按钮
   appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
-    '<div class="msg-name">智能金融助手</div><div class="msg-bubble">' +
-    '<p>请完成上述操作，或回复「退出」。</p>' +
-    '<div class="guide-chips">' +
-    '<button class="guide-chip" onclick="agentApprovePlan(\'' + id + '\')">确认执行</button>' +
-    '<button class="guide-chip" onclick="agentRejectPlan(\'' + id + '\')">退出</button>' +
-    '</div></div></div>');
+    '<div class="msg-name">智能金融助手</div><div class="msg-bubble">请完成上述操作。</div></div></div>');
   scrollToBottom();
   return true;
 }
