@@ -192,9 +192,6 @@ function guideParseSimpleAmount(text) {
 }
 
 function renderServiceWelcome() {
-  var list = GUIDE_SERVICES.map(function (s) {
-    return '<div class="guide-item">🔹 ' + s.label + '</div>';
-  }).join('');
   var chips = GUIDE_SERVICES.map(function (s) {
     return guideChip(s.label, "guideOpenService('" + s.key + "')");
   }).join('');
@@ -203,10 +200,9 @@ function renderServiceWelcome() {
     : '';
 
   appendMessage(guideMessage(
-    '<p><b>你好，我是 AI Bank 助手</b><br>我可以为你提供这些服务：</p>' +
-    '<div class="guide-list">' + list + '</div>' +
-    '<p class="guide-tip">你可以直接点击按钮，或者输入对应的功能名称。</p>' +
-    '<div class="guide-chips">' + chips + overviewChip + '</div>'
+    '<p class="welcome-title"><b>你好，我是 AI Bank 助手</b>，选择服务：</p>' +
+    '<div class="guide-chips welcome-chips">' + chips + overviewChip + '</div>' +
+    '<p class="welcome-hint">点击按钮，或者直接输入功能名称</p>'
   ));
   // 主菜单直接给出异常交易提示（详情点按钮或直接说「查看异常交易」再看）
   if (typeof showAbnormalSummary === 'function') {
@@ -243,13 +239,14 @@ function guideNearestBirthday() {
 function guideBirthdayCardHtml() {
   var n = guideNearestBirthday();
   if (!n) return '';
-  return '<div class="data-card"><div class="data-card-title">🎂 生日提醒</div>' +
-    '<div class="data-row"><span class="data-label">' + guideFlowerEsc(n.name) + (n.relation ? '（' + guideFlowerEsc(n.relation) + '）' : '') + '</span>' +
-    '<span class="data-value">' + n.birthday.replace('-', '月') + '日 · 还有 ' + n.days + ' 天</span></div>' +
-    (n.flower ? '<div class="data-row"><span class="data-label">推荐花束</span><span class="data-value">' + guideFlowerEsc(n.flower) + '（¥' + n.price + '）</span></div>' : '') +
-    '<div class="guide-chips" style="margin-top:6px;">' +
-    '<button class="guide-chip" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">为 TA 订鲜花</button>' +
-    '</div></div>';
+  var who = '🎂 ' + guideFlowerEsc(n.name) + (n.relation ? '（' + guideFlowerEsc(n.relation) + '）' : '');
+  var days = n.days === 0 ? '今天生日' : '还有 ' + n.days + ' 天';
+  var rec = n.flower ? ('推荐：' + guideFlowerEsc(n.flower) + ' ¥' + n.price) : '';
+  return '<div class="mini-card birthday-mini">' +
+    '<div class="mini-card-line">' + who + '生日：' + Number(String(n.birthday).split('-')[0]) + ' 月 ' + Number(String(n.birthday).split('-')[1]) + ' 日，' + days + '</div>' +
+    '<div class="mini-card-line mini-card-actions">' + (rec ? '<span class="mini-card-rec">' + rec + '</span>' : '') +
+    '<button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">为 TA 订鲜花</button></div>' +
+    '</div>';
 }
 
 // 点生日提醒直接进鲜花确认（收花人/手机号/地址按联系人自动填好，可改）

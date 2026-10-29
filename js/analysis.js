@@ -436,11 +436,11 @@ function showAbnormalSummary() {
   var abnormal = [];
   try { abnormal = detectAbnormalTxns() || []; } catch (e) { abnormal = []; }
   if (!abnormal.length) return;
-  var msg = '<div class="alert-banner">' +
-    '<div class="alert-banner-icon">!</div>' +
+  var msg = '<div class="alert-banner alert-banner-mini">' +
+    '<div class="alert-banner-icon">⚠️</div>' +
     '<div class="alert-banner-content">' +
     '<div class="alert-banner-title">检测到 ' + abnormal.length + ' 笔异常交易</div>' +
-    '<div class="alert-banner-desc">系统已自动识别大额消费、凌晨交易等风险行为</div>' +
+    '<div class="alert-banner-desc">系统识别到可疑消费、异地交易</div>' +
     '</div>' +
     '<button class="alert-banner-btn" onclick="showAbnormalAlert()">查看</button>' +
     '</div>';
