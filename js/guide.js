@@ -327,8 +327,7 @@ function guideHomeRemindersHtml() {
   bdays.forEach(function (n) {
     var days = n.days === 0 ? '今天生日' : '还有 ' + n.days + ' 天';
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
-      '<div class="mini-row-title">🎂 ' + guideFlowerEsc(n.name) + (n.relation ? '（' + guideFlowerEsc(n.relation) + '）' : '') +
-      '生日：' + Number(String(n.birthday).split('-')[0]) + ' 月 ' + Number(String(n.birthday).split('-')[1]) + ' 日，' + days + '</div>' +
+      '<div class="mini-row-title">🎂 ' + guideFlowerEsc(n.name) + '生日' + (days === '今天生日' ? '就是今天' : '，' + days) + '</div>' +
       (n.flower ? '<div class="mini-row-sub">推荐：' + guideFlowerEsc(n.flower) + ' ¥' + n.price + '</div>' : '') +
       '</div><button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">订鲜花+蛋糕</button></div>');
   });
@@ -412,11 +411,11 @@ function guideUpcomingBirthdays(limitDays) {
 function guideBirthdayCardHtml() {
   var n = guideNearestBirthday();
   if (!n) return '';
-  var who = '🎂 ' + guideFlowerEsc(n.name) + (n.relation ? '（' + guideFlowerEsc(n.relation) + '）' : '');
+  var who = '🎂 ' + guideFlowerEsc(n.name) + '生日';
   var days = n.days === 0 ? '今天生日' : '还有 ' + n.days + ' 天';
   var rec = n.flower ? ('推荐：' + guideFlowerEsc(n.flower) + ' ¥' + n.price) : '';
   return '<div class="mini-card birthday-mini">' +
-    '<div class="mini-card-line">' + who + '生日：' + Number(String(n.birthday).split('-')[0]) + ' 月 ' + Number(String(n.birthday).split('-')[1]) + ' 日，' + days + '</div>' +
+    '<div class="mini-card-line">' + who + '，' + days + '</div>' +
     '<div class="mini-card-line mini-card-actions">' + (rec ? '<span class="mini-card-rec">' + rec + '</span>' : '') +
     '<button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">订鲜花+蛋糕</button></div>' +
     '</div>';
@@ -517,11 +516,7 @@ function guideStartFlowerPreset(name, opts) {
     guideFlowerWarnDuplicate(dupAtStart);
     return;
   }
-  appendMessage(guideMessage(
-    '<p>已按「' + guideFlowerEsc(target) + '」的联系人信息自动填写：' + guideFlowerEsc(filled.join('、')) + '。</p>' +
-    '<p class="guide-tip">' + (o.note ? o.note + '配送日期默认 ' : '配送日期默认') + (date ? guideFlowerDisplayDate(date) : '待定') +
-    '，时段 ' + guideFlowerSlot(o.slot || 'afternoon').text + '；字段可直接在卡片里修改。</p>'
-  ));
+  // 不再输出「已按联系人信息自动填写…」提示，直接进确认卡（信息都在卡里可改）
   guideFlowerConfirm();
 }
 // 点生日提醒直接进鲜花确认（收花人/手机号/地址按联系人自动填好，可改）
@@ -583,10 +578,6 @@ function guideStartFlowerForContactLegacy(name) {
     guideFlowerWarnDuplicate(dupAtStart);
     return;
   }
-  appendMessage(guideMessage(
-    '<p>已按「' + guideFlowerEsc(target) + '」的联系人信息自动填写：' + guideFlowerEsc(filled.join('、')) + '。</p>' +
-    '<p class="guide-tip">配送日期默认生日当天（' + (date ? guideFlowerDisplayDate(date) : '待定') + '）下午时段；如需修改，直接回复要改的内容（如「换成百合礼盒」「改到上午」）。</p>'
-  ));
   guideFlowerConfirm();
 }
 
