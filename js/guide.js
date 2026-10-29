@@ -138,6 +138,21 @@ function guideChipsDone(boxId, note) {
     box.appendChild(tip);
   }
 }
+// 「是否重复？」卡片（答错会再弹一次，每次都记为最新一张）
+function guideTimedAskRepeat(prefix) {
+  var s = GUIDE_TRANSFER;
+  if (!s) return;
+  s.stage = 'repeat';
+  s.repeatBoxId = 'transfer-repeat-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+  appendMessage(guideMessage('<div id="' + s.repeatBoxId + '"><p>' + (prefix || '') + '是否重复？</p><div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'不重复\')">不重复</button>' +
+    '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每天\')">每天</button>' +
+    '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每周\')">每周</button>' +
+    '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每月\')">每月</button>' +
+    '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每年\')">每年</button>' +
+    '</div></div>'));
+  scrollToBottom();
+}
 // 重复方式按钮
 function guideTimedRepeatChoose(repeat) {
   var s = GUIDE_TRANSFER;
@@ -1555,17 +1570,8 @@ function guideTransferHandleRemarkStage(text) {
     guideFlowLockedNotice('当前这笔转账还没走完：请回复「是」或「否」继续。');
     return true;
   }
-  // 既不是是也不是否 → 先按是/否再问一次，不把这句话当成备注
-  s.stage = 'askRemark';
-  appendMessage(guideMessage(
-    '<p>请先回复是否添加备注：【是】或【否】。</p>' +
-    '<p class="guide-tip">选择「是」后，我再请你填写备注内容。</p>' +
-    '<div class="guide-chips">' +
-    '<button class="guide-chip" onclick="guideTransferRemarkChoice(true)">是</button>' +
-    '<button class="guide-chip" onclick="guideTransferRemarkChoice(false)">否</button>' +
-    '</div>'
-  ));
-  scrollToBottom();
+  // 既不是是也不是否 → 把「是否需要添加备注？」卡片再弹一次
+  guideTransferAskRemark();
   return true;
 }
 
@@ -1889,8 +1895,7 @@ async function guideTimedStep(text) {
       rep = aiRep && aiRep.repeat ? aiRep.repeat : null;
     }
     if (!rep) {
-      appendMessage(guideMessage('<p>请回复：不重复 / 每天 / 每周 / 每月 / 每年</p>'));
-      scrollToBottom();
+      guideTimedAskRepeat('');
       return true;
     }
     s.repeat = rep;
@@ -1950,16 +1955,7 @@ async function guideTimedStep(text) {
   }
 
   if (s.payee && Number(s.amount) > 0 && s.date && s.time) {
-    s.stage = 'repeat';
-    s.repeatBoxId = 'transfer-repeat-' + Date.now();
-    appendMessage(guideMessage('<div id="' + s.repeatBoxId + '"><p>是否重复？</p><div class="guide-chips">' +
-      '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'不重复\')">不重复</button>' +
-      '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每天\')">每天</button>' +
-      '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每周\')">每周</button>' +
-      '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每月\')">每月</button>' +
-      '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每年\')">每年</button>' +
-      '</div></div>'));
-    scrollToBottom();
+    guideTimedAskRepeat('');
     return true;
   }
 
@@ -2082,15 +2078,7 @@ async function guideTransferAIFallback(text) {
     if (s.kind === 'timed') {
       // 定时转账：AI 只补齐收款人/金额，时间与重复仍按对话规则继续追问
       if (s.date && s.time) {
-        s.stage = 'repeat';
-        s.repeatBoxId = 'transfer-repeat-' + Date.now();
-        appendMessage(guideMessage('<div id="' + s.repeatBoxId + '"><p>' + aiTag + '是否重复？</p><div class="guide-chips">' +
-          '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'不重复\')">不重复</button>' +
-          '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每天\')">每天</button>' +
-          '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每周\')">每周</button>' +
-          '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每月\')">每月</button>' +
-          '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每年\')">每年</button>' +
-          '</div></div>'));
+        guideTimedAskRepeat(aiTag);
       } else {
         appendMessage(guideMessage('<p>' + aiTag + guideTimedMissingPrompt(s) + '</p>'));
       }
