@@ -717,9 +717,38 @@ function checkAndAskMissingSlots() {
 }
 
 // 增强版消息处理（集成多轮对话、复杂指令、指代理解）
+// 有待确认的执行卡时：确认 → 执行；退出 → 取消；其它 → 提示先完成这一步
+function agentPendingPlanGuard(text) {
+  if (typeof AGENT_PENDING_PLANS !== 'object' || !AGENT_PENDING_PLANS) return false;
+  var ids = Object.keys(AGENT_PENDING_PLANS).filter(function (k) {
+    return AGENT_PENDING_PLANS[k] && AGENT_PENDING_PLANS[k].status === 'pending';
+  });
+  if (!ids.length) return false;
+  var id = ids[ids.length - 1];
+  var plain = String(text || '').replace(/[。！？!?，,\s]/g, '');
+  if (/^(确认|确定|确认执行|确认转账|执行|好|好的|是|yes|ok)$/i.test(plain)) {
+    if (typeof agentApprovePlan === 'function') { agentApprovePlan(id); return true; }
+  }
+  if (/^(退出|取消|不执行|暂不执行|算了|放弃)$/.test(plain)) {
+    if (typeof agentRejectPlan === 'function') { agentRejectPlan(id); return true; }
+  }
+  appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+    '<div class="msg-name">智能金融助手</div><div class="msg-bubble">' +
+    '<p>请完成上述操作，或回复「退出」。</p>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="agentApprovePlan(\'' + id + '\')">确认执行</button>' +
+    '<button class="guide-chip" onclick="agentRejectPlan(\'' + id + '\')">退出</button>' +
+    '</div></div></div>');
+  scrollToBottom();
+  return true;
+}
+
 async function enhancedSendMessage(text) {
   // 添加到对话上下文
   addToConversation('user', text);
+
+  // 有未完成的确认卡时，先把这句话当「确认 / 退出」处理
+  if (typeof agentPendingPlanGuard === 'function' && agentPendingPlanGuard(text)) return;
 
   // v7 记录本轮问题到对话上下文（供下轮的指代消解）
   var __ctxTurnQ = String(text || '');
