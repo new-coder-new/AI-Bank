@@ -5635,8 +5635,7 @@ function guideStartFlowerList() {
         '<div class="bank-sched-side" style="gap:8px;display:flex;">' +
         (o2.status === '待配送'
           ? '<button class="ui-link" onclick="guideFlowerCancelStart(\'' + o2.id + '\')">取消订单</button>'
-          : '') +
-        '<button class="ui-link" style="color:#B42318;" onclick="guideFlowerDeleteOrder(\'' + o2.id + '\')">删除</button>' +
+          : '<button class="ui-link" style="color:#B42318;" onclick="guideFlowerDeleteOrder(\'' + o2.id + '\')">删除</button>') +
         '</div>' +
         '</div>';
     }).join('');
