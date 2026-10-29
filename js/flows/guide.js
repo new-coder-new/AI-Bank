@@ -580,6 +580,14 @@ function guideBackToMenu() {
   renderServiceWelcome();
 }
 
+// 静默退出：清理本轮会话但不展示首页卡片（用户说「退出」时用）
+function guideExitSilently() {
+  guideResetAllSessions();
+  currentModule = 'chat';
+  appendMessage(guideMessage('<p>已退出当前流程。</p>'));
+  scrollToBottom();
+}
+
 // 当前正在进行的对话流程（没有则返回空串）——用于「流程锁」：没走完就不许换功能 / 重开一单
 function guideActiveFlowLabel() {
   if (GUIDE_TRANSFER) {
@@ -856,8 +864,7 @@ async function guideHandleText(text) {
 
   // 任意进行中的流程：回复「退出」直接结束本轮
   if (/^(退出|退出流程|不办了|不做了)$/.test(t.replace(/[。.!！?？\s]/g, '')) && guideActiveFlowLabel()) {
-    guideResetAllSessions();
-    guideBackToMenu();
+    guideExitSilently();
     return true;
   }
 
