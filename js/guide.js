@@ -322,12 +322,8 @@ function guideHomeRemindersHtml() {
       '<button class="mini-link" onclick="showAbnormalAlert()">查看</button></div>');
   }
 
-  // ② 生日：7 天内全部列出；7 天内没有就展示最近的那一位
-  var bdays = guideUpcomingBirthdays(7);
-  if (!bdays.length) {
-    var nearest = guideNearestBirthday();
-    if (nearest) bdays = [nearest];
-  }
+  // ② 生日：只在临近（≤2 天）时提醒，且 2 天内全部列出；没有就不显示
+  var bdays = guideUpcomingBirthdays(2);
   bdays.forEach(function (n) {
     var days = n.days === 0 ? '今天生日' : '还有 ' + n.days + ' 天';
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
