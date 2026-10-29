@@ -333,6 +333,14 @@ function guideIsSubCancelPhrase(t) {
   if (!/(订阅|会员|vip|VIP|续费|某易云|易云|网易云|某讯|腾讯|某度|百度|网盘)/.test(s)) return false;
   return /(取消|退订|不订阅|不想订阅|不要订阅|不订了|不想要了|不想续费|不要续费|关闭续费|别订了)/.test(s);
 }
+// 「我想要添加订阅 / 开通个会员」这类没点名服务的说法 → 直接进添加订阅
+function guideIsSubAddPlain(t) {
+  var s = String(t || '').trim();
+  if (!s) return false;
+  if (/(取消|退订|关闭|不订|不要|不想)/.test(s)) return false;
+  if (!/订阅/.test(s) && !/(开通|办理|订购).{0,3}会员/.test(s)) return false;
+  return /(添加|新增|开通|办理|订购|订一个|订阅一个|来一个|办个|来个|想要|我想|我要)/.test(s);
+}
 // 「我想要订阅某易云年卡 / 订购某度网盘年卡」→ 直接进添加订阅，并把服务与周期解析出来
 function guideIsSubAddPhrase(t) {
   var s = String(t || '').trim();
@@ -529,6 +537,14 @@ function guideHandleText(text) {
     if (typeof guideStartSubCancel === 'function') {
       guideStartSubCancel();
       return guideLockedRun(function () { return guideSubCancelStep(t); });
+    }
+  }
+
+  // 「我想要添加订阅」→ 直接进添加订阅（先展示可订阅服务）
+  if (guideIsSubAddPlain(t)) {
+    if (typeof guideStartSubAdd === 'function') {
+      guideStartSubAdd();
+      return guideLockedRun(function () { return guideSubAddStep(t); });
     }
   }
 
