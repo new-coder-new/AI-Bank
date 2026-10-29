@@ -811,7 +811,7 @@ async function guideAIRouteIntent(text) {
   if (!obj || !obj.module || obj.module === 'none') return false;
   var fn = GUIDE_INTENT_MODULES[obj.module];
   if (!fn) return false;
-  try { await fn(text); } catch (e) { return false; }
+  try { guideResetAllSessions(); await fn(text); } catch (e) { return false; }
   return true;
 }
 
@@ -869,8 +869,32 @@ function guideCancelPendingScheduled() {
   scrollToBottom();
   return true;
 }
+// AI 优先开关：有模型 Key 时，先让模型判断意图，规则做兜底
+function guideAIFirstEnabled() {
+  if (typeof window !== 'undefined' && window.__GUIDE_AI_FIRST__ === false) return false;
+  return (typeof bankHasLLMKey === 'function') && bankHasLLMKey();
+}
+
+// 这些说法交给规则（菜单名 / 返回 / 数字补充 / 闲聊），不必花模型额度
+function guideAIFirstSkipped(t) {
+  var s = String(t || '').trim();
+  if (!s) return true;
+  if (/^(返回|返回菜单|服务菜单|主菜单|菜单|首页|服务列表|取消|退出|算了)$/.test(s)) return true;
+  if (/^\d+(\.\d+)?$/.test(s)) return true;
+  if (/^(你好|您好|hi|hello|在吗|谢谢|多谢|再见|拜拜)[!！。.~～]*$/i.test(s)) return true;
+  if (typeof guideResolveService === 'function' && guideResolveService(s)) return true;
+  // 子功能名（如「姓名转账」「卡片挂失」）走规则菜单
+  var svc = GUIDE_SERVICES.filter(function (x) {
+    return x.subs.some(function (sub) {
+      return sub.label === s || (sub.aliases || []).indexOf(s) !== -1;
+    });
+  })[0];
+  if (svc) return true;
+  return false;
+}
+
 // 文本解析：服务名 / 子功能名 / 返回菜单，命中则接管，返回 true
-function guideHandleText(text) {
+async function guideHandleText(text) {
   var t = String(text || '').trim().replace(/[。.!！?？,，\s]+$/g, '');
   if (!t) return false;
 
@@ -884,6 +908,13 @@ function guideHandleText(text) {
   if (typeof window !== 'undefined' && window.__pendingScheduledTransfers &&
       /^(取消|退出|算了|不创建了|放弃)$/.test(t.replace(/[。.!！?？\s]/g, ''))) {
     if (guideCancelPendingScheduled()) return true;
+  }
+
+  // ① AI 优先：没有进行中的流程时，先让模型判断模块；判不出再走规则
+  if (!guideActiveFlowLabel() && guideAIFirstEnabled() && !guideAIFirstSkipped(t)) {
+    try {
+      if (await guideAIRouteIntent(t)) return true;
+    } catch (e) { /* 模型失败 → 规则兜底 */ }
   }
 
   // 流程锁预检：未完成流程里说到别的服务名，先挡下来

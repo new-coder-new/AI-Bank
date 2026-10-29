@@ -251,8 +251,11 @@ async function sendMessage() {
   isLoading = true;
 
   try {
-  // 服务向导优先：服务名 / 子功能名 / 返回菜单，命中即接管，不再走意图解析
-  if (typeof guideHandleText === 'function' && guideHandleText(text)) return;
+  // 服务向导优先（现在是异步的：AI 优先识别 → 规则兜底），返回 true 才算接管
+  if (typeof guideHandleText === 'function') {
+    var guideHandled = await guideHandleText(text);
+    if (guideHandled) return;
+  }
 
   // 检测"你能做什么"类问题，调用AI API输出功能列表
   if (/你能做什么|你能干啥|你有什么用|你会什么|你有什么功能|功能介绍|介绍一下|能帮我做什么|可以做什么|有哪些功能|你是谁/.test(text)) {
