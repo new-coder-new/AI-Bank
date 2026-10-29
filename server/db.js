@@ -242,7 +242,9 @@ function buildDB() {
     // 专项预算账户（规划/预留用）
     funds: [],
     // 主动洞察快照（后端可预计算，供前端直接消费）
-    insights: []
+    insights: [],
+    // 前端业务流水（鲜花订单 / 定时转账 / 预算），换设备、清缓存也能恢复
+    clientState: { flowerOrders: [], scheduledTransfers: [], budgets: {} }
   };
 }
 

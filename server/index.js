@@ -454,6 +454,7 @@ const routes = {
     products: DB.products,
     subscriptions: DB.subscriptions,
     contacts: DB.contacts,
+    clientState: DB.clientState,
     card: DB.card,
     funds: DB.funds,
     assets: { fixed: 100000, fund: 45511, property: 600000 },
@@ -726,6 +727,16 @@ const routes = {
     const item = { name: nm, phone: phone || '', account: acc, bank: bk || '未提供开户行' };
     DB.contacts.push(item);
     return { ok: true, contact: item, total: DB.contacts.length };
+  },
+
+  // 保存前端业务流水：鲜花订单 / 定时转账 / 预算（换设备、清缓存后可恢复）
+  'POST /api/clientstate': async (req) => {
+    const body = await readBody(req);
+    const cur = DB.clientState || (DB.clientState = { flowerOrders: [], scheduledTransfers: [], budgets: {} });
+    if (Array.isArray(body && body.flowerOrders)) cur.flowerOrders = body.flowerOrders;
+    if (Array.isArray(body && body.scheduledTransfers)) cur.scheduledTransfers = body.scheduledTransfers;
+    if (body && body.budgets && typeof body.budgets === 'object' && !Array.isArray(body.budgets)) cur.budgets = body.budgets;
+    return { ok: true, counts: { flowerOrders: (cur.flowerOrders || []).length, scheduledTransfers: (cur.scheduledTransfers || []).length } };
   },
 
   // 整表保存联系人（前端增删改后同步，服务端与本地不再分叉）

@@ -15,6 +15,8 @@ function saveUserData() {
     };
     Object.keys(data).forEach(function (k) { if (data[k] === undefined) delete data[k]; });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    // 同时上报服务端（鲜花订单 / 定时转账 / 预算），换设备、清缓存可恢复
+    if (typeof apiPersistClientState === 'function') apiPersistClientState();
   } catch (e) {
     console.warn('保存数据失败:', e);
   }

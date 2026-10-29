@@ -136,6 +136,10 @@ function apiInjectSnapshot(snap) {
       });
     }
   }
+  // 前端业务流水：鲜花订单 / 定时转账 / 预算（本地优先，服务端补缺）
+  if (snap.clientState && typeof apiMergeClientState === 'function') {
+    try { apiMergeClientState(snap.clientState); } catch (e) { }
+  }
   if (snap.card) {
     if (!localLoaded || !mockData.card) mockData.card = snap.card;
     else {
@@ -206,6 +210,54 @@ function apiCardLimitApprove(target, reason, direction) {
 // 冻结金额明细（GET，只读）
 // 联系人列表（GET，只读）
 // 新增联系人同步（乐观本地更新由调用方完成）
+// ------------------------------ 前端业务流水持久化 ------------------------------
+// 鲜花订单、定时转账、预算目前存在 userProfile 里（localStorage），
+// 这里统一上报服务端，换设备 / 清缓存后能恢复。
+
+function apiCollectClientState() {
+  var u = (typeof mockData !== 'undefined' && mockData.userProfile) ? mockData.userProfile : {};
+  return {
+    flowerOrders: Array.isArray(u.flowerOrders) ? u.flowerOrders : [],
+    scheduledTransfers: Array.isArray(u.scheduledTransfers) ? u.scheduledTransfers : [],
+    budgets: (u.budgets && typeof u.budgets === 'object' && !Array.isArray(u.budgets)) ? u.budgets : {}
+  };
+}
+
+var __apiClientStateTimer = null;
+function apiPersistClientState() {
+  if (typeof API === 'undefined' || !API.enabled) return;
+  if (__apiClientStateTimer) clearTimeout(__apiClientStateTimer);
+  __apiClientStateTimer = setTimeout(function () {
+    __apiClientStateTimer = null;
+    try { apiRequest('POST', '/api/clientstate', apiCollectClientState()).catch(function () { }); } catch (e) { }
+  }, 500);
+}
+
+// 合并服务端流水：本地有就用本地，本地缺的补进来（按 id 去重）
+function apiMergeClientState(state) {
+  if (!state) return;
+  var u = (typeof mockData !== 'undefined' && mockData.userProfile) ? mockData.userProfile : null;
+  if (!u) return;
+  var unionById = function (local, remote) {
+    var arr = Array.isArray(local) ? local.slice() : [];
+    (Array.isArray(remote) ? remote : []).forEach(function (r) {
+      if (!r) return;
+      var key = r.id || (r.name || '') + '|' + (r.date || r.createdAt || '');
+      var hit = arr.some(function (x) {
+        return x && (x.id === r.id || ((x.name || '') + '|' + (x.date || x.createdAt || '')) === key);
+      });
+      if (!hit) arr.push(r);
+    });
+    return arr;
+  };
+  u.flowerOrders = unionById(u.flowerOrders, state.flowerOrders);
+  u.scheduledTransfers = unionById(u.scheduledTransfers, state.scheduledTransfers);
+  // 预算：服务端是持久化基准（每次本地改动都会即时上报），以服务端为准
+  if (state.budgets && typeof state.budgets === 'object' && Object.keys(state.budgets).length) {
+    u.budgets = Object.assign({}, (u.budgets && typeof u.budgets === 'object') ? u.budgets : {}, state.budgets);
+  }
+}
+
 // 联系人整表同步（新增/编辑/删除后都调用一次，保证服务端与本地一致）
 function apiSaveContacts(list) {
   var arr = Array.isArray(list) ? list : (mockData.contacts || []);
