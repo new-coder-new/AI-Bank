@@ -339,7 +339,7 @@ function guideIsSubAddPlain(t) {
   if (!s) return false;
   if (/(取消|退订|关闭|不订|不要|不想)/.test(s)) return false;
   if (!/订阅/.test(s) && !/(开通|办理|订购).{0,3}会员/.test(s)) return false;
-  return /(添加|新增|开通|办理|订购|订一个|订阅一个|来一个|办个|来个|想要|我想|我要)/.test(s);
+  return /(添加|增加|新增|加个|加一个|开通|办理|订购|订一个|订阅一个|来一个|办个|来个|想要|我想|我要)/.test(s);
 }
 // 「我想要订阅某易云年卡 / 订购某度网盘年卡」→ 直接进添加订阅，并把服务与周期解析出来
 function guideIsSubAddPhrase(t) {
