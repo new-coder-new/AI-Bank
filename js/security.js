@@ -538,13 +538,20 @@ function syncContactsBirthdays() {
     }
   });
 
-  // 通讯录 → 生日联系人：有生日但生日表里没有的补进去
+  // 通讯录 → 生日联系人：以通讯录为准（生日/关系），没有就补一条
+  // 这样「联系人里改生日」后，今日提醒不会还停留在旧日期
   mockData.contacts.forEach(function (c) {
     if (!c || !c.name || !c.birthday) return;
-    if (bc.some(function (b) { return b.name === c.name; })) return;
+    var md = String(c.birthday).slice(5);
+    var hit = bc.filter(function (b) { return b && b.name === c.name; })[0];
+    if (hit) {
+      hit.birthday = md;
+      if (c.relation) hit.relation = c.relation;
+      return;
+    }
     bc.push({
       name: c.name,
-      birthday: String(c.birthday).slice(5),
+      birthday: md,
       relation: c.relation || '朋友',
       flower: '康乃馨',
       price: 128
