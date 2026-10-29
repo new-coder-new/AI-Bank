@@ -776,6 +776,53 @@ function guideAAPhraseIntent(t) {
   var s = String(t || '');
   return /(aa|AA|Aa|分摊|平摊|垫付)/.test(s);
 }
+// 规则层没接住时，用模型做一次意图路由（返回 true 表示已接管）
+// 这是「AI 兜底」：只有本地关键词/正则全部失配才会走到这里，省钱又稳。
+var GUIDE_INTENT_MODULES = {
+  'transfer.name': function (t) { GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
+  'transfer.phone': function (t) { GUIDE_TRANSFER = { kind: 'phone', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
+  'transfer.timed': function (t) { GUIDE_TRANSFER = { kind: 'timed', payee: null, phone: null, amount: null, remark: '', stage: 'slots', date: null, time: null, repeat: '不重复' }; guideTransferStep(t); },
+  'transfer.aa': function (t) { GUIDE_AA = { total: 0, participants: [], stage: 'slots', pendingNames: [], pickOptions: [] }; guideAAStep(t); },
+  'bill.analysis': function () { if (typeof showBillOverview === 'function') showBillOverview(); },
+  'bill.abnormal': function () { if (typeof showAbnormalAlert === 'function') showAbnormalAlert(); },
+  'card.apply': function (t) { guideStartCardApply(); guideCardApplyStep(t); },
+  'card.limit': function (t) { guideStartCardLimitAdjust(); guideCardLimitStep(t); },
+  'card.txn': function (t) { guideStartTxnLimit(); guideTxnLimitStep(t); },
+  'card.lost': function () { guideStartCardLost(); },
+  'wealth.buy': function (t) { guideStartWealthPurchase(); guideWealthStep(t); },
+  'wealth.risk': function () { if (typeof startRiskAssessment === 'function') startRiskAssessment(); },
+  'wealth.holding': function () { guideStartHoldings(); },
+  'sub.add': function (t) { GUIDE_SUB = { mode: 'add', stage: 'slots', preset: null, cycle: null, autoRenew: null }; guideSubAddStep(t); },
+  'sub.cancel': function (t) { GUIDE_SUB = { mode: 'cancel', stage: 'slots', target: null }; guideSubCancelStep(t); },
+  'sub.renew': function (t) { GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null }; guideSubManageStep(t); }
+};
+
+async function guideAIRouteIntent(text) {
+  if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return false;
+  var obj = null;
+  try {
+    obj = await guideLLMJson(
+      '你是银行 App 的意图路由器。把用户的话归到唯一模块，模块枚举：' +
+      Object.keys(GUIDE_INTENT_MODULES).join('、') + '、none。' +
+      '只输出 JSON：{"module":"模块名"}。判断不出就返回 none。',
+      text
+    );
+  } catch (e) { obj = null; }
+  if (!obj || !obj.module || obj.module === 'none') return false;
+  var fn = GUIDE_INTENT_MODULES[obj.module];
+  if (!fn) return false;
+  try { await fn(text); } catch (e) { return false; }
+  return true;
+}
+
+// 供 guideHandleText 末尾调用：能接管就返回 true（异步执行）
+function guideTryAIRoute(text) {
+  if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return false;
+  // 明显的闲聊/寒暄不浪费额度
+  if (/^(你好|您好|hi|hello|在吗|谢谢|多谢|再见|拜拜)[!！。.~～]*$/i.test(String(text || '').trim())) return false;
+  guideAIRouteIntent(text);
+  return true;
+}
 // 是否停在「最后一步的确认卡」上（等用户点按钮 / 填验证码）
 function guideAwaitingFinalAction() {
   if (typeof AGENT_PENDING_PLANS === 'object' && AGENT_PENDING_PLANS) {
@@ -1113,6 +1160,9 @@ function guideHandleText(text) {
     return true;
   }
 
+  // ⑤ 规则全部失配：让模型做一次意图路由（无 Key 时自动跳过，返回 false）
+  if (guideTryAIRoute(t)) return true;
+
   return false;
 }
 
@@ -1156,7 +1206,7 @@ var GUIDE_SUB_KEYWORDS = {
     apply: ['卡片申请', '申请信用卡', '申请卡片', '办卡', '信用卡申请'],
     limit: ['额度调整', '调整额度', '调额', '额度'],
     txnlimit: ['交易限制', '交易限额', '限额'],
-    lost: ['卡片挂失', '挂失', '冻结卡片']
+    lost: ['卡片挂失', '挂失', '冻结卡片', '卡丢了', '卡遗失', '卡不见了']
   },
   wealth: {
     products: ['产品申购', '申购', '理财产品', '产品'],
