@@ -1477,14 +1477,16 @@ function guideTransferHandleRemarkStage(text) {
     return true;
   }
 
-  // 问「是否需要添加备注？」
-  if (/^(需要|要|用|是|对|是的|好|好的|行|可以|加|添加|备注|加个备注|写备注|要备注|加上)$/.test(plain)) {
+  // 问「是否需要添加备注？」：严格先判断是 / 否
+  var yesRe = /^(需要|要|用|是|对|是的|是滴|好|好的|行|可以|加|添加|备注|加个备注|写备注|要备注|加上|yes|y|yeah|ok|okay)$/i;
+  var noRe = /^(不用|不需要|不要|不|否|不是|不用了|不写|不加|跳过|没有|算了|no|n|nope)$/i;
+  if (yesRe.test(plain)) {
     s.stage = 'remark';
     appendMessage(guideMessage('<p>请输入备注内容</p><p class="guide-tip">例如：房租 / 还款 / AA（最多 20 字）</p>'));
     scrollToBottom();
     return true;
   }
-  if (/^(不用|不需要|不要|不|否|不是|不用了|不写|不加|跳过|没有|算了)$/.test(plain)) {
+  if (noRe.test(plain)) {
     s.remark = '';
     guideCommitTransfer();
     return true;
@@ -1493,11 +1495,21 @@ function guideTransferHandleRemarkStage(text) {
     guideFlowLockedNotice('当前这笔转账还没走完：请回复「是」或「否」继续。');
     return true;
   }
-  // 直接打字写备注也算（如「房租」）
-  s.remark = raw;
-  guideCommitTransfer();
+  // 既不是是也不是否 → 先按是/否再问一次，不把这句话当成备注
+  s.stage = 'askRemark';
+  appendMessage(guideMessage(
+    '<p>请先回复是否添加备注：【是】或【否】。</p>' +
+    '<p class="guide-tip">选择「是」后，我再请你填写备注内容。</p>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideTransferRemarkChoice(true)">是</button>' +
+    '<button class="guide-chip" onclick="guideTransferRemarkChoice(false)">否</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
   return true;
 }
+
+
 
 function guideTransferStep(text) {
   var t = String(text || '').trim();
