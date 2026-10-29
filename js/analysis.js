@@ -38,75 +38,6 @@ function billAnalysisAdvice(totalIncome, totalExpense, expenseList) {
   return '储蓄率 ' + rate.toFixed(1) + '%，结余 ' + reportInt(net) + '；建议先补足 3 个月应急金，再考虑长期理财。';
 }
 
-function showBillAnalysis() {
-  const u = mockData.userProfile;
-  const expenseMap = {};
-  const incomeMap = {};
-  // 只统计当前交易流水，避免把静态月度账单和动态流水重复相加
-  (u.recentTxns || []).forEach(t => {
-    if (t.type === 'expense') {
-      expenseMap[t.channel] = (expenseMap[t.channel] || 0) + t.amount;
-    } else {
-      incomeMap[t.channel] = (incomeMap[t.channel] || 0) + t.amount;
-    }
-  });
-  const expenseList = Object.entries(expenseMap).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
-  let incomeList = Object.entries(incomeMap).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
-  // 动态流水没有收入记录时回落到静态月度账单，保证收入构成饼图不空转
-  if (!incomeList.length) {
-    incomeList = (mockData.bills.income || []).map(i => ({ label: i.label, value: i.value }));
-  }
-  const now = new Date();
-  const monthLabel = now.getFullYear() + '年' + (now.getMonth() + 1) + '月';
-  window.billExpenseData = expenseList;
-  window.billIncomeData = incomeList;
-
-  const totalIncome = incomeList.reduce((s, i) => s + i.value, 0);
-  const totalExpense = expenseList.reduce((s, i) => s + i.value, 0);
-
-  const html = `
-    <div class="message">
-      <div class="msg-avatar ai">🤖</div>
-      <div class="msg-content">
-        <div class="msg-name">智能金融助手</div>
-        <div class="msg-bubble">
-          <div class="report-page">
-            <div class="report-head">
-              <div>
-                <div class="report-title">账单分析</div>
-                <div class="report-sub">${monthLabel} · 含动态交易记录</div>
-              </div>
-            </div>
-            <div class="report-summary cols-2">
-              <div><span>总收入</span><b class="income">+${reportMoney(totalIncome)}</b></div>
-              <div><span>总支出</span><b class="expense">-${reportMoney(totalExpense)}</b></div>
-            </div>
-            <div class="report-chart-grid cols-2">
-              <div class="report-panel">
-                <div class="report-panel-title">支出构成</div>
-                <div class="report-donut"><canvas id="pieChart"></canvas></div>
-                <div class="report-legend" id="pieLegend"></div>
-              </div>
-              <div class="report-panel">
-                <div class="report-panel-title">收入构成</div>
-                <div class="report-donut"><canvas id="incomePieChart"></canvas></div>
-                <div class="report-legend" id="incomePieLegend"></div>
-              </div>
-            </div>
-            <div class="report-ai-line"><span class="report-ai-tag">AI 建议</span><span>${reportEsc(billAnalysisAdvice(totalIncome, totalExpense, expenseList))}</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  appendMessage(html);
-  setTimeout(() => {
-    drawReportDonut({ canvasId: 'pieChart', legendId: 'pieLegend', data: expenseList, centerLabel: '总支出' });
-    drawReportDonut({ canvasId: 'incomePieChart', legendId: 'incomePieLegend', data: incomeList, centerLabel: '总收入' });
-  }, 60);
-  scrollToBottom();
-}
-
 // 账单分析：消费统计 + 账单报告合并，内容以可视化为主（环形图 / 占比条 / 近 7 日趋势）
 function showBillOverview() {
   const u = mockData.userProfile;
@@ -191,7 +122,6 @@ function showBillOverview() {
               </div>
             </div>
 
-
             <div class="report-panel" style="margin-top:8px;">
               <div class="report-panel-title">${trendTitle}</div>
               <div class="bill-trend"><canvas id="billTrendChart"></canvas></div>
@@ -221,9 +151,6 @@ function showBillOverview() {
 }
 
 // 兼容旧入口名
-function showFinancialOverview() {
-  return showBillOverview();
-}
 // 最近支出曲线：平滑折线 + 渐变填充 + 数据点（canvas 自适应宽度）
 function drawBillTrendChart(opts) {
   var o = opts || {};
@@ -401,12 +328,6 @@ function drawReportDonut(opts) {
   }
 }
 
-// 兼容旧调用：只重绘支出构成
-function drawPieChart() {
-  drawReportDonut({ canvasId: 'pieChart', legendId: 'pieLegend', data: window.billExpenseData || mockData.bills.expense, centerLabel: '总支出' });
-}
-
-
 // ========== 异常交易识别与预警 ==========
 function detectAbnormalTxns() {
   const txns = mockData.userProfile.recentTxns;
@@ -432,26 +353,6 @@ function detectAbnormalTxns() {
 }
 
 // 主菜单里的异常交易提示：只给条数与结论，详情点按钮再看
-function showAbnormalSummary() {
-  var abnormal = [];
-  try { abnormal = detectAbnormalTxns() || []; } catch (e) { abnormal = []; }
-  if (!abnormal.length) return;
-  var msg = '<div class="alert-banner alert-banner-mini">' +
-    '<div class="alert-banner-icon">⚠️</div>' +
-    '<div class="alert-banner-content">' +
-    '<div class="alert-banner-title">检测到 ' + abnormal.length + ' 笔异常交易</div>' +
-    '<div class="alert-banner-desc">系统识别到可疑消费、异地交易</div>' +
-    '</div>' +
-    '<button class="alert-banner-btn" onclick="showAbnormalAlert()">查看</button>' +
-    '</div>';
-  if (typeof guideMessage === 'function') {
-    appendMessage(guideMessage(msg));
-  } else {
-    appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
-      '<div class="msg-name">智能金融助手</div><div class="msg-bubble">' + msg + '</div></div></div>');
-  }
-  scrollToBottom();
-}
 function showAbnormalAlert() {
   const abnormal = detectAbnormalTxns();
   const html = `
@@ -480,81 +381,7 @@ function showAbnormalAlert() {
   scrollToBottom();
 }
 
-
 // ========== 财务报告 ==========
-function showFinanceReport() {
-  const u = mockData.userProfile;
-  const totalIncome = u.recentTxns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const totalExpense = u.recentTxns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-  const netFlow = totalIncome - totalExpense;
-  const savingsRate = totalIncome > 0 ? ((netFlow / totalIncome) * 100).toFixed(1) : '0.0';
-  const holdings = u.holdings || [];
-  const totalHoldings = holdings.reduce((s, h) => s + h.amount, 0);
-  const subscriptions = mockData.subscriptions;
-  const monthlySubExpense = subscriptions.reduce((s, sub) => {
-    const monthly = sub.cycle === '/月' ? sub.price : sub.cycle === '/季' ? sub.price / 3 : sub.price / 12;
-    return s + monthly;
-  }, 0);
-  const now = new Date();
-  const monthLabel = now.getFullYear() + '年' + (now.getMonth() + 1) + '月';
-
-  // 收入分配：支出 / 结余；资产构成：储蓄卡可用 / 冻结 / 理财持仓
-  const cash = Number(u.debitCard.balance) || 0;
-  const frozen = Number(u.debitCard.frozen) || 0;
-  const flowList = [
-    { label: '支出', value: totalExpense },
-    { label: '结余', value: Math.max(0, netFlow) }
-  ].filter(x => x.value > 0);
-  const assetList = [
-    { label: '储蓄卡可用', value: Math.max(0, cash - frozen) },
-    { label: '冻结金额', value: frozen },
-    { label: '理财持仓', value: totalHoldings }
-  ].filter(x => x.value > 0);
-  const totalAssets = assetList.reduce((s, x) => s + x.value, 0);
-
-  const html = `
-    <div class="message">
-      <div class="msg-avatar ai">🤖</div>
-      <div class="msg-content">
-        <div class="msg-name">智能金融助手</div>
-        <div class="msg-bubble">
-          <div class="report-page">
-            <div class="report-head">
-              <div>
-                <div class="report-title">财务报告</div>
-                <div class="report-sub">${monthLabel} · 收支与资产概览</div>
-              </div>
-            </div>
-            <div class="report-summary">
-              <div><span>总收入</span><b class="income">+${reportMoney(totalIncome)}</b></div>
-              <div><span>总支出</span><b class="expense">-${reportMoney(totalExpense)}</b></div>
-              <div><span>订阅月均</span><b class="expense">-${reportMoney(monthlySubExpense)}</b></div>
-            </div>
-            <div class="report-chart-grid cols-2">
-              <div class="report-panel">
-                <div class="report-panel-title">收入分配</div>
-                <div class="report-donut"><canvas id="flowChart"></canvas></div>
-                <div class="report-legend" id="flowLegend"></div>
-              </div>
-              <div class="report-panel">
-                <div class="report-panel-title">资产构成</div>
-                <div class="report-donut"><canvas id="assetChart"></canvas></div>
-                <div class="report-legend" id="assetLegend"></div>
-              </div>
-            </div>
-            <div class="report-ai-line"><span class="report-ai-tag">AI 建议</span><span>${reportEsc(financeReportAdvice({ savingsRate: Number(savingsRate), netFlow: netFlow }))}</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  appendMessage(html);
-  setTimeout(() => {
-    drawReportDonut({ canvasId: 'flowChart', legendId: 'flowLegend', data: flowList, centerLabel: '本月收入', centerValue: totalIncome });
-    drawReportDonut({ canvasId: 'assetChart', legendId: 'assetLegend', data: assetList, centerLabel: '总资产', centerValue: totalAssets, legendFormat: 'money' });
-  }, 60);
-  scrollToBottom();
-}
 
 // 财务报告底部的一行 AI 建议：只保留「储蓄率判断 + 结余去向」，保证单行可读
 function financeReportAdvice(d) {

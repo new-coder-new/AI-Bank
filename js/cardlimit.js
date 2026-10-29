@@ -48,9 +48,6 @@ function cardLimitDetailCard() {
   var c = cardLimitData();
   var fresh = cardLimitIsFresh();
 
-  function fmt(v) {
-    return (v == null || v === '') ? '暂无数据' : '¥' + agentFmtInt(Number(v));
-  }
   function valCls(v) {
     return (v == null || v === '') ? 'color:#9ca3af;' : 'color:#1a1a1a;font-weight:700;';
   }

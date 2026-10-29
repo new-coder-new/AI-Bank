@@ -104,10 +104,6 @@ function agentCtxRecordTurn(userText, agentText, topicType) {
 }
 
 // 最近一轮问答
-function agentCtxLastTurn() {
-  var S = agentCtxEnsure();
-  return (S && S.history.length) ? S.history[0] : null;
-}
 
 // 把最近几轮压成文本，供模型/回答引用
 function agentCtxHistoryText(n) {
@@ -476,8 +472,3 @@ async function agentCtxHandle(text) {
 }
 
 // 给下游路由用：把代词替换成具体话题（agentHandle 未命中时可再试一次）
-function agentCtxExpandedText(text) {
-  var r = agentResolveReference(text);
-  if (!r.resolved) return null;
-  return agentRewriteWithTopic(text, r.resolved);
-}

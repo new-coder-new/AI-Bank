@@ -1,81 +1,6 @@
 // ========== 极致版：生日鲜花联动 ==========
-function calcDaysUntilBirthday(birthdayStr) {
-  const today = new Date();
-  const parts = String(birthdayStr || '').split('-').map(Number);
-  const month = parts[0], day = parts[1];
-  if (!(month >= 1 && month <= 12 && day >= 1 && day <= 31)) return 999;
-  // 按“天”比较：生日当天应显示 0 天，而不是滚到明年变成 365 天
-  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  let nextBirthday = new Date(today.getFullYear(), month - 1, day);
-  if (nextBirthday < todayMidnight) nextBirthday = new Date(today.getFullYear() + 1, month - 1, day);
-  return Math.round((nextBirthday - todayMidnight) / (1000 * 60 * 60 * 24));
-}
 
 // 生日提醒：只保留一张紧凑卡（最近生日的人 + 一键订花），完整名单在「我的-联系人」
-function showBirthdayReminder() {
-  if (typeof syncContactsBirthdays === 'function') syncContactsBirthdays();
-  var html = '';
-  if (typeof guideBirthdayCardHtml === 'function') {
-    var card = guideBirthdayCardHtml();
-    if (card) html = card;
-  }
-  if (!html) {
-    html = '<div class="data-card"><div class="data-card-title">🎂 生日提醒</div>' +
-      '<div class="data-row"><span class="data-label">联系人</span><span class="data-value">暂无生日联系人</span></div>' +
-      '<div class="guide-chips" style="margin-top:6px;">' +
-      '<button class="guide-chip" onclick="goToContactsTab()">管理联系人</button>' +
-      '</div></div>';
-  }
-  appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
-    '<div class="msg-name">智能金融助手</div><div class="msg-bubble">' + html + '</div></div></div>');
-  scrollToBottom();
-}
-function showAddBirthdayContactForm() {
-  const formDiv = document.createElement('div');
-  formDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
-  formDiv.innerHTML = `
-    <div style="background:white;border-radius:16px;padding:24px;max-width:340px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
-      
-      <div style="font-size:16px;font-weight:600;text-align:center;margin-bottom:16px;">添加生日联系人</div>
-      <div style="margin-bottom:12px;">
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">姓名 *</label>
-        <input type="text" id="newContactName" placeholder="如：小明" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;box-sizing:border-box;">
-      </div>
-      <div style="margin-bottom:12px;">
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">生日（月-日）*</label>
-        <input type="text" id="newContactBirthday" placeholder="如：09-15" maxlength="5" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;box-sizing:border-box;">
-      </div>
-      <div style="margin-bottom:12px;">
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">关系</label>
-        <select id="newContactRelation" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;box-sizing:border-box;">
-          <option value="家人">家人</option>
-          <option value="爱人">爱人</option>
-          <option value="父亲">父亲</option>
-          <option value="母亲">母亲</option>
-          <option value="朋友">朋友</option>
-          <option value="同事">同事</option>
-          <option value="恋人">恋人</option>
-          <option value="其他">其他</option>
-        </select>
-      </div>
-      <div style="margin-bottom:12px;">
-        <label style="display:block;font-size:12px;color:#666;margin-bottom:4px;">推荐鲜花</label>
-        <select id="newContactFlower" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;box-sizing:border-box;">
-          <option value="向日葵" data-price="168">向日葵（¥168）</option>
-          <option value="康乃馨" data-price="128">康乃馨（¥128）</option>
-          <option value="玫瑰" data-price="299">玫瑰（¥299）</option>
-          <option value="百合" data-price="199">百合（¥199）</option>
-          <option value="郁金香" data-price="228">郁金香（¥228）</option>
-        </select>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:16px;">
-        <button class="btn btn-primary" style="flex:1;" onclick="saveBirthdayContact()">保存</button>
-        <button class="btn btn-secondary" style="flex:1;" onclick="this.closest('div[style*=fixed]').remove();">取消</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(formDiv);
-}
 
 function saveBirthdayContact() {
   const name = document.getElementById('newContactName').value.trim();
@@ -104,40 +29,6 @@ function saveBirthdayContact() {
   document.querySelector('div[style*=fixed]').remove();
   appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">已添加联系人：<strong>${name}</strong>（${relation}），生日：${birthday}，推荐鲜花：${flower}（¥${price}）</div></div></div>`);
   scrollToBottom();
-}
-
-function deleteBirthdayContact(name) {
-  if (!confirm(`确定要删除联系人"${name}"吗？`)) return;
-  mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter(c => c.name !== name);
-  // 通讯录里同一个人只清掉生日信息，联系人本身保留
-  const linked = (mockData.contacts || []).filter(c => c.name === name)[0];
-  if (linked) { delete linked.birthday; if (linked.fromBirthday) { mockData.contacts = mockData.contacts.filter(c => c.name !== name); } }
-  saveUserData();
-  appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">删除 已删除联系人：<strong>${name}</strong></div></div></div>`);
-  scrollToBottom();
-}
-
-function confirmFlowerOrder(name, flower, price, btn) {
-  // 显示确认弹窗
-  const confirmDiv = document.createElement('div');
-  confirmDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
-  confirmDiv.innerHTML = `
-    <div style="background:white;border-radius:16px;padding:24px;max-width:320px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-      
-      <div style="font-size:16px;font-weight:600;text-align:center;margin-bottom:16px;">确认鲜花订购</div>
-      <div style="background:#f9fafb;border-radius:10px;padding:12px;margin-bottom:16px;">
-        <div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:#666;">收件人</span><span style="font-weight:600;">${name}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:#666;">鲜花品种</span><span style="font-weight:600;">${flower}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:#666;">订购金额</span><span style="font-weight:700;color:#ef4444;">¥${price.toFixed(2)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:#666;">配送时间</span><span style="font-weight:600;">生日当天</span></div>
-      </div>
-      <div style="display:flex;gap:10px;">
-        <button class="btn btn-primary" style="flex:1;" onclick="orderFlowers('${name}','${flower}',${price});this.closest('div[style*=fixed]').remove();">确认支付</button>
-        <button class="btn btn-secondary" style="flex:1;" onclick="this.closest('div[style*=fixed]').remove();">取消</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(confirmDiv);
 }
 
 async function orderFlowers(name, flower, price) {

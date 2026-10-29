@@ -303,33 +303,6 @@ function showTxnLimitRules() {
   scrollToBottom();
 }
 
-function showTxnLimitSettings() {
-  const l = txnLimitData();
-  const body =
-    '<div class="data-card">' +
-    '<div class="data-card-title">信用卡交易限制</div>' +
-    '<div class="form-group"><label class="form-label">单笔限额（元）</label>' +
-    '<input type="number" class="form-input" id="txnSingle" value="' + l.single + '" min="1000" step="1000"></div>' +
-    '<div class="form-group"><label class="form-label">每日限额（元）</label>' +
-    '<input type="number" class="form-input" id="txnDaily" value="' + l.daily + '" min="1000" step="1000">' +
-    '<div class="form-hint" id="txnLimitHint"></div></div>' +
-    '<div class="form-group"><label class="form-label">夜间交易（23:00 - 06:00）</label>' +
-    '<select class="form-select" id="txnNight"><option value="block"' + (l.night === 'block' ? ' selected' : '') + '>禁止</option>' +
-    '<option value="allow"' + (l.night === 'allow' ? ' selected' : '') + '>允许</option></select></div>' +
-    '<div class="form-group"><label class="form-label">境外交易</label>' +
-    '<select class="form-select" id="txnOverseas"><option value="block"' + (l.overseas === 'block' ? ' selected' : '') + '>禁止</option>' +
-    '<option value="allow"' + (l.overseas === 'allow' ? ' selected' : '') + '>允许</option></select></div>' +
-    '<div class="form-actions">' +
-    '<button class="btn btn-primary" onclick="saveTxnLimitSettings()">保存设置</button>' +
-    '<button class="btn btn-secondary" onclick="showTxnLimitRules()">查看限制规则</button>' +
-    '<button class="btn btn-secondary" onclick="txnLimitCancel()">取消</button>' +
-    '</div></div>' +
-    '<p style="margin-top:10px;font-size:11.5px;color:#8A97A8;line-height:1.7;">限额保存后立即生效：信用卡分期等消费类交易会按单笔与每日限额校验，超限直接拦截。</p>';
-
-  appendMessage(cardServicePage('交易限制', '按单笔 / 日累计 / 场景控制信用卡消费', body));
-  scrollToBottom();
-}
-
 function txnLimitCancel() {
   agentReply('已取消修改，交易限制保持原设置。');
 }
@@ -371,24 +344,3 @@ function saveTxnLimitSettings() {
 }
 
 // ------------------------------ 卡片挂失 ------------------------------
-function showCardFreezePanel() {
-  const c = cardServiceCard();
-  const frozen = c.isFrozen === true || cardFrozen === true;
-  const number = c.number || '6228 **** **** 8888';
-  const available = c.available != null ? c.available : (c.limit || 0) - (c.used || 0);
-
-  const body =
-    '<div class="data-card">' +
-    '<div class="data-row"><span class="data-label">卡号</span><span class="data-value">' + number + '</span></div>' +
-    '<div class="data-row"><span class="data-label">卡片状态</span><b class="data-value" style="color:' + (frozen ? '#B42318' : '#16A34A') + ';">' + (frozen ? '已挂失' : '正常') + '</b></div>' +
-    '<div class="data-row"><span class="data-label">可用额度</span><span class="data-value">' + cardServiceMoney(available) + '</span></div>' +
-    '</div>' +
-    '<p style="margin-top:10px;font-size:11.5px;color:#8A97A8;line-height:1.7;">挂失后卡片立即冻结、无法继续交易；找回卡片可自助解挂。挂失与解挂均会记入账户变更记录。</p>' +
-    '<div class="form-actions">' +
-    '<button class="btn ' + (frozen ? 'btn-primary' : 'btn-danger') + '" onclick="toggleFreeze()">' + (frozen ? '解除挂失' : '立即挂失') + '</button>' +
-    '<button class="btn btn-secondary" onclick="showCardLimit()">查看卡片详情</button>' +
-    '</div>';
-
-  appendMessage(cardServicePage('卡片挂失', frozen ? '当前状态：已挂失' : '当前状态：正常使用中', body));
-  scrollToBottom();
-}

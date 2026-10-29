@@ -147,14 +147,6 @@ function switchModule(module, el) {
   quickAction(module);
 }
 
-function backToChat() {
-  const chatNav = document.querySelector('.nav-item[onclick*="chat"]');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  if (chatNav) chatNav.classList.add('active');
-  currentModule = 'chat';
-  showWelcomeMessage();
-}
-
 // 抽屉里点击后先收起，再执行目标动作
 function drawerGo(fn) {
   const drawer = document.getElementById('agentDrawer');
@@ -206,15 +198,6 @@ function toggleFuncPanel() {
 }
 
 // 展开/收起功能大类
-function toggleFuncCategory(el) {
-  const isExpanded = el.classList.contains('expanded');
-  // 先收起所有大类
-  document.querySelectorAll('.func-category.expanded').forEach(cat => cat.classList.remove('expanded'));
-  // 如果当前大类未展开，则展开它
-  if (!isExpanded) {
-    el.classList.add('expanded');
-  }
-}
 
 function selectFunc(type) {
   toggleFuncPanel();

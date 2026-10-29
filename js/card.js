@@ -85,20 +85,6 @@ function showCardLimit() {
   scrollToBottom();
 }
 
-function adjustLimit() {
-  // 统一走「申请 → 审批 → 生效」链路，不再直接改生效额度
-  const c = mockData.userProfile.creditCard || {};
-  const cur = Number(c.effectiveLimit != null ? c.effectiveLimit : c.limit) || 0;
-  if (typeof cardLimitAdjustForm === 'function') cardLimitAdjustForm(cur);
-}
-
-function submitAdjustLimit() {
-  // 兼容旧按钮：统一转到调额申请表单
-  const c = mockData.userProfile.creditCard || {};
-  const cur = Number(c.effectiveLimit != null ? c.effectiveLimit : c.limit) || 0;
-  if (typeof cardLimitAdjustForm === 'function') cardLimitAdjustForm(cur);
-}
-
 async function toggleFreeze() {
   const willFreeze = !cardFrozen;
   // 与一键式对话一致：挂失/解挂都属于账户变更，先确认再执行
@@ -150,7 +136,6 @@ async function toggleFreeze() {
   saveUserData();
 }
 
-
 // ========== 极致版：智能调额 ==========
 function showSmartLimit() {
   const u = mockData.userProfile;
@@ -192,14 +177,6 @@ function showSmartLimit() {
   appendMessage(html);
   scrollToBottom();
 }
-
-function confirmSmartLimit(newLimit) {
-  // 兼容旧入口：不再直接改生效额度，统一打开调额申请表单
-  const c = mockData.userProfile.creditCard || {};
-  const cur = Number(c.effectiveLimit != null ? c.effectiveLimit : c.limit) || 0;
-  if (typeof cardLimitAdjustForm === 'function') cardLimitAdjustForm(cur, Number(newLimit) || 0);
-}
-
 
 // ========== 功能增强：账单分期 ==========
 // 分期费率表（每期费率）

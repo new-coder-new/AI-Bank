@@ -270,49 +270,6 @@ function showSmartBuyConfirm(product, amount, text) {
   document.body.appendChild(confirmDiv);
 }
 
-function redeemProduct(name) {
-  const u = mockData.userProfile;
-  const holding = u.holdings?.find(h => h.name === name);
-  if (!holding) {
-    appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ 未找到该产品的持仓记录，无法赎回。</div></div></div>`);
-    scrollToBottom();
-    return;
-  }
-  const holdingAmount = holding.amount;
-  const popupId = 'redeem-popup-' + Date.now();
-  const popup = document.createElement('div');
-  popup.id = popupId;
-  popup.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
-  popup.innerHTML = `
-    <div style="background:white;border-radius:16px;padding:24px;max-width:340px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
-      
-      <div style="font-size:16px;font-weight:600;text-align:center;margin-bottom:4px;">理财赎回</div>
-      <div style="font-size:12px;color:#999;text-align:center;margin-bottom:16px;">${name}</div>
-      <div style="background:#f9fafb;border-radius:10px;padding:12px;margin-bottom:16px;">
-        <div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:#666;">持有金额</span><span style="font-weight:700;">¥${holdingAmount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:#666;">累计收益</span><span style="font-weight:600;color:${holding.profit >= 0 ? '#22c55e' : '#ef4444'};">${holding.profit >= 0 ? '+' : ''}¥${holding.profit.toFixed(2)}</span></div>
-      </div>
-      <div style="margin-bottom:16px;">
-        <label style="display:block;font-size:13px;color:#666;margin-bottom:6px;font-weight:600;">赎回金额（元）</label>
-        <input type="number" id="redeemAmountInput" value="${holdingAmount}" min="0.01" max="${holdingAmount}" step="0.01" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:10px;font-size:18px;font-weight:700;text-align:center;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#0B4F9C'" onblur="this.style.borderColor='#e5e7eb'">
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button style="flex:1;padding:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;font-size:12px;cursor:pointer;" onclick="document.getElementById('redeemAmountInput').value=${holdingAmount}">全部赎回</button>
-          <button style="flex:1;padding:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;font-size:12px;cursor:pointer;" onclick="document.getElementById('redeemAmountInput').value=${(holdingAmount * 0.5).toFixed(2)}">赎回一半</button>
-          <button style="flex:1;padding:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;font-size:12px;cursor:pointer;" onclick="document.getElementById('redeemAmountInput').value=${(holdingAmount * 0.25).toFixed(2)}">赎回1/4</button>
-        </div>
-      </div>
-      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-bottom:16px;">
-        <div style="font-size:11px;color:#92400e;">赎回金额不能超过持有金额。赎回后资金预计T+1工作日到账。</div>
-      </div>
-      <div style="display:flex;gap:10px;">
-        <button class="btn btn-primary" style="flex:1;" onclick="confirmRedeem('${name}', ${holdingAmount}, '${popupId}')">确认赎回</button>
-        <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('${popupId}').remove();">取消</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(popup);
-}
-
 // 确认赎回：与一键式对话共用 wealth.redeem 工具
 async function confirmRedeem(name, holdingAmount, popupId) {
   const redeemAmount = parseFloat(document.getElementById('redeemAmountInput')?.value) || 0;
@@ -354,7 +311,6 @@ async function confirmRedeem(name, holdingAmount, popupId) {
   </div></div></div>`);
   scrollToBottom();
 }
-
 
 // ========== 风险测评 ==========
 const riskQuestions = [
@@ -469,7 +425,6 @@ function showRiskResult() {
     }, 300);
   }
 }
-
 
 // ========== 高阶版：持仓管理与收益分析 ==========
 function showHoldings() {

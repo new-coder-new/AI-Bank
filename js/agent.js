@@ -87,12 +87,6 @@ function loadAgentMemory() {
 function saveAgentMemory() {
   try { localStorage.setItem(AGENT_MEMORY_KEY, JSON.stringify(AGENT_MEMORY)); } catch (e) { }
 }
-function agentRemember(text) {
-  if (!AGENT_MEMORY) return;
-  AGENT_MEMORY.notes.unshift({ at: new Date().toISOString(), text: text });
-  if (AGENT_MEMORY.notes.length > 20) AGENT_MEMORY.notes = AGENT_MEMORY.notes.slice(0, 20);
-  saveAgentMemory();
-}
 
 function initAgentMemory() {
   AGENT_MEMORY = loadAgentMemory();

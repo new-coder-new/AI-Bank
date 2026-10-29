@@ -526,61 +526,6 @@ function guideStartFlowerForContact(name) {
   return;
 }
 
-function guideStartFlowerForContactLegacy(name) {
-  guideResetAllSessions();
-  var contacts = guideFlowerContacts();
-  var target = String(name || '');
-  if (contacts.indexOf(target) === -1) {
-    guideStartFlowerOrder();
-    return;
-  }
-  var c = (mockData.contacts || []).filter(function (x) { return x && x.name === target; })[0] || {};
-  var bd = ((mockData.userProfile && mockData.userProfile.birthdayContacts) || []).filter(function (x) { return x && x.name === target; })[0] || {};
-  var bouquet = bd.flower ? guideFlowerBouquet(bd.flower) : null;
-  var n = guideNearestBirthday();
-  var date = '';
-  if (bd.birthday) {
-    var mm = String(bd.birthday).split('-').map(Number);
-    var m = mm.length >= 2 ? mm[mm.length - 2] : NaN;
-    var d = mm.length >= 2 ? mm[mm.length - 1] : NaN;
-    if (m >= 1 && d >= 1) {
-      var now = new Date();
-      var y = now.getFullYear();
-      var cand = new Date(y, m - 1, d);
-      var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      if (cand < todayMid) cand = new Date(y + 1, m - 1, d);
-      date = cand.getFullYear() + '-' + guidePad2(String(cand.getMonth() + 1)) + '-' + guidePad2(String(cand.getDate()));
-    }
-  }
-  GUIDE_FLOWER = {
-    mode: 'order', stage: 'slots',
-    order: {
-      recipient: target,
-      phone: c.phoneFull || c.phone || '',
-      address: c.address || '清远市清城区XX小区',
-      bouquet: bouquet ? bouquet.name : '',
-      date: date,
-      slot: 'afternoon',
-      card: '生日快乐',
-      payMethod: '储蓄卡'
-    },
-    editing: null
-  };
-  currentModule = 'life';
-  var filled = [];
-  if (c.phoneFull || c.phone) filled.push('手机号 ' + (c.phoneFull || c.phone));
-  filled.push('收货地址 ' + GUIDE_FLOWER.order.address);
-  if (bouquet) filled.push('花束 ' + bouquet.name);
-  // 已为该联系人在同一天下过单 → 直接提示，不再走确认卡
-  var dupAtStart = guideFlowerDuplicate(target, date);
-  if (dupAtStart) {
-    GUIDE_FLOWER = null;
-    guideFlowerWarnDuplicate(dupAtStart);
-    return;
-  }
-  guideFlowerConfirm();
-}
-
 // 起始页的「账户概览」入口：按需打开原来的财务驾驶舱，不占起始版面
 function guideOpenOverview() {
   if (typeof renderAgentBriefing === 'function') renderAgentBriefing();
@@ -1734,8 +1679,6 @@ function guideTransferHandleRemarkStage(text) {
   return true;
 }
 
-
-
 function guideTransferStep(text) {
   var t = String(text || '').trim();
   if (/^(取消|不转了|算了|退出|返回|菜单)$/.test(t)) {
@@ -1912,15 +1855,6 @@ function guidePhoneResolvePayee() {
 }
 
 // 会话里展示的收款对象：手机号转账有姓名时显示「姓名（手机号）」
-function guideTransferTargetLabel() {
-  var s = GUIDE_TRANSFER;
-  if (!s) return '';
-  if (s.kind === 'phone') {
-    if (s.payee && s.phone) return s.payee + '（' + s.phone + '）';
-    return s.payee || s.phone || '';
-  }
-  return s.payee || '';
-}
 
 // 时间段模糊时的追问：只说了「明天下午」就再问「下午几点」
 function guidePeriodQuestion(period, date) {
@@ -2799,11 +2733,6 @@ function guideWealthProductsToggle(boxId) {
   scrollToBottom();
 }
 
-// 兼容旧调用：展开全部
-function guideWealthProductsShowAll(boxId) {
-  guideWealthProductsToggle(boxId);
-}
-
 function guideWealthShowRecommendations(profile) {
   var p = profile || guideWealthValidProfile();
   if (!p) return;
@@ -3608,14 +3537,6 @@ function showCardLimitRecords() {
 // 校验：金额必须 ≥0 的有效数字；单笔 > 日累计只提示核对、不自动修改；夜间/境外只接受「允许 / 禁止」。
 var GUIDE_TXN_LIMIT = null;
 
-function guideTxnLimitEsc(v) {
-  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
-}
-
-function guideTxnLimitMo(v) {
-  return '¥' + (Number(v) || 0).toLocaleString('zh-CN');
-}
-
 function guideTxnLimitFlagText(v) {
   return v === 'allow' ? '允许' : '禁止';
 }
@@ -4142,12 +4063,6 @@ function guideCardLostEsc(v) {
 function guideCardLostCards() {
   if (typeof cardServiceCards === 'function') return cardServiceCards();
   return [];
-}
-
-function guideCardLostTailsText() {
-  var list = guideCardLostCards();
-  if (!list.length) return '';
-  return '你名下的卡片尾号：' + list.map(function (c) { return c.tail || '****'; }).join('、') + '。';
 }
 
 function guideStartCardLost() {
@@ -5697,7 +5612,6 @@ function guideFlowerOrderCard(s) {
 }
 
 // 花束改选后同步价格提示（当前只改显示，提交时以表单为准）
-function guideFlowerFormChanged() {}
 
 // 提交前把表单里的值同步回 order
 function guideFlowerSyncForm() {
@@ -5983,7 +5897,6 @@ function guideFlowerListToggle(boxId) {
   box.setAttribute('data-expanded', expanded ? '0' : '1');
   scrollToBottom();
 }
-function guideFlowerListShowAll(boxId) { guideFlowerListToggle(boxId); }
 
 // 删除一条鲜花订单记录（待配送的需先取消）
 function guideFlowerDeleteOrder(orderId) {

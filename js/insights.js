@@ -165,11 +165,6 @@ function agentGreeting() {
   return '晚上好';
 }
 
-function agentMetricHtml(label, value, cls) {
-  return '<div class="agent-metric"><div class="agent-metric-label">' + label + '</div>' +
-    '<div class="agent-metric-value ' + (cls || '') + '">' + value + '</div></div>';
-}
-
 function bankEsc(v) {
   return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

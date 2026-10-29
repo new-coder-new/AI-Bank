@@ -180,9 +180,6 @@ function apiBudgetSet(amount, period) {
   return apiPost('/api/budget/set', { amount: amount, period: period || 'month' });
 }
 // 专项预算同步
-function apiFundCreate(name, amount, deadline) {
-  return apiPost('/api/fund/create', { name: name, amount: amount, deadline: deadline });
-}
 // 取消订阅同步
 function apiSubscriptionCancel(id) {
   return apiPost('/api/subscription/cancel', { id: id });
@@ -196,15 +193,7 @@ function apiCardLimitApprove(target, reason, direction) {
   return apiPost('/api/card/limit/approve', { target: target, reason: reason, direction: direction });
 }
 // 冻结金额明细（GET，只读）
-function apiFrozenDetail() {
-  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
-  return apiRequest('GET', '/api/balance/frozen');
-}
 // 联系人列表（GET，只读）
-function apiContactList() {
-  if (!API.enabled) return Promise.resolve({ ok: false, offline: true, contacts: mockData.contacts || [] });
-  return apiRequest('GET', '/api/contacts');
-}
 // 新增联系人同步（乐观本地更新由调用方完成）
 function apiContactAdd(name, account, bank, phone) {
   return apiPost('/api/contact/add', { name: name, account: account, bank: bank, phone: phone });

@@ -52,23 +52,6 @@ function renderAgentHealth() {
 }
 
 // 供简报内嵌的紧凑版评分条
-function agentHealthInlineHtml() {
-  var p = agentBuildProfile();
-  var h = p.health;
-  var totalColor = h.total >= 85 ? '#16a34a' : h.total >= 70 ? '#09407F' : h.total >= 55 ? '#f59e0b' : '#dc2626';
-  var bars = h.dims.map(function (d) {
-    var pct = Math.round(d.score / d.full * 100);
-    return '<div class="health-inline-dim"><span class="health-inline-name">' + d.name + '</span>' +
-      '<span class="health-inline-bar"><i style="width:' + pct + '%;background:' + (pct >= 80 ? '#16a34a' : pct >= 55 ? '#f59e0b' : '#dc2626') + ';"></i></span>' +
-      '<span class="health-inline-score">' + d.score + '</span></div>';
-  }).join('');
-  return '<div class="health-inline">' +
-    '<div class="health-inline-head"><span>财务健康评分</span>' +
-    '<span class="health-inline-total" style="color:' + totalColor + ';">' + h.total + '<small>/100 · ' + h.grade + '</small></span></div>' +
-    '<div class="health-inline-dims">' + bars + '</div>' +
-    '<div class="health-inline-foot">当前阶段：' + p.lifecycle.stage + ' · 客户标签：' + p.tags.map(function (t) { return t.name; }).join('、') + '</div>' +
-    '</div>';
-}
 
 // ------------------------------ 1.5 负债健康分析（只读体检，非拦截） ------------------------------
 // 体检负债风险是「只读分析」，展示月供收入比、负债结构与计算公式，
@@ -121,7 +104,6 @@ function renderAgentDebtHealth() {
   agentSessionAnalysis('debt', '负债健康：月供收入比 ' + (cash.debtRatio * 100).toFixed(1) + '%');
   addToConversation('assistant', '已生成负债健康分析', null);
 }
-
 
 // ------------------------------ 2. 主动提醒（同比/环比异动） ------------------------------
 // 目标：像"本月餐饮支出同比上涨 30%，是否调整预算"这样的主动发现，

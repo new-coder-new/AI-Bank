@@ -239,9 +239,3 @@ registerAgentTool('decision.installmentAdvice', {
 });
 
 // 供对话入口直接渲染
-function renderPurchaseDecision(amount, text) {
-  var d = agentPurchaseDecision(amount, { text: text });
-  appendMessage(decisionCardHtml(d));
-  scrollToBottom();
-  return d;
-}
