@@ -5427,16 +5427,18 @@ function guideFlowerContactsText() {
   return names.length ? names.join('、') : '暂无联系人';
 }
 
-// 生日鲜花（整合鲜花订购）：先展示生日联系人与近期生日，再给出订购入口
+// 生日鲜花：这里只看订单/看提醒，下单统一走主页面「今日提醒」里的入口
 function guideStartBirthdayFlower() {
   guideResetAllSessions();
   currentModule = 'life';
-  if (typeof showBirthdayReminder === 'function') showBirthdayReminder();
+  var n = (typeof guideNearestBirthday === 'function') ? guideNearestBirthday() : null;
   appendMessage(guideMessage(
-    '<p>鲜花订购已并入这里，只能为联系人下单。</p>' +
-    '<p class="guide-tip">可选收花人：' + guideFlowerContactsText() + '</p>' +
+    '<p>鲜花下单统一从主页面「今日提醒」进入。</p>' +
+    (n ? '<p class="guide-tip">最近的生日：' + guideFlowerEsc(n.name) + (n.relation ? '（' + guideFlowerEsc(n.relation) + '）' : '') +
+      ' ' + Number(String(n.birthday).split('-')[0]) + ' 月 ' + Number(String(n.birthday).split('-')[1]) + ' 日，还有 ' + n.days + ' 天' +
+      '；需要在今日提醒里点「订鲜花+蛋糕」。' : '') +
+    '<p class="guide-tip">可下单的联系人：' + guideFlowerContactsText() + '</p>' +
     '<div class="guide-chips">' +
-    '<button class="guide-chip" onclick="guideStartFlowerOrder()">订购鲜花</button>' +
     '<button class="guide-chip" onclick="guideStartFlowerList()">查看鲜花订单</button>' +
     '</div>'
   ));
