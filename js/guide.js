@@ -266,7 +266,7 @@ function guideHomeRemindersHtml() {
       '<div class="mini-row-title">🎂 ' + guideFlowerEsc(n.name) + (n.relation ? '（' + guideFlowerEsc(n.relation) + '）' : '') +
       '生日：' + Number(String(n.birthday).split('-')[0]) + ' 月 ' + Number(String(n.birthday).split('-')[1]) + ' 日，' + days + '</div>' +
       (n.flower ? '<div class="mini-row-sub">推荐：' + guideFlowerEsc(n.flower) + ' ¥' + n.price + '</div>' : '') +
-      '</div><button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">为 TA 订鲜花</button></div>');
+      '</div><button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">订鲜花+蛋糕</button></div>');
   });
 
   // ③④⑤ 节日鲜花：只在临近（≤2 天）时才提醒，避免常年占版面
@@ -354,7 +354,7 @@ function guideBirthdayCardHtml() {
   return '<div class="mini-card birthday-mini">' +
     '<div class="mini-card-line">' + who + '生日：' + Number(String(n.birthday).split('-')[0]) + ' 月 ' + Number(String(n.birthday).split('-')[1]) + ' 日，' + days + '</div>' +
     '<div class="mini-card-line mini-card-actions">' + (rec ? '<span class="mini-card-rec">' + rec + '</span>' : '') +
-    '<button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">为 TA 订鲜花</button></div>' +
+    '<button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">订鲜花+蛋糕</button></div>' +
     '</div>';
 }
 
@@ -433,6 +433,7 @@ function guideStartFlowerPreset(name, opts) {
       phone: c.phoneFull || c.phone || '',
       address: c.address || '清远市清城区XX小区',
       bouquet: bouquet ? bouquet.name : '',
+      cake: o.cake || '无蛋糕',
       date: date,
       slot: o.slot || 'afternoon',
       card: o.card || '生日快乐',
@@ -454,7 +455,8 @@ function guideStartFlowerPreset(name, opts) {
 }
 // 点生日提醒直接进鲜花确认（收花人/手机号/地址按联系人自动填好，可改）
 function guideStartFlowerForContact(name) {
-  guideStartFlowerPreset(name, {});
+  // 生日礼：鲜花 + 蛋糕（默认 6 寸，可在卡片里改成 8 寸或不加蛋糕）
+  guideStartFlowerPreset(name, { cake: '6寸水果蛋糕' });
   return;
 }
 
@@ -5028,6 +5030,23 @@ var FLOWER_SLOTS = [
   { key: 'evening', label: '19:00–21:00', text: '晚间19-21点' }
 ];
 var FLOWER_CANCEL_FEE = 20;
+// 蛋糕加购（生日花礼一起送）
+var FLOWER_CAKES = [
+  { name: '无蛋糕', price: 0 },
+  { name: '6寸水果蛋糕', price: 168 },
+  { name: '8寸奶油蛋糕', price: 228 }
+];
+
+function guideFlowerCake(name) {
+  return FLOWER_CAKES.filter(function (x) { return x.name === name; })[0] || FLOWER_CAKES[0];
+}
+
+// 订单总价 = 花束 + 蛋糕
+function guideFlowerOrderTotal(o) {
+  var bq = guideFlowerBouquet(o && o.bouquet);
+  var ck = guideFlowerCake(o && o.cake);
+  return { bouquet: bq, cake: ck, total: (bq ? bq.price : 0) + (ck ? ck.price : 0) };
+}
 
 function guideFlowerEsc(v) {
   return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
@@ -5302,7 +5321,14 @@ function guideFlowerOrderCard(s) {
   var payOpts = ['储蓄卡', '信用卡'].map(function (p) {
     return '<option value="' + p + '"' + (p === (o.payMethod === '信用卡' ? '信用卡' : '储蓄卡') ? ' selected' : '') + '>' + p + '</option>';
   }).join('');
+  var cakeOpts = FLOWER_CAKES.map(function (x) {
+    return '<option value="' + x.name + '"' + (x.name === (o.cake || '无蛋糕') ? ' selected' : '') + '>' +
+      x.name + (x.price ? '（¥' + x.price + '）' : '') + '</option>';
+  }).join('');
   var dateVal = o.date || guideFlowerDateStr(0);
+  var tot = guideFlowerOrderTotal(o);
+  var totalText = '花束 ¥' + (tot.bouquet ? tot.bouquet.price : 0) +
+    (tot.cake && tot.cake.price ? ' + 蛋糕 ¥' + tot.cake.price : '') + ' = ¥' + tot.total;
   return '<div class="data-card flower-form"><div class="data-card-title">确认鲜花订单</div>' +
     '<div class="data-row"><span class="data-label">收花人</span><span class="data-value">' +
       '<select class="flower-input" id="flRecipient">' + recipientOpts + '</select></span></div>' +
@@ -5311,15 +5337,18 @@ function guideFlowerOrderCard(s) {
     '<div class="data-row"><span class="data-label">收货地址</span><span class="data-value">' +
       '<input class="flower-input" id="flAddress" value="' + guideFlowerEsc(o.address) + '" placeholder="详细收货地址"></span></div>' +
     '<div class="data-row"><span class="data-label">花束款式</span><span class="data-value">' +
-      '<select class="flower-input" id="flBouquet" onchange="guideFlowerFormChanged()">' + bouquetOpts + '</select></span></div>' +
+      '<select class="flower-input" id="flBouquet" onchange="guideFlowerRefreshTotal()">' + bouquetOpts + '</select></span></div>' +
     '<div class="data-row"><span class="data-label">配送日期</span><span class="data-value">' +
       '<input class="flower-input" type="date" id="flDate" value="' + guideFlowerEsc(dateVal) + '" min="' + guideFlowerDateStr(0) + '"></span></div>' +
     '<div class="data-row"><span class="data-label">配送时段</span><span class="data-value">' +
       '<select class="flower-input" id="flSlot">' + slotOpts + '</select></span></div>' +
     '<div class="data-row"><span class="data-label">贺卡留言</span><span class="data-value">' +
       '<input class="flower-input" id="flCard" maxlength="30" value="' + guideFlowerEsc(o.card || '') + '" placeholder="选填"></span></div>' +
+    '<div class="data-row"><span class="data-label">蛋糕</span><span class="data-value">' +
+      '<select class="flower-input" id="flCake" onchange="guideFlowerRefreshTotal()">' + cakeOpts + '</select></span></div>' +
     '<div class="data-row"><span class="data-label">支付方式</span><span class="data-value">' +
       '<select class="flower-input" id="flPay">' + payOpts + '</select></span></div>' +
+    '<div class="data-row"><span class="data-label">合计</span><span class="data-value" id="flTotal" style="font-weight:600;color:#B42318;">' + totalText + '</span></div>' +
     '</div>';
 }
 
@@ -5341,6 +5370,19 @@ function guideFlowerSyncForm() {
   v = val('flSlot'); if (v) o.slot = v;
   v = val('flCard'); if (v !== null) o.card = v;
   v = val('flPay'); if (v) o.payMethod = v;
+  v = val('flCake'); if (v !== null) o.cake = v;
+}
+
+// 蛋糕/花束变化时刷新合计文案
+function guideFlowerRefreshTotal() {
+  var s = GUIDE_FLOWER;
+  if (!s || !s.order) return;
+  guideFlowerSyncForm();
+  var el = document.getElementById('flTotal');
+  if (!el) return;
+  var tot = guideFlowerOrderTotal(s.order);
+  el.textContent = '花束 ¥' + (tot.bouquet ? tot.bouquet.price : 0) +
+    (tot.cake && tot.cake.price ? ' + 蛋糕 ¥' + tot.cake.price : '') + ' = ¥' + tot.total;
 }
 
 function guideFlowerConfirm() {
@@ -5434,8 +5476,9 @@ async function guideFlowerSubmit() {
   if (!s || s.stage !== 'confirm') return true;
   guideFlowerSyncForm();
   var o = s.order;
-  var bouquet = guideFlowerBouquet(o.bouquet);
-  var price = bouquet ? bouquet.price : 0;
+  var tot = guideFlowerOrderTotal(o);
+  var bouquet = tot.bouquet;
+  var price = tot.total;
   var today = guideFlowerDateStr(0);
 
   if (o.date < today) {
@@ -5510,6 +5553,9 @@ async function guideFlowerSubmit() {
     phone: o.phone,
     address: o.address,
     bouquet: o.bouquet,
+    cake: o.cake || '无蛋糕',
+    cakePrice: tot.cake ? tot.cake.price : 0,
+    bouquetPrice: bouquet ? bouquet.price : 0,
     price: price,
     date: o.date,
     slot: o.slot,
@@ -5521,7 +5567,8 @@ async function guideFlowerSubmit() {
     createdAt: new Date().toLocaleString('zh-CN')
   });
   saveUserData();
-  appendMessage(guideMessage('<p>鲜花订单提交成功，已从' + payMethod + '支付 ¥' + price + '，将在配送日按时派送。</p>' +
+  var cakeNote = (tot.cake && tot.cake.price) ? ('（含' + tot.cake.name + ' ¥' + tot.cake.price + '）') : '';
+  appendMessage(guideMessage('<p>鲜花订单提交成功，已从' + payMethod + '支付 ¥' + price + cakeNote + '，将在配送日按时派送。</p>' +
     '<div class="guide-chips"><button class="guide-chip" onclick="guideStartFlowerList()">查看鲜花订单</button></div>'));
   scrollToBottom();
   return true;
