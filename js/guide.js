@@ -786,10 +786,68 @@ function guideAAPhraseIntent(t) {
   var s = String(t || '');
   return /(aa|AA|Aa|分摊|平摊|垫付)/.test(s);
 }
+// 是否停在「最后一步的确认卡」上（等用户点按钮 / 填验证码）
+function guideAwaitingFinalAction() {
+  if (typeof AGENT_PENDING_PLANS === 'object' && AGENT_PENDING_PLANS) {
+    for (var k in AGENT_PENDING_PLANS) {
+      if (AGENT_PENDING_PLANS[k] && AGENT_PENDING_PLANS[k].status === 'pending') return true;
+    }
+  }
+  if (typeof window !== 'undefined' && window.__pendingScheduledTransfers) {
+    for (var c in window.__pendingScheduledTransfers) {
+      if (window.__pendingScheduledTransfers[c]) return true;
+    }
+  }
+  var list = [GUIDE_AA, GUIDE_CARD_LIMIT, GUIDE_TXN_LIMIT, GUIDE_CARD_LOST, GUIDE_CARD_APPLY, GUIDE_SUB, GUIDE_FLOWER, GUIDE_WEALTH];
+  for (var i = 0; i < list.length; i++) {
+    var s = list[i];
+    if (s && (s.stage === 'confirm' || s.stage === 'cancel-confirm')) return true;
+  }
+  return false;
+}
+
+// 确认卡上「允许打字」的内容：确认类 / 取消类 / 6 位验证码 / 鲜花确认卡的可改字段
+function guideIsFinalActionText(text) {
+  var t = String(text || '').trim();
+  if (!t) return false;
+  var plain = t.replace(/[吧呢啊呀。.!！?？,，\s]/g, '');
+  if (/^(确认|确定|提交|提交申请|提交订单|确认执行|确认转账|确认添加|确认修改|确认设置|确认挂失|确认取消|执行|继续|是|好|好的|行|可以|ok|yes)$/i.test(plain)) return true;
+  if (/^(取消|返回|退出|不|不要|算了|放弃|暂不执行|不执行)$/.test(plain)) return true;
+  if (/^\d{6}$/.test(plain)) return true;   // 短信验证码
+  if (/(改|换|地址|电话|手机号|花束|日期|时段|时间段|贺卡|留言|支付|信用卡|储蓄卡)/.test(t)) return true;
+  return false;
+}
+
+// 打字取消「定时转账确认卡」（这类卡片由 transfer.js 管理）
+function guideCancelPendingScheduled() {
+  if (typeof window === 'undefined' || !window.__pendingScheduledTransfers) return false;
+  var ids = Object.keys(window.__pendingScheduledTransfers);
+  if (!ids.length) return false;
+  ids.forEach(function (id) {
+    delete window.__pendingScheduledTransfers[id];
+    var card = document.getElementById(id);
+    if (card) card.innerHTML = '<div class="bank-cancelled">已取消，未创建定时转账任务。</div>';
+  });
+  appendMessage(guideMessage('<p>已取消本次定时转账，未创建任务。</p>'));
+  scrollToBottom();
+  return true;
+}
 // 文本解析：服务名 / 子功能名 / 返回菜单，命中则接管，返回 true
 function guideHandleText(text) {
   var t = String(text || '').trim().replace(/[。.!！?？,，\s]+$/g, '');
   if (!t) return false;
+
+  // 停在确认卡上：没点按钮又说了别的话，只提醒一句「请完成上述操作。」
+  if (guideAwaitingFinalAction() && !guideIsFinalActionText(t)) {
+    appendMessage(guideMessage('<p>请完成上述操作。</p>'));
+    scrollToBottom();
+    return true;
+  }
+  // 打字说「取消」也能取消定时转账确认卡
+  if (typeof window !== 'undefined' && window.__pendingScheduledTransfers &&
+      /^(取消|退出|算了|不创建了|放弃)$/.test(t.replace(/[。.!！?？\s]/g, ''))) {
+    if (guideCancelPendingScheduled()) return true;
+  }
 
   // 流程锁预检：未完成流程里说到别的服务名，先挡下来
   if (guideActiveFlowLabel()) {
