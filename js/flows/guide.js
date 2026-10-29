@@ -603,7 +603,9 @@ function guideActiveFlowLabel() {
   if (GUIDE_TXN_LIMIT) return '交易限制设置';
   if (GUIDE_CARD_LOST) return '卡片挂失';
   if (GUIDE_HOLDING) return '持仓管理';
-  if (GUIDE_SUB) return '订阅管理';
+  // 订阅：只有进了子模块（添加 / 取消 / 自动续费 / 全取消）才加锁，
+  // 停在「请选择操作」的阶段不算进行中，避免用户说「取消所有订阅」被流程锁拦住
+  if (GUIDE_SUB && /^(add|cancel|manage|cancel-all)$/.test(String(GUIDE_SUB.mode || ''))) return '订阅管理';
   if (GUIDE_FLOWER) return '鲜花订购';
   return '';
 }
@@ -754,6 +756,7 @@ var GUIDE_INTENT_MODULES = {
     guideStartSubCancel();
     if (typeof guideSubFindService === 'function' && guideSubFindService(t)) guideSubCancelStep(t);
   },
+  'sub.cancel-all': function () { guideSubCancelAllStart(); },
   'sub.renew': function (t) {
     GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null };
     guideStartSubAutoRenew();
@@ -771,7 +774,8 @@ async function guideAIRouteIntent(text) {
       '只输出 JSON：{"module":"模块名"}。判断不出就返回 none。' +
       '区分要点：card.limit 是调整信用卡总额度（提额、降额、把额度调到 X）；' +
       'card.txn 是交易限额（单笔限额、每日/每天限额、消费上限、一天只能用多少、限额是多少、怎么被限制了）。' +
-      '只要在说「一天/每天/单笔/日限/上限/限额/被限制」，一律 card.txn，不是 card.limit。',
+      '只要在说「一天/每天/单笔/日限/上限/限额/被限制」，一律 card.txn，不是 card.limit。' +
+      '说「取消所有订阅 / 全部退订 / 都取消」时用 sub.cancel-all，只取消某一个时才用 sub.cancel。',
       text
     );
   } catch (e) { obj = null; }
@@ -780,6 +784,10 @@ async function guideAIRouteIntent(text) {
   var t0 = String(text || '');
   if (/(一天|每天|每日|单笔|日限|限额|上限|限制)/.test(t0) && !/(额度调整|提额|提升额度|降低额度|调额|把额度)/.test(t0)) {
     if (obj.module === 'card.limit') obj.module = 'card.txn';
+  }
+  // 「取消所有订阅 / 全部退订」一律走一键全取消，别进单个取消流程
+  if (/^sub\./.test(obj.module) && /(所有|全部|都)/.test(t0) && /(取消|退订|不要|解约)/.test(t0)) {
+    obj.module = 'sub.cancel-all';
   }
   var fn = GUIDE_INTENT_MODULES[obj.module];
   if (!fn) return false;
@@ -5218,6 +5226,72 @@ function guideSubCancelSubmit() {
   scrollToBottom();
 }
 
+// ------------------------------ 一键取消所有订阅 ------------------------------
+function guideSubCancelAllStart() {
+  var list = guideSubActive().slice();
+  if (!list.length) {
+    // 首屏数据可能还在异步加载：稍等重试一次
+    GUIDE_SUB = { mode: 'choose', stage: 'choose' };
+    setTimeout(function () {
+      if (guideSubActive().length) { guideSubCancelAllStart(); return; }
+    }, 500);
+    appendMessage(guideMessage('<p>当前没有可取消的有效订阅。</p>' +
+      '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">返回订阅管理</button></div>'));
+    scrollToBottom();
+    return;
+  }
+  guideResetAllSessions();
+  var boxId = 'sub-cancel-all-' + Date.now();
+  GUIDE_SUB = { mode: 'cancel-all', stage: 'confirm', list: list, boxId: boxId };
+  var rows = list.map(function (sub) {
+    return '<div class="report-row"><span>' + guideSubEsc(sub.name) + '</span><b>' +
+      guideSubCycleText(sub.cycle) + '・' + (sub.autoRenew !== false ? '自动续费开启' : '自动续费关闭') + '</b></div>';
+  }).join('');
+  appendMessage(guideMessage(
+    '<div id="' + boxId + '">' +
+    '<p>确认取消全部 <b>' + list.length + '</b> 个订阅？</p>' +
+    '<div class="report-panel"><div class="report-panel-title">即将取消</div>' + rows + '</div>' +
+    '<p class="guide-tip">取消后立即失效，历史记录会保留。</p>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideSubCancelAllSubmit()">确认全部取消</button>' +
+    '<button class="guide-chip" onclick="guideSubCancelAllOp()">取消</button>' +
+    '</div></div>'
+  ));
+  scrollToBottom();
+}
+
+function guideSubCancelAllSubmit() {
+  var s = GUIDE_SUB;
+  if (!s || s.mode !== 'cancel-all' || s.stage !== 'confirm') return;
+  var list = (s.list || []).slice();
+  var hist = guideSubHistoryList();
+  var now = new Date().toLocaleString('zh-CN');
+  list.forEach(function (sub) {
+    hist.unshift({
+      name: sub.name,
+      cycle: sub.cycle,
+      autoRenew: sub.autoRenew !== false,
+      cancelledAt: now
+    });
+    if (typeof apiSubscriptionCancel === 'function') apiSubscriptionCancel(sub.id);
+  });
+  mockData.subscriptions = [];
+  saveUserData();
+  GUIDE_SUB = null;
+  guideConfirmCardDone(s.boxId, '已全部取消');
+  appendMessage(guideMessage('<p>已取消全部 ' + list.length + ' 个订阅。</p>' +
+    '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅管理</button></div>'));
+  scrollToBottom();
+}
+
+function guideSubCancelAllOp() {
+  var boxId = GUIDE_SUB && GUIDE_SUB.boxId;
+  GUIDE_SUB = null;
+  if (!guideConfirmCardCollapse(boxId, '未执行取消，订阅状态保持原样。')) {
+    appendMessage(guideMessage('<p>未执行取消，订阅状态保持原样。</p>'));
+  }
+  scrollToBottom();
+}
 function guideSubCancelOp() {
   var boxId = GUIDE_SUB && GUIDE_SUB.boxId;
   GUIDE_SUB = null;
@@ -5241,6 +5315,10 @@ async function guideSubSession(t) {
       return true;
     }
     if (/(添加|新增|开通|订一个|买一个)/.test(t)) { guideSubChoose('add'); return true; }
+    if (/(所有|全部|都).{0,4}(取消|退订|不要)|(取消|退订).{0,4}(所有|全部)/.test(t)) {
+      guideSubCancelAllStart();
+      return true;
+    }
     if (/(取消订阅|退订|终止|不要了|退掉)/.test(t)) { guideSubChoose('cancel'); return true; }
     if (/(自动续费|续费|管理|开启|关闭)/.test(t)) {
       // 「关闭某讯 VIP 的自动续费」这类直接说完整的，直接进自动续费流程
@@ -5249,7 +5327,19 @@ async function guideSubSession(t) {
       guideSubChoose('renew');
       return true;
     }
-    guideFlowLockedNotice('请选择：添加订阅 / 取消订阅 / 管理自动续费。');
+    // 停在「请选择」不算进行中流程，这里只提示怎么选，不输出流程锁文案
+    appendMessage(guideMessage(
+      '<p>请选择订阅管理里的操作：</p>' +
+      '<p class="guide-tip">添加订阅 / 取消订阅 / 管理自动续费，也可以直接说「取消所有订阅」。</p>'
+    ));
+    scrollToBottom();
+    return true;
+  }
+
+  // 一键取消全部：确认卡阶段
+  if (s.mode === 'cancel-all' && s.stage === 'confirm') {
+    if (/^(取消|不|算了|返回|不要|放弃)$/.test(plain)) { guideSubCancelAllOp(); return true; }
+    if (/^(确认|确定|全部取消|确认取消|都取消|是|好|好的|行|可以)$/.test(plain)) { guideSubCancelAllSubmit(); return true; }
     return true;
   }
 
