@@ -294,7 +294,11 @@ function agentProactiveCardHtml(ev) {
     '</div></div></div>';
 }
 
+// 主动推送已关闭（演示不再在进入页面后自动弹出「我主动帮你看了一眼…」）
+var AGENT_PROACTIVE_ENABLED = false;
+
 function initAgentProactive() {
+  if (!AGENT_PROACTIVE_ENABLED) return;
   // 模拟后台事件引擎：进入页面一段时间后主动推送一次
   setTimeout(function () {
     if (sessionStorage.getItem('agent_proactive_pushed')) return;
