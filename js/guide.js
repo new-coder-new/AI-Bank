@@ -828,11 +828,19 @@ async function guideAIRouteIntent(text) {
     obj = await guideLLMJson(
       '你是银行 App 的意图路由器。把用户的话归到唯一模块，模块枚举：' +
       Object.keys(GUIDE_INTENT_MODULES).join('、') + '、none。' +
-      '只输出 JSON：{"module":"模块名"}。判断不出就返回 none。',
+      '只输出 JSON：{"module":"模块名"}。判断不出就返回 none。' +
+      '区分要点：card.limit 是调整信用卡总额度（提额、降额、把额度调到 X）；' +
+      'card.txn 是交易限额（单笔限额、每日/每天限额、消费上限、一天只能用多少、限额是多少、怎么被限制了）。' +
+      '只要在说「一天/每天/单笔/日限/上限/限额/被限制」，一律 card.txn，不是 card.limit。',
       text
     );
   } catch (e) { obj = null; }
   if (!obj || !obj.module || obj.module === 'none') return false;
+  // 关键词纠偏：说「限额/每日/单笔/上限/被限制」而没说「提额/额度调整」时，强制归到交易限制
+  var t0 = String(text || '');
+  if (/(一天|每天|每日|单笔|日限|限额|上限|限制)/.test(t0) && !/(额度调整|提额|提升额度|降低额度|调额|把额度)/.test(t0)) {
+    if (obj.module === 'card.limit') obj.module = 'card.txn';
+  }
   var fn = GUIDE_INTENT_MODULES[obj.module];
   if (!fn) return false;
   try { guideResetAllSessions(); await fn(text); } catch (e) { return false; }
