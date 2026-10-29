@@ -540,11 +540,13 @@ function guideHandleText(text) {
     }
   }
 
-  // 「我想要添加订阅」→ 直接进添加订阅（先展示可订阅服务）
+  // 「我想要添加订阅」→ 直接进添加订阅（先展示可订阅服务）；句中没服务可解析，不必再走 step
   if (guideIsSubAddPlain(t)) {
     if (typeof guideStartSubAdd === 'function') {
+      var plainSvc = (typeof guideSubFindService === 'function') ? guideSubFindService(t) : null;
       guideStartSubAdd();
-      return guideLockedRun(function () { return guideSubAddStep(t); });
+      if (plainSvc) return guideLockedRun(function () { return guideSubAddStep(t); });
+      return true;
     }
   }
 
