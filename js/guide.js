@@ -4441,7 +4441,7 @@ function guideSubChoose(kind) {
 // 管理自动续费：先展示现有订阅，再问要开启/关闭哪一项
 function guideStartSubAutoRenew() {
   guideResetAllSessions();
-  GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null };
+  GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null, listShown: true };
   currentModule = 'life';
   var list = guideSubActive();
   var history = guideSubHistoryList();
@@ -4486,6 +4486,8 @@ async function guideSubManageStep(text) {
   if (want !== null) s.newAutoRenew = want;
 
   if (!s.target) {
+    // 刚刚已经展示过订阅清单（入口那句「需要取消或开启哪一项」），这里不再重复追问
+    if (s.listShown && !svc) { s.listShown = false; return true; }
     var hint = svc ? ('没有找到「' + guideSubEsc(svc.name) + '」的有效订阅。') : '';
     var names = guideSubActive().map(function (x) { return x.name; }).join('、') || '暂无订阅';
     appendMessage(guideMessage('<p>' + hint + '</p><p>请告诉我要管理哪一项订阅的自动续费。</p>' +
