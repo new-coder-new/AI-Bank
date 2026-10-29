@@ -4888,6 +4888,66 @@ function guideFlowerHoursLeft(order) {
   return (t - Date.now()) / 3600000;
 }
 
+// 确认卡阶段的单字段修改：地址 / 电话 / 收花人 / 花束 / 日期 / 时段 / 贺卡
+function guideFlowerApplyEdit(text) {
+  var s = GUIDE_FLOWER;
+  if (!s || !s.order) return null;
+  var o = s.order;
+  var t = String(text || '').trim();
+  if (!t) return null;
+  var m;
+
+  // 收货地址
+  if (/(收货地址|地址)/.test(t)) {
+    m = t.match(/(?:收货地址|地址)[^，,。;；]*?(?:改为|改成|换成|设为|是|为|成)\s*([^，,。;；]+)/);
+    if (!m) m = t.match(/(?:收货地址|地址)\s*[:：]\s*([^，,。;；]+)/);
+    if (m && m[1] && m[1].trim()) {
+      o.address = m[1].trim();
+      return '收货地址 ' + o.address;
+    }
+  }
+
+  // 联系电话
+  if (/(手机号|电话|联系方式)/.test(t)) {
+    m = t.match(/(1\d{10}|1\d{2}\*{4}\d{4})/);
+    if (m) { o.phone = m[1]; return '联系电话 ' + o.phone; }
+  }
+
+  // 贺卡留言
+  if (/(贺卡|留言)/.test(t)) {
+    m = t.match(/(?:贺卡留言|贺卡|留言)[^，,。;；]*?(?:改为|改成|换成|设为|是|为)\s*([^，,。;；]+)/);
+    if (m && m[1]) { o.card = m[1].trim().slice(0, 30); return '贺卡留言 ' + o.card; }
+  }
+
+  // 花束款式
+  if (/(花束|换成|改为|改成|礼盒)/.test(t)) {
+    var bq = guideFlowerBouquet(t);
+    if (bq) { o.bouquet = bq.name; return '花束款式 ' + bq.name; }
+  }
+
+  // 配送时段
+  if (/(上午|早上)/.test(t)) { o.slot = 'morning'; return '配送时段 上午9-12点'; }
+  if (/(下午)/.test(t)) { o.slot = 'afternoon'; return '配送时段 下午14-18点'; }
+  if (/(晚间|晚上|傍晚)/.test(t)) { o.slot = 'evening'; return '配送时段 晚间19-21点'; }
+
+  // 配送日期（支持「改到11月5日」「10月30号」）
+  if (/(日期|改到|改成|送到)/.test(t)) {
+    m = t.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]/);
+    if (m) {
+      var y = new Date().getFullYear();
+      var mm2 = Number(m[1]), dd2 = Number(m[2]);
+      if (mm2 >= 1 && mm2 <= 12 && dd2 >= 1 && dd2 <= 31) {
+        var cand = new Date(y, mm2 - 1, dd2);
+        var todayMid2 = new Date(); todayMid2.setHours(0, 0, 0, 0);
+        if (cand < todayMid2) cand = new Date(y + 1, mm2 - 1, dd2);
+        o.date = cand.getFullYear() + '-' + guidePad2(String(cand.getMonth() + 1)) + '-' + guidePad2(String(cand.getDate()));
+        return '配送日期 ' + guideFlowerDisplayDate(o.date);
+      }
+    }
+  }
+
+  return null;
+}
 // 从一句话里抽鲜花订单的各个字段
 function guideFlowerParse(text) {
   var raw = String(text || '');
@@ -5066,8 +5126,17 @@ async function guideFlowerOrderStep(text) {
   var parsed = guideFlowerParse(t);
   var o = s.order;
 
-  // 确认阶段的自由输入：切换支付 / 确认 / 取消
+  // 确认阶段的自由输入：先看是否要改字段，再处理支付 / 确认 / 取消
   if (s.stage === 'confirm') {
+    var edited = guideFlowerApplyEdit(t);
+    if (edited) {
+      var oldBox = s.boxId ? document.getElementById(s.boxId) : null;
+      if (oldBox) oldBox.innerHTML = '<p>已更新：' + guideFlowerEsc(edited) + '。</p>';
+      s.boxId = null;
+      s.stage = 'confirm';
+      guideFlowerConfirm();
+      return true;
+    }
     if (/信用卡/.test(t)) { o.payMethod = '信用卡'; appendMessage(guideMessage('<p>已切换为信用卡支付。</p>')); guideFlowerConfirm(); return true; }
     if (/储蓄卡|借记卡/.test(t)) { o.payMethod = '储蓄卡'; appendMessage(guideMessage('<p>已切换为储蓄卡支付。</p>')); guideFlowerConfirm(); return true; }
     if (/^(确认|提交|提交订单|确定|是|好|行)$/.test(t.replace(/[吧呢啊呀。.!！?？\s]/g, ''))) { return guideFlowerSubmit(); }
