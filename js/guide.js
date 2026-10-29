@@ -125,6 +125,19 @@ function guideIsReadOnlyQuery(text) {
     /(多少|余额|额度)/.test(s);
 }
 
+// 重复方式按钮
+function guideTimedRepeatChoose(repeat) {
+  var s = GUIDE_TRANSFER;
+  if (!s || s.stage !== 'repeat') return;
+  s.repeat = repeat;
+  guideTransferAskRemark();
+}
+// 句子里带时间/日期说法 → 视为定时转账
+function guideLooksTimedTransfer(t) {
+  var s = String(t || '');
+  if (/(定时|预约|计划|稍后|以后|到期执行)/.test(s)) return true;
+  return /(明天|今天|后天|大后天|下周|下个?周|周[一二三四五六日天]|星期[一二三四五六日天]|月底|月初|下月|每月|每周|每天|明年|\d{1,2}\s*月\s*\d{1,2}\s*[日号]|\d{1,2}\s*[点时]|\d{1,2}\s*[:：]\s*\d{2}|上午|下午|晚上|早上|中午)/.test(s);
+}
 // 一句话里已经带齐金额/收款人/产品时，直接进入业务流，不再先给二级菜单。
 // 这是「给张三转账1000元」被菜单吞掉的直接修复。
 function guideTryActionableCommand(text) {
@@ -136,7 +149,7 @@ function guideTryActionableCommand(text) {
     (/(给|向|帮|替)/.test(t) && /(转|打|汇|付)/.test(t) && /\d/.test(t));
   if (transferLike) {
     var hasPhone = /1\d{10}/.test(t);
-    var kind = /定时|预约|计划/.test(t) ? 'timed' : ((/手机号|电话/.test(t) || hasPhone) ? 'phone' : 'name');
+    var kind = guideLooksTimedTransfer(t) ? 'timed' : ((/手机号|电话/.test(t) || hasPhone) ? 'phone' : 'name');
     var parsed = guideTransferParse(t, kind);
     if (parsed.amount > 0 || parsed.phone) {
       GUIDE_TRANSFER = {
@@ -905,7 +918,6 @@ function guideHandleText(text) {
   // 只读查询交回主链路，避免「查余额 / 查信用卡额度」被菜单或调额流程劫持
   if (guideIsReadOnlyQuery(t)) return false;
 
-  // 一句话里已经带齐金额/收款人/产品时，直接进入业务流，不再先给二级菜单。
   // 有些步骤是 async（返回 Promise），同样视为已接管，不能再让 Agent 重复处理。
   var actionable = guideTryActionableCommand(t);
   if (actionable === true) return true;
@@ -1890,7 +1902,13 @@ async function guideTimedStep(text) {
 
   if (s.payee && Number(s.amount) > 0 && s.date && s.time) {
     s.stage = 'repeat';
-    appendMessage(guideMessage('<p>是否重复（每天/每周/每月/每年）？</p>'));
+    appendMessage(guideMessage('<p>是否重复？</p><div class="guide-chips">' +
+      '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'不重复\')">不重复</button>' +
+      '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每天\')">每天</button>' +
+      '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每周\')">每周</button>' +
+      '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每月\')">每月</button>' +
+      '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每年\')">每年</button>' +
+      '</div>'));
     scrollToBottom();
     return true;
   }
@@ -2015,7 +2033,13 @@ async function guideTransferAIFallback(text) {
       // 定时转账：AI 只补齐收款人/金额，时间与重复仍按对话规则继续追问
       if (s.date && s.time) {
         s.stage = 'repeat';
-        appendMessage(guideMessage('<p>' + aiTag + '是否重复（每天/每周/每月/每年）？</p>'));
+        appendMessage(guideMessage('<p>' + aiTag + '是否重复？</p><div class="guide-chips">' +
+          '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'不重复\')">不重复</button>' +
+          '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每天\')">每天</button>' +
+          '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每周\')">每周</button>' +
+          '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每月\')">每月</button>' +
+          '<button class="guide-chip" onclick="guideTimedRepeatChoose(\'每年\')">每年</button>' +
+          '</div>'));
       } else {
         appendMessage(guideMessage('<p>' + aiTag + guideTimedMissingPrompt(s) + '</p>'));
       }
