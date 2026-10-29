@@ -147,6 +147,20 @@ function guideTryActionableCommand(text) {
       currentModule = 'transfer';
       return guideTransferStep(t);
     }
+    // 「给王五转账」这类只说了收款人、没说金额的，也要直接进姓名转账并追问金额，
+    // 不能退回二级菜单让用户再选一次。
+    if (kind === 'name') {
+      var hitName = '';
+      var names = (typeof guideContactNames === 'function') ? guideContactNames() : '';
+      names.split('、').forEach(function (n) {
+        if (n && t.indexOf(n) !== -1 && n.length > hitName.length) hitName = n;
+      });
+      if (hitName) {
+        GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' };
+        currentModule = 'transfer';
+        return guideTransferStep(t);
+      }
+    }
   }
 
   if (/(理财|基金|产品|申购|买入|购买|买)/.test(t) &&
