@@ -254,16 +254,20 @@ function guideHomeRemindersHtml() {
       '<button class="mini-link" onclick="showAbnormalAlert()">查看</button></div>');
   }
 
-  // ② 最近生日
-  var n = guideNearestBirthday();
-  if (n) {
+  // ② 生日：7 天内全部列出；7 天内没有就展示最近的那一位
+  var bdays = guideUpcomingBirthdays(7);
+  if (!bdays.length) {
+    var nearest = guideNearestBirthday();
+    if (nearest) bdays = [nearest];
+  }
+  bdays.forEach(function (n) {
     var days = n.days === 0 ? '今天生日' : '还有 ' + n.days + ' 天';
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
       '<div class="mini-row-title">🎂 ' + guideFlowerEsc(n.name) + (n.relation ? '（' + guideFlowerEsc(n.relation) + '）' : '') +
       '生日：' + Number(String(n.birthday).split('-')[0]) + ' 月 ' + Number(String(n.birthday).split('-')[1]) + ' 日，' + days + '</div>' +
       (n.flower ? '<div class="mini-row-sub">推荐：' + guideFlowerEsc(n.flower) + ' ¥' + n.price + '</div>' : '') +
       '</div><button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">为 TA 订鲜花</button></div>');
-  }
+  });
 
   // ③④⑤ 节日鲜花：只在临近（≤2 天）时才提醒，避免常年占版面
   var FEST_WARN_DAYS = 2;
@@ -316,6 +320,30 @@ function guideNearestBirthday() {
   return items[0] || null;
 }
 
+// 7 天内要过生日的联系人（按天数升序，去重）
+function guideUpcomingBirthdays(limitDays) {
+  if (typeof syncContactsBirthdays === 'function') syncContactsBirthdays();
+  var list = (mockData.userProfile && mockData.userProfile.birthdayContacts) || [];
+  var today = new Date();
+  var todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  var seen = {};
+  var items = [];
+  list.forEach(function (c) {
+    if (!c || !c.name || seen[c.name]) return;
+    var parts = String(c.birthday || '').split('-').map(Number);
+    var m = parts.length >= 2 ? parts[parts.length - 2] : NaN;
+    var d = parts.length >= 2 ? parts[parts.length - 1] : NaN;
+    if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31)) return;
+    var next = new Date(today.getFullYear(), m - 1, d);
+    if (next < todayMid) next = new Date(today.getFullYear() + 1, m - 1, d);
+    var days = Math.round((next - todayMid) / 86400000);
+    seen[c.name] = true;
+    items.push({ name: c.name, relation: c.relation || '', birthday: m + '-' + d, days: days, flower: c.flower || '', price: c.price || 0, next: next });
+  });
+  items.sort(function (a, b) { return a.days - b.days; });
+  var lim = (typeof limitDays === 'number') ? limitDays : 7;
+  return items.filter(function (x) { return x.days <= lim; });
+}
 // 主菜单生日提醒卡（紧凑一行 + 一个按钮）
 function guideBirthdayCardHtml() {
   var n = guideNearestBirthday();
