@@ -791,7 +791,7 @@ var GUIDE_INTENT_MODULES = {
   },
   'card.limit': function (t) {
     guideStartCardLimitAdjust();
-    if (/\d/.test(String(t || ''))) guideCardLimitStep(t);
+    if (/(额度|调到|提到|提高|降低|调高|调低|调整|原因)/.test(String(t || ''))) guideCardLimitStep(t);
   },
   'card.txn': function (t) {
     guideStartTxnLimit();
@@ -3319,7 +3319,7 @@ function guideStartCardLimitAdjust() {
   currentModule = 'card';
   var cards = guideCardLimitCards();
   if (cards.length > 1) {
-    GUIDE_CARD_LIMIT = { stage: 'pickCard', limit: 0, reason: null, cards: cards };
+    GUIDE_CARD_LIMIT = { stage: 'pickCard', limit: 0, reason: null, cards: cards, listShown: true };
     appendMessage(guideMessage(guideCardLimitPickCardHtml(cards)));
     scrollToBottom();
     return;
@@ -3375,6 +3375,7 @@ async function guideCardLimitStep(text) {
       guideCardLimitPickCard(picked.id);
       return true;
     }
+    if (s.listShown) { s.listShown = false; return true; }
     appendMessage(guideMessage(guideCardLimitPickCardHtml(s.cards || [])));
     scrollToBottom();
     return true;
@@ -3833,7 +3834,7 @@ function guideStartTxnLimit() {
   currentModule = 'card';
   var cards = guideCardLimitCards();
   if (cards.length > 1) {
-    GUIDE_TXN_LIMIT = { stage: 'pickCard', single: null, daily: null, night: null, overseas: null, cards: cards };
+    GUIDE_TXN_LIMIT = { stage: 'pickCard', single: null, daily: null, night: null, overseas: null, cards: cards, listShown: true };
     appendMessage(guideMessage(guideTxnLimitPickHtml(cards)));
     scrollToBottom();
     return;
@@ -3867,6 +3868,7 @@ async function guideTxnLimitStep(text) {
     }
     var picked = guidePickCardFromText(t, s.cards || []);
     if (picked) { guideTxnLimitPickCard(picked.id); return true; }
+    if (s.listShown) { s.listShown = false; return true; }
     appendMessage(guideMessage(guideTxnLimitPickHtml(s.cards || [])));
     scrollToBottom();
     return true;
