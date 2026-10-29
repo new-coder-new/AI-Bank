@@ -2697,6 +2697,14 @@ body {
   .bill-donut-wrap { gap: 10px; }
   .bill-legend-right .report-legend-item { font-size: 10px; }
 }
+/* 二级菜单：功能名 + 示例说法（无按钮） */
+.guide-rows { margin: 8px 0 4px; border-top: 1px solid #F1F5F9; }
+.guide-row { padding: 9px 0; border-bottom: 1px solid #F1F5F9; }
+.guide-row-title { font-size: 13px; color: #0F172A; font-weight: 600; }
+.guide-row-example { font-size: 12px; color: #64748B; margin-top: 2px; }
+.dark-mode .guide-rows, .dark-mode .guide-row { border-color: #24314A; }
+.dark-mode .guide-row-title { color: #E6EDF7; }
+.dark-mode .guide-row-example { color: #94A3B8; }
 /* 主菜单：欢迎语 + 迷你卡（告警 / 生日） */
 .welcome-title { margin: 0 0 10px; font-size: 14px; color: #0F172A; }
 .welcome-chips { margin-top: 2px; }

@@ -14,16 +14,10 @@ var GUIDE_SERVICES = [
     aliases: ['智能转账', '转账服务'],
     prompt: '您好，请问你需要姓名转账、手机号转账、定时转账，还是AA收款？',
     subs: [
-      {
-        key: 'name', label: '姓名转账',
-        run: function () { guideStartNameTransfer(); }
-      },
-      {
-        key: 'phone', label: '手机号转账',
-        run: function () { guideStartPhoneTransfer(); }
-      },
-      { key: 'timed', label: '定时转账', run: function () { guideStartTimedTransfer(); } },
-      { key: 'aa', label: 'AA收款', run: function () { guideStartAATransfer(); } }
+      { key: 'name', label: '姓名转账', example: '给张三转1000元', run: function () { guideStartNameTransfer(); } },
+      { key: 'phone', label: '手机号转账', example: '向13800138000转500元', run: function () { guideStartPhoneTransfer(); } },
+      { key: 'timed', label: '定时转账', example: '明天下午3点给张三转1000元', run: function () { guideStartTimedTransfer(); } },
+      { key: 'aa', label: 'AA收款', example: '向张三和李四AA收款200元', run: function () { guideStartAATransfer(); } }
     ]
   },
   {
@@ -31,8 +25,8 @@ var GUIDE_SERVICES = [
     aliases: ['账单'],
     prompt: '账单分析包含收支结构、支出构成和近 7 日趋势，也可以直接看异常交易：',
     subs: [
-      { key: 'overview', label: '账单分析', aliases: ['财务总览', '消费统计', '账单报告', '账单'], run: function () { showBillOverview(); } },
-      { key: 'abnormal', label: '异常交易', run: function () { showAbnormalAlert(); } }
+      { key: 'overview', label: '账单分析', example: '分析一下我这个月的账单', aliases: ['财务总览', '消费统计', '账单报告', '账单'], run: function () { showBillOverview(); } },
+      { key: 'abnormal', label: '异常交易', example: '看看最近的异常交易', run: function () { showAbnormalAlert(); } }
     ]
   },
   {
@@ -40,14 +34,11 @@ var GUIDE_SERVICES = [
     aliases: ['卡片'],
     prompt: '卡片管理包含这些操作，请选择：',
     subs: [
-      { key: 'apply', label: '卡片申请', aliases: ['申请信用卡'], run: function () { guideStartCardApply(); } },
-      { key: 'mycards', label: '我的卡片', aliases: ['我的信用卡'], run: function () { showCardMyCards(); } },
-      {
-        key: 'limit', label: '额度调整', aliases: ['申请调整信用卡额度', '信用卡额度调整', '调额'],
-        run: function () { guideStartCardLimitAdjust(); }
-      },
-      { key: 'txnlimit', label: '交易限制', run: function () { guideStartTxnLimit(); } },
-      { key: 'lost', label: '卡片挂失', run: function () { guideStartCardLost(); } }
+      { key: 'apply', label: '卡片申请', example: '我想办一张标准金卡，额度5万', aliases: ['申请信用卡'], run: function () { guideStartCardApply(); } },
+      { key: 'mycards', label: '我的卡片', example: '我现在有哪些卡', aliases: ['我的信用卡'], run: function () { showCardMyCards(); } },
+      { key: 'limit', label: '额度调整', example: '把额度提高到80000，原因是消费需求增加', aliases: ['申请调整信用卡额度', '信用卡额度调整', '调额'], run: function () { guideStartCardLimitAdjust(); } },
+      { key: 'txnlimit', label: '交易限制', example: '设置单笔限额20000，每日限额50000', run: function () { guideStartTxnLimit(); } },
+      { key: 'lost', label: '卡片挂失', example: '我的卡丢了，要挂失尾号6789的卡', run: function () { guideStartCardLost(); } }
     ]
   },
   {
@@ -55,9 +46,9 @@ var GUIDE_SERVICES = [
     aliases: ['理财服务', '投资理财'],
     prompt: '理财服务包含这些内容，请选择：',
     subs: [
-      { key: 'products', label: '产品申购', aliases: ['产品', '申购'], run: function () { guideStartWealthPurchase(); } },
-      { key: 'risk', label: '风险评估', run: function () { startRiskAssessment(); } },
-      { key: 'holdings', label: '持仓管理', aliases: ['持仓', '我的持仓'], run: function () { guideStartHoldings(); } }
+      { key: 'products', label: '产品申购', example: '申购稳健增利90天 5000元', aliases: ['产品', '申购'], run: function () { guideStartWealthPurchase(); } },
+      { key: 'risk', label: '风险评估', example: '我要做风险测评', run: function () { startRiskAssessment(); } },
+      { key: 'holdings', label: '持仓管理', example: '我买了哪些产品', aliases: ['持仓', '我的持仓'], run: function () { guideStartHoldings(); } }
     ]
   },
   {
@@ -65,11 +56,8 @@ var GUIDE_SERVICES = [
     aliases: ['生活', '生活服务'],
     prompt: '生活订购包含这些服务，请选择：',
     subs: [
-      { key: 'subscribe', label: '订阅管理', aliases: ['我的订阅'], run: function () { guideStartSubManage(); } },
-      {
-        key: 'birthday', label: '生日鲜花', aliases: ['鲜花订购', '订花', '买花', '鲜花订单'],
-        run: function () { guideStartBirthdayFlower(); }
-      }
+      { key: 'subscribe', label: '订阅管理', example: '我想要订阅某易云年卡', aliases: ['我的订阅'], run: function () { guideStartSubManage(); } },
+      { key: 'birthday', label: '生日鲜花', example: '为林小雨订一束花', aliases: ['鲜花订购', '订花', '买花', '鲜花订单'], run: function () { guideStartBirthdayFlower(); } }
     ]
   }
 ];
@@ -621,14 +609,16 @@ function guideOpenService(key) {
   if (!s) return;
   guideResetAllSessions();
   currentModule = s.key;
-  var chips = s.subs.map(function (sub) {
-    return guideChip(sub.label, "guidePickSub('" + s.key + "','" + sub.key + "')");
+  // 二级菜单不再提供按钮：列出「功能名：示例说法」，用户直接说话进入
+  var rows = s.subs.map(function (sub) {
+    return '<div class="guide-row"><div class="guide-row-title">' + sub.label + '</div>' +
+      (sub.example ? '<div class="guide-row-example">例如：' + sub.example + '</div>' : '') + '</div>';
   }).join('');
 
   appendMessage(guideMessage(
-    '<p>' + s.prompt + '</p>' +
-    '<div class="guide-chips">' + chips + '</div>' +
-    '<p class="guide-tip">你可以直接点击按钮，或者输入对应的功能名称。</p>'
+    '<p>' + s.prompt.replace(/[，,]?\s*请选择[:：]?$/, '') + '</p>' +
+    '<div class="guide-rows">' + rows + '</div>' +
+    '<p class="guide-tip">直接说出你的需求即可（照示例说也行）。</p>'
   ));
   scrollToBottom();
 }
