@@ -131,7 +131,10 @@ function guideTryActionableCommand(text) {
   var t = String(text || '').trim();
   if (!t) return null;
 
-  if (/(转账|转帐|汇款|打钱|转钱|付款|转给)/.test(t)) {
+  // 「给张三转1000元」里的「转」也算转账意图（无需完整的「转账」两字）
+  var transferLike = /(转账|转帐|汇款|打钱|转钱|付款|转给)/.test(t) ||
+    (/(给|向|帮|替)/.test(t) && /转/.test(t) && /\d/.test(t));
+  if (transferLike) {
     var hasPhone = /1\d{10}/.test(t);
     var kind = /定时|预约|计划/.test(t) ? 'timed' : ((/手机号|电话/.test(t) || hasPhone) ? 'phone' : 'name');
     var parsed = guideTransferParse(t, kind);
