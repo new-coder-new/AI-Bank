@@ -311,6 +311,14 @@ function guideLockedRun(fn) {
   return true;
 }
 
+// 「某度网盘年卡开一下自动续费 / 关闭某讯会员自动续费」→ 直接进管理自动续费
+function guideIsSubRenewManagePhrase(t) {
+  var s = String(t || '').trim();
+  if (!s) return false;
+  if (!/续费/.test(s)) return false;
+  if (!/(开一下|开启|打开|恢复|关一下|关闭|关掉|管理|设置|调整)/.test(s)) return false;
+  return /(会员|vip|VIP|年卡|月卡|季卡|包年|包月|自动续费|某易云|易云|网易云|某讯|腾讯|某度|百度|网盘)/.test(s);
+}
 // 「某度网盘年卡不续费了」→ 关闭自动续费（订阅管理·管理自动续费）
 function guideIsSubRenewOffPhrase(t) {
   var s = String(t || '').trim();
@@ -483,6 +491,19 @@ function guideHandleText(text) {
       return true;
     }
     return guideLockedRun(function () { return guideCardLostStep(t); });
+  }
+
+  // 「某度网盘年卡开一下自动续费」→ 直接进管理自动续费并预选服务
+  if (guideIsSubRenewManagePhrase(t)) {
+    var renewOnSvc = (typeof guideSubFindService === 'function') ? guideSubFindService(t) : null;
+    if (renewOnSvc) {
+      GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null };
+      return guideLockedRun(function () { return guideSubManageStep(t); });
+    }
+    if (typeof guideStartSubAutoRenew === 'function') {
+      guideStartSubAutoRenew();
+      return guideLockedRun(function () { return guideSubManageStep(t); });
+    }
   }
 
   // 「某度网盘年卡不续费了」→ 关闭自动续费；句中指定了服务就直接出确认卡
