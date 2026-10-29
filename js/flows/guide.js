@@ -3745,10 +3745,13 @@ async function guideTxnLimitAIFlag(text, which) {
 // AI 提取两项限额（支持中文数字）：返回 { single, daily } 或 null
 async function guideTxnLimitAILimits(text) {
   var obj = await guideLLMJson(
-    '你是银行 App 的数值抽取器。用户正在设置信用卡的「单笔限额」与「每日限额」。' +
-    '从用户的话里抽取数字（中文数字要转成阿拉伯数字，例如「五千」=5000、「一万」=10000、「五百」=500）。' +
-    '只输出 JSON：{"single": 数字或null, "daily": 数字或null}。' +
-    '若用户只给了一个数字且没说属于哪一项，把它当单笔限额（single），daily 返回 null。不要输出其它内容。',
+    '你是银行 App 的限额解析器。用户正在设置信用卡的「单笔限额」(single) 与「每日限额」(daily)。' +
+    '请输出 JSON：{"single":数字或null,"daily":数字或null,"keepSingle":true/false,"keepDaily":true/false}。' +
+    '规则：' +
+    '1) 中文数字转阿拉伯数字（「五千」=5000、「一万」=10000）。' +
+    '2) 用户明确说某一项「不变 / 不改变 / 不改 / 保持原样 / 照旧 / 维持」，该项数字给 null，并把它对应的 keep 设为 true。' +
+    '3) 只说了一个数字且没说属于哪一项时，当作单笔限额（single），daily 给 null。' +
+    '4) 两个数字按出现顺序，先单笔、后每日。只输出 JSON，不要其它内容。',
     text
   );
   if (!obj) return null;
@@ -3756,8 +3759,10 @@ async function guideTxnLimitAILimits(text) {
   var daily = (obj.daily === null || obj.daily === undefined) ? null : Number(obj.daily);
   if (single != null && !(single >= 0)) single = null;
   if (daily != null && !(daily >= 0)) daily = null;
-  if (single == null && daily == null) return null;
-  return { single: single, daily: daily };
+  var keepSingle = !!obj.keepSingle;
+  var keepDaily = !!obj.keepDaily;
+  if (single == null && daily == null && !keepSingle && !keepDaily) return null;
+  return { single: single, daily: daily, keepSingle: keepSingle, keepDaily: keepDaily };
 }
 
 function guideTxnLimitNightQuestion(prefix) {
@@ -3883,12 +3888,14 @@ async function guideTxnLimitStep(text) {
   }
 
   // ①.5 「不变 / 保持原样」：支持只改其中一项，另一项沿用当前值
-  var KEEP_RE = /^(不变|保持不变|不变动|不改|不改了|不修改|不用改|原样|照旧|维持|维持不变|不变了|保持)$/;
+  var KEEP_WORD = '(不变|不改变|不变动|不改|不修改|不用改|保持原样|保持不变|维持原样|维持不变|原样|照旧|维持|保持)';
+  var KEEP_RE = new RegExp('^' + KEEP_WORD + '$');
+  var KEEP_ANY = new RegExp(KEEP_WORD);
   var keepSingle = false;
   var keepDaily = false;
-  if (/(不变|保持不变|不变动|不改|不修改|原样|照旧|维持)/.test(t)) {
-    if (/(单笔|每笔|单次)[^，,、/\s]{0,6}(不变|不改|原样|照旧|维持)/.test(t)) keepSingle = true;
-    if (/(每日|日累计|每天|一天)[^，,、/\s]{0,6}(不变|不改|原样|照旧|维持)/.test(t)) keepDaily = true;
+  if (KEEP_ANY.test(t)) {
+    if (new RegExp('(单笔|每笔|单次)[^，,、/\\s]{0,6}' + KEEP_WORD).test(t)) keepSingle = true;
+    if (new RegExp('(每日|日累计|每天|一天)[^，,、/\\s]{0,6}' + KEEP_WORD).test(t)) keepDaily = true;
     if (!keepSingle && !keepDaily) {
       // 位置映射：第一个片段 → 单笔，第二个片段 → 每日（如「1000，不变」）
       var parts = t.split(/[，,、\/\s]+/).filter(function (x) { return x; });
@@ -3946,7 +3953,9 @@ async function guideTxnLimitStep(text) {
 
   // 本地没解析到数字，或句子里是中文数字（五千 / 一万 / 五百）→ 让 AI 抽取
   var hasCnNum = /[一二三四五六七八九十百千万两零]/.test(t);
-  if ((!mSingle && !mDaily && bare == null) || hasCnNum) {
+  var hasKeepWord = KEEP_ANY.test(t);
+  // 中文数字 / 完全没解析到 / 出现「不变·不改变·保持」这类语义 → 交给模型判断
+  if ((!mSingle && !mDaily && bare == null) || hasCnNum || hasKeepWord) {
     var loadId2 = guideTypingBubble();
     var ai = null;
     try { ai = await guideTxnLimitAILimits(t); } catch (e) { ai = null; }
@@ -3954,6 +3963,9 @@ async function guideTxnLimitStep(text) {
     var el2 = document.getElementById(loadId2);
     if (el2) el2.remove();
     if (ai) {
+      var curAI = guideTxnLimitCurrentValues(s.card);
+      if (ai.keepSingle) { s.single = curAI.single; s.keptSingle = true; }
+      if (ai.keepDaily) { s.daily = curAI.daily; s.keptDaily = true; }
       // 只补本地这次没解析到的字段，避免覆盖用户刚给出的其它字段
       if (!mSingle && s.single == null && ai.single != null) s.single = ai.single;
       if (!mDaily && s.daily == null && ai.daily != null) s.daily = ai.daily;
