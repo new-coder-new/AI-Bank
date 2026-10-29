@@ -2717,6 +2717,18 @@ body {
 .dark-mode .mini-card-rec { color: #94A3B8; }
 .dark-mode .mini-link { color: #7DA7FF; }
 .dark-mode .welcome-title { color: #E6EDF7; }
+/* 主菜单「今日提醒」合并卡：异常 / 生日 / 情人节 */
+.home-reminders { padding: 10px 12px; }
+.mini-card-title { font-size: 12px; color: #94A3B8; margin-bottom: 4px; }
+.mini-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid #F1F5F9; }
+.mini-row:first-of-type { border-top: 0; }
+.mini-row-main { flex: 1; min-width: 0; }
+.mini-row-title { font-size: 12.5px; color: #0F172A; line-height: 1.55; }
+.mini-row-sub { font-size: 11.5px; color: #94A3B8; margin-top: 1px; }
+.mini-row .mini-link { flex: 0 0 auto; }
+.dark-mode .mini-row { border-top-color: #24314A; }
+.dark-mode .mini-row-title { color: #E6EDF7; }
+.dark-mode .mini-row-sub { color: #94A3B8; }
 /* 鲜花确认卡：字段可直接编辑 */
 .flower-form .data-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
 .flower-form .data-label { flex: 0 0 72px; color: #64748B; }

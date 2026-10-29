@@ -204,16 +204,58 @@ function renderServiceWelcome() {
     '<div class="guide-chips welcome-chips">' + chips + overviewChip + '</div>' +
     '<p class="welcome-hint">点击按钮，或者直接输入功能名称</p>'
   ));
-  // 主菜单直接给出异常交易提示（详情点按钮或直接说「查看异常交易」再看）
-  if (typeof showAbnormalSummary === 'function') {
-    try { showAbnormalSummary(); } catch (e) { /* 忽略检测失败 */ }
-  }
-  // 主菜单生日提醒卡片：点进去直接为最近过生日的联系人订鲜花
+  // 主菜单提醒卡：异常交易 + 生日提醒 + 情人节，合并成一张
   try {
-    var bdayHtml = guideBirthdayCardHtml();
-    if (bdayHtml) appendMessage(guideMessage(bdayHtml));
-  } catch (e) { /* 忽略生日数据异常 */ }
+    var reminders = guideHomeRemindersHtml();
+    if (reminders) appendMessage(guideMessage(reminders));
+  } catch (e) { /* 忽略提醒数据异常 */ }
   scrollToBottom();
+}
+
+// 距离某个「月-日」还有多少天（当天为 0）
+function guideDaysUntilMonthDay(m, d) {
+  var now = new Date();
+  var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var next = new Date(now.getFullYear(), m - 1, d);
+  if (next < todayMid) next = new Date(now.getFullYear() + 1, m - 1, d);
+  return Math.round((next - todayMid) / 86400000);
+}
+
+// 主菜单提醒卡：一张卡里放「异常交易 / 生日 / 情人节」三类提醒
+function guideHomeRemindersHtml() {
+  var rows = [];
+
+  // ① 异常交易
+  var abnormal = [];
+  try { abnormal = (typeof detectAbnormalTxns === 'function') ? (detectAbnormalTxns() || []) : []; } catch (e) { abnormal = []; }
+  if (abnormal.length) {
+    rows.push('<div class="mini-row"><div class="mini-row-main">' +
+      '<div class="mini-row-title">⚠️ 检测到 ' + abnormal.length + ' 笔异常交易</div>' +
+      '<div class="mini-row-sub">系统识别到可疑消费、异地交易</div></div>' +
+      '<button class="mini-link" onclick="showAbnormalAlert()">查看</button></div>');
+  }
+
+  // ② 最近生日
+  var n = guideNearestBirthday();
+  if (n) {
+    var days = n.days === 0 ? '今天生日' : '还有 ' + n.days + ' 天';
+    rows.push('<div class="mini-row"><div class="mini-row-main">' +
+      '<div class="mini-row-title">🎂 ' + guideFlowerEsc(n.name) + (n.relation ? '（' + guideFlowerEsc(n.relation) + '）' : '') +
+      '生日：' + Number(String(n.birthday).split('-')[0]) + ' 月 ' + Number(String(n.birthday).split('-')[1]) + ' 日，' + days + '</div>' +
+      (n.flower ? '<div class="mini-row-sub">推荐：' + guideFlowerEsc(n.flower) + ' ¥' + n.price + '</div>' : '') +
+      '</div><button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">为 TA 订鲜花</button></div>');
+  }
+
+  // ③ 情人节
+  var vDays = guideDaysUntilMonthDay(2, 14);
+  var vText = vDays === 0 ? '今天就是情人节' : '还有 ' + vDays + ' 天';
+  rows.push('<div class="mini-row"><div class="mini-row-main">' +
+    '<div class="mini-row-title">💐 情人节：2 月 14 日，' + vText + '</div>' +
+    '<div class="mini-row-sub">推荐：简约玫瑰 ¥299</div></div>' +
+    '<button class="mini-link" onclick="guideStartValentineFlower()">订情人节鲜花</button></div>');
+
+  if (!rows.length) return '';
+  return '<div class="mini-card home-reminders"><div class="mini-card-title">今日提醒</div>' + rows.join('') + '</div>';
 }
 
 // 最近要过生日的联系人（含距离天数）
@@ -249,8 +291,75 @@ function guideBirthdayCardHtml() {
     '</div>';
 }
 
+// 情人节一键下单：优先「爱人」关系，默认玫瑰礼盒 + 2 月 14 日下午
+function guideStartValentineFlower() {
+  guideResetAllSessions();
+  var bday = (mockData.userProfile && mockData.userProfile.birthdayContacts) || [];
+  var contacts = guideFlowerContacts();
+  var pick = bday.filter(function (x) { return x && x.relation === '爱人' && contacts.indexOf(x.name) !== -1; })[0];
+  var name = pick ? pick.name : (contacts[0] || '');
+  if (!name) {
+    appendMessage(guideMessage('<p>还没有可下单的联系人，请先在「联系人」里添加收花人。</p>'));
+    scrollToBottom();
+    return;
+  }
+  guideStartFlowerPreset(name, { bouquet: '简约玫瑰', monthDay: [2, 14], slot: 'afternoon', card: '情人节快乐', note: '情人节' });
+}
+
+// 按联系人生成预填订单（通用）：opts.bouquet / opts.monthDay / opts.slot / opts.card / opts.note
+function guideStartFlowerPreset(name, opts) {
+  var o = opts || {};
+  var contacts = guideFlowerContacts();
+  var target = String(name || '');
+  if (contacts.indexOf(target) === -1) { guideStartFlowerOrder(); return; }
+  var c = (mockData.contacts || []).filter(function (x) { return x && x.name === target; })[0] || {};
+  var bd = ((mockData.userProfile && mockData.userProfile.birthdayContacts) || []).filter(function (x) { return x && x.name === target; })[0] || {};
+  var bouquet = o.bouquet ? guideFlowerBouquet(o.bouquet) : (bd.flower ? guideFlowerBouquet(bd.flower) : null);
+
+  // 配送日期：优先指定「月-日」，否则用联系人生日
+  var date = '';
+  var md = o.monthDay || (bd.birthday ? [Number(String(bd.birthday).split('-')[0]), Number(String(bd.birthday).split('-')[1])] : null);
+  if (md && md[0] >= 1 && md[1] >= 1) {
+    var now = new Date();
+    var cand = new Date(now.getFullYear(), md[0] - 1, md[1]);
+    var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (cand < todayMid) cand = new Date(now.getFullYear() + 1, md[0] - 1, md[1]);
+    date = cand.getFullYear() + '-' + guidePad2(String(cand.getMonth() + 1)) + '-' + guidePad2(String(cand.getDate()));
+  }
+
+  GUIDE_FLOWER = {
+    mode: 'order', stage: 'slots',
+    order: {
+      recipient: target,
+      phone: c.phoneFull || c.phone || '',
+      address: c.address || '清远市清城区XX小区',
+      bouquet: bouquet ? bouquet.name : '',
+      date: date,
+      slot: o.slot || 'afternoon',
+      card: o.card || '生日快乐',
+      payMethod: '储蓄卡'
+    },
+    editing: null
+  };
+  currentModule = 'life';
+  var filled = [];
+  if (c.phoneFull || c.phone) filled.push('手机号 ' + (c.phoneFull || c.phone));
+  filled.push('收货地址 ' + GUIDE_FLOWER.order.address);
+  if (bouquet) filled.push('花束 ' + bouquet.name);
+  appendMessage(guideMessage(
+    '<p>已按「' + guideFlowerEsc(target) + '」的联系人信息自动填写：' + guideFlowerEsc(filled.join('、')) + '。</p>' +
+    '<p class="guide-tip">' + (o.note ? o.note + '配送日期默认 ' : '配送日期默认') + (date ? guideFlowerDisplayDate(date) : '待定') +
+    '，时段 ' + guideFlowerSlot(o.slot || 'afternoon').text + '；字段可直接在卡片里修改。</p>'
+  ));
+  guideFlowerConfirm();
+}
 // 点生日提醒直接进鲜花确认（收花人/手机号/地址按联系人自动填好，可改）
 function guideStartFlowerForContact(name) {
+  guideStartFlowerPreset(name, {});
+  return;
+}
+
+function guideStartFlowerForContactLegacy(name) {
   guideResetAllSessions();
   var contacts = guideFlowerContacts();
   var target = String(name || '');
