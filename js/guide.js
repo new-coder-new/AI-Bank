@@ -5632,19 +5632,45 @@ function guideStartFlowerList() {
         '<div class="bank-sched-date" style="background:#F5F8FD;color:#09407F;"><b>' + guideFlowerEsc(o2.status) + '</b><small>' + guideFlowerEsc(guideFlowerDisplayDate(o2.date)) + '</small></div>' +
         '<div class="bank-sched-main"><b>' + guideFlowerEsc(o2.bouquet) + '｜收件：' + guideFlowerEsc(o2.recipient) + '</b>' +
         '<small>' + guideFlowerDisplayDate(o2.date) + ' ' + slot.text + ' · ' + guideFlowerEsc(o2.payMethod || '储蓄卡') + '</small></div>' +
-        (o2.status === '待配送' ? '<div class="bank-sched-side"><button class="ui-link" onclick="guideFlowerCancelStart(\'' + o2.id + '\')">取消订单</button></div>' : '') +
+        '<div class="bank-sched-side" style="gap:8px;display:flex;">' +
+        (o2.status === '待配送'
+          ? '<button class="ui-link" onclick="guideFlowerCancelStart(\'' + o2.id + '\')">取消订单</button>'
+          : '') +
+        '<button class="ui-link" style="color:#B42318;" onclick="guideFlowerDeleteOrder(\'' + o2.id + '\')">删除</button>' +
+        '</div>' +
         '</div>';
     }).join('');
   };
   appendMessage(guideMessage(
     '<p>鲜花订单列表：</p>' +
     '<div class="report-panel"><div class="report-panel-title">待配送</div>' + (rows(pending) || '<div class="report-empty">暂无待配送订单</div>') + '</div>' +
-    '<div class="report-panel" style="margin-top:10px;"><div class="report-panel-title">已完成</div>' + (rows(done) || '<div class="report-empty">暂无历史订单</div>') + '</div>' +
-    '<div class="guide-chips"><button class="guide-chip" onclick="guideStartFlowerOrder()">订购鲜花</button></div>'
+    '<div class="report-panel" style="margin-top:10px;"><div class="report-panel-title">已完成</div>' + (rows(done) || '<div class="report-empty">暂无历史订单</div>') + '</div>'
   ));
   scrollToBottom();
 }
 
+// 删除一条鲜花订单记录（待配送的需先取消）
+function guideFlowerDeleteOrder(orderId) {
+  var list = guideFlowerOrders();
+  var target = list.filter(function (x) { return x.id === orderId; })[0];
+  if (!target) {
+    appendMessage(guideMessage('<p>该记录不存在，可能已被删除。</p>'));
+    scrollToBottom();
+    return;
+  }
+  if (target.status === '待配送') {
+    appendMessage(guideMessage('<p>待配送的订单不能直接删除，请先取消订单。</p>' +
+      '<div class="guide-chips"><button class="guide-chip" onclick="guideFlowerCancelStart(\'' + orderId + '\')">取消订单</button></div>'));
+    scrollToBottom();
+    return;
+  }
+  var idx = list.indexOf(target);
+  if (idx !== -1) list.splice(idx, 1);
+  saveUserData();
+  appendMessage(guideMessage('<p>已删除该条鲜花订单记录（' + guideFlowerEsc(target.recipient) + '・' + guideFlowerDisplayDate(target.date) + '）。</p>'));
+  scrollToBottom();
+  guideStartFlowerList();
+}
 // 修改订单：配送日前可改
 function guideFlowerModifyStart(orderId) {
   var order = guideFlowerOrders().filter(function (x) { return x.id === orderId; })[0];
