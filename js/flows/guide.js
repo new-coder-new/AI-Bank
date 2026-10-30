@@ -1403,7 +1403,7 @@ function guidePhoneResolvePayee() {
 function guidePeriodQuestion(period, date) {
   var label = { '凌晨': '凌晨', '早上': '早上', '上午': '上午', '中午': '中午', '下午': '下午', '晚上': '晚上' }[period] || period;
   return '<p>请问 ' + (date ? (date + ' ') : '') + label + '几点执行？</p>' +
-    '<p class="guide-tip">例如：3点 / 15:00（只给「' + label + '」不写具体钟点没法创建定时转账）</p>';
+    '<p class="guide-tip">例如：3点 / 15:00</p>';
 }
 
 // 槽位齐了：先确认一次信息，再问是否需要备注
@@ -1550,9 +1550,11 @@ async function guideTimedStep(text) {
       // 只有这句话本身提到日期时，才采用模型补的日期；
       // 否则（如只回「3点」）模型可能把日期填成「今天」，会把上一轮已经确认的「明天」冲掉。
       var saysDate = /(今天|明天|后天|大后天|下周|下个?周|周[一二三四五六日天]|星期[一二三四五六日天]|月底|月初|下月|明年|\d{1,2}\s*月\s*\d{1,2}\s*[日号]|\d{1,2}\s*[日号]|\d{4}\s*[-/]\s*\d{1,2}\s*[-/]\s*\d{1,2})/.test(t);
+      // 只有原句提到时间说法，才接受模型给的时段/时间；否则「明天赚点钱」会被模型脑补成「明天下午」
+      var saysTimeWord = /(上午|下午|晚上|早上|中午|凌晨|\d{1,2}\s*[点时]|\d{1,2}\s*[:：]\s*\d{2}|半)/.test(t);
       if (!parsed.date && aiTime.date && (saysDate || !s.date)) parsed.date = aiTime.date;
-      if (!parsed.time && aiTime.time) parsed.time = aiTime.time;
-      if (!parsed.period && aiTime.period) parsed.period = aiTime.period;
+      if (!parsed.time && aiTime.time && (saysTimeWord || !s.time)) parsed.time = aiTime.time;
+      if (!parsed.period && aiTime.period && saysTimeWord) parsed.period = aiTime.period;
       if (!parsed.repeat && aiTime.repeat) parsed.repeat = aiTime.repeat;
       // 「下周三」「月底」这类时间说法会被本地误当成收款人，模型识别出时间后要撤销这个误判
       if ((aiTime.date || aiTime.time || aiTime.period) && parsed.unknownName &&
