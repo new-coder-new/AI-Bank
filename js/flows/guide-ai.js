@@ -75,7 +75,8 @@ async function guideAIRouteIntent(text) {
       '区分要点：card.limit 是调整信用卡总额度（提额、降额、把额度调到 X）；' +
       'card.txn 是交易限额（单笔限额、每日/每天限额、消费上限、一天只能用多少、限额是多少、怎么被限制了）。' +
       '只要在说「一天/每天/单笔/日限/上限/限额/被限制」，一律 card.txn，不是 card.limit。' +
-      '说「取消所有订阅 / 全部退订 / 都取消」时用 sub.cancel-all，只取消某一个时才用 sub.cancel。',
+      '说「取消所有订阅 / 全部退订 / 都取消」时用 sub.cancel-all，只取消某一个时才用 sub.cancel。' +
+      '只要句子里出现时间说法（明天/后天/下周三/下午三点/过两天/每个月/定时/预约），一律 transfer.timed，不是 transfer.name。',
       text
     );
   } catch (e) { obj = null; }
@@ -84,6 +85,10 @@ async function guideAIRouteIntent(text) {
   var t0 = String(text || '');
   if (/(一天|每天|每日|单笔|日限|限额|上限|限制)/.test(t0) && !/(额度调整|提额|提升额度|降低额度|调额|把额度)/.test(t0)) {
     if (obj.module === 'card.limit') obj.module = 'card.txn';
+  }
+  // 时间说法优先：模型若判成即时转账，但句子里有「明天下午 / 下周三」这类时间 → 改判定时转账
+  if (obj.module === 'transfer.name' && typeof guideLooksTimedTransfer === 'function' && guideLooksTimedTransfer(t0)) {
+    obj.module = 'transfer.timed';
   }
   // 「取消所有订阅 / 全部退订」一律走一键全取消，别进单个取消流程
   if (/^sub\./.test(obj.module) && /(所有|全部|都)/.test(t0) && /(取消|退订|不要|解约)/.test(t0)) {
