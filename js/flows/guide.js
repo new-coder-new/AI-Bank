@@ -2740,7 +2740,9 @@ function guideWealthStartAssess() {
 
 function guideWealthCancelAssess() {
   GUIDE_WEALTH = null;
-  appendMessage(guideMessage('<p>好的。完成风险测评后，随时可以来申购理财产品。</p>'));
+  if (!guideCollapseLatestChips('好的。完成风险测评后，随时可以来申购理财产品。')) {
+    appendMessage(guideMessage('<p>好的。完成风险测评后，随时可以来申购理财产品。</p>'));
+  }
   scrollToBottom();
 }
 
@@ -2961,6 +2963,7 @@ function guideWealthRiskProceed() {
 function guideWealthRiskCancel() {
   var s = GUIDE_WEALTH;
   if (!s) return;
+  guideCollapseLatestChips('已换个产品。');
   s.product = null;
   s.amount = null;
   s.stage = 'slots';
@@ -4262,6 +4265,26 @@ function guideStartHoldings() {
 // 收起问句下的选项按钮，并在下方记录所选（例如「需要赎回还是追加申购呢：赎回」）
 
 // 收起某条消息卡片里的按钮，并在同一气泡里记录一行（仿「是否添加备注」的折叠效果）
+
+// 收起最后一条带按钮的卡片，并在卡片内记录一行（与「是否添加备注」一致）
+function guideCollapseLatestChips(note) {
+  try {
+    var bubbles = document.querySelectorAll('.message:not(.user) .msg-bubble');
+    for (var i = bubbles.length - 1; i >= 0; i--) {
+      var b = bubbles[i];
+      var chips = b.querySelector('.guide-chips');
+      if (!chips || !chips.parentNode) continue;
+      chips.parentNode.removeChild(chips);
+      var p = document.createElement('p');
+      p.className = 'guide-tip';
+      p.textContent = note;
+      b.appendChild(p);
+      return true;
+    }
+  } catch (e) { /* 折叠失败不影响流程 */ }
+  return false;
+}
+
 function guideCollapseCardNote(markerText, note) {
   try {
     var bubbles = document.querySelectorAll('.message:not(.user) .msg-bubble');
@@ -4509,6 +4532,7 @@ function guideHoldingSubSubmitAsRisk() {
 async function guideHoldingSubSubmit() {
   var s = GUIDE_HOLDING;
   if (!s || s.stage !== 'subConfirm') return;
+  guideCollapseLatestChips('已确认申购。');
   var name = s.product.name;
   var amount = Number(s.amount) || 0;
   var prod = (mockData.products || []).filter(function (p) { return p.name === name; })[0] || {};
@@ -4602,6 +4626,7 @@ async function guideHoldingRedeemSubmit() {
   var name = s.product.name;
   var amount = Number(s.amount) || 0;
   GUIDE_HOLDING = null;
+  guideCollapseLatestChips('已确认赎回。');
   var res = await callAgentTool('wealth.redeem', { product: name, amount: amount });
   if (res && res.ok !== false) {
     var arriveText = (res && res.data && res.data.arriveDate) ? res.data.arriveDate : 'T+1';
@@ -4636,6 +4661,7 @@ async function guideHoldingRedeemAllSubmit() {
   var list = guideHoldingList().slice();
   var done = [], closed = [];
   GUIDE_HOLDING = null;
+  guideCollapseLatestChips('已确认一键赎回。');
   for (var i = 0; i < list.length; i++) {
     var h = list[i];
     if (guideHoldingClosed(h)) { closed.push(h.name); continue; }
@@ -4673,7 +4699,9 @@ function guideHoldingModify() {
 
 function guideHoldingCancel() {
   GUIDE_HOLDING = null;
-  appendMessage(guideMessage('<p>已取消，持仓保持不变。</p>'));
+  if (!guideCollapseLatestChips('已取消，持仓保持不变。')) {
+    appendMessage(guideMessage('<p>已取消，持仓保持不变。</p>'));
+  }
   if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('wealth'); }, 400);
   scrollToBottom();
 }
