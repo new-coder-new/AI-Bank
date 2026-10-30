@@ -2985,12 +2985,15 @@ function guideWealthSubmit() {
   var name = s.product.name;
   var amount = s.amount;
   GUIDE_WEALTH = null;
+  guideCollapseCardNote('确认申购', '已确认申购。');
   if (typeof executeBuyProduct === 'function') executeBuyProduct(name, amount);
 }
 
 function guideWealthCancel() {
   GUIDE_WEALTH = null;
-  appendMessage(guideMessage('<p>已取消申购，账户未发生扣款。</p>'));
+  if (!guideCollapseCardNote('确认申购', '已取消申购，账户未发生扣款。')) {
+    appendMessage(guideMessage('<p>已取消申购，账户未发生扣款。</p>'));
+  }
   if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('wealth'); }, 400);
   scrollToBottom();
 }
@@ -4257,6 +4260,27 @@ function guideStartHoldings() {
 
 
 // 收起问句下的选项按钮，并在下方记录所选（例如「需要赎回还是追加申购呢：赎回」）
+
+// 收起某条消息卡片里的按钮，并在同一气泡里记录一行（仿「是否添加备注」的折叠效果）
+function guideCollapseCardNote(markerText, note) {
+  try {
+    var bubbles = document.querySelectorAll('.message:not(.user) .msg-bubble');
+    for (var i = bubbles.length - 1; i >= 0; i--) {
+      var b = bubbles[i];
+      if ((b.textContent || '').indexOf(markerText) === -1) continue;
+      var chips = b.querySelector('.guide-chips');
+      if (!chips || !chips.parentNode) continue;
+      chips.parentNode.removeChild(chips);
+      var p = document.createElement('p');
+      p.className = 'guide-tip';
+      p.textContent = note;
+      b.appendChild(p);
+      return true;
+    }
+  } catch (e) { /* 折叠失败不影响流程 */ }
+  return false;
+}
+
 function guideCollapseChoiceChips(questionText, choice) {
   try {
     var bubbles = document.querySelectorAll('.message:not(.user) .msg-bubble');
