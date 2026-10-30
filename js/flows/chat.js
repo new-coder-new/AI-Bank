@@ -1037,7 +1037,7 @@ async function enhancedSendMessage(text) {
   }
   appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手</div><div class="msg-bubble">抱歉，我暂时无法理解您的意图。<br>' +
-    '<span style="font-size:12px;color:#94A3B8;">可以试试：给张三转账1000元 / 分析本月账单 / 挂失卡片 / 调整单笔限额 / 调整信用卡额度</span></div></div></div>');
+    '<span style="font-size:12px;color:#94A3B8;">可以试试：转账 / 账单分析 / 卡片管理 / 理财 / 订阅管理</span></div></div></div>');
   scrollToBottom();
 }
 
