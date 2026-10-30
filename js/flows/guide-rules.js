@@ -19,10 +19,10 @@ var GUIDE_SERVICES = [
     aliases: ['智能转账', '转账服务'],
     prompt: '您好，请问你需要姓名转账、手机号转账、定时转账，还是AA收款？',
     subs: [
-      { key: 'name', label: '姓名转账', example: '给张三转1000元', run: function () { guideStartNameTransfer(); } },
-      { key: 'phone', label: '手机号转账', example: '向13800138000转500元', run: function () { guideStartPhoneTransfer(); } },
-      { key: 'timed', label: '定时转账', example: '明天下午3点给张三转1000元', run: function () { guideStartTimedTransfer(); } },
-      { key: 'aa', label: 'AA收款', example: '向张三和李四AA收款200元', run: function () { guideStartAATransfer(); } }
+      { key: 'name', label: '姓名转账', example: '给张三转账1000元', run: function () { guideStartNameTransfer(); } },
+      { key: 'phone', label: '手机号转账', example: '转账给13800138000', run: function () { guideStartPhoneTransfer(); } },
+      { key: 'timed', label: '定时转账', example: '明天下午3点转账给张三', run: function () { guideStartTimedTransfer(); } },
+      { key: 'aa', label: 'AA收款', example: '我和张三AA，我垫了600元', run: function () { guideStartAATransfer(); } }
     ]
   },
   {
@@ -30,8 +30,8 @@ var GUIDE_SERVICES = [
     aliases: ['账单'],
     prompt: '账单分析包含收支结构、支出构成和近 7 日趋势，也可以直接看异常交易：',
     subs: [
-      { key: 'overview', label: '账单分析', example: '分析一下我这个月的账单', aliases: ['财务总览', '消费统计', '账单报告', '账单'], run: function () { showBillOverview(); } },
-      { key: 'abnormal', label: '异常交易', example: '看看最近的异常交易', run: function () { showAbnormalAlert(); } }
+      { key: 'overview', label: '账单分析', example: '分析本月账单', aliases: ['财务总览', '消费统计', '账单报告', '账单'], run: function () { showBillOverview(); } },
+      { key: 'abnormal', label: '异常交易', example: '查看异常交易', run: function () { showAbnormalAlert(); } }
     ]
   },
   {
@@ -39,11 +39,11 @@ var GUIDE_SERVICES = [
     aliases: ['卡片'],
     prompt: '卡片管理包含这些操作，请选择：',
     subs: [
-      { key: 'apply', label: '卡片申请', example: '我想办一张标准金卡，额度5万', aliases: ['申请信用卡'], run: function () { guideStartCardApply(); } },
-      { key: 'mycards', label: '我的卡片', example: '我现在有哪些卡', aliases: ['我的信用卡'], run: function () { showCardMyCards(); } },
-      { key: 'limit', label: '额度调整', example: '把额度提高到80000，原因是消费需求增加', aliases: ['申请调整信用卡额度', '信用卡额度调整', '调额'], run: function () { guideStartCardLimitAdjust(); } },
-      { key: 'txnlimit', label: '交易限制', example: '设置单笔限额20000，每日限额50000', run: function () { guideStartTxnLimit(); } },
-      { key: 'lost', label: '卡片挂失', example: '我的卡丢了，要挂失尾号6789的卡', run: function () { guideStartCardLost(); } }
+      { key: 'apply', label: '卡片申请', example: '办一张金卡，额度5万', aliases: ['申请信用卡'], run: function () { guideStartCardApply(); } },
+      { key: 'mycards', label: '我的卡片', example: '查看我的信用卡', aliases: ['我的信用卡'], run: function () { showCardMyCards(); } },
+      { key: 'limit', label: '额度调整', example: '白金卡额度提到8万', aliases: ['申请调整信用卡额度', '信用卡额度调整', '调额'], run: function () { guideStartCardLimitAdjust(); } },
+      { key: 'txnlimit', label: '交易限制', example: '6789的卡，单笔限额2万', run: function () { guideStartTxnLimit(); } },
+      { key: 'lost', label: '卡片挂失', example: '挂失尾号6789的卡', run: function () { guideStartCardLost(); } }
     ]
   },
   {
@@ -51,9 +51,9 @@ var GUIDE_SERVICES = [
     aliases: ['理财服务', '投资理财'],
     prompt: '理财服务包含这些内容，请选择：',
     subs: [
-      { key: 'products', label: '产品申购', example: '申购稳健增利90天 5000元', aliases: ['产品', '申购'], run: function () { guideStartWealthPurchase(); } },
-      { key: 'risk', label: '风险评估', example: '我要做风险测评', run: function () { startRiskAssessment(); } },
-      { key: 'holdings', label: '持仓管理', example: '我买了哪些产品', aliases: ['持仓', '我的持仓'], run: function () { guideStartHoldings(); } }
+      { key: 'products', label: '产品申购', example: '申购1001，5000元', aliases: ['产品', '申购'], run: function () { guideStartWealthPurchase(); } },
+      { key: 'risk', label: '风险评估', example: '做一次风险测评', run: function () { startRiskAssessment(); } },
+      { key: 'holdings', label: '持仓管理', example: '查看持仓收益', aliases: ['持仓', '我的持仓'], run: function () { guideStartHoldings(); } }
     ]
   },
   {
@@ -61,8 +61,8 @@ var GUIDE_SERVICES = [
     aliases: ['生活', '生活服务'],
     prompt: '生活订购包含这些服务，请选择：',
     subs: [
-      { key: 'subscribe', label: '订阅管理', example: '我想要订阅某易云年卡', aliases: ['我的订阅'], run: function () { guideStartSubManage(); } },
-      { key: 'birthday', label: '生日鲜花', example: '为林小雨订一束花', aliases: ['鲜花订购', '订花', '买花', '鲜花订单'], run: function () { guideStartBirthdayFlower(); } }
+      { key: 'subscribe', label: '订阅管理', example: '订阅某易云年卡', aliases: ['我的订阅'], run: function () { guideStartSubManage(); } },
+      { key: 'birthday', label: '生日鲜花', example: '给林小雨订一束花', aliases: ['鲜花订购', '订花', '买花', '鲜花订单'], run: function () { guideStartBirthdayFlower(); } }
     ]
   }
 ];
@@ -89,7 +89,7 @@ function guideIsReadOnlyQuery(text) {
   var s = String(text || '').trim();
   if (!s) return false;
   // 明确是变更类操作时不算只读查询
-  if (/(调整|提升|提高|降低|申请|办理|设置|修改|取消|关闭|开启|挂失|购买|申购|赎回|提额|调高|调低|调额)/.test(s)) return false;
+  if (/(调整|提升|提高|降低|申请|办理|设置|修改|取消|关闭|开启|挂失|购买|申购|赎回|提额|调高|调低|调额|提到|调到|改到|改成|升到|升至|降到|降至|变成|涨到)/.test(s)) return false;
   // 「我要调我的信用卡额度」「把额度降一点」这类也属于变更，不能当成只读查询
   if (/额度/.test(s) && /(调|改|降|升|加|减)/.test(s)) return false;
   if (!/(余额|额度|交易记录|最近交易|流水)/.test(s)) return false;
@@ -197,9 +197,12 @@ function guideIsHoldingsQuery(t) {
 function guideIsCardListQuery(t) {
   var s = String(t || '').trim();
   if (!/卡/.test(s)) return false;
-  if (/(办|申请|挂失|冻结|解冻|注销|限额|限额|额度调整|调额|提额)/.test(s)) return false;
-  return /(哪些|几张|什么|所有|全部|都有)/.test(s) && /(卡|信用卡)/.test(s) ||
-    /^(我的卡片|查看卡片|看看卡片|我的信用卡|看看我的卡|查看我的卡片|查一下我的卡)$/.test(s);
+  // 变更类动作优先排除
+  if (/(办|申请|挂失|冻结|解冻|注销|限额|额度调整|调额|提额|调整|修改|设置)/.test(s)) return false;
+  if (/(哪些|几张|什么|所有|全部|都有)/.test(s) && /(卡|信用卡)/.test(s)) return true;
+  // 「查看我的信用卡 / 看看我的卡 / 查询卡片」这类只读说法
+  return /^(查看|看看|查一下|查询|显示)?(我的)?(信用卡|卡片|卡)$/.test(s) ||
+    /^(查看|看看|查一下|查询|显示)(我的)?(信用卡|卡片|卡)(信息|列表)?$/.test(s);
 }
 // 「我要调我的信用卡额度 / 提额」这类说法 → 直接进入额度调整对话，而不是只展示额度信息
 

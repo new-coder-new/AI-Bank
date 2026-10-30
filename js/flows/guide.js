@@ -575,6 +575,7 @@ function guideAsk(html) {
 
 // 文本解析：服务名 / 子功能名 / 返回菜单，命中则接管，返回 true
 async function guideHandleText(text) {
+  if (typeof window !== 'undefined') window.__GUIDE_LAST_TEXT = String(text || '');
   var t = String(text || '').trim().replace(/[。.!！?？,，\s]+$/g, '');
   if (!t) return false;
 
@@ -1743,7 +1744,9 @@ function guideAAParse(text) {
     if (!(total > 0)) total = 0;
     t = t.replace(m[0], ' ');
   }
-  t = t.replace(/垫付|总额|总金额|总|收款|收|元|块|钱|包括|包含|还有|参与人|名单|aa/gi, ' ');
+  // 去掉「垫付 / 垫了 / 我垫 / 一共」这类描述，避免被当成参与人名字
+  t = t.replace(/我?垫付|我垫了|我垫|垫了|垫|先付了|先付|付了/g, ' ');
+  t = t.replace(/垫付|总额|总金额|总|收款|收|元|块|钱|包括|包含|还有|参与人|名单|aa|一共|总共|一起/gi, ' ');
   // 「张三和李四」这种并列先转成分隔符，再清掉「向 / 给 / 帮」这类引导词
   t = t.replace(/[和与跟及]/g, '、');
   t = t.replace(/^[\s、,，;；]*(向|给|帮|让|请|找)/, '');
@@ -3169,7 +3172,7 @@ function guideTxnLimitAskLimits() {
   guideAsk(guideMessage(
     (label ? '<p>正在为「<b>' + guideCardLimitEsc(label) + '</b>」设置交易限制。</p>' : '') +
     '<p>请设置单笔限额与每日限额。</p>' +
-    '<p class="guide-tip">只改一项时，另一项回复「不变」即可，例如「1000，不变」。</p>'
+    '<p class="guide-tip">例如：20000 50000（只改一项时，另一项说「不变」）</p>'
   ));
 }
 
@@ -3504,10 +3507,22 @@ function guideCardLostCards() {
   return [];
 }
 
-function guideStartCardLost() {
+function guideStartCardLost(text) {
   guideResetAllSessions();
   GUIDE_CARD_LOST = { stage: 'slots', card: null };
   currentModule = 'card';
+  // 「挂失尾号6789的卡」这类说法：直接选中对应卡片，省一步
+  var tail = String(text || (typeof window !== 'undefined' ? window.__GUIDE_LAST_TEXT : '') || '').replace(/\D/g, '');
+  if (tail.length >= 4) {
+    var hit = guideCardLostCards().filter(function (c) {
+      return String(c.tail || c.number || '').replace(/\D/g, '').slice(-4) === tail.slice(-4);
+    })[0];
+    if (hit) {
+      GUIDE_CARD_LOST.card = hit;
+      guideCardLostConfirm(hit);
+      return;
+    }
+  }
   var cards = guideCardLostCards();
   // 沿用「我的卡片」列表样式
   var listHtml = (typeof cardServiceListHtml === 'function')
