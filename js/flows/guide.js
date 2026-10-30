@@ -36,6 +36,7 @@ function guideResetAllSessions() {
   GUIDE_SUB = null;
   GUIDE_FLOWER = null;
   if (typeof window !== 'undefined') window.__pendingScheduledTransfers = {};
+  GUIDE_WRAPUP = null;
 }
 
 function guideChipsDone(boxId, note) {
@@ -524,9 +525,12 @@ function guideModuleWrapUp(module, summary) {
     if (!mod) return;
     guideResetAllSessions();
     currentModule = mod;
+    GUIDE_WRAPUP = { module: mod };
     if (summary) appendMessage(guideMessage('<p>' + summary + '</p>'));
-    appendMessage(guideMessage('<p class="guide-tip">还需要办理其他' + guideModuleLabel(mod) + '业务吗？</p>'));
-    guideOpenModuleMenu(mod);
+    appendMessage(guideMessage(
+      '<p>还需要办理其他' + guideModuleLabel(mod) + '业务吗？</p>' +
+      '<p class="guide-tip">如无需办理，请回复「退出」。</p>'
+    ));
   } catch (e) { /* 衔接失败不影响已完成的操作 */ }
 }
 
@@ -796,6 +800,26 @@ async function guideHandleText(text) {
   if (/^(退出|退出流程|不办了|不做了)$/.test(t.replace(/[。.!！?？\s]/g, '')) && guideActiveFlowLabel()) {
     guideExitSilently();
     return true;
+  }
+
+  // GUIDE_WRAPUP_HANDLED：业务完成后的「还需要办理其他业务吗？」待答状态
+  if (GUIDE_WRAPUP) {
+    var plainWrap = t.replace(/[。.!！?？,，\s]/g, '');
+    // ① 明确不需要 → 静默结束，不弹卡
+    if (/^(退出|不需要|不用了|不用|不了|不用啦|算了|取消|没了|不要|否)$/.test(plainWrap)) {
+      GUIDE_WRAPUP = null;
+      guideExitSilently();
+      return true;
+    }
+    // ② 明确需要 → 打开本模块二级菜单
+    if (/^(需要|要|是|好|好的|可以|行|继续|继续办|再办一笔|再来一笔|嗯|对|ok|OK|办理|办)$/.test(plainWrap)) {
+      var wrapMod = GUIDE_WRAPUP.module;
+      GUIDE_WRAPUP = null;
+      guideOpenModuleMenu(wrapMod);
+      return true;
+    }
+    // ③ 其它输入：清掉待答状态，按正常逻辑处理
+    GUIDE_WRAPUP = null;
   }
 
   // 停在确认卡上：没点按钮又说了别的话，只提醒一句「请完成上述操作。」
@@ -1132,6 +1156,7 @@ async function guideHandleText(text) {
   return false;
 }
 
+var GUIDE_WRAPUP = null;   // 业务完成后的「是否继续」待答状态
 var GUIDE_TRANSFER = null;
 
 // 负数或「负」开头的金额：各模块统一拦截，避免 -1000 被当成 1000
