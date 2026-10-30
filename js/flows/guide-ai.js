@@ -1,10 +1,24 @@
 // ==========================================================================
 //  服务向导 · 模型识别层（大模型意图路由 / 槽位抽取 / 判定）
-//  所有走 LLM 的识别集中在这里；规则识别在 guide-rules.js，会话流程在 guide.js。
+//
+//  本文件是**唯一**调用大模型的地方（guideLLMJson）。调用时机分两种：
+//
+//  A. 意图路由（模型优先）
+//     guideAIRouteIntent —— guideHandleText ③ 调用：用户没在进行中的流程时，
+//     先把整句话交给模型判断属于哪个模块（转账/卡片/理财/订阅/…）。
+//     模型不可用、超时、返回 none → 返回 false，继续走 guide-rules.js 的本地规则。
+//
+//  B. 槽位补位（正则有把握时不调用）
+//     guideTransferAIExtract / guideTimedAIExtract / guideAAAIExtract /
+//     guideCardApplyAIType / guideTxnLimitAILimits / guideSubAIExtract /
+//     guideHoldingAIIntent / guideAISlots
+//     —— 只有本地正则抽不出（中文数字、口语长句、多槽位混说）时才调用，
+//        避免每补一个金额都等模型 1–2 秒。
+//
+//  约定：本文件不做流程控制、不渲染卡片；规则识别在 guide-rules.js；流程在 guide.js。
 // ==========================================================================
 
-// 规则层没接住时，用模型做一次意图路由（返回 true 表示已接管）
-// 这是「模型优先」入口：进入向导后先让模型判断意图；模型不可用或判不出时，才交给 guide-rules.js 的本地规则。
+// 意图路由表：模块 key → 进入该模块的处理函数（供 guideAIRouteIntent 命中后调用）
 var GUIDE_INTENT_MODULES = {
   'transfer.name': function (t) { GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
   'transfer.phone': function (t) { GUIDE_TRANSFER = { kind: 'phone', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
