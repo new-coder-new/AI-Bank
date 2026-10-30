@@ -102,6 +102,7 @@ async function callLLMIntentClassification(text) {
 
 // ========== AI 对话 ==========
 async function sendMessage() {
+  if (typeof window !== 'undefined') window.__DEDUPE_BREAK__ = true;   // 新一轮输入：允许相同追问再次出现
   // 如果在用户信息页面，自动回到聊天界面
   const userInfoPage = document.getElementById('userInfoPage');
   if (userInfoPage && userInfoPage.classList.contains('show')) {

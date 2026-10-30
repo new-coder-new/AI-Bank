@@ -561,20 +561,11 @@ function guideCancelPendingScheduled() {
   return true;
 }
 function guideAsk(html) {
-  var target = (typeof document !== 'undefined' && document.querySelectorAll)
-    ? document.querySelectorAll('.message:not(.user) .msg-bubble') : null;
-  if (target && target.length) {
-    var last = target[target.length - 1];
-    var probe = document.createElement('div');
-    probe.innerHTML = html;
-    var inner = probe.querySelector('.msg-bubble') || probe;
-    var nextText = String(inner.textContent || '').replace(/\s+/g, '');
-    var lastText = String(last.textContent || '').replace(/\s+/g, '');
-    if (nextText && nextText === lastText) return;   // 一模一样就不再刷一条
-  }
+  // 去重统一交给 appendMessage（按「用户轮次」判断），这里只负责输出 + 滚动
   appendMessage(html);
   scrollToBottom();
 }
+
 // 文本解析：服务名 / 子功能名 / 返回菜单，命中则接管，返回 true
 async function guideHandleText(text) {
   var t = String(text || '').trim().replace(/[。.!！?？,，\s]+$/g, '');

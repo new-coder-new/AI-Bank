@@ -180,7 +180,10 @@ function appendMessage(html) {
   try {
     var raw = String(html || '');
     var isAsk = /[？?]/.test(raw) || /麻烦告诉我|请问|请提供|请回复|请选择|请输入/.test(raw);
-    if (isAsk && location.hash !== '#nodup') {
+    // 每轮用户输入的第一条消息允许重复（否则连两次同样的错误提示会被吞掉不出声）
+    var freshTurn = (typeof window !== 'undefined' && window.__DEDUPE_BREAK__);
+    if (freshTurn) window.__DEDUPE_BREAK__ = false;
+    if (isAsk && !freshTurn && location.hash !== '#nodup') {
       var prev = chatInner.querySelectorAll('.message:not(.user) .msg-bubble');
       if (prev.length) {
         var probe = document.createElement('div');
