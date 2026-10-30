@@ -61,8 +61,8 @@ const last = () => appended.slice(-1)[0] || '';
 
 const CASES = [
   // 主菜单：不出清单，只开菜单
-  { name: '主菜单要理财产品清单', setup: () => { currentModule = 'chat'; }, steps: ['有哪些理财产品'], expect: (l) => /理财服务包含这些内容/.test(l) && !/在售理财产品/.test(l) },
-  { name: '主菜单要会员清单', setup: () => { currentModule = 'chat'; }, steps: ['能订哪些会员'], expect: (l) => /订阅管理包含这些操作/.test(l) && !/可订阅的会员服务/.test(l) },
+  { name: '主菜单要理财产品清单', setup: () => { currentModule = 'chat'; }, steps: ['有哪些理财产品'], expect: (l) => /理财包含以下操作/.test(l) && !/在售理财产品/.test(l) },
+  { name: '主菜单要会员清单', setup: () => { currentModule = 'chat'; }, steps: ['能订哪些会员'], expect: (l) => /订阅管理包含以下操作/.test(l) && !/可订阅的会员服务/.test(l) },
   // 理财内：出清单
   { name: '理财内要产品清单', setup: () => { __g.guideOpenService('wealth'); currentModule = 'wealth'; }, steps: ['有哪些理财产品'], expect: (l) => /在售理财产品（共 5 支）/.test(l) && /1001/.test(l) },
   { name: '理财内口语：能买什么基金', setup: () => { __g.guideOpenService('wealth'); currentModule = 'wealth'; }, steps: ['能买什么基金'], expect: (l) => /在售理财产品/.test(l) },

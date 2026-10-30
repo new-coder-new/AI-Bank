@@ -47,16 +47,23 @@ const SILICONFLOW_CHAT_MODEL = process.env.SILICONFLOW_MODEL || 'Qwen/Qwen3-30B-
 const AI_PROVIDER = String(process.env.AI_PROVIDER || (AI_KEYS.siliconflow ? 'siliconflow' : 'deepseek')).toLowerCase();
 
 // 同源会话令牌：写接口必须携带，避免任意网页直接调用转账/重置接口。
-const SESSIONS = new Set();
-function issueSession() {
+const SESSIONS = new Map();
+function issueSession(req) {
   const token = crypto.randomBytes(24).toString('hex');
-  SESSIONS.add(token);
+  const ua = String((req && req.headers && req.headers['user-agent']) || '').slice(0, 160);
+  SESSIONS.set(token, { ua: ua, exp: Date.now() + 12 * 3600 * 1000 });
   setTimeout(() => SESSIONS.delete(token), 12 * 3600 * 1000).unref();
   return token;
 }
 function hasValidSession(req) {
   const token = String(req.headers['x-bank-session'] || '');
-  return !!token && SESSIONS.has(token);
+  const rec = SESSIONS.get(token);
+  if (!rec) return false;
+  if (rec.exp < Date.now()) { SESSIONS.delete(token); return false; }
+  // 令牌与签发时的浏览器 UA 绑定：令牌被拷到别处使用会失效
+  const ua = String((req.headers && req.headers['user-agent']) || '').slice(0, 160);
+  if (rec.ua && ua && rec.ua !== ua) return false;
+  return true;
 }
 
 // 严格同源：浏览器页面（带 Origin 或 Referer）且 host 必须一致；
@@ -147,6 +154,10 @@ function serveStatic(req, res) {
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); res.end('404 Not Found'); return; }
     res.writeHead(200, {
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'SAMEORIGIN',
+      'Referrer-Policy': 'same-origin',
+      'Permissions-Policy': 'geolocation=(), microphone=(self), camera=()',
       'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff'
@@ -499,6 +510,14 @@ function fundRateLimited(req, bucket, max, windowMs) {
 // T3 服务端验证令牌：客户端验证（密码/短信/指纹）通过后才签发，5 分钟有效、一次性
 
 // 资金审计日志：记录每一笔关键资金动作（谁、何时、多少、来源 IP、结果）
+
+// 卡号脱敏：保留前 4 后 4，其余用 * 代替（服务端统一处理，前端不再拿到完整卡号）
+function maskCardNumber(num) {
+  const digits = String(num || '').replace(/\s+/g, '');
+  if (digits.length <= 8) return digits;
+  return digits.slice(0, 4) + ' **** **** ' + digits.slice(-4);
+}
+
 function auditLog(db, action, detail) {
   try {
     db.auditLog = db.auditLog || [];
@@ -534,7 +553,14 @@ const routes = {
 
   // 完整快照（一次性拉取全部账户数据，减少请求次数）
   'GET /api/snapshot': () => (settlePendingRedemptions(DB), {
-    userProfile: DB.userProfile,
+    userProfile: (function () {
+      // 快照脱敏：卡号不外发完整值
+      const u = JSON.parse(JSON.stringify(DB.userProfile));
+      if (u.debitCard && u.debitCard.number) u.debitCard.number = maskCardNumber(u.debitCard.number);
+      if (u.creditCard && u.creditCard.number) u.creditCard.number = maskCardNumber(u.creditCard.number);
+      (u.creditCards || []).forEach((c) => { if (c && c.number) c.number = maskCardNumber(c.number); });
+      return u;
+    })(),
     bills: DB.bills,
     monthlyHistory: DB.monthlyHistory,
     products: DB.products,
@@ -555,6 +581,14 @@ const routes = {
 
   // 资金审计日志（最近 200 条）
   'GET /api/audit': () => ({ ok: true, items: (DB.auditLog || []).slice(0, 200) }),
+
+
+  // 退出登录：销毁当前会话令牌
+  'POST /api/logout': (req) => {
+    const token = String(req.headers['x-bank-session'] || '');
+    if (token) SESSIONS.delete(token);
+    return { ok: true };
+  },
 
   'GET /api/balance': () => {
     const d = DB.userProfile.debitCard;
@@ -586,6 +620,8 @@ const routes = {
     const amt = Math.round((Number(amount) || 0) * 100) / 100;
     const payeeName = String(payee || '').trim();
     if (!Number.isFinite(amt) || amt <= 0) return { ok: false, error: '金额无效' };
+    if (amt > 100000000) return { ok: false, error: '金额超出单笔上限（¥100,000,000）' };
+    if (String(payee || '').length > 40) return { ok: false, error: '收款人名称过长' };
     if (!payeeName) return { ok: false, error: '缺少收款人' };
     // 交易限额（用户在卡片管理里设置的单笔/日累计限额）
     const tl = DB.userProfile.txnLimit || {};
@@ -763,9 +799,14 @@ const routes = {
 
   // 创建专项预算（预留资金）
   'POST /api/fund/create': async (req) => {
-    const { name, amount, deadline } = await readBody(req);
+    const { name, amount, deadline, idempotencyKey } = await readBody(req);
     const amt = Number(amount) || 0;
     if (amt <= 0) return { ok: false, error: '金额无效' };
+    if (idempotencyKey) {
+      DB.__idem = DB.__idem || {};
+      const k = 'fund:' + String(idempotencyKey);
+      if (DB.__idem[k]) return Object.assign({}, DB.__idem[k], { duplicate: true });
+    }
     if (amt >= 5000 && !consumeVerifyToken(req)) return { ok: false, error: '需要安全验证（金额达到二次验证档）' };
     const d = DB.userProfile.debitCard;
     if (amt > d.available) return { ok: false, error: '余额不足' };
@@ -774,7 +815,9 @@ const routes = {
     DB.funds.push({ id, name, amount: amt, deadline: deadline || null, createdAt: fmtDate(now()), status: '进行中' });
     addTxn('expense', amt, `专项预留-${name}`, '专项预算');
     auditLog(DB, 'fund.create', { amount: amt, target: String(name || ''), ip: (req.socket && req.socket.remoteAddress) || '', result: 'ok' });
-    return { ok: true, funds: DB.funds, balance: d.balance, available: d.available, frozen: d.frozen };
+    const __fundRes = { ok: true, funds: DB.funds, balance: d.balance, available: d.available, frozen: d.frozen };
+    if (idempotencyKey && DB.__idem) DB.__idem['fund:' + String(idempotencyKey)] = Object.assign({ at: Date.now() }, __fundRes);
+    return __fundRes;
   },
 
   // 取消订阅
@@ -832,7 +875,12 @@ const routes = {
 
   // 复核通过后生效（提额/降额均支持；降额不得低于已用额度）
   'POST /api/card/limit/approve': async (req) => {
-    const { target, reason, direction } = await readBody(req);
+    const { target, reason, direction, idempotencyKey } = await readBody(req);
+    if (idempotencyKey) {
+      DB.__idem = DB.__idem || {};
+      const k = 'limitApprove:' + String(idempotencyKey);
+      if (DB.__idem[k]) return Object.assign({}, DB.__idem[k], { duplicate: true });
+    }
     const amt = Number(target) || 0;
     const c = DB.userProfile.creditCard;
     const used = Number(c.used) || 0;
@@ -856,7 +904,7 @@ const routes = {
     c.approvedAt = fmtDateTime(now());
     c.limitUpdatedAt = fmtDateTime(now());
     auditLog(DB, 'card.limit.approve', { amount: amt, target: 'creditCard', ip: (req.socket && req.socket.remoteAddress) || '', result: 'ok' });
-    return {
+    const __approveRes = {
       ok: true,
       current: old,
       target: amt,
@@ -865,6 +913,8 @@ const routes = {
       status: '已生效',
       direction: c.limitApplyDirection
     };
+    if (idempotencyKey && DB.__idem) DB.__idem['limitApprove:' + String(idempotencyKey)] = Object.assign({ at: Date.now() }, __approveRes);
+    return __approveRes;
   },
 
   // 冻结金额明细（A组）
@@ -967,7 +1017,7 @@ const server = http.createServer(async (req, res) => {
   // 会话令牌：页面内领取（登录页已移除，改为同源页面直接发放）
   if (pathname === '/api/session') {
     if (!isSameOriginStrict(req)) return sendJSON(res, 403, { ok: false, error: 'Forbidden：会话令牌只能从页面内领取' });
-    return sendJSON(res, 200, { ok: true, token: issueSession() });
+    return sendJSON(res, 200, { ok: true, token: issueSession(req) });
   }
 
   // AI 代理（真实 Key 只在服务端）
