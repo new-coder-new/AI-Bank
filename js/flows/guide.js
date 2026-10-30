@@ -657,16 +657,18 @@ function guideAsk(html) {
 async function guideHandleText(text) {
   if (typeof window !== 'undefined') window.__GUIDE_LAST_TEXT = String(text || '');
 
-  // 主菜单守卫：只判一级模块；槽位不齐时只打开该模块的二级菜单，不创建半截会话
+  // 主菜单守卫（硬规则）：主菜单只识别「属于哪个一级模块」，然后打开该模块的二级菜单。
+  // 一律不直通、不抽槽位；只有进入模块（currentModule 不是 chat）之后才做槽位抽取。
+  // 例外：只读查询（查余额/查额度/交易记录）交回主链路，不算业务办理。
   try {
+    var atMainMenu = !currentModule || currentModule === 'chat';
     var atMain = (typeof guideActiveFlowLabel === 'function') && !guideActiveFlowLabel() &&
       (typeof guideAwaitingFinalAction !== 'function' || !guideAwaitingFinalAction());
     var noSlotsAllowed = !(typeof window !== 'undefined' && window.__GUIDE_MAIN_NO_SLOTS__ === false);
-    if (atMain && noSlotsAllowed) {
+    if (atMain && atMainMenu && noSlotsAllowed) {
       var guessMod = guideMainModuleGuess(text);
-      // 只有「纯模块词」（没点名二级功能、也没带任何业务实体）才只开菜单；
-      // 其余情况保持原有直通/追问行为，避免把明确指令打回菜单。
-      if (guessMod && guessMod !== 'bill' && !guideExplicitSubCommand(text) && !guideHasBusinessEntity(text)) {
+      var isReadOnly = (typeof guideIsReadOnlyQuery === 'function') && guideIsReadOnlyQuery(text);
+      if (guessMod && !isReadOnly) {
         guideOpenService(guessMod);
         return true;
       }

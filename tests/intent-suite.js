@@ -1,4 +1,4 @@
-﻿// 意图识别 & 字段抽取测试套件
+// 意图识别 & 字段抽取测试套件
 // 用法：node tests/intent-suite.js
 // 说明：直接加载 js/guide.js（对话向导层），模拟用户多轮输入，
 // 检查：① 是否路由到正确的细分模块；② 关键字段是否被抽取。
@@ -87,7 +87,9 @@ txnLimitData = () => mockData.userProfile.txnLimit;
 showHoldings = () => calls.push('holdings');
 
 // 载入向导层（与被测代码同处一个作用域，GUIDE_* 变量可直接读取）
-eval(src + '\n;global.__g = { guideHandleText, guideResetAllSessions };');
+// 新规则：主菜单只判一级模块并打开菜单，槽位抽取只在进入模块后发生。
+// 因此本套件为「模块内行为」测试：每条用例开始前先进入对应一级模块。
+eval(src + '\n;global.__g = { guideHandleText, guideResetAllSessions, guideOpenService, guideMainModuleGuess, guideIsReadOnlyQuery };');
 
 // 等待异步步骤（AI 抽取等）落地
 const tick = (n) => new Promise((res) => { let i = 0; const go = () => (++i >= (n || 3) ? res() : setTimeout(go, 10)); setTimeout(go, 10); });
@@ -178,6 +180,13 @@ function snapshot() {
     __g.guideResetAllSessions();
     calls.length = 0;
     logs.length = 0;
+    // 主菜单 → 进入一级模块（新规则：主菜单不做直通）
+    const firstStep = c.steps[0] || '';
+    const mod = __g.guideMainModuleGuess(firstStep);
+    if (mod && !(__g.guideIsReadOnlyQuery && __g.guideIsReadOnlyQuery(firstStep))) {
+      __g.guideOpenService(mod);
+      await tick(1);
+    }
     for (const step of c.steps) {
       try { await __g.guideHandleText(step); await tick(4); } catch (e) { rows.push({ ...c, pass: false, err: e.message, snap: snapshot() }); break; }
     }
