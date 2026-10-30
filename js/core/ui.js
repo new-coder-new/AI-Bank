@@ -79,73 +79,6 @@ var FUNC_MORE = [
   { key: 'security', label: '安全中心' }
 ];
 
-function renderFunctionSheet() {
-  const body = document.getElementById('funcPanelBody');
-  if (!body) return;
-  const groupsHtml = FUNC_GROUPS.map(function (g) {
-    // 每组按自身条目数决定列数（最多 4 列），避免 2/3 项时出现空位
-    const cols = Math.max(2, Math.min(4, g.items.length));
-    return '<section class="func-group">' +
-      '<h4 class="func-group-title">' + g.title + '</h4>' +
-      '<div class="func-grid" style="grid-template-columns:repeat(' + cols + ',1fr)">' + g.items.map(function (it) {
-        return '<button class="func-tile" onclick="selectFunc(\'' + it.key + '\')">' +
-          '<span class="func-tile-ico">' + bankIcon(it.icon, 20) + '</span>' +
-          '<span class="func-tile-label">' + it.label + '</span></button>';
-      }).join('') + '</div></section>';
-  }).join('');
-
-  // 未进主分组的原有能力，降级为一行文字入口，避免功能失去入口
-  const moreHtml = '<section class="func-group">' +
-    '<h4 class="func-group-title">更多</h4>' +
-    '<div class="func-links">' + FUNC_MORE.map(function (it) {
-      return '<button class="ui-link" onclick="selectFunc(\'' + it.key + '\')">' + it.label + '</button>';
-    }).join('') + '</div></section>';
-
-  body.innerHTML = groupsHtml + moreHtml;
-}
-
-
-// ========== 用户体验优化：新手教程 ==========
-const tutorialSteps = [
-  {
-    title: ' 欢迎使用智能金融助手',
-    desc: '这是一个AI驱动的金融助手，支持智能转账、理财、订阅管理、账单分析等功能。让我用30秒带你了解核心功能！',
-    highlight: null
-  },
-  {
-    title: ' 智能对话',
-    desc: '在这里你可以用自然语言和AI对话，比如"给张三转账1000元"、"设置每月1号定时转账"。定时转账创建时需要用验证码确认。',
-    highlight: '.chat-container'
-  },
-  {
-    title: ' 全部服务',
-    desc: '点击输入框左下角的+号，可以打开全部银行服务，分为转账、账单、卡片、理财、生活五组，底部还有一行「更多」入口。',
-    highlight: '.func-btn'
-  },
-  {
-    title: ' 语音输入',
-    desc: '点击麦克风按钮，可以用语音输入指令，支持语音转账、查询余额等操作，识别后自动发送给AI处理。',
-    highlight: '.voice-btn'
-  },
-  {
-    title: ' 用户信息',
-    desc: '点击右上角的用户头像，可以查看账户总览、基本信息、卡片贷款、交易记录、联系人等详细信息。',
-    highlight: '.topbar-user-btn'
-  },
-  {
-    title: ' 深色模式',
-    desc: '顶部栏可以开始新对话；左侧菜单可以切换深色/浅色模式或查看使用手册。',
-    highlight: '.agent-menu-btn'
-  },
-  {
-    title: ' 开始使用',
-    desc: '教程结束！现在你可以开始使用智能金融助手了。试试在输入框输入"你能做什么"，看看AI都能帮你做什么吧！',
-    highlight: null
-  }
-];
-
-let currentTutorialStep = 0;
-
 function showTutorial() {
   currentTutorialStep = 0;
   showTutorialStep();
@@ -374,7 +307,6 @@ function showManual() {
 document.addEventListener('DOMContentLoaded', function() {
   initDarkMode();
   initPageAnimations();
-  renderFunctionSheet();
   checkTutorial();
   executeDueInvestments();
   if (typeof releaseLockedFunds === 'function') releaseLockedFunds();

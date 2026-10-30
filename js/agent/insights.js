@@ -185,7 +185,6 @@ function agentBriefingHtml() {
     { icon: 'bill', label: '账单', action: "quickAction('bill')" },
     { icon: 'wealth', label: '理财', action: "quickAction('wealth')" },
     { icon: 'card', label: '卡片', action: "quickAction('card')" },
-    { icon: 'grid', label: '全部', action: 'toggleFuncPanel()' }
   ].map(function (x) {
     return '<button class="bank-quick-item" onclick="' + x.action + '">' +
       '<span class="bank-quick-ico">' + bankIcon(x.icon, 21) + '</span>' +

@@ -181,39 +181,6 @@ function closeUserInfoPage() {
   if (chatNav) chatNav.classList.add('active');
 }
 
-// 功能快捷面板
-function toggleFuncPanel() {
-  const overlay = document.getElementById('funcPanelOverlay');
-  const panel = document.getElementById('funcPanel');
-  const btn = document.getElementById('funcBtn');
-  const isShow = panel.classList.contains('show');
-  if (isShow) {
-    overlay.classList.remove('show');
-    panel.classList.remove('show');
-    btn.classList.remove('active');
-    // 关闭面板时收起所有大类
-    document.querySelectorAll('.func-category.expanded').forEach(cat => cat.classList.remove('expanded'));
-  } else {
-    overlay.classList.add('show');
-    panel.classList.add('show');
-    btn.classList.add('active');
-  }
-}
-
-// 展开/收起功能大类
-
-function selectFunc(type) {
-  toggleFuncPanel();
-  // 从全部服务里选的功能，也同步左侧菜单的选中态（没有对应入口的保持原样）
-  const nav = document.querySelector('.nav-item[data-module="' + type + '"]');
-  if (nav) {
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    nav.classList.add('active');
-  }
-  setTimeout(() => {
-    quickAction(type);
-  }, 200);
-}
 
 function switchUserInfoTab(tab, el) {
   currentUserInfoTab = tab;
