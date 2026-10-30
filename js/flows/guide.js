@@ -1723,7 +1723,8 @@ function guideStartAATransfer() {
   guideResetAllSessions();
   GUIDE_AA = { total: 0, participants: [], stage: 'slots', pendingNames: [], pickOptions: [] };
   currentModule = 'transfer';
-  appendMessage(guideMessage('<p>请告诉我你垫付的总金额和除你外需要收款的参与人</p>'));
+  appendMessage(guideMessage('<p>请告诉我你垫付的总金额和除你外需要收款的参与人。</p>' +
+    '<p class="guide-tip">例如：1000元 张三和李四</p>'));
   scrollToBottom();
 }
 
