@@ -2436,9 +2436,10 @@ function guideWealthProductLine(p, i) {
 // 全部在售产品（展开版，不折叠）；「查询所有产品」意图仍可用
 function guideWealthShowAllProducts() {
   var list = (typeof mockData !== 'undefined' && mockData.products) || [];
+  // 默认收起：先展示推荐置顶的 3 款，其余通过「展开更多」查看
   appendMessage(guideMessage(
     '<p>在售理财产品（共 ' + list.length + ' 支）</p>' +
-    guideWealthProductsHtml(guideWealthValidProfile(), { showAll: true })
+    guideWealthProductsHtml(guideWealthValidProfile())
   ));
   scrollToBottom();
 }
