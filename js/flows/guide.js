@@ -2614,7 +2614,8 @@ function guideWealthShowAllProducts() {
   appendMessage(guideMessage(
     '<p>在售理财产品（共 ' + list.length + ' 支）</p>' +
     guideWealthProductsHtml(guideWealthValidProfile()) +
-    '<p class="guide-tip">请告诉我产品编号和申购金额，例如「1001，1000」。</p>'
+    '<p>请告诉我产品编号和申购金额。</p>' +
+    '<p class="guide-tip">例如「申购1001，1000元」。</p>'
   ));
   scrollToBottom();
 }
@@ -2724,7 +2725,9 @@ function guideWealthProductsToggle(boxId) {
 function guideWealthShowRecommendations(profile) {
   var p = profile || guideWealthValidProfile();
   if (!p) return;
-  appendMessage(guideMessage(guideWealthProductsHtml(p, {})));
+  appendMessage(guideMessage(guideWealthProductsHtml(p, {}) +
+    '<p>请告诉我产品编号和申购金额。</p>' +
+    '<p class="guide-tip">例如「申购1001，1000元」。</p>'));
   scrollToBottom();
 }
 
@@ -2862,12 +2865,14 @@ async function guideWealthStep(text) {
     return true;
   }
   if (Number(s.amount) > 0) {
-    appendMessage(guideMessage('<p>请告诉我产品编号和申购金额，例如「1001，1000」。</p>'));
+    appendMessage(guideMessage('<p>请告诉我产品编号和申购金额。</p>' +
+      '<p class="guide-tip">例如「申购1001，1000元」。</p>'));
   scrollToBottom();
   return true;
   }
 
-  appendMessage(guideMessage('<p>请告诉我产品编号和申购金额，例如「1001，1000」。</p>'));
+  appendMessage(guideMessage('<p>请告诉我产品编号和申购金额。</p>' +
+      '<p class="guide-tip">例如「申购1001，1000元」。</p>'));
   scrollToBottom();
   return true;
 }
@@ -2892,7 +2897,8 @@ function guideWealthConfirm() {
   var p = s.product;
   if (!p) {
     s.stage = 'slots';
-    appendMessage(guideMessage('<p>请告诉我产品编号和申购金额，例如「1001，1000」。</p>'
+    appendMessage(guideMessage('<p>请告诉我产品编号和申购金额。</p>' +
+    '<p class="guide-tip">例如「申购1001，1000元」。</p>'
   ));
     scrollToBottom();
     return;
