@@ -60,16 +60,16 @@ const CASES = [
   { cur: 'card', text: '挂失尾号6789的卡', expect: (s) => s.mode === 'lost' || /确认挂失/.test(last()) },
   { cur: 'card', text: '我不想订阅某易云了', expect: () => /当前在.*卡片管理/.test(last()) && !GUIDE_SUB },
   { cur: 'card', text: '转账给张三1000元', expect: () => /当前在.*卡片管理/.test(last()) && !GUIDE_TRANSFER },
-  { cur: 'card', text: '切换到订阅管理', expect: () => /订阅管理包含这些操作/.test(last()) },
+  { cur: 'card', text: '切换到订阅管理', expect: () => /订阅管理包含以下操作/.test(last()) },
   { cur: 'card', text: '查一下我的余额', expect: () => !/当前在/.test(last()) },
   // 理财内
   { cur: 'wealth', text: '有哪些理财产品', expect: () => /在售理财产品/.test(last()) },
   { cur: 'wealth', text: '挂失尾号6789的卡', expect: () => /当前在.*理财/.test(last()) && !GUIDE_CARD_LOST },
-  { cur: 'wealth', text: '切换到卡片管理', expect: () => /卡片管理包含这些操作/.test(last()) },
+  { cur: 'wealth', text: '切换到卡片管理', expect: () => /卡片管理包含以下操作/.test(last()) },
   // 订阅内
   { cur: 'sub', text: '我想要订阅某易云年卡', expect: () => GUIDE_SUB && GUIDE_SUB.mode === 'add' },
   { cur: 'sub', text: '有哪些理财产品', expect: () => /当前在.*订阅管理/.test(last()) && !GUIDE_WEALTH },
-  { cur: 'sub', text: '切换到理财', expect: () => /理财服务包含这些内容/.test(last()) },
+  { cur: 'sub', text: '切换到理财', expect: () => /理财包含以下操作/.test(last()) },
   // 鲜花内（只读）
   { cur: 'flower', text: '转账给张三1000元', expect: () => /当前在.*生日鲜花/.test(last()) && !GUIDE_TRANSFER },
   // 主菜单不受影响

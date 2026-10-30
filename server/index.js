@@ -509,6 +509,17 @@ function fundRateLimited(req, bucket, max, windowMs) {
 }
 
 // T3 服务端验证令牌：客户端验证（密码/短信/指纹）通过后才签发，5 分钟有效、一次性
+
+// 资金审计日志：记录每一笔关键资金动作（谁、何时、多少、来源 IP、结果）
+function auditLog(db, action, detail) {
+  try {
+    db.auditLog = db.auditLog || [];
+    const ip = (detail && detail.ip) || '';
+    db.auditLog.unshift(Object.assign({ at: fmtDateTime(now()), action: action, ip: ip }, detail || {}));
+    if (db.auditLog.length > 500) db.auditLog.length = 500;
+  } catch (e) { /* 审计失败不影响业务 */ }
+}
+
 const VERIFY_TOKENS = new Map();
 const VERIFY_TTL = 5 * 60 * 1000;
 function issueVerifyToken(purpose) {
@@ -556,6 +567,10 @@ const routes = {
   }),
 
   // 余额
+
+  // 资金审计日志（最近 200 条）
+  'GET /api/audit': () => ({ ok: true, items: (DB.auditLog || []).slice(0, 200) }),
+
   'GET /api/balance': () => {
     const d = DB.userProfile.debitCard;
     return { balance: d.balance, available: d.available, frozen: d.frozen };
@@ -619,6 +634,23 @@ const routes = {
     if (amt >= 5000 && !consumeVerifyToken(req)) {
       return { ok: false, error: '需要安全验证（金额达到二次验证档）' };
     }
+    // ≥ ¥50,000（T4）：不直接扣款，转服务端人工复核
+    if (amt >= 50000) {
+      DB.userProfile.manualReviews = DB.userProfile.manualReviews || [];
+      const reviewId = 'SRV' + Date.now();
+      DB.userProfile.manualReviews.unshift({
+        id: reviewId,
+        purpose: '大额转账（' + payeeName + '）',
+        amount: amt,
+        status: '待人工复核',
+        submittedAt: fmtDateTime(now()),
+        source: 'Server',
+        actions: [{ tool: 'transfer.execute', args: { payee: payeeName, amount: amt } }],
+        note: '服务端拦截：大额交易需人工复核，未扣款'
+      });
+      auditLog(DB, 'transfer.pending_review', { amount: amt, target: payeeName, ip: (req.socket && req.socket.remoteAddress) || '', result: 'pending' });
+      return { ok: false, pendingReview: true, reviewId: reviewId, error: '大额交易已提交人工复核，未扣款' };
+    }
     const d = DB.userProfile.debitCard;
     if (amt > d.available) return { ok: false, error: '余额不足', available: d.available };
     d.available -= amt;
@@ -629,6 +661,7 @@ const routes = {
     if (dailyLimit > 0) {
       DB.userProfile.transferDaily.amount = Math.round(((Number(DB.userProfile.transferDaily.amount) || 0) + amt) * 100) / 100;
     }
+    auditLog(DB, 'transfer.execute', { amount: amt, target: payeeName, ip: (req.socket && req.socket.remoteAddress) || '', result: 'ok' });
     const result = { ok: true, balance: d.balance, available: d.available, transferId: id };
     if (idemKey && DB.__idem) DB.__idem[idemKey] = Object.assign({ at: Date.now() }, result);
     return result;
@@ -672,6 +705,7 @@ const routes = {
     else DB.userProfile.holdings.push({ name: product, icon: p.icon, amount: amt, cost: amt, profit: 0, profitRate: 0, buyDate: fmtDate(now()), status: '持有中' });
     addTxn('expense', amt, `申购理财-${product}`, '理财申购');
     const __res = { ok: true, balance: d.balance, available: d.available, holdings: DB.userProfile.holdings };
+    auditLog(DB, 'wealth.buy', { amount: amt, target: String(product || ''), ip: (req.socket && req.socket.remoteAddress) || '', result: 'ok' });
     if (idempotencyKey && DB.__idem) DB.__idem['buy:' + String(idempotencyKey)] = Object.assign({ at: Date.now() }, __res);
     return __res;
   },
@@ -747,12 +781,14 @@ const routes = {
     const { name, amount, deadline } = await readBody(req);
     const amt = Number(amount) || 0;
     if (amt <= 0) return { ok: false, error: '金额无效' };
+    if (amt >= 5000 && !consumeVerifyToken(req)) return { ok: false, error: '需要安全验证（金额达到二次验证档）' };
     const d = DB.userProfile.debitCard;
     if (amt > d.available) return { ok: false, error: '余额不足' };
     d.available -= amt; d.frozen += amt;
     const id = Math.max(0, ...DB.funds.map((f) => f.id)) + 1;
     DB.funds.push({ id, name, amount: amt, deadline: deadline || null, createdAt: fmtDate(now()), status: '进行中' });
     addTxn('expense', amt, `专项预留-${name}`, '专项预算');
+    auditLog(DB, 'fund.create', { amount: amt, target: String(name || ''), ip: (req.socket && req.socket.remoteAddress) || '', result: 'ok' });
     return { ok: true, funds: DB.funds, balance: d.balance, available: d.available, frozen: d.frozen };
   },
 
@@ -815,6 +851,12 @@ const routes = {
     const amt = Number(target) || 0;
     const c = DB.userProfile.creditCard;
     const used = Number(c.used) || 0;
+    // 审批会真的改额度：必须过一次安全验证，且只能审批处于「待人工复核」的申请
+    if (!consumeVerifyToken(req)) return { ok: false, error: '需要安全验证（人工审核）' };
+    if (c.limitApplyStatus !== '待人工复核') return { ok: false, error: '没有待复核的调额申请' };
+    if (c.appliedLimit != null && Number(c.appliedLimit) !== amt) {
+      return { ok: false, error: '审批额度与申请额度不一致' };
+    }
     if (amt <= 0) return { ok: false, error: '目标额度无效' };
     if (amt < used) return { ok: false, error: '目标额度不能低于已用额度' };
     const old = c.effectiveLimit != null ? c.effectiveLimit : c.limit;
@@ -828,6 +870,7 @@ const routes = {
     c.limitApplyReason = reason || c.limitApplyReason || '未填写';
     c.approvedAt = fmtDateTime(now());
     c.limitUpdatedAt = fmtDateTime(now());
+    auditLog(DB, 'card.limit.approve', { amount: amt, target: 'creditCard', ip: (req.socket && req.socket.remoteAddress) || '', result: 'ok' });
     return {
       ok: true,
       current: old,
