@@ -67,13 +67,6 @@ function guideTimedRepeatChoose(repeat) {
   guideChipsDone(s.repeatBoxId, '重复方式：' + repeat);
   guideTransferAskRemark();
 }
-function guideLooksTimedTransfer(t) {
-  var s = String(t || '');
-  if (/(定时|预约|计划|稍后|以后|到期执行)/.test(s)) return true;
-  return /(明天|今天|后天|大后天|下周|下个?周|周[一二三四五六日天]|星期[一二三四五六日天]|月底|月初|下月|每月|每周|每天|明年|\d{1,2}\s*月\s*\d{1,2}\s*[日号]|\d{1,2}\s*[点时]|\d{1,2}\s*[:：]\s*\d{2}|上午|下午|晚上|早上|中午)/.test(s);
-}
-// 一句话里已经带齐金额/收款人/产品时，直接进入业务流，不再先给二级菜单。
-// 这是「给张三转账1000元」被菜单吞掉的直接修复。
 function guideTryActionableCommand(text) {
   var t = String(text || '').trim();
   if (!t) return null;
@@ -518,35 +511,6 @@ function guideLockedRun(fn) {
   return true;
 }
 
-function guideIsSubRenewOffPhrase(t) {
-  var s = String(t || '').trim();
-  if (!s) return false;
-  if (!/续费/.test(s)) return false;
-  return /(不续费|不想续费|不要续费|不打算续费|关闭续费|关掉续费|别续费|不用续费|不想再续|不自动续费|不再续费)/.test(s);
-}
-function guideIsSubAddPlain(t) {
-  var s = String(t || '').trim();
-  if (!s) return false;
-  if (/(取消|退订|关闭|不订|不要|不想)/.test(s)) return false;
-  if (!/订阅/.test(s) && !/(开通|办理|订购).{0,3}会员/.test(s)) return false;
-  return /(添加|增加|新增|加个|加一个|开通|办理|订购|订一个|订阅一个|来一个|办个|来个|想要|我想|我要)/.test(s);
-}
-function guideIsHoldingsQuery(t) {
-  var s = String(t || '').trim();
-  if (!s) return false;
-  // 申购/买入/赎回这类是操作，不是查询
-  if (/(申购|买入|追加|赎回|卖出|购买|下单)/.test(s) && !/(买了|买过|持有|哪些)/.test(s)) return false;
-  if (/(持仓|持有中|我的持仓)/.test(s)) return true;
-  if (/(买了|买过|买过什么|持有).{0,8}(产品|基金|理财|什么|哪些|几只|几个)/.test(s)) return true;
-  if (/(我|我的).{0,6}(有哪些|有什么|买过|买了).{0,8}(产品|基金|理财)/.test(s)) return true;
-  return false;
-}
-function guideIsCardLimitAdjustIntent(t) {
-  var s = String(t || '');
-  if (!/额度|提额/.test(s)) return false;
-  if (!/(信用卡|卡片|卡|额度)/.test(s)) return false;
-  return /(调|调整|提额|提高|提升|调高|调低|降低|增加|减少|申请调整|改)/.test(s);
-}
 function guideTimedPhraseIntent(t) {
   var s = String(t || '');
   if (!/(转给|转账|转帐|打钱|汇款|付款|转\s*\d|给.{1,6}转)/.test(s)) return false;
@@ -590,24 +554,6 @@ function guideCancelPendingScheduled() {
   scrollToBottom();
   return true;
 }
-function guideAIFirstSkipped(t) {
-  var s = String(t || '').trim();
-  if (!s) return true;
-  if (/^(返回|返回菜单|服务菜单|主菜单|菜单|首页|服务列表|取消|退出|算了)$/.test(s)) return true;
-  if (/^\d+(\.\d+)?$/.test(s)) return true;
-  if (/^(你好|您好|hi|hello|在吗|谢谢|多谢|再见|拜拜)[!！。.~～]*$/i.test(s)) return true;
-  if (typeof guideResolveService === 'function' && guideResolveService(s)) return true;
-  // 子功能名（如「姓名转账」「卡片挂失」）走规则菜单
-  var svc = GUIDE_SERVICES.filter(function (x) {
-    return x.subs.some(function (sub) {
-      return sub.label === s || (sub.aliases || []).indexOf(s) !== -1;
-    });
-  })[0];
-  if (svc) return true;
-  return false;
-}
-
-// 去掉「AI 理解」等标签后再输出，并避免连续重复同一句追问
 function guideAsk(html) {
   var target = (typeof document !== 'undefined' && document.querySelectorAll)
     ? document.querySelectorAll('.message:not(.user) .msg-bubble') : null;
@@ -934,66 +880,6 @@ async function guideHandleText(text) {
   return false;
 }
 
-function guideIsMenuIntent(text) {
-  var s = String(text || '').trim();
-  if (!s) return false;
-  if (/\d/.test(s)) return false;
-  if (/(转账|转给|转\d)/.test(s)) return false;
-  return /^(我想看|我要看|我想|我要|帮我|请|麻烦|看一下|看看|看下|查一下|查下|打开|进入|来一下|查|看)/.test(s);
-}
-
-function guideResolveIntent(text) {
-  var norm = guideNormalizeText(text);
-  if (!norm) return null;
-
-  // 先看子功能关键词（长的优先，避免「额度」抢走「额度调整」）
-  var best = null;
-  for (var i = 0; i < GUIDE_SERVICES.length; i++) {
-    var svc = GUIDE_SERVICES[i];
-    var subs = GUIDE_SUB_KEYWORDS[svc.key] || {};
-    for (var k in subs) {
-      if (!Object.prototype.hasOwnProperty.call(subs, k)) continue;
-      var words = subs[k];
-      for (var w = 0; w < words.length; w++) {
-        if (norm.indexOf(words[w]) !== -1) {
-          var sub = svc.subs.filter(function (x) { return x.key === k; })[0];
-          if (!sub) continue;
-          var score = words[w].length;
-          if (!best || score > best.score) best = { kind: 'sub', service: svc, sub: sub, score: score };
-        }
-      }
-    }
-  }
-  if (best) return best;
-
-  // 再看服务关键词
-  for (var j = 0; j < GUIDE_SERVICES.length; j++) {
-    var s2 = GUIDE_SERVICES[j];
-    var kws = GUIDE_SERVICE_KEYWORDS[s2.key] || [];
-    for (var m = 0; m < kws.length; m++) {
-      if (norm.indexOf(kws[m]) !== -1) return { kind: 'service', service: s2 };
-    }
-  }
-  return null;
-}
-
-function guideResolveService(name) {
-  for (var i = 0; i < GUIDE_SERVICES.length; i++) {
-    var s = GUIDE_SERVICES[i];
-    var names = [s.label].concat(s.aliases || []);
-    if (names.indexOf(name) !== -1) return s;
-  }
-  return null;
-}
-
-// ------------------------------ 转账槽位收集（姓名 / 手机号） ------------------------------
-// 意图理解规则（每轮输入都按下面规则抽取槽位）：
-//   ① 手机号：1 开头的 11 位数字串，先于金额识别，避免被当成金额；陌生号码后续会要求验证姓名；
-//   ② 金额：阿拉伯数字（支持「万」），出现即视为金额；
-//   ③ 收款人（仅姓名转账）：剔除金额与「给/向/转/元/块/请/我」等口语成分后，
-//      优先精确匹配通讯录姓名；匹配不到但为 2-4 位中文，按自由收款人姓名处理。
-// 流程：收齐槽位 → 询问是否需要备注（可选）→ 确认卡。
-//   stage = 'slots'（收槽位）→ 'askRemark'（问备注）→ 'remark'（等备注内容）
 var GUIDE_TRANSFER = null;
 
 function guidePlainMoney(n) {
@@ -3082,51 +2968,6 @@ function guideTxnLimitFlag(text) {
   return null;
 }
 
-async function guideAISlots(text, system, parse) {
-  var loadId = (typeof guideTypingBubble === 'function') ? guideTypingBubble() : null;
-  var obj = null;
-  try { obj = await guideLLMJson(system, text); } catch (e) { obj = null; }
-  var el = loadId ? document.getElementById(loadId) : null;
-  if (el) el.remove();
-  if (typeof parse === 'function') return parse(obj);
-  return obj || null;
-}
-
-function guideAAAIExtract(text) {
-  var names = (mockData.contacts || []).map(function (c) { return c.name; }).join('、');
-  return guideAISlots(
-    text,
-    '你是银行 App 的信息抽取器。用户在发起 AA 收款，需要「垫付总金额」和「除自己之外要收款的参与人名单」。' +
-    '通讯录联系人只有：' + names + '。请只从通讯录里取名（没有就不要编）。' +
-    '只输出 JSON：{"total":数字或null,"names":["姓名",…]}。',
-    function (o) {
-      if (!o) return null;
-      var total = Number(o.total);
-      var list = Array.isArray(o.names) ? o.names.filter(function (n) { return typeof n === 'string' && n; }) : [];
-      if (!(total > 0)) total = null;
-      if (total === null && !list.length) return null;
-      return { total: total, names: list };
-    }
-  );
-}
-
-function guideCardApplyAIType(text) {
-  return guideAISlots(
-    text,
-    '你是银行 App 的信用卡申请解析器。卡种只能是 白金信用卡/标准金卡/旅行信用卡/青年卡；' +
-    '用途只能是 日常消费/出行差旅/教育培训/大额购物/其他。用户怎么说都要映射到这两个清单里。' +
-    '只输出 JSON：{"cardType":"或空","purpose":"或空"}。',
-    function (o) {
-      if (!o) return null;
-      var t = CARD_APPLY_TYPES.filter(function (n) { return o.cardType && String(o.cardType).indexOf(n) !== -1; })[0] || null;
-      var p = CARD_APPLY_PURPOSES.filter(function (n) { return o.purpose && String(o.purpose).indexOf(n) !== -1; })[0] || null;
-      if (!t && !p) return null;
-      return { cardType: t, purpose: p };
-    }
-  );
-}
-
-// 额度调整：调整原因 + 目标额度
 function guideCardLimitAIReason(text) {
   return guideAISlots(
     text,
@@ -3162,28 +3003,6 @@ function guideWealthAIProduct(text) {
       return { product: hit, amount: amt };
     }
   );
-}
-
-async function guideTxnLimitAILimits(text) {
-  var obj = await guideLLMJson(
-    '你是银行 App 的限额解析器。用户正在设置信用卡的「单笔限额」(single) 与「每日限额」(daily)。' +
-    '请输出 JSON：{"single":数字或null,"daily":数字或null,"keepSingle":true/false,"keepDaily":true/false}。' +
-    '规则：' +
-    '1) 中文数字转阿拉伯数字（「五千」=5000、「一万」=10000）。' +
-    '2) 用户明确说某一项「不变 / 不改变 / 不改 / 保持原样 / 照旧 / 维持」，该项数字给 null，并把它对应的 keep 设为 true。' +
-    '3) 只说了一个数字且没说属于哪一项时，当作单笔限额（single），daily 给 null。' +
-    '4) 两个数字按出现顺序，先单笔、后每日。只输出 JSON，不要其它内容。',
-    text
-  );
-  if (!obj) return null;
-  var single = (obj.single === null || obj.single === undefined) ? null : Number(obj.single);
-  var daily = (obj.daily === null || obj.daily === undefined) ? null : Number(obj.daily);
-  if (single != null && !(single >= 0)) single = null;
-  if (daily != null && !(daily >= 0)) daily = null;
-  var keepSingle = !!obj.keepSingle;
-  var keepDaily = !!obj.keepDaily;
-  if (single == null && daily == null && !keepSingle && !keepDaily) return null;
-  return { single: single, daily: daily, keepSingle: keepSingle, keepDaily: keepDaily };
 }
 
 function guideTxnLimitNightQuestion(prefix) {
@@ -4176,26 +3995,6 @@ function guideSubYesNo(text) {
   if (/(不开启|不要|不用|不需要|关闭|否|不|别)/.test(t)) return false;
   if (/(开启|打开|需要|要|是|好|可以|续费)/.test(t)) return true;
   return null;
-}
-
-async function guideSubAIExtract(text) {
-  return guideAISlots(
-    text,
-    '你是银行 App 的订阅解析器。可订阅服务只有：某易云 VIP、某讯 VIP、某度网盘 VIP。' +
-    '扣费周期只有：按月扣费(/月)、按季扣费(/季)、按年扣费(/年)。' +
-    '只输出 JSON：{"service":"服务名或空","cycle":"/月|/季|/年或空"}。',
-    function (o) {
-      if (!o) return null;
-      var svc = o.service ? String(o.service) : '';
-      var preset = SUB_PRESETS.filter(function (p) {
-        var key = p.name.replace(' VIP', '');
-        return svc && (svc.indexOf(key) !== -1 || key.indexOf(svc.replace(/VIP/i, '').trim()) !== -1);
-      })[0] || null;
-      var cycle = ['/月', '/季', '/年'].indexOf(o.cycle) !== -1 ? o.cycle : null;
-      if (!preset && !cycle) return null;
-      return { preset: preset, cycle: cycle };
-    }
-  );
 }
 
 function guideSubPresetRows() {
