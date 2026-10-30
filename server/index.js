@@ -441,13 +441,38 @@ function generateInsights() {
   return out;
 }
 
+
+// 赎回到账结算：到达预计到账日（T+1）后把本息计入活期可用余额
+function settlePendingRedemptions(db) {
+  try {
+    const u = db.userProfile || {};
+    const list = u.pendingRedemptions || [];
+    if (!list.length) return 0;
+    const today = fmtDate(now());
+    const d = u.debitCard || {};
+    let settled = 0;
+    list.forEach((r) => {
+      if (!r || r.status !== '到账中') return;
+      if (!r.arriveDate || String(r.arriveDate) > today) return;
+      const credited = Number(r.credited) || 0;
+      d.balance = Math.round(((Number(d.balance) || 0) + credited) * 100) / 100;
+      d.available = Math.round(((Number(d.available) || 0) + credited) * 100) / 100;
+      addTxn('income', credited, '赎回到账-' + r.product, '理财赎回');
+      r.status = '已到账';
+      r.settledDate = today;
+      settled++;
+    });
+    return settled;
+  } catch (e) { return 0; }
+}
+
 // ------------------------------ 路由 ------------------------------
 const routes = {
   // 健康检查
-  'GET /api/health': () => ({ ok: true, service: 'bank-core', time: fmtDateTime(now()), version: DB.version }),
+  'GET /api/health': () => { settlePendingRedemptions(DB); return { ok: true, service: 'bank-core', time: fmtDateTime(now()), version: DB.version }; },
 
   // 完整快照（一次性拉取全部账户数据，减少请求次数）
-  'GET /api/snapshot': () => ({
+  'GET /api/snapshot': () => (settlePendingRedemptions(DB), {
     userProfile: DB.userProfile,
     bills: DB.bills,
     monthlyHistory: DB.monthlyHistory,
@@ -580,12 +605,20 @@ const routes = {
 
     const credited = Math.round((amt + profitPart) * 100) / 100;
     const d = DB.userProfile.debitCard;
-    d.balance = Math.round((d.balance + credited) * 100) / 100;
-    d.available = Math.round((d.available + credited) * 100) / 100;
-    addTxn('income', credited, `赎回理财-${product}`, '理财赎回');
+    // 开放式基金赎回按 T+1 到账：提交时只在途，T+1 再回到活期可用余额
+    DB.userProfile.pendingRedemptions = DB.userProfile.pendingRedemptions || [];
+    const arriveDate = fmtDate(new Date(Date.now() + 24 * 3600 * 1000));
+    DB.userProfile.pendingRedemptions.push({
+      id: 'RD' + Date.now(),
+      product, principal: amt, profit: profitPart, credited,
+      submitDate: fmtDate(now()), arriveDate, status: '到账中'
+    });
+    settlePendingRedemptions(DB);
     return {
       ok: true, balance: d.balance, available: d.available,
-      credited, profit: profitPart, remain, holdings: DB.userProfile.holdings
+      credited, profit: profitPart, remain, arriveDate, pending: true,
+      pendingRedemptions: DB.userProfile.pendingRedemptions,
+      holdings: DB.userProfile.holdings
     };
   },
 

@@ -760,16 +760,26 @@ registerAgentTool('wealth.redeem', {
       h.status = '已赎回';
       mockData.userProfile.holdings = holdings.filter(function (x) { return x !== h; });
     }
-    // 用 addTransaction 统一回补本地余额（本金 + 已实现收益）
+    // 开放式基金赎回按 T+1 到账：先记「到账中」，到期由 releasePendingRedemptions() 入账
     var credited = Math.round((amount + profitPart) * 100) / 100;
-    addTransaction('income', credited, '赎回' + h.name + (profitPart ? '（含收益 ¥' + profitPart + '）' : ''), '理财账户', true);
+    var u2 = mockData.userProfile;
+    if (!u2.pendingRedemptions) u2.pendingRedemptions = [];
+    var arrive = new Date(Date.now() + 24 * 3600 * 1000);
+    var arriveDate = arrive.getFullYear() + '-' + ('0' + (arrive.getMonth() + 1)).slice(-2) + '-' + ('0' + arrive.getDate()).slice(-2);
+    var submit = new Date();
+    var submitDate = submit.getFullYear() + '-' + ('0' + (submit.getMonth() + 1)).slice(-2) + '-' + ('0' + submit.getDate()).slice(-2);
+    u2.pendingRedemptions.push({
+      id: 'RD' + Date.now(),
+      product: h.name, principal: amount, profit: profitPart, credited: credited,
+      submitDate: submitDate, arriveDate: arriveDate, status: '到账中'
+    });
     saveUserData();
-    // 数据真实化：同步后端（赎回资金回补余额）
+    // 数据真实化：同步后端（后端同样挂「到账中」，T+1 入账）
     if (typeof apiWealthRedeem === 'function') apiWealthRedeem(h.name, amount);
     return {
-      summary: '已赎回「' + h.name + '」本金 ¥' + agentFmtInt(amount) + (profitPart ? ' + 收益 ¥' + agentFmt(profitPart) : '') +
-        '，到账 ¥' + agentFmt(credited) + '，剩余持仓 ¥' + agentFmtInt(h.amount),
-      data: { name: h.name, amount: amount, profit: profitPart, credited: credited, remain: h.amount }
+      summary: '已提交「' + h.name + '」赎回申请，本金 ¥' + agentFmtInt(amount) + (profitPart ? ' + 收益 ¥' + agentFmt(profitPart) : '') +
+        '，预计 ' + arriveDate + '（T+1）到账，剩余持仓 ¥' + agentFmtInt(h.amount),
+      data: { name: h.name, amount: amount, profit: profitPart, credited: credited, remain: h.amount, arriveDate: arriveDate, pending: true }
     };
   }
 });
@@ -885,6 +895,36 @@ registerAgentTool('life.reserveDeposit', {
 });
 
 // 到期解冻专项预算/预留资金（页面加载和每 30 秒执行一次）
+
+// 赎回到账结算：预计到账日（T+1）把本息计入活期可用余额
+function releasePendingRedemptions() {
+  try {
+    var u = mockData.userProfile;
+    if (!u || !Array.isArray(u.pendingRedemptions) || !u.pendingRedemptions.length) return 0;
+    var d = u.debitCard || {};
+    var today = new Date();
+    var todayStr = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + ('0' + today.getDate()).slice(-2);
+    var settled = 0;
+    u.pendingRedemptions.forEach(function (r) {
+      if (!r || r.status !== '到账中') return;
+      if (!r.arriveDate || String(r.arriveDate) > todayStr) return;
+      var credited = Number(r.credited) || 0;
+      if (!(credited > 0)) return;
+      if (typeof addTransaction === 'function') {
+        addTransaction('income', credited, '赎回到账-' + r.product, '理财赎回', true);
+      } else {
+        d.available = Math.round(((Number(d.available) || 0) + credited) * 100) / 100;
+        d.balance = Math.round(((Number(d.balance) || 0) + credited) * 100) / 100;
+      }
+      r.status = '已到账';
+      r.settledDate = todayStr;
+      settled++;
+    });
+    if (settled && typeof saveUserData === 'function') saveUserData();
+    return settled;
+  } catch (e) { return 0; }
+}
+
 function releaseLockedFunds() {
   var u = mockData.userProfile;
   if (!u) return;

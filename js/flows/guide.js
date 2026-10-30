@@ -4537,7 +4537,7 @@ function guideHoldingRedeemConfirm() {
   s.stage = 'redeemConfirm';
   s.amount = amount;
   appendMessage(guideMessage(
-    '<p>确认赎回【<b>' + guideHoldingEsc(h.name) + '</b>】<b>' + guidePlainMoney(amount) + '</b> 元，资金将返回活期主账户（尾号' +
+    '<p>确认赎回【<b>' + guideHoldingEsc(h.name) + '</b>】<b>' + guidePlainMoney(amount) + '</b> 元，资金预计 T+1 到账活期主账户（尾号' +
     guideHoldingAccountTail() + '），请确认</p>' +
     (s.full ? '<p class="guide-tip">本次为全额赎回，赎回后该持仓清空。</p>' : '') +
     '<div class="guide-chips">' +
@@ -4556,7 +4556,8 @@ async function guideHoldingRedeemSubmit() {
   GUIDE_HOLDING = null;
   var res = await callAgentTool('wealth.redeem', { product: name, amount: amount });
   if (res && res.ok !== false) {
-    appendMessage(guideMessage('<p>赎回提交成功，资金已回到活期主账户。</p>'));
+    var arriveText = (res && res.data && res.data.arriveDate) ? res.data.arriveDate : 'T+1';
+    appendMessage(guideMessage('<p>赎回申请已提交，资金预计 <b>' + guideHoldingEsc(arriveText) + '</b> 到账活期主账户（尾号' + guideHoldingAccountTail() + '）。</p>'));
   } else {
     appendMessage(guideMessage('<p>赎回失败：' + guideHoldingEsc((res && res.summary) || '业务执行异常') + '</p>'));
   }
@@ -4594,7 +4595,8 @@ async function guideHoldingRedeemAllSubmit() {
     if (res && res.ok !== false) done.push(h.name);
   }
   appendMessage(guideMessage(
-    '<p>一键赎回指令已提交，可赎回产品受理成功，封闭期产品无法赎回。</p>' +
+    '<p>一键赎回申请已提交，资金预计 T+1 到账活期主账户（尾号' + guideHoldingAccountTail() + '）。</p>' +
+    '<p class="guide-tip">封闭期产品暂不支持赎回。</p>' +
     (done.length ? '<p class="guide-tip">已受理：' + guideHoldingEsc(done.join('、')) + '</p>' : '') +
     (closed.length ? '<p class="guide-tip">封闭期未赎回：' + guideHoldingEsc(closed.join('、')) + '</p>' : '')
   ));
