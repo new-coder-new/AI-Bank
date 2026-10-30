@@ -909,6 +909,10 @@ async function guideHandleText(text) {
 var GUIDE_TRANSFER = null;
 
 // 负数或「负」开头的金额：各模块统一拦截，避免 -1000 被当成 1000
+function guideEscapeText(v) {
+  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
+}
+
 function guideIsNegativeAmount(text) {
   return /(^|[^\d])[-−负]\s*\d/.test(String(text || ''));
 }
@@ -2090,21 +2094,30 @@ function guideWealthProductCode(p) {
 //   ③ 只有一个四位数（如「1000」「1001」） → 当金额，不当编号
 function guideWealthCodeCandidate(text) {
   var t = String(text || '');
+  // ① 明确写了「编号 / 代码」：紧跟其后的四位数才是编号（避免「买1001元 编号为1000」取错）
+  var explicit = t.match(/(?:编号|产品编号|代码|code)\s*(?:为|是|[:：])?\s*(\d{3,6})/i);
+  if (explicit) return { code: explicit[1], explicit: true };
+  // ② 没写「编号」：必须同时出现两个数字，才把前面那个四位数当编号
   var m = t.match(/(?:^|[^\d])(10\d{2})(?![\d])/);
   if (!m) return null;
   var nums = t.match(/\d+(?:\.\d+)?/g) || [];
-  if (/(编号|产品编号|代码|code)/i.test(t)) return m[1];
-  if (nums.length >= 2) return m[1];
+  if (nums.length >= 2) return { code: m[1], explicit: false };
   return null;
 }
 
 // 从文本里识别四位数产品编号（1001-1099）
 function guideWealthFindByCode(text) {
-  var code = guideWealthCodeCandidate(text);
-  if (!code) return null;
+  var cand = guideWealthCodeCandidate(text);
+  if (!cand) return null;
   var list = mockData.products || [];
-  var idx = Number(code) - 1001;
+  var idx = Number(cand.code) - 1001;
   return list[idx] || null;
+}
+
+// 文本里写的编号（可能是写错/不存在的编号），用于给出明确提示
+function guideWealthExplicitCode(text) {
+  var cand = guideWealthCodeCandidate(text);
+  return (cand && cand.explicit) ? cand.code : null;
 }
 
 function guideWealthProductLine(p, i) {
@@ -2271,9 +2284,10 @@ function guideWealthFindProduct(text) {
 function guideWealthParse(text) {
   var t = String(text || '');
   // 只有被判定为「产品编号」时才从金额里剔除；单个 1000 / 1001 仍然当金额
+  var cand = (typeof guideWealthCodeCandidate === 'function') ? guideWealthCodeCandidate(t) : null;
   var product = guideWealthFindProduct(t);
-  var codeCandidate = guideWealthCodeCandidate(t);
-  if (codeCandidate && product) t = t.replace(codeCandidate, ' ');
+  // 只有编号确实对应到产品时才把它从金额里剔除；写错编号不能吞掉金额
+  if (cand && product) t = t.replace(cand.code, ' ');
   // 产品名里常带数字（90天 / 三年 / 3期），先剔除再抽金额，避免「稳健增利90天」把 90 当金额
   if (product && product.name) t = t.replace(product.name, ' ');
   t = t.replace(/\d+\s*(天|日|年|期|个月|月)/g, ' ');
@@ -2291,6 +2305,15 @@ async function guideWealthStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_WEALTH;
   var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
+
+  // 写了「编号X」但 X 不存在：明确告诉用户可选编号，不再继续用旧产品
+  var explicitCode = (typeof guideWealthExplicitCode === 'function') ? guideWealthExplicitCode(t) : null;
+  if (explicitCode && !guideWealthFindByCode(t)) {
+    var allCodes = (mockData.products || []).map(function (p) { return guideWealthProductCode(p) + ' ' + p.name; }).join('、');
+    guideAsk(guideMessage('<p>编号 ' + guideEscapeText(explicitCode) + ' 没有对应的理财产品。</p>' +
+      '<p class="guide-tip">可选编号：' + guideEscapeText(allCodes) + '</p>'));
+    return true;
+  }
 
   if (guideIsNegativeAmount(t)) {
     // 句子里可能同时带了产品（编号或名称）：先认出来，负数提示才能给出准确起购额
