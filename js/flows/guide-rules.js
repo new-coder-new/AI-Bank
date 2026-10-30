@@ -321,7 +321,7 @@ function guideResolveIntent(text) {
   return null;
 }
 
-// AI 意图识别兜底：本地规则没认出来时，让模型在固定清单里选一个
+// 规则层：本地关键词/正则命中就直接接管；都失配时才由 guide-ai.js 的模型识别补位
 
 // 按「服务名 + 别名」精确匹配一级服务（整词匹配，避免劫持自然语言指令）
 function guideResolveService(name) {

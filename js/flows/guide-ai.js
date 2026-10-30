@@ -4,7 +4,7 @@
 // ==========================================================================
 
 // 规则层没接住时，用模型做一次意图路由（返回 true 表示已接管）
-// 这是「AI 兜底」：只有本地关键词/正则全部失配才会走到这里，省钱又稳。
+// 这是「模型优先」入口：进入向导后先让模型判断意图；模型不可用或判不出时，才交给 guide-rules.js 的本地规则。
 var GUIDE_INTENT_MODULES = {
   'transfer.name': function (t) { GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
   'transfer.phone': function (t) { GUIDE_TRANSFER = { kind: 'phone', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
@@ -111,7 +111,7 @@ function guideAIFirstSkipped(t) {
 
 // 去掉「AI 理解」等标签后再输出，并避免连续重复同一句追问
 
-// AI 意图识别兜底：本地规则没认出来时，让模型在固定清单里选一个
+// 模型识别（规则失配后的补充路径）：本地规则没认出来时，让模型在固定清单里选一个
 async function guideAIIntent(text) {
   var loadingId = 'guide-intent-' + Date.now();
   appendMessage('<div class="message" id="' + loadingId + '"><div class="msg-avatar ai">🤖</div>' +
@@ -180,7 +180,7 @@ async function guideAIIntentExtract(text) {
 
 // 按「服务名 + 别名」精确匹配一级服务（整词匹配，避免劫持自然语言指令）
 
-// ------------------------------ AI 兜底 ------------------------------
+// ------------------------------ 模型槽位抽取（正则抽不全时补位） ------------------------------
 // 本地正则只能认「张三 100」这类规整输入；遇到「帮我转一百块给张三」「就打给老王吧，两百」
 // 这类说法，交给模型抽槽位；无 Key / 请求失败时降级为示例引导，不阻塞对话。
 async function guideTransferAIExtract(text, session) {
@@ -476,7 +476,7 @@ async function guideTxnLimitAILimits(text) {
 }
 
 
-// AI 兜底：本地同义词没命中时，让模型判断是「追加申购 / 指定赎回 / 全部赎回」并抽产品与金额
+// 模型槽位抽取：本地同义词没命中时，让模型判断是「追加申购 / 指定赎回 / 全部赎回」并抽产品与金额
 async function guideHoldingAIIntent(text) {
   var loadId = (typeof guideTypingBubble === 'function') ? guideTypingBubble() : null;
   var obj = null;
