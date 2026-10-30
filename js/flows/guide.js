@@ -1386,8 +1386,7 @@ function guideStartNameTransfer() {
   GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' };
   currentModule = 'transfer';
   appendMessage(guideMessage(
-    '<p>请问收款人和转账金额是多少？</p>' +
-    '<p class="guide-tip">可以分开说，也可以一次说，例如「张三转 100」</p>'
+    '<p>请问收款人和转账金额是多少？</p>'
   ));
   scrollToBottom();
 }
