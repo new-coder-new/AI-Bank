@@ -688,6 +688,33 @@ async function guideHandleText(text) {
       }
     }
   } catch (e) { /* 守卫失败不影响正常流程 */ }
+
+  // 模块内清单查询：只在「理财 / 订阅管理」两个模块内生效
+  try {
+    var qt = String(text || '').trim();
+    var wealthBusy = !!GUIDE_WEALTH;
+    var subBusy = !!(GUIDE_SUB && /^(add|cancel|manage|cancel-all)$/.test(String(GUIDE_SUB.mode || '')));
+    var inWealth = (currentModule === 'wealth');
+    var inSub = (currentModule === 'life' && GUIDE_SUB && String(GUIDE_SUB.mode || '') === 'choose');
+
+    if ((wealthBusy || inWealth) && typeof guideIsWealthCatalogQuery === 'function' && guideIsWealthCatalogQuery(qt)) {
+      if (wealthBusy) { guideFlowLockedNotice(); return true; }     // 流程中先完成
+      guideWealthShowAllProducts();
+      return true;
+    }
+    if ((subBusy || inSub) && typeof guideIsSubCatalogQuery === 'function' && guideIsSubCatalogQuery(qt)) {
+      if (subBusy) { guideFlowLockedNotice(); return true; }
+      guideSubShowCatalog();
+      return true;
+    }
+
+    // 理财清单之后直接说「1001 5000」：已在模块内，立刻进入申购
+    if (inWealth && !wealthBusy && /\d/.test(qt) &&
+        typeof guideWealthFindProduct === 'function' && guideWealthFindProduct(qt)) {
+      guideStartWealthPurchase();
+      return await guideWealthStep(qt);
+    }
+  } catch (e) { /* 清单查询失败不影响正常流程 */ }
   var t = String(text || '').trim().replace(/[。.!！?？,，\s]+$/g, '');
   if (!t) return false;
 
@@ -2264,7 +2291,12 @@ function guideWealthProductLine(p, i) {
 
 // 全部在售产品（展开版，不折叠）；「查询所有产品」意图仍可用
 function guideWealthShowAllProducts() {
-  appendMessage(guideMessage(guideWealthProductsHtml(guideWealthValidProfile(), { showAll: true })));
+  var list = (typeof mockData !== 'undefined' && mockData.products) || [];
+  appendMessage(guideMessage(
+    '<p>在售理财产品（共 ' + list.length + ' 支）</p>' +
+    guideWealthProductsHtml(guideWealthValidProfile(), { showAll: true }) +
+    '<p class="guide-tip">回复「编号 + 金额」即可申购，例如：1001 5000</p>'
+  ));
   scrollToBottom();
 }
 
@@ -4289,6 +4321,25 @@ function guideSubYesNo(text) {
   return null;
 }
 
+
+// 订阅清单（只读）：展示全部可订阅会员 + 已订阅标记
+function guideSubShowCatalog() {
+  var active = (typeof guideSubActive === 'function') ? guideSubActive() : [];
+  var activeNames = active.map(function (x) { return String(x.name || ''); });
+  var rows = SUB_PRESETS.map(function (p) {
+    var key = String(p.name).replace(' VIP', '').replace('VIP', '');
+    var mine = activeNames.some(function (n) { return n.indexOf(key) !== -1; });
+    return '<div class="report-row"><span>' + guideSubEsc(p.name) + (mine ? '（已订阅）' : '') + '</span>' +
+      '<b>月 ¥' + p.prices['/月'] + ' / 季 ¥' + p.prices['/季'] + ' / 年 ¥' + p.prices['/年'] + '</b></div>';
+  }).join('');
+  appendMessage(guideMessage(
+    '<p>可订阅的会员服务（共 ' + SUB_PRESETS.length + ' 项）</p>' +
+    '<div class="report-panel"><div class="report-panel-title">可订阅会员</div>' + rows + '</div>' +
+    '<p class="guide-tip">回复「服务名 + 周期」即可开通，例如：某易云 年卡</p>'
+  ));
+  scrollToBottom();
+}
+
 function guideSubPresetRows() {
   return SUB_PRESETS.map(function (p) {
     return '<div class="report-row"><span>' + guideSubEsc(p.name) + '</span>' +
@@ -4475,6 +4526,7 @@ function guideStartSubManage() {
     '<div class="guide-row"><div class="guide-row-title">添加订阅</div><div class="guide-row-example">例如：我想要订阅某易云年卡</div></div>' +
     '<div class="guide-row"><div class="guide-row-title">取消订阅</div><div class="guide-row-example">例如：我不想订阅某易云了</div></div>' +
     '<div class="guide-row"><div class="guide-row-title">管理自动续费</div><div class="guide-row-example">例如：某度网盘年卡不续费了</div></div>' +
+    '<div class="guide-row"><div class="guide-row-title">可订阅会员</div><div class="guide-row-example">例如：能订哪些会员</div></div>' +
     '</div>' +
     '<p class="guide-tip">直接说出你的需求即可（照示例说也行）。</p>'
   ));

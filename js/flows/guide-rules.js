@@ -53,7 +53,8 @@ var GUIDE_SERVICES = [
     subs: [
       { key: 'products', label: '产品申购', example: '申购1001，5000元', aliases: ['产品', '申购'], run: function () { guideStartWealthPurchase(); } },
       { key: 'risk', label: '风险评估', example: '做一次风险测评', run: function () { startRiskAssessment(); } },
-      { key: 'holdings', label: '持仓管理', example: '查看持仓收益', aliases: ['持仓', '我的持仓'], run: function () { guideStartHoldings(); } }
+      { key: 'holdings', label: '持仓管理', example: '查看持仓收益', aliases: ['持仓', '我的持仓'], run: function () { guideStartHoldings(); } },
+      { key: 'catalog', label: '在售产品清单', example: '有哪些理财产品', aliases: ['产品清单', '在售产品'], run: function () { guideWealthShowAllProducts(); } }
     ]
   },
   {
@@ -379,6 +380,26 @@ function guideLooksLikeNewTransfer(text) {
 // 确认卡收尾工具：完成就移除按钮并补状态行；取消就把整块折叠成一行
 
 // 用户说「查询所有产品 / 全部产品 / 更多产品」时的意图判断
+// 理财内：问「有哪些理财产品 / 产品清单」
+function guideIsWealthCatalogQuery(text) {
+  var s = String(text || '').trim();
+  if (!s) return false;
+  // 「我买了哪些产品 / 我的持仓 / 持有收益」属于查询自己持有的，不是看货架
+  if (/(买了|买过|持有|持仓|我的产品|我的理财|收益情况)/.test(s)) return false;
+  if (/(有哪些|哪些|有什么|有啥|能买|可以买|可买|买什么).{0,8}(理财|产品|基金)/.test(s)) return true;
+  if (/(理财|产品|基金).{0,8}(有哪些|哪些|清单|列表|大全|目录|一览)/.test(s)) return true;
+  return (typeof guideIsAllProductsIntent === 'function') && guideIsAllProductsIntent(s);
+}
+
+// 订阅内：问「能订哪些会员 / 有哪些可订阅」
+function guideIsSubCatalogQuery(text) {
+  var s = String(text || '').trim();
+  if (!s) return false;
+  if (/(有哪些|哪些|有什么|有啥|能订|可以订|可订|能开|可以开).{0,8}(会员|订阅|VIP|vip|服务)/.test(s)) return true;
+  if (/(会员|订阅|VIP|vip).{0,8}(有哪些|哪些|清单|列表|大全|目录)/.test(s)) return true;
+  return /(可订阅|能订阅|会员清单|订阅清单)/.test(s);
+}
+
 function guideIsAllProductsIntent(text) {
   var s = String(text || '').trim();
   if (!s) return false;
