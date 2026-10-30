@@ -58,6 +58,21 @@ function hasValidSession(req) {
   const token = String(req.headers['x-bank-session'] || '');
   return !!token && SESSIONS.has(token);
 }
+
+// 严格同源：浏览器页面（带 Origin 或 Referer）且 host 必须一致；
+// 两者都没有（curl / 匿名脚本）一律拒绝，避免匿名客户端领取令牌直接调用资金接口。
+function isSameOriginStrict(req) {
+  const host = String(req.headers.host || '');
+  const origin = req.headers.origin;
+  const referer = req.headers.referer;
+  function hostOf(u) {
+    try { return new URL(u).host; } catch (e) { return ''; }
+  }
+  if (origin) return hostOf(origin) === host;
+  if (referer) return hostOf(referer) === host;
+  return false;
+}
+
 function isSameOrigin(req) {
   const origin = req.headers.origin;
   if (!origin) return true; // 非浏览器客户端（curl/部署探活）；没有 Cookie，风险由令牌控制
@@ -204,7 +219,7 @@ function readRawBody(req, maxBytes) {
 // AI 代理：浏览器只调本服务，真实 Key 留在服务端环境变量/本机文件中
 // ---------------------------------------------------------------------------
 async function handleAIChat(req, res) {
-  if (!isSameOrigin(req)) return sendJSON(res, 403, { error: { message: 'Forbidden' } });
+  if (!isSameOriginStrict(req)) return sendJSON(res, 403, { error: { message: 'Forbidden' } });
   if (aiRateLimited(req, 'chat', 20, 60000)) return sendJSON(res, 429, { error: { message: '请求过于频繁，请稍后再试' } });
   const useSilicon = AI_PROVIDER === 'siliconflow';
   const chatKey = useSilicon ? AI_KEYS.siliconflow : AI_KEYS.deepseek;
@@ -245,7 +260,7 @@ async function handleAIChat(req, res) {
 }
 
 async function handleAITranscribe(req, res) {
-  if (!isSameOrigin(req)) return sendJSON(res, 403, { error: { message: 'Forbidden' } });
+  if (!isSameOriginStrict(req)) return sendJSON(res, 403, { error: { message: 'Forbidden' } });
   if (aiRateLimited(req, 'asr', 10, 60000)) return sendJSON(res, 429, { error: { message: '请求过于频繁，请稍后再试' } });
   if (!AI_KEYS.siliconflow) return sendJSON(res, 503, { error: { message: '服务端未配置 SILICONFLOW_API_KEY' } });
   const body = await readRawBody(req, 25 * 1024 * 1024);
@@ -844,7 +859,7 @@ const server = http.createServer(async (req, res) => {
 
   // 会话令牌：前端启动时领取，写接口和快照都必须携带
   if (pathname === '/api/session') {
-    if (!isSameOrigin(req)) return sendJSON(res, 403, { ok: false, error: 'Forbidden' });
+    if (!isSameOriginStrict(req)) return sendJSON(res, 403, { ok: false, error: 'Forbidden：会话令牌只能从页面内领取' });
     return sendJSON(res, 200, { ok: true, token: issueSession() });
   }
 
@@ -858,7 +873,7 @@ const server = http.createServer(async (req, res) => {
   // API 统一鉴权：/api/health 保持公开，其余必须同源 + 有效会话令牌
   if (pathname.startsWith('/api/')) {
     if (pathname !== '/api/health') {
-      if (!isSameOrigin(req)) return sendJSON(res, 403, { ok: false, error: 'Forbidden' });
+      if (!isSameOriginStrict(req)) return sendJSON(res, 403, { ok: false, error: 'Forbidden：非法来源' });
       if (!hasValidSession(req)) return sendJSON(res, 401, { ok: false, error: '会话已失效，请刷新页面' });
     }
   }
