@@ -2995,10 +2995,9 @@ function guideCardLimitPickCard(cardId) {
   var st = guideCardLimitState();
   appendMessage(guideMessage(
     '<p>正在调整「<b>' + guideCardLimitEsc(guideCardLabel(card)) + '</b>」的额度。</p>' +
-    '<p>请告诉我想要调整到的目标额度，以及调整原因。</p>' +
-    '<p class="guide-tip">可选原因：' + CARD_LIMIT_REASONS.join('、') + '</p>' +
-    (st.current ? '<p class="guide-tip">当前额度 ¥' + st.current.toLocaleString('zh-CN') +
-      (st.min > 0 ? '，最低可调至 ¥' + st.min.toLocaleString('zh-CN') + '（已用额度）' : '') + '</p>' : '')
+    '<p>请告诉我想要调整到的目标额度。</p>' +
+    '<p class="guide-tip">当前额度 ¥' + st.current.toLocaleString('zh-CN') +
+      (Number(st.min) > 0 ? '，最低可调至 ¥' + st.min.toLocaleString('zh-CN') + '（已用额度）' : '') + '</p>'
   ));
   scrollToBottom();
 }
@@ -3115,19 +3114,16 @@ async function guideCardLimitStep(text) {
     guideCardLimitConfirm();
     return true;
   }
+  var stPrompt = guideCardLimitState();
+  var limitTip = '<p class="guide-tip">当前额度 ¥' + stPrompt.current.toLocaleString('zh-CN') +
+    (Number(stPrompt.min) > 0 ? '，最低可调至 ¥' + stPrompt.min.toLocaleString('zh-CN') + '（已用额度）' : '') + '</p>';
+  // 第二段：额度给了，只问原因
   if (s.limit > 0) {
-    appendMessage(guideMessage('<p>请选择本次额度的调整原因。</p><p class="guide-tip">可选原因：' + CARD_LIMIT_REASONS.join('、') + '</p>'));
-    scrollToBottom();
+    guideSayInvalid(guideMessage('<p>您的调整原因是？</p><p class="guide-tip">可选原因：' + CARD_LIMIT_REASONS.join('、') + '</p>'));
     return true;
   }
-  if (s.reason) {
-    appendMessage(guideMessage('<p>请问希望将额度调整到多少元？</p>'));
-    scrollToBottom();
-    return true;
-  }
-
-  appendMessage(guideMessage('<p>请告诉我想要调整到的目标额度，以及调整原因。</p><p class="guide-tip">可选原因：' + CARD_LIMIT_REASONS.join('、') + '</p>'));
-  scrollToBottom();
+  // 第一段：只问目标额度（原因留到下一步）
+  guideSayInvalid(guideMessage('<p>请告诉我想要调整到的目标额度。</p>' + limitTip));
   return true;
 }
 
