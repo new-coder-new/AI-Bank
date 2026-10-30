@@ -356,7 +356,7 @@ function guideHomeRemindersHtml() {
   // ②.5 本月生日鲜花预留（有预留才显示）
   if (hold && hold.amount) {
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
-      '<div class="mini-row-sub">已为' + (hold.count > 1 ? hold.count + ' 位本月生日（' + (hold.names || []).join('、') + '）' : (hold.names || [])[0] + '生日') + '预留 ¥' + hold.amount + '（可用余额已扣减，' + hold.releaseDate + ' 解冻）</div></div></div>');
+      '<div class="mini-row-sub">已为' + (hold.count > 1 ? hold.count + ' 位本月生日（' + (hold.names || []).join('、') + '）' : (hold.names || [])[0] + '生日') + '预留 ¥' + hold.amount + '</div></div></div>');
   }
 
   // ③④⑤ 节日鲜花：只在临近（≤2 天）时才提醒，避免常年占版面
