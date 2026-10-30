@@ -1879,59 +1879,6 @@ function agentReply(text) {
   scrollToBottom();
 }
 
-async function agentShortageFix(kind, capAmount, payee) {
-  var check = agentCheckBalance([{ amount: capAmount || 0 }]);
-
-  if (kind === 'cap') {
-    agentReply('好的，我把金额改为可用上限 <b>¥' + agentFmt(capAmount) + '</b>，重新为你发起转账。');
-    await agentSleep(300);
-    if (typeof enhancedSendMessage === 'function') {
-      await agentTransferFlow(payee, Number(capAmount), '给' + payee + '转' + capAmount);
-    }
-    return;
-  }
-
-  if (kind === 'adjust') {
-    AGENT_SHORTAGE_CTX = { payee: payee, available: check.available };
-    agentReply('你的可用余额是 <b>¥' + agentFmt(check.available) + '</b>。<br>' +
-      '直接告诉我你想转多少，例如「转 2000」。<br><br>' +
-      '提醒：超出可用余额的部分，银行系统不会执行，账户也不会被扣成负数。');
-    return;
-  }
-
-  if (kind === 'split') {
-    var per = Math.floor(check.available / 2);
-    agentReply('分批转账需要确认收款方是否接受。<br><br>' +
-      '按你当前可用余额，可分 <b>2 笔</b> 各约 <b>¥' + agentFmt(per) + '</b> 转出，' +
-      '剩余部分待资金到账后继续。<br><br>' +
-      '⚠️ 分批会影响到账时效，如果对方有付款截止时间，请确认是否来得及。');
-    return;
-  }
-
-  if (kind === 'loan') {
-    var loan = await callAgentTool('loan.inquiry', { amount: check.shortage });
-    agentReply('关于缺口 <b>¥' + agentFmt(check.shortage) + '</b>，可考虑的借款方式：<br><br>' +
-      (loan.summary || '暂未查询到可用额度') + '<br><br>' +
-      '<b>需要提醒你</b>：为了转账去借款会放大风险——' +
-      '贷款会产生利息，且通常约定资金不得用于投资或转贷。' +
-      '如果不是必须，更建议优先考虑「降低金额」或「分批转账」。');
-    if (AGENT_MEMORY) {
-      AGENT_MEMORY.notes.unshift({ at: new Date().toISOString(), text: '用户咨询了资金缺口方案（缺口 ¥' + agentFmt(check.shortage) + '）' });
-      saveAgentMemory();
-    }
-    return;
-  }
-
-  if (kind === 'card') {
-    var ov = await callAgentTool('card.overview', {});
-    agentReply('信用卡可用于本次支付，但请了解这属于<b>透支</b>行为：<br><br>' +
-      (ov.summary || '') + '<br><br>' +
-      '超过可用余额的部分会占用信用额度，并按日计息（通常在免息期外收取）。' +
-      '建议确认能在还款日前还清，再决定是否使用。');
-    return;
-  }
-}
-
 // ------------------------------ 7. 抽屉 / 记忆面板 ------------------------------
 function toggleAgentDrawer() {
   var d = document.getElementById('agentDrawer');

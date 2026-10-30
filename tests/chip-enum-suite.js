@@ -1,8 +1,11 @@
 ﻿// 按钮枚举层测试：点按钮必须「零模型调用」，直接把固定枚举写进状态
 // 用法：node tests/chip-enum-suite.js
 const fs = require('fs');
+
 const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide.js'), 'utf8');
+const RULES_SRC = fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide-rules.js'), 'utf8');
+const AI_SRC = fs.readFileSync(path.join(__dirname, "..", "js", "flows", "guide-ai.js"), "utf8");
+const src = RULES_SRC + '\n' + AI_SRC + '\n' + fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide.js'), 'utf8');
 
 const calls = [];
 const logs = [];

@@ -271,46 +271,6 @@ function showSmartBuyConfirm(product, amount, text) {
 }
 
 // 确认赎回：与一键式对话共用 wealth.redeem 工具
-async function confirmRedeem(name, holdingAmount, popupId) {
-  const redeemAmount = parseFloat(document.getElementById('redeemAmountInput')?.value) || 0;
-  if (redeemAmount <= 0) {
-    alert('赎回金额必须大于0');
-    return;
-  }
-  if (redeemAmount > holdingAmount) {
-    alert('赎回金额不能超过持有金额 ¥' + holdingAmount.toFixed(2));
-    return;
-  }
-  if (typeof callAgentTool !== 'function') {
-    alert('赎回服务暂时不可用，请稍后再试');
-    return;
-  }
-  document.getElementById(popupId)?.remove();
-  let res;
-  try {
-    res = await callAgentTool('wealth.redeem', { product: name, amount: redeemAmount });
-  } catch (e) {
-    res = { ok: false, summary: (e && e.message) || '赎回失败' };
-  }
-  if (res.ok === false) {
-    appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>赎回未完成</strong><br>${escapeHtml(res.summary || '请检查持仓状态')}<br><br>持仓与余额均未发生变化。</div></div></div>`);
-    scrollToBottom();
-    return;
-  }
-  const holding = mockData.userProfile.holdings?.find(h => h.name === name);
-  appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">
-    <p><strong>赎回已完成</strong></p>
-    <div class="data-card">
-      <div class="data-card-title">赎回详情</div>
-      <div class="data-row"><span class="data-label">产品名称</span><span class="data-value">${name}</span></div>
-      <div class="data-row"><span class="data-label">赎回金额</span><span class="data-value income" style="font-weight:700;">¥ ${redeemAmount.toFixed(2)}</span></div>
-      <div class="data-row"><span class="data-label">剩余持仓</span><span class="data-value">¥ ${Math.max(0, Number(holding?.amount) || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
-      <div class="data-row"><span class="data-label">到账方式</span><span class="data-value">已回到可用余额（演示环境即时到账）</span></div>
-      <div class="data-row"><span class="data-label">当前可用余额</span><span class="data-value">¥ ${Number(mockData.userProfile.debitCard.available).toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
-    </div>
-  </div></div></div>`);
-  scrollToBottom();
-}
 
 // ========== 风险测评 ==========
 const riskQuestions = [

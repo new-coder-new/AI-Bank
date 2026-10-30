@@ -568,15 +568,6 @@ function agentLLMRenderNextSteps(state) {
   scrollToBottom();
 }
 
-function agentLLMQuickAsk(text) {
-  appendMessage('<div class="message user"><div class="msg-avatar user">陈</div><div class="msg-content">' +
-    '<div class="msg-name">小陈</div><div class="msg-bubble">' + escapeHtml(text) + '</div></div></div>');
-  scrollToBottom();
-  setTimeout(function () {
-    if (typeof enhancedSendMessage === 'function') enhancedSendMessage(text);
-  }, 120);
-}
-
 // ------------------------------ 7. Agent 主循环 ------------------------------
 var AGENT_LLM_PENDING = {};
 var AGENT_LLM_SEQ = 0;

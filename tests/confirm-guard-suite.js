@@ -1,8 +1,11 @@
 // 确认卡守卫测试：停留在最后一步确认卡时，未识别的输入统一回「请完成上述操作。」
 // 用法：node tests/confirm-guard-suite.js
 const fs = require('fs');
+
 const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide.js'), 'utf8');
+const RULES_SRC = fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide-rules.js'), 'utf8');
+const AI_SRC = fs.readFileSync(path.join(__dirname, "..", "js", "flows", "guide-ai.js"), "utf8");
+const src = RULES_SRC + '\n' + AI_SRC + '\n' + fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide.js'), 'utf8');
 
 const logs = [];
 const calls = [];

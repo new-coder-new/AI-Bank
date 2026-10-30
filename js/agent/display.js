@@ -199,28 +199,6 @@ function agentAlertCardHtml(a) {
 }
 
 // 主动提醒的一键处理
-async function agentRunAlertAction(action, amount) {
-  if (action === 'budgetAdjust') {
-    agentRunTask('budgetPlan');
-    return;
-  }
-  if (action === 'riskDetect') {
-    // 体检负债风险是「只读分析」，展示月供收入比、负债结构与计算公式，
-    // 而不是套用「高风险已拦截」话术（用户只是让我看一眼，不是要新增负债）。
-    renderAgentDebtHealth();
-    return;
-  }
-  if (action === 'cardOverview') {
-    var ov = await callAgentTool('card.overview', {});
-    agentReply(ov.summary || '');
-    return;
-  }
-  if (action === 'savingsPlan') {
-    renderAgentPlanGoals('我想一年存 ' + Math.max(1, Math.round(profileCashFlow().inflow * 0.25 * 12 / 10000)) + ' 万，帮我规划一下');
-    return;
-  }
-  agentRunTask('billCheck');
-}
 
 // ------------------------------ 3. 工具注册 ------------------------------
 registerAgentTool('account.healthScore', {

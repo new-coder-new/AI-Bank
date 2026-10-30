@@ -5,10 +5,6 @@
 //        （saveUserData），不新增后端接口，避免与模拟核心库产生不一致。
 // ==========================================================================
 
-function cardServiceCard() {
-  return (mockData.userProfile && mockData.userProfile.creditCard) || {};
-}
-
 function cardServiceMoney(v) {
   return '¥' + (Number(v) || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -279,68 +275,5 @@ function cardTxnLimitRecord(amount) {
 }
 
 // 限制规则说明：把当前生效的规则、判断顺序与超限处理讲清楚
-function showTxnLimitRules() {
-  const l = txnLimitData();
-  const spent = Number(cardDailySpend().amount) || 0;
-  const body =
-    '<div class="data-card">' +
-    '<div class="data-card-title">当前生效的规则</div>' +
-    '<div class="data-row"><span class="data-label">单笔限额</span><span class="data-value">' + cardServiceMoney(l.single) + '</span></div>' +
-    '<div class="data-row"><span class="data-label">每日限额</span><span class="data-value">' + cardServiceMoney(l.daily) + '</span></div>' +
-    '<div class="data-row"><span class="data-label">今日已用</span><span class="data-value">' + cardServiceMoney(spent) + '</span></div>' +
-    '<div class="data-row"><span class="data-label">夜间交易（23:00-06:00）</span><span class="data-value">' + (l.night === 'block' ? '禁止' : '允许') + '</span></div>' +
-    '<div class="data-row"><span class="data-label">境外交易</span><span class="data-value">' + (l.overseas === 'block' ? '禁止' : '允许') + '</span></div>' +
-    '</div>' +
-    '<div class="report-panel" style="margin-top:12px;">' +
-    '<div class="report-panel-title">判断顺序</div>' +
-    '<div class="report-row"><span>1. 单笔金额</span><b>超过单笔限额即拦截</b></div>' +
-    '<div class="report-row"><span>2. 当日累计</span><b>今日已用 + 本笔 &gt; 每日限额即拦截</b></div>' +
-    '<div class="report-row"><span>3. 交易场景</span><b>夜间 / 境外交易按开关决定放行或拦截</b></div>' +
-    '</div>' +
-    '<p style="margin-top:10px;font-size:11.5px;color:#8A97A8;line-height:1.7;">命中任一规则即拒绝交易，不产生扣款；可在「交易限制」中调整阈值或关闭场景开关。</p>';
-
-  appendMessage(cardServicePage('交易限制 · 规则', '当前配置与判定顺序', body));
-  scrollToBottom();
-}
-
-function txnLimitCancel() {
-  agentReply('已取消修改，交易限制保持原设置。');
-}
-
-function saveTxnLimitSettings() {
-  const singleEl = document.getElementById('txnSingle');
-  const dailyEl = document.getElementById('txnDaily');
-  const nightEl = document.getElementById('txnNight');
-  const overseasEl = document.getElementById('txnOverseas');
-  const hint = document.getElementById('txnLimitHint');
-  if (!singleEl || !dailyEl || !nightEl || !overseasEl) return;
-
-  const single = Number(singleEl.value) || 0;
-  const daily = Number(dailyEl.value) || 0;
-  if (single < 1000) { if (hint) { hint.textContent = '单笔限额不能低于 ¥1,000'; hint.style.color = '#B42318'; } return; }
-  if (daily < single) { if (hint) { hint.textContent = '每日限额不能低于单笔限额'; hint.style.color = '#B42318'; } return; }
-  if (hint) hint.textContent = '';
-
-  const l = txnLimitData();
-  l.single = single;
-  l.daily = daily;
-  l.night = nightEl.value;
-  l.overseas = overseasEl.value;
-  saveUserData();
-
-  const html = '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
-    '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
-    '<div class="bank-result">' +
-    '<div class="bank-result-title">交易限制已更新</div>' +
-    '<div class="bank-result-amount">' + cardServiceMoney(single) + '</div>' +
-    '<div class="bank-confirm-rows">' +
-    '<div><span>单笔限额</span><b>' + cardServiceMoney(single) + '</b></div>' +
-    '<div><span>每日限额</span><b>' + cardServiceMoney(daily) + '</b></div>' +
-    '<div><span>夜间交易</span><b>' + (l.night === 'block' ? '禁止' : '允许') + '</b></div>' +
-    '<div><span>境外交易</span><b>' + (l.overseas === 'block' ? '禁止' : '允许') + '</b></div>' +
-    '</div></div></div></div></div>';
-  appendMessage(html);
-  scrollToBottom();
-}
 
 // ------------------------------ 卡片挂失 ------------------------------

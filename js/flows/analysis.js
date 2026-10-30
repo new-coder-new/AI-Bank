@@ -384,14 +384,3 @@ function showAbnormalAlert() {
 // ========== 财务报告 ==========
 
 // 财务报告底部的一行 AI 建议：只保留「储蓄率判断 + 结余去向」，保证单行可读
-function financeReportAdvice(d) {
-  const rate = Number(d && d.savingsRate) || 0;
-  const net = Number(d && d.netFlow) || 0;
-  const head = rate >= 30 ? '储蓄率 ' + rate.toFixed(1) + '%，收支结构健康'
-    : rate >= 10 ? '储蓄率 ' + rate.toFixed(1) + '%，仍有提升空间'
-    : '储蓄率 ' + rate.toFixed(1) + '%，需优先压缩非必要支出';
-  const body = net > 0
-    ? '，结余 ' + reportInt(net) + ' 按 5:3:2 配置货币基金/稳健理财/应急金'
-    : '，本月缺口 ' + reportInt(Math.abs(net)) + '，先补足应急金';
-  return head + body + '。';
-}

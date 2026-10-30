@@ -191,13 +191,6 @@ function agentResolveReference(text) {
 
 // 把用户原句里的代词替换成具体对象，交给下游路由复用
 // 例：「这个情况需要调整吗」→「消费结构分析需要调整吗」
-function agentRewriteWithTopic(text, topic) {
-  if (!topic) return String(text || '');
-  var t = String(text || '');
-  var hit = agentCtxMatchReferent(t);
-  if (!hit) return t;
-  return t.replace(hit.phrase, topic.label + '（' + (topic.summary || '') + '）');
-}
 
 // ------------------------------ 5. 上下文追问处理 ------------------------------
 // 指代消解后，按话题类型走"继续深挖"的专用分析（而不是把话题名硬塞回正则）
