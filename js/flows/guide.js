@@ -1386,7 +1386,8 @@ function guideStartNameTransfer() {
   GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' };
   currentModule = 'transfer';
   appendMessage(guideMessage(
-    '<p>请问收款人和转账金额是多少？</p>'
+    '<p>请问收款人和转账金额是多少？</p>' +
+    '<p>例如：给张三转账1000元</p>'
   ));
   scrollToBottom();
 }
