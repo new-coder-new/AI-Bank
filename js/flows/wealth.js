@@ -393,20 +393,25 @@ function showHoldings() {
   const totalProfit = holdings.reduce((s, h) => s + h.profit, 0);
   const totalProfitRate = totalAmount > 0 ? (totalProfit / totalAmount * 100).toFixed(2) : '0.00';
 
-  const rows = holdings.map((h, i) => {
-    const id = 'hold-detail-' + i;
+  const rows = holdings.map((h) => {
     const up = Number(h.profitRate) >= 0;
     const color = up ? '#16a34a' : '#dc2626';
     const rateText = (h.profitRate == null) ? (h.status || '持有中') : ((up ? '+' : '') + h.profitRate + '%');
-    return '<div class="hold-row" onclick="toggleHoldingDetail(\'' + id + '\')">' +
-      '<span class="hold-name">' + h.name + '</span>' +
-      '<span class="hold-amount">¥' + Number(h.amount).toLocaleString('zh-CN') + '</span>' +
-      '<b class="hold-rate" style="color:' + color + ';">' + rateText + '</b>' +
+    // 编号与「在售产品」一致：按产品列表顺序从 1001 起
+    const prod = (mockData.products || []).filter(function (p) { return p.name === h.name; })[0];
+    const idx = prod ? (mockData.products || []).indexOf(prod) : -1;
+    const code = idx >= 0 ? String(1001 + idx) : '';
+    const level = prod ? (Number(prod.riskLevel) || 1) : null;
+    const riskColor = level ? ({ 1: '#16A34A', 2: '#0E7490', 3: '#B45309', 4: '#B42318', 5: '#7F1D1D' }[level] || '#64748B') : '#94A3B8';
+    return '<div class="prod-item" style="border-left-color:' + riskColor + ';">' +
+      '<div class="prod-main">' +
+        '<b class="prod-name">' + (code ? '<span class="prod-code">' + code + '</span> ' : '') + h.name + '</b>' +
+        (level ? '<span class="prod-tag" style="color:' + riskColor + ';">R' + level + '</span>' : '') +
+        '<div class="prod-sub">持有 ¥' + Number(h.amount).toLocaleString('zh-CN') +
+          ' · 累计收益 <span style="color:' + color + ';">' + (Number(h.profit) >= 0 ? '+' : '') + '¥' + Number(h.profit).toFixed(2) + '</span>' +
+          ' · 买入 ' + (h.buyDate || '—') + ' · ' + (h.status || '持有中') + '</div>' +
       '</div>' +
-      '<div class="hold-detail" id="' + id + '" style="display:none;">' +
-      '<div>累计收益：<b style="color:' + color + ';">' + (Number(h.profit) >= 0 ? '+' : '') + '¥' + Number(h.profit).toFixed(2) + '</b></div>' +
-      '<div>买入日期：' + (h.buyDate || '—') + '</div>' +
-      '<div>当前状态：' + (h.status || '持有中') + '</div>' +
+      '<div class="prod-side" style="color:' + color + ';font-weight:600;">' + rateText + '</div>' +
       '</div>';
   }).join('');
 
@@ -422,8 +427,8 @@ function showHoldings() {
               <span class="hold-sep">｜</span>累计收益
               <b style="color:${totalProfit >= 0 ? '#16a34a' : '#dc2626'};">${totalProfit >= 0 ? '+' : ''}¥${totalProfit.toLocaleString('zh-CN', {minimumFractionDigits: 2})}（${totalProfit >= 0 ? '+' : ''}${totalProfitRate}%）</b>
             </div>
-            <div class="hold-list">${rows || '<div class="report-empty">暂无持仓</div>'}</div>
-            <div class="guide-tip" style="margin-top:10px;">点击单条可展开详情（收益、买入日期）</div>
+            <div class="prod-list">${rows || '<div class="report-empty">暂无持仓</div>'}</div>
+
           </div>
         </div>
       </div>

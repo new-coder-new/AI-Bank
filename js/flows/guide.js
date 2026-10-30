@@ -946,8 +946,12 @@ async function guideHandleText(text) {
     }
 
     // 理财清单之后直接说「1001 5000」：已在模块内，立刻进入申购
-    if (inWealth && !wealthBusy && /\d/.test(qt) &&
-        typeof guideWealthFindProduct === 'function' && guideWealthFindProduct(qt)) {
+    // 注意：任何进行中的会话（持仓/转账/订阅…）都要先走会话分派，
+    // 否则「赎回稳健增利90天」里的“90”会被当成金额、被误判成申购。
+    var anyFlowBusy = (typeof guideActiveFlowLabel === 'function') && !!guideActiveFlowLabel();
+    if (inWealth && !wealthBusy && !anyFlowBusy && /\d/.test(qt) &&
+        typeof guideWealthFindProduct === 'function' && guideWealthFindProduct(qt) &&
+        !/(赎回|卖出|取出|取回|提现|清仓|卖)/.test(qt)) {
       guideStartWealthPurchase();
       return await guideWealthStep(qt);
     }
