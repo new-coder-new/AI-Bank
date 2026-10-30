@@ -2614,7 +2614,8 @@ function guideWealthShowAllProducts() {
   // 默认收起：先展示推荐置顶的 3 款，其余通过「展开更多」查看
   appendMessage(guideMessage(
     '<p>在售理财产品（共 ' + list.length + ' 支）</p>' +
-    guideWealthProductsHtml(guideWealthValidProfile())
+    guideWealthProductsHtml(guideWealthValidProfile()) +
+    '<p class="guide-tip">请告诉我产品编号和申购金额，例如「1001，1000」。</p>'
   ));
   scrollToBottom();
 }
@@ -5515,8 +5516,7 @@ function guideFlowerWarnDuplicate(order) {
     guideFlowerEsc(order.bouquet) + (order.cake && order.cake !== '无蛋糕' ? ' + ' + guideFlowerEsc(order.cake) : '') +
     '），同一人同一天不能重复下单。</p>' +
     '<p class="guide-tip">如需更换款式，请先取消原订单再重新下单。</p>' +
-    '<div class="guide-chips"><button class="guide-chip" onclick="guideStartFlowerList()">查看鲜花订单</button>' +
-    '<button class="guide-chip" onclick="guideFlowerCancelStart(\'' + order.id + '\')">取消原订单</button></div>'
+    '<div class="guide-chips"><button class="guide-chip" onclick="guideStartFlowerList()">查看鲜花订单</button></div>'
   ));
   scrollToBottom();
 }
