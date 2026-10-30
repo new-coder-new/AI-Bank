@@ -516,6 +516,20 @@ function guideModuleLabel(key) {
 }
 
 // 打开某个一级模块的二级菜单（不抽槽位、不建业务会话）
+
+// 业务完成后的衔接：总结一句 → 提示还能继续 → 回到当前模块二级菜单（不弹首页卡）
+function guideModuleWrapUp(module, summary) {
+  try {
+    var mod = module || (currentModule !== 'chat' ? currentModule : '');
+    if (!mod) return;
+    guideResetAllSessions();
+    currentModule = mod;
+    if (summary) appendMessage(guideMessage('<p>' + summary + '</p>'));
+    appendMessage(guideMessage('<p class="guide-tip">还需要办理其他' + guideModuleLabel(mod) + '业务吗？</p>'));
+    guideOpenModuleMenu(mod);
+  } catch (e) { /* 衔接失败不影响已完成的操作 */ }
+}
+
 function guideOpenModuleMenu(key) {
   if (key === 'sub') { guideStartSubManage(); return; }
   if (key === 'flower') { guideStartBirthdayFlower(); return; }
@@ -2934,6 +2948,7 @@ function guideCardApplySubmit() {
   list.push(record);
   saveUserData();
   guideConfirmCardDone(s.boxId, '已提交审核');
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
   GUIDE_CARD_APPLY = null;
 
   // 申请同时进入「复核审批」队列；审批通过后才会核发新卡
@@ -3244,6 +3259,7 @@ function guideCardLimitSubmit() {
   var direction = target > st.current ? 'up' : 'down';
   // 提交后确认卡收起按钮，补一行状态
   guideConfirmCardDone(s.cardBoxId ? (s.cardBoxId + '-wrap') : null, '已提交待复核');
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
   GUIDE_CARD_LIMIT = null;
 
   if (typeof cardLimitSubmitReviewFor === 'function') {
@@ -3699,6 +3715,7 @@ function guideTxnLimitSubmit() {
   }
   GUIDE_TXN_LIMIT = null;
   appendMessage(guideMessage('<p>' + (cardLabel ? guideCardLimitEsc(cardLabel) + ' ' : '') + '交易限制已更新完成。</p>'));
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
   scrollToBottom();
 }
 
@@ -4563,6 +4580,7 @@ async function guideSubAddSubmit() {
   saveUserData();
 
   guideConfirmCardDone(boxId, '已添加');
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
   appendMessage(guideMessage(
     '<p>' + guideSubEsc(preset.name) + ' 添加成功，扣费周期' + guideSubCycleText(cycle) + '，自动续费' + (autoRenew ? '已开启' : '已关闭') + '。</p>' +
     '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅管理</button></div>'
@@ -4696,6 +4714,7 @@ function guideSubManageSubmit() {
   saveUserData();
   var msg = sub.name + ' 的自动续费' + (sub.autoRenew ? '已开启' : '已关闭') + '。';
   guideConfirmCardDone(s.boxId, '已修改');
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
   GUIDE_SUB = null;
   appendMessage(guideMessage('<p>' + guideSubEsc(msg) + '</p>' +
     (sub.autoRenew ? '' : '<p class="guide-tip">关闭自动续费后不再扣费，权益可用到本付费周期结束。</p>')));
@@ -4836,6 +4855,7 @@ function guideSubCancelAllSubmit() {
   saveUserData();
   GUIDE_SUB = null;
   guideConfirmCardDone(s.boxId, '已全部取消');
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
   appendMessage(guideMessage('<p>已取消全部 ' + list.length + ' 个订阅。</p>' +
     '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅管理</button></div>'));
   scrollToBottom();

@@ -1362,6 +1362,9 @@ async function agentApprovePlan(id) {
     var donePayee = (doneAct.args && doneAct.args.payee) || '';
     var doneBalance = Number((mockData.userProfile && mockData.userProfile.debitCard && mockData.userProfile.debitCard.available) || 0);
     footer2.innerHTML = agentTransferDoneCardHtml(totalAmount, donePayee, doneBalance);
+    if (typeof guideModuleWrapUp === 'function') {
+      setTimeout(function () { guideModuleWrapUp('transfer'); }, 500);
+    }
   } else if (footer2) {
     footer2.innerHTML = '<div class="agent-result-card">' +
       '<div class="agent-result-title">' + (plan.confirm.doneTitle || '已按方案执行完成') + '</div>' +
