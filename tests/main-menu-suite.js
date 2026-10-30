@@ -50,7 +50,7 @@ guideAIFirstEnabled = () => false;
 guideLLMJson = async () => null;
 renderServiceWelcome = () => appended.push('welcome');
 
-eval(src + '\n;global.__g = { guideHandleText, guideResetAllSessions, guideOpenService, guideMainModuleGuess, guideIsReadOnlyQuery, guideActiveFlowLabel };');
+eval(src + '\n;global.__g = { guideHandleText, guideResetAllSessions, guideOpenService, guideOpenModuleMenu, guideMainModuleGuess, guideIsReadOnlyQuery, guideActiveFlowLabel };');
 
 const tick = (n) => new Promise((res) => { let i = 0; const go = () => (++i >= (n || 3) ? res() : setTimeout(go, 10)); setTimeout(go, 10); });
 

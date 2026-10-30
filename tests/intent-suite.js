@@ -89,7 +89,7 @@ showHoldings = () => calls.push('holdings');
 // 载入向导层（与被测代码同处一个作用域，GUIDE_* 变量可直接读取）
 // 新规则：主菜单只判一级模块并打开菜单，槽位抽取只在进入模块后发生。
 // 因此本套件为「模块内行为」测试：每条用例开始前先进入对应一级模块。
-eval(src + '\n;global.__g = { guideHandleText, guideResetAllSessions, guideOpenService, guideMainModuleGuess, guideIsReadOnlyQuery };');
+eval(src + '\n;global.__g = { guideHandleText, guideResetAllSessions, guideOpenService, guideOpenModuleMenu, guideMainModuleGuess, guideIsReadOnlyQuery };');
 
 // 等待异步步骤（AI 抽取等）落地
 const tick = (n) => new Promise((res) => { let i = 0; const go = () => (++i >= (n || 3) ? res() : setTimeout(go, 10)); setTimeout(go, 10); });
@@ -184,7 +184,8 @@ function snapshot() {
     const firstStep = c.steps[0] || '';
     const mod = __g.guideMainModuleGuess(firstStep);
     if (mod && !(__g.guideIsReadOnlyQuery && __g.guideIsReadOnlyQuery(firstStep))) {
-      __g.guideOpenService(mod);
+      __g.guideOpenModuleMenu(mod);
+      currentModule = mod;
       await tick(1);
     }
     for (const step of c.steps) {

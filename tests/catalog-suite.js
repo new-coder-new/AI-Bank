@@ -54,7 +54,7 @@ guideAIFirstEnabled = () => false;
 guideLLMJson = async () => null;
 renderServiceWelcome = () => appended.push('welcome');
 
-eval(src + '\n;global.__g = { guideHandleText, guideResetAllSessions, guideOpenService, guideStartSubManage, guideWealthShowAllProducts, guideSubShowCatalog, guideActiveFlowLabel };');
+eval(src + '\n;global.__g = { guideHandleText, guideResetAllSessions, guideOpenService, guideOpenModuleMenu, guideStartSubManage, guideWealthShowAllProducts, guideSubShowCatalog, guideActiveFlowLabel };');
 
 const tick = (n) => new Promise((res) => { let i = 0; const go = () => (++i >= (n || 3) ? res() : setTimeout(go, 10)); setTimeout(go, 10); });
 const last = () => appended.slice(-1)[0] || '';

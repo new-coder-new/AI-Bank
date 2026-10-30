@@ -390,7 +390,7 @@ function guideStartFlowerPreset(name, opts) {
     },
     editing: null
   };
-  currentModule = 'life';
+  currentModule = 'flower';
   var filled = [];
   if (c.phoneFull || c.phone) filled.push('手机号 ' + (c.phoneFull || c.phone));
   filled.push('收货地址 ' + GUIDE_FLOWER.order.address);
@@ -503,6 +503,30 @@ function guideSlotsComplete(module, text) {
   }
   // 账单分析类都是只读，直接放行
   return true;
+}
+
+
+// ------------------------------ 模块作用域（方案A） ------------------------------
+// 规则：进入某个一级模块后，只处理本模块的业务；说到别的模块时提示先退出或切换，
+//       不抽槽位、不建会话、不跨模块直通。只读查询与帮助类仍放行。
+var GUIDE_MODULE_LABELS = { chat: '主菜单', transfer: '转账', bill: '账单分析', card: '卡片管理', wealth: '理财', sub: '订阅管理', flower: '生日鲜花' };
+
+function guideModuleLabel(key) {
+  return GUIDE_MODULE_LABELS[key] || '当前模块';
+}
+
+// 打开某个一级模块的二级菜单（不抽槽位、不建业务会话）
+function guideOpenModuleMenu(key) {
+  if (key === 'sub') { guideStartSubManage(); return; }
+  if (key === 'flower') { guideStartBirthdayFlower(); return; }
+  guideOpenService(key);
+}
+
+// 是否是「切换到 XX」这类命令，返回目标模块 key
+function guideSwitchModuleTarget(text) {
+  var t = String(text || '').trim();
+  if (!/^(切换|切换到|切换至|切到|转到|换到|去|改到)/.test(t)) return '';
+  return guideMainModuleGuess(t) || '';
 }
 
 function guideOpenService(key) {
@@ -689,13 +713,49 @@ async function guideHandleText(text) {
     }
   } catch (e) { /* 守卫失败不影响正常流程 */ }
 
+  // 模块作用域守卫（方案A）：已在某个一级模块内时，只处理本模块业务
+  try {
+    var menuCtx = !guideActiveFlowLabel() &&
+      !(GUIDE_TRANSFER || GUIDE_AA || GUIDE_WEALTH || GUIDE_HOLDING || GUIDE_CARD_APPLY ||
+        GUIDE_CARD_LIMIT || GUIDE_TXN_LIMIT || GUIDE_CARD_LOST ||
+        (GUIDE_SUB && /^(add|cancel|manage|cancel-all)$/.test(String(GUIDE_SUB.mode || ''))) ||
+        (GUIDE_FLOWER && /^(order|modify|cancel)$/.test(String(GUIDE_FLOWER.mode || ''))));
+    var curMod = currentModule || 'chat';
+    var qScope = String(text || '').trim();
+    if (menuCtx && curMod !== 'chat' && qScope) {
+      // ① 「切换到 XX」：只开对方模块菜单
+      var swTarget = guideSwitchModuleTarget(qScope);
+      if (swTarget) {
+        if (swTarget === curMod) {
+          guideOpenModuleMenu(curMod);
+        } else {
+          guideOpenModuleMenu(swTarget);
+        }
+        return true;
+      }
+      // ② 只读查询 / 帮助：放行
+      var readonlyScope = (typeof guideIsReadOnlyQuery === 'function') && guideIsReadOnlyQuery(qScope);
+      if (!readonlyScope) {
+        var targetMod = guideMainModuleGuess(qScope);
+        if (targetMod && targetMod !== curMod) {
+          appendMessage(guideMessage(
+            '<p>当前在<b>' + guideModuleLabel(curMod) + '</b>，不能直接办理' + guideModuleLabel(targetMod) + '业务。</p>' +
+            '<p class="guide-tip">回复「退出」回到主菜单，或说「切换到' + guideModuleLabel(targetMod) + '」。</p>'
+          ));
+          scrollToBottom();
+          return true;
+        }
+      }
+    }
+  } catch (e) { /* 作用域守卫失败不影响正常流程 */ }
+
   // 模块内清单查询：只在「理财 / 订阅管理」两个模块内生效
   try {
     var qt = String(text || '').trim();
     var wealthBusy = !!GUIDE_WEALTH;
     var subBusy = !!(GUIDE_SUB && /^(add|cancel|manage|cancel-all)$/.test(String(GUIDE_SUB.mode || '')));
     var inWealth = (currentModule === 'wealth');
-    var inSub = (currentModule === 'life' && GUIDE_SUB && String(GUIDE_SUB.mode || '') === 'choose');
+    var inSub = (currentModule === 'sub' && GUIDE_SUB && String(GUIDE_SUB.mode || '') === 'choose');
 
     if ((wealthBusy || inWealth) && typeof guideIsWealthCatalogQuery === 'function' && guideIsWealthCatalogQuery(qt)) {
       if (wealthBusy) { guideFlowLockedNotice(); return true; }     // 流程中先完成
@@ -3678,8 +3738,8 @@ function guideStartCardLost(text) {
     })[0];
     if (hit) {
       GUIDE_CARD_LOST.card = hit;
-      guideCardLostConfirm(hit);
-      return;
+      // 直接走一遍正常的尾号确认（会渲染「请确认挂失尾号 XXXX」的确认卡）
+      return guideCardLostStep(String(hit.tail || tail));
     }
   }
   var cards = guideCardLostCards();
@@ -4347,7 +4407,7 @@ function guideSubPresetRows() {
 function guideStartSubAdd() {
   guideResetAllSessions();
   GUIDE_SUB = { mode: 'add', stage: 'slots', preset: null, cycle: null, autoRenew: null, listShown: true };
-  currentModule = 'life';
+  currentModule = 'sub';
   appendMessage(guideMessage(
     '<p>可订阅的服务如下：</p>' +
     '<div class="report-panel"><div class="report-panel-title">可订阅服务</div>' + guideSubPresetRows() + '</div>' +
@@ -4515,7 +4575,7 @@ async function guideSubAddSubmit() {
 function guideStartSubManage() {
   guideResetAllSessions();
   GUIDE_SUB = { mode: 'choose', stage: 'choose' };
-  currentModule = 'life';
+  currentModule = 'sub';
   appendMessage(guideMessage(
     '<p>订阅管理包含这些操作：</p>' +
     '<div class="guide-rows">' +
@@ -4540,7 +4600,7 @@ function guideSubChoose(kind) {
 function guideStartSubAutoRenew() {
   guideResetAllSessions();
   GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null, listShown: true };
-  currentModule = 'life';
+  currentModule = 'sub';
   var list = guideSubActive();
   var history = guideSubHistoryList();
   if (!list.length) {
@@ -4646,7 +4706,7 @@ function guideSubManageSubmit() {
 function guideStartSubCancel() {
   guideResetAllSessions();
   GUIDE_SUB = { mode: 'cancel', stage: 'slots', target: null };
-  currentModule = 'life';
+  currentModule = 'sub';
   var list = guideSubActive();
   if (!list.length) {
     appendMessage(guideMessage('<p>当前没有可取消的有效订阅。</p>' +
@@ -4828,13 +4888,24 @@ async function guideSubSession(t) {
     var cancelWord = /(取消|退订|退掉|退了|终止|不想|不要了|不要|不再|不用|别订|停掉|停止|不订了)/;
     var svcHint = /(订阅|会员|VIP|vip|网盘|音乐|视频|阅读|健身|某)/;
     if (cancelWord.test(t) && (svcHint.test(t) || /取消订阅|退订/.test(t))) {
+      // 点名了具体服务（「我不想订阅某易云了」）→ 直接进取消流程并带入服务
+      var svcCancel = (typeof guideSubFindService === 'function') ? guideSubFindService(t) : null;
+      if (svcCancel) {
+        guideStartSubCancel();
+        return guideSubCancelStep(t);
+      }
       guideSubChoose('cancel');
       return true;
     }
-    // 添加订阅：「订阅某易云年卡 / 开通某讯会员 / 我想订个网盘」
-    if (/(订阅|开通|订|买)/.test(t) && /(某|VIP|vip|会员|年卡|月卡|季卡|网盘|音乐|视频|阅读|健身)/.test(t)) {
+    // 添加订阅（泛化说法）：「我想要添加订阅 / 订个会员」
+    if (/(添加|新增|开通|订一个|买一个|订个)/.test(t)) {
       guideSubChoose('add');
       return true;
+    }
+    // 添加订阅（点名服务）：「订阅某易云年卡 / 开通某讯会员」
+    if (/(订阅|开通|订|买)/.test(t) && /(某|VIP|vip|会员|年卡|月卡|季卡|网盘|音乐|视频|阅读|健身)/.test(t)) {
+      guideStartSubAdd();
+      return guideSubAddStep(t);
     }
     // 停在「请选择」不算进行中流程，这里只提示怎么选，不输出流程锁文案
     appendMessage(guideMessage(
@@ -5124,7 +5195,7 @@ function guideFlowerContactsText() {
 // 生日鲜花：这里只看订单/看提醒，下单统一走主页面「今日提醒」里的入口
 function guideStartBirthdayFlower() {
   guideResetAllSessions();
-  currentModule = 'life';
+  currentModule = 'flower';
   // 下单能力暂时下线：生日鲜花只展示历史订单
   appendMessage(guideMessage('<p>生日鲜花目前只支持查看鲜花订单，下单功能暂未开放。</p>'));
   scrollToBottom();
@@ -5135,7 +5206,7 @@ function guideStartBirthdayFlower() {
 // 下单功能暂时下线时的统一提示：只展示订单，不进入下单流程
 function guideFlowerOrderDisabled() {
   guideResetAllSessions();
-  currentModule = 'life';
+  currentModule = 'flower';
   appendMessage(guideMessage('<p>下单功能暂未开放，目前只能查看鲜花订单。</p>'));
   scrollToBottom();
   if (typeof guideStartFlowerList === 'function') guideStartFlowerList();
@@ -5154,7 +5225,7 @@ function guideStartFlowerOrder(opts) {
     },
     editing: null
   };
-  currentModule = 'life';
+  currentModule = 'flower';
   appendMessage(guideMessage(
     '<p>请告诉我收花人、手机号、收货地址、花束款式、配送日期和配送时段。</p>' +
     '<p class="guide-tip">可选花束：' + FLOWER_BOUQUETS.map(function (b) { return b.name; }).join('、') + '</p>' +
@@ -5468,7 +5539,7 @@ async function guideFlowerSubmit() {
 function guideStartFlowerList() {
   guideResetAllSessions();
   GUIDE_FLOWER = { mode: 'list', stage: 'list' };
-  currentModule = 'life';
+  currentModule = 'flower';
   var list = guideFlowerOrders();
   var pending = list.filter(function (x) { return x.status === '待配送'; });
   var done = list.filter(function (x) { return x.status !== '待配送'; });
@@ -5554,7 +5625,7 @@ function guideFlowerModifyStart(orderId) {
     return;
   }
   GUIDE_FLOWER = { mode: 'modify', stage: 'modify-slots', order: order, newBouquet: '' };
-  currentModule = 'life';
+  currentModule = 'flower';
   var slot = guideFlowerSlot(order.slot);
   appendMessage(guideMessage('<p>要修改「' + guideFlowerEsc(order.recipient) + '」这笔鲜花订单的什么？例如「改成向日葵花束」。</p>' +
     '<p class="guide-tip">当前：' + guideFlowerEsc(order.bouquet) + '｜' + guideFlowerDisplayDate(order.date) + ' ' + slot.text +
@@ -5641,7 +5712,7 @@ function guideFlowerCancelStart(orderId) {
   var order = guideFlowerOrders().filter(function (x) { return x.id === orderId; })[0];
   if (!order) return;
   GUIDE_FLOWER = { mode: 'cancel', stage: 'cancel-confirm', order: order, boxId: 'flower-cancel-' + Date.now() };
-  currentModule = 'life';
+  currentModule = 'flower';
   var slot = guideFlowerSlot(order.slot);
   var hrs = guideFlowerHoursLeft(order);
   appendMessage(guideMessage(
