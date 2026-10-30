@@ -616,6 +616,18 @@ async function guideHandleText(text) {
     }
   }
 
+  // 卡片类流程（交易限制 / 额度调整 / 挂失 / 申请）进行中，
+  // 用户改说理财产品（编号 10xx / 产品名 / 申购、赎回等）时，先提示完成当前流程，
+  // 否则「编号1001 -1000元」会被限额流程吞掉，只回一句「限额需要大于 0」。
+  if ((GUIDE_TXN_LIMIT || GUIDE_CARD_LIMIT || GUIDE_CARD_LOST || GUIDE_CARD_APPLY)) {
+    var saysWealthEarly = /(申购|买入|理财产品|赎回|持仓|基金|10\d{2})/.test(t) ||
+      (typeof guideWealthFindProduct === 'function' && !!guideWealthFindProduct(t));
+    if (saysWealthEarly) {
+      guideFlowLockedNotice();
+      return true;
+    }
+  }
+
   // 姓名转账多轮收集进行中：这一步的输入一律按「收款人 / 金额」解析
   if (GUIDE_TRANSFER) return guideLockedRun(function () { return guideTransferStep(t); });
 
