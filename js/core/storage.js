@@ -202,6 +202,8 @@ function renderUserInfoPage() {
     content.innerHTML = renderUserInfoBasic(u);
   } else if (currentUserInfoTab === 'cards') {
     content.innerHTML = renderUserInfoCards(u);
+  } else if (currentUserInfoTab === 'reviews') {
+    content.innerHTML = renderUserInfoReviews(u);
   } else if (currentUserInfoTab === 'txns') {
     content.innerHTML = renderUserInfoTxns(u);
   } else if (currentUserInfoTab === 'contacts') {

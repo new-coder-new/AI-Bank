@@ -280,8 +280,13 @@ function maskUserInfoCard(num) {
 
 function renderUserInfoCards(u) {
   const d = u.debitCard;
-  const c = u.creditCard;
+  const c = u.creditCard || {};
   const creditStatus = c.status || '正常';
+  // 信用卡以「卡片管理」使用的 creditCards 为准，保证两处数据一致
+  const cardList = (Array.isArray(u.creditCards) ? u.creditCards : []).slice();
+  const totalLimit = cardList.reduce(function (s2, x) { return s2 + (Number(x.limit) || 0); }, 0);
+  const totalUsed = cardList.reduce(function (s2, x) { return s2 + (Number(x.used) || 0); }, 0);
+  const totalAvailable = totalLimit - totalUsed;
   return `
     <section class="userinfo-section">
       <div class="ui-segmented">
@@ -317,20 +322,27 @@ function renderUserInfoCards(u) {
         </div>
       </div>
 
-      <!-- 信用卡 -->
+      <!-- 信用卡（与「卡片管理」同源：u.creditCards） -->
       <div id="cardTab-credit" class="card-tab-content" style="display:none;">
         <div class="ui-account-card credit">
-          <div class="ui-account-top"><span>${c.level}</span><span>${creditStatus}</span></div>
-          <div class="ui-account-number">${maskUserInfoCard(c.number)}</div>
+          <div class="ui-account-top"><span>信用卡合计（${cardList.length} 张）</span><span>${cardList.length ? '正常' : '暂无'}</span></div>
           <div class="ui-account-bottom">
-            <div><span>可用额度</span><strong>¥${c.available.toLocaleString()}</strong></div>
-            <div style="text-align:right;"><span>本期账单</span><strong>¥${c.currentBill.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</strong></div>
+            <div><span>可用额度</span><strong>¥${totalAvailable.toLocaleString()}</strong></div>
+            <div style="text-align:right;"><span>已用额度</span><strong>¥${totalUsed.toLocaleString()}</strong></div>
           </div>
         </div>
         <div class="ui-metric-row">
-          <div><span>已用额度</span><b>¥${c.used.toLocaleString()}</b></div>
-          <div><span>信用额度</span><b>¥${c.limit.toLocaleString()}</b></div>
-          <div><span>最低还款</span><b>¥${c.minPayment.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</b></div>
+          <div><span>总额度</span><b>¥${totalLimit.toLocaleString()}</b></div>
+          <div><span>已用额度</span><b>¥${totalUsed.toLocaleString()}</b></div>
+          <div><span>本期账单</span><b>¥${(Number(c.currentBill) || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2})}</b></div>
+        </div>
+        <div class="ui-info-grid">
+          ${cardList.length ? cardList.map(function (card) {
+            const limit = Number(card.limit) || 0;
+            const used = Number(card.used) || 0;
+            return '<div class="ui-info-row"><span>' + card.cardType + '（尾号 ' + card.tail + '）</span>' +
+              '<b>额度 ¥' + limit.toLocaleString() + ' · 已用 ¥' + used.toLocaleString() + ' · 可用 ¥' + (limit - used).toLocaleString() + '</b></div>';
+          }).join('') : '<div class="ui-info-row"><span>信用卡</span><b>暂无</b></div>'}
         </div>
         <div class="ui-collapse" onclick="toggleDetail('credit-detail')">
           <span>账单详情</span><span class="ui-chevron" id="credit-detail-arrow">⌄</span>
@@ -339,6 +351,7 @@ function renderUserInfoCards(u) {
           <div class="ui-info-grid">
             <div class="ui-info-row"><span>账单日</span><b>每月${c.billDay}日</b></div>
             <div class="ui-info-row"><span>还款日</span><b>每月${c.dueDay}日</b></div>
+            <div class="ui-info-row"><span>最低还款</span><b>¥${(Number(c.minPayment) || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2})}</b></div>
             <div class="ui-info-row"><span>卡片状态</span><b>${creditStatus}</b></div>
           </div>
         </div>
@@ -1126,6 +1139,56 @@ function showAdminReviewPanel() {
   scrollToBottom();
 }
 
+
+
+// 用户信息页·复核审批：集中查看并处理 T4 大额/卡片申请的待复核项
+function userinfoReviewAction(id, approve) {
+  try {
+    if (approve) adminApproveReview(id);
+    else adminRejectReview(id);
+    setTimeout(function () {
+      if (typeof renderUserInfoPage === 'function') renderUserInfoPage();
+    }, 80);
+  } catch (e) {
+    alert('处理失败：' + e.message);
+  }
+}
+
+function renderUserInfoReviews(u) {
+  var list = ((u && u.manualReviews) || []).slice();
+  var pending = list.filter(function (r) { return r.status === '待人工复核'; }).length;
+  var available = Number((u && u.debitCard && u.debitCard.available) || 0);
+  list.sort(function (a, b) {
+    return (a.status === '待人工复核' ? 0 : 1) - (b.status === '待人工复核' ? 0 : 1);
+  });
+  var rows = list.map(function (r) {
+    var isPending = r.status === '待人工复核';
+    var color = isPending ? '#B45309' : (/通过/.test(r.status) ? '#15803D' : '#B42318');
+    return '<div class="data-card" style="margin-bottom:10px;">' +
+      '<div class="data-row"><span class="data-label">事项</span><span class="data-value">' + manualReviewEsc(r.purpose) + '</span></div>' +
+      '<div class="data-row"><span class="data-label">金额</span><span class="data-value">' + manualReviewMoney(r.amount) + '</span></div>' +
+      '<div class="data-row"><span class="data-label">提交时间</span><span class="data-value">' + manualReviewEsc(r.submittedAt) + '</span></div>' +
+      '<div class="data-row"><span class="data-label">状态</span><span class="data-value" style="color:' + color + ';font-weight:600;">' + manualReviewEsc(r.status) + '</span></div>' +
+      (r.note ? '<div class="data-row"><span class="data-label">说明</span><span class="data-value">' + manualReviewEsc(r.note) + '</span></div>' : '') +
+      (isPending
+        ? '<div class="guide-chips" style="margin-top:8px;">' +
+          '<button class="guide-chip" onclick="userinfoReviewAction(\'' + r.id + '\', true)">通过</button>' +
+          '<button class="guide-chip" onclick="userinfoReviewAction(\'' + r.id + '\', false)">拒绝</button>' +
+          '</div>'
+        : '') +
+      '</div>';
+  }).join('');
+
+  return '<section class="userinfo-section">' +
+    '<div class="data-card">' +
+    '<div class="data-row"><span class="data-label">待审批</span><span class="data-value" style="color:#B45309;font-weight:600;">' + pending + ' 笔</span></div>' +
+    '<div class="data-row"><span class="data-label">已处理</span><span class="data-value">' + (list.length - pending) + ' 笔</span></div>' +
+    '<div class="data-row"><span class="data-label">当前可用余额</span><span class="data-value">¥' + available.toLocaleString('zh-CN', { minimumFractionDigits: 2 }) + '</span></div>' +
+    '</div>' +
+    (rows || '<div class="userinfo-empty">暂无复核申请<br><small>大额转账（≥ ¥50,000）、信用卡申请、额度调整提交后会进入这里</small></div>') +
+    '<div class="data-card"><div class="data-row"><span class="data-label">说明</span><span class="data-value" style="font-weight:400;">审批通过后执行并扣款；拒绝不扣款</span></div></div>' +
+    '</section>';
+}
 
 function verifyAmountRisk(amount, purpose, actions) {
   return new Promise(function (resolve) {

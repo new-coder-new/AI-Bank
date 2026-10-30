@@ -38,26 +38,43 @@ function showUserInfo() {
             <div class="data-row"><span class="data-label">今日支出</span><span class="data-value expense">-¥ ${u.debitCard.todayExpense.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
           </div>
 
-          <!-- 信用卡信息 -->
+          <!-- 信用卡信息（与「卡片管理」同源：u.creditCards） -->
           <div class="data-card">
             <div class="data-card-title">💳 信用卡</div>
-            <div class="data-row"><span class="data-label">卡号</span><span class="data-value">${u.creditCard.number}</span></div>
-            <div class="data-row"><span class="data-label">卡片等级</span><span class="data-value">${u.creditCard.level}</span></div>
-            <div class="data-row"><span class="data-label">信用额度</span><span class="data-value">¥ ${u.creditCard.limit.toLocaleString()}</span></div>
-            <div class="data-row"><span class="data-label">已用额度</span><span class="data-value expense">¥ ${u.creditCard.used.toLocaleString()}</span></div>
-            <div class="data-row"><span class="data-label">可用额度</span><span class="data-value" style="color:#22c55e;font-weight:600;">¥ ${u.creditCard.available.toLocaleString()}</span></div>
-            <div class="data-row"><span class="data-label">账单日</span><span class="data-value">每月 ${u.creditCard.billDay} 日</span></div>
-            <div class="data-row"><span class="data-label">还款日</span><span class="data-value">每月 ${u.creditCard.dueDay} 日</span></div>
-            <div class="data-row"><span class="data-label">本期账单金额</span><span class="data-value expense">¥ ${u.creditCard.currentBill.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
-            <div class="data-row"><span class="data-label">最低还款额</span><span class="data-value">¥ ${u.creditCard.minPayment.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
+            ${(() => {
+              const cards = Array.isArray(u.creditCards) ? u.creditCards : [];
+              if (!cards.length) return '<div class="data-row"><span class="data-label">信用卡</span><span class="data-value">暂无</span></div>';
+              const totalLimit = cards.reduce((s, x) => s + (Number(x.limit) || 0), 0);
+              const totalUsed = cards.reduce((s, x) => s + (Number(x.used) || 0), 0);
+              return cards.map(card => {
+                const limit = Number(card.limit) || 0;
+                const used = Number(card.used) || 0;
+                return '<div class="data-row"><span class="data-label">' + card.cardType + '（尾号 ' + card.tail + '）</span>' +
+                  '<span class="data-value">额度 ¥' + limit.toLocaleString('zh-CN') + ' · 已用 ¥' + used.toLocaleString('zh-CN') + ' · 可用 ¥' + (limit - used).toLocaleString('zh-CN') + '</span></div>';
+              }).join('') +
+                '<div class="data-row"><span class="data-label">合计</span><span class="data-value"><b>额度 ¥' + totalLimit.toLocaleString('zh-CN') + ' · 已用 ¥' + totalUsed.toLocaleString('zh-CN') + ' · 可用 ¥' + (totalLimit - totalUsed).toLocaleString('zh-CN') + '</b></span></div>';
+            })()}
           </div>
 
-          <!-- 贷款信息 -->
-          <div class="data-card">
-            <div class="data-card-title">🏠 贷款信息</div>
-          </div>
+          <!-- 贷款模块已下线 -->
 
-          <!-- 最近交易记录 -->
+          <!-- 复核审批 -->
+          ${(() => {
+            const list = (u.manualReviews || []);
+            const pending = list.filter(r => r.status === '待人工复核').length;
+            return '<div class="data-card">' +
+              '<div class="data-card-title">🛡️ 复核审批</div>' +
+              '<div class="data-row"><span class="data-label">待审批</span><span class="data-value" style="color:#B45309;font-weight:600;">' + pending + ' 笔</span></div>' +
+              '<div class="data-row"><span class="data-label">累计申请</span><span class="data-value">' + list.length + ' 笔</span></div>' +
+              (list.length ? '' : '<div class="data-row"><span class="data-label">说明</span><span class="data-value" style="font-weight:400;">大额转账（≥ ¥50,000）、信用卡申请、额度调整会进入人工复核</span></div>') +
+              '<div style="margin-top:8px;"><button class="ui-link" onclick="showUserInfoFromTopbar(); switchUserInfoTab(&quot;reviews&quot;, null);">查看/处理复核</button></div>' +
+              '</div>';
+          })()}
+
+
+          
+
+<!-- 最近交易记录 -->
           <div class="data-card">
             <div class="data-card-title">📋 最近交易记录（近10笔）</div>
             ${u.recentTxns.map(t => `
