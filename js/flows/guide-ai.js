@@ -108,7 +108,12 @@ async function guideAIRouteIntent(text) {
       'card.txn 是交易限额（单笔限额、每日/每天限额、消费上限、一天只能用多少、限额是多少、怎么被限制了）。' +
       '只要在说「一天/每天/单笔/日限/上限/限额/被限制」，一律 card.txn，不是 card.limit。' +
       '说「取消所有订阅 / 全部退订 / 都取消」时用 sub.cancel-all，只取消某一个时才用 sub.cancel。' +
-      '只要句子里出现时间说法（明天/后天/下周三/下午三点/过两天/每个月/定时/预约），一律 transfer.timed，不是 transfer.name。',
+      '只要句子里出现时间说法（明天/后天/下周三/下午三点/过两天/每个月/定时/预约），一律 transfer.timed，不是 transfer.name。' +
+      '只读查询（查余额/查额度/我现在有哪些卡/交易记录/我买了哪些产品/持仓收益）不是办理业务，返回 none。' +
+      '出现 11 位手机号且要转账，用 transfer.phone；出现 AA / 分摊 / 平摊 / 各付 / 一人，用 transfer.aa。' +
+      '说「异常交易 / 可疑交易」用 bill.abnormal；说账单、流水、收支、消费统计用 bill.analysis。' +
+      '说「自动续费 / 续费 / 不续费」用 sub.renew；说「订 / 开通 / 订阅会员」用 sub.add。' +
+      '说「持仓 / 持有 / 买了哪些产品 / 收益情况」用 wealth.holding。',
       text
     );
   } catch (e) { obj = null; }
