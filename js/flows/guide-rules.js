@@ -128,8 +128,8 @@ var GUIDE_HOME_ENTRIES = [
   { label: '账单分析', action: "guideOpenService('bill')" },
   { label: '卡片管理', action: "guideOpenService('card')" },
   { label: '理财', action: "guideOpenService('wealth')" },
-  { label: '订阅管理', action: 'guideStartSubManage()' },
-  { label: '生日鲜花', action: 'guideStartBirthdayFlower()' }
+  { label: '订阅管理', action: 'guideStartSubManage()' }
+  // 「生日鲜花」入口按钮暂时屏蔽（功能仍在：直接说「订花 / 生日鲜花」即可进入）
 ];
 
 
