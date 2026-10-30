@@ -1317,3 +1317,24 @@
 .dark-mode .msg-bubble .prod-code { background: #1B2738 !important; color: #9DC4EA !important; }
 /* 屏蔽输入框左侧的「+」（全部服务）按钮 */
 .func-btn { display: none !important; }
+
+/* 登录页：输入框与按钮样式 */
+#loginOverlay input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #0F172A;
+  background: #F8FAFC;
+  outline: none;
+  transition: border-color .15s, background .15s;
+}
+#loginOverlay input:focus {
+  border-color: #0B4F9C;
+  background: #fff;
+}
+#loginOverlay input::placeholder { color: #A8B3C4; }
+#loginOverlay #loginBtn:active { transform: translateY(1px); }

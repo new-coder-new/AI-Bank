@@ -51,14 +51,33 @@ function apiRequest(method, path, body) {
     method: method,
     headers: bankAuthHeaders(),
     body: body ? JSON.stringify(body) : undefined
-  }).then(function (r) { return r.json(); });
+  }).then(function (r) {
+    if (r && r.status === 401) {
+      try { sessionStorage.removeItem('bankToken'); } catch (e) { }
+      if (typeof showLoginOverlay === 'function') showLoginOverlay();
+    }
+    return r.json();
+  });
 }
 
 // 后端可达性探测 + 会话令牌 + 快照注入
 function apiInit() {
+  // 登录态：令牌由登录页写入 sessionStorage；没有令牌就不连后端（页面会停在登录页）
+  try {
+    var saved = sessionStorage.getItem('bankToken');
+    if (saved) API.token = saved;
+  } catch (e) { /* 忽略隐私模式异常 */ }
+  if (!API.token) {
+    if (typeof showLoginOverlay === 'function') showLoginOverlay();
+    return;
+  }
   apiRequest('GET', '/api/session')
     .then(function (res) {
       if (res && res.token) API.token = res.token;
+      else if (res && res.ok === false) {
+        try { sessionStorage.removeItem('bankToken'); } catch (e) { }
+        if (typeof showLoginOverlay === 'function') showLoginOverlay();
+      }
     })
     .catch(function () { })
     .then(function () {
