@@ -2637,9 +2637,8 @@ function guideStartCardApply() {
   GUIDE_CARD_APPLY = { stage: 'slots', cardType: null, limit: 0, purpose: null };
   currentModule = 'card';
   appendMessage(guideMessage(
-    '<p>请告诉我你想办理的信用卡类型、期望额度，以及主要使用用途。</p>' +
-    '<p class="guide-tip">可选卡种：' + guideCardApplyTypesText() + '</p>' +
-    '<p class="guide-tip">可选用途：' + guideCardApplyPurposesText() + '</p>'
+    '<p>请告诉我你想办理的信用卡类型和期望额度。</p>' +
+    '<p class="guide-tip">可选卡种：' + guideCardApplyTypesText() + '</p>'
   ));
   scrollToBottom();
 }
@@ -2694,21 +2693,13 @@ function guideCardApplyParse(text) {
   return { cardType: cardType, limit: limit, purpose: purpose, unknownType: unknownType };
 }
 
+// 第一段只收集「卡种 + 期望额度」，用途在第二段单独问
 function guideCardApplyMissingPrompt(s) {
   var missType = !s.cardType;
   var missLimit = !(Number(s.limit) > 0);
-  var missPurpose = !s.purpose;
-  var present = (missType ? 0 : 1) + (missLimit ? 0 : 1) + (missPurpose ? 0 : 1);
-
-  if (present === 0) return '请告诉我你想办理的信用卡类型、期望额度，以及主要使用用途。';
-  if (present === 1) {
-    if (!missType) return '请问期望额度是多少？主要用途是什么？';   // 只给了卡种
-    if (!missLimit) return '请选择信用卡类型以及使用用途。';        // 只给了额度
-    return '请告诉我信用卡类型和期望额度。';                        // 只给了用途
-  }
+  if (missType && missLimit) return '请告诉我你想办理的信用卡类型和期望额度。';
   if (missType) return '请选择信用卡类型。';
-  if (missLimit) return '请问你的期望额度是多少元？';
-  return '请问这张卡的主要用途是什么？';
+  return '请问你的期望额度是多少元？';
 }
 
 function guideCardApplyMoney(v) {
@@ -2726,6 +2717,29 @@ async function guideCardApplyStep(text) {
     if (/^(取消|不|不要|算了|退出)$/.test(plain)) { guideCardApplyCancel(); return true; }
   }
 
+  // 第②段：卡种和额度已齐，只等「主要用途」
+  if (s.stage === 'purpose') {
+    var aim = guideCardApplyParse(t);
+    var pickedPurpose = aim.purpose;
+    if (!pickedPurpose) {
+      var aiAim = await guideCardApplyAIType(t);
+      if (GUIDE_CARD_APPLY !== s) return true;
+      if (aiAim && aiAim.purpose && CARD_APPLY_PURPOSES.indexOf(aiAim.purpose) !== -1) pickedPurpose = aiAim.purpose;
+    }
+    if (pickedPurpose && CARD_APPLY_PURPOSES.indexOf(pickedPurpose) !== -1) {
+      s.purpose = pickedPurpose;
+      guideCardApplyConfirm();
+      return true;
+    }
+    // 认不出用途：一直追问（带可选用途）
+    if (s.cardType || Number(s.limit) > 0) {
+      guideSayInvalid(guideMessage('<p>主要用途是什么？</p>' +
+        '<p class="guide-tip">可选用途：' + guideCardApplyPurposesText() + '</p>'));
+      return true;
+    }
+    s.stage = 'slots';
+  }
+
   var parsed = guideCardApplyParse(t);
 
   // 本地没认出卡种/用途（如「金卡」「主要出差用」）→ 交给模型映射到可选清单
@@ -2734,7 +2748,8 @@ async function guideCardApplyStep(text) {
     if (GUIDE_CARD_APPLY !== s) return true;
     if (aiCard) {
       if (!parsed.cardType && aiCard.cardType) parsed.cardType = aiCard.cardType;
-      if (!parsed.purpose && aiCard.purpose) parsed.purpose = aiCard.purpose;
+      if (!parsed.purpose && aiCard.purpose &&
+        /(用途|日常|消费|差旅|旅行|出差|教育|培训|购物|大额|其他)/.test(t)) parsed.purpose = aiCard.purpose;
     }
   }
 
@@ -2749,23 +2764,22 @@ async function guideCardApplyStep(text) {
   if (Number(parsed.limit) > 0) s.limit = parsed.limit;
   if (parsed.purpose && CARD_APPLY_PURPOSES.indexOf(parsed.purpose) !== -1) s.purpose = parsed.purpose;
 
-  // 三样齐了 → 整理确认
-  if (s.cardType && Number(s.limit) > 0 && s.purpose) {
-    guideCardApplyConfirm();
+  // 卡种 + 额度齐了 → 判断是否已经说了用途
+  if (s.cardType && Number(s.limit) > 0) {
+    if (s.purpose) { guideCardApplyConfirm(); return true; }
+    s.stage = 'purpose';
+    guideSayInvalid(guideMessage('<p>主要用途是什么？</p>' +
+      '<p class="guide-tip">可选用途：' + guideCardApplyPurposesText() + '</p>'));
     return true;
   }
 
+  // 还没齐 → 只问卡种和额度（用途留到下一段）
   var prompt = guideCardApplyMissingPrompt(s);
-
-  // 「申请 50000」这类先给额度的说法，回执里带上识别到的额度
-  if (Number(parsed.limit) > 0 && !parsed.cardType && !parsed.purpose && /^(申请|办理|办|我要申请|我想申请|申请信用卡)/.test(t)) {
-    prompt = '识别到期望额度 ' + guideCardApplyMoney(parsed.limit) + ' 元，请选择信用卡类型和使用用途。';
+  if (Number(parsed.limit) > 0 && !parsed.cardType && /^(申请|办理|办|我要申请|我想申请|申请信用卡)/.test(t)) {
+    prompt = '识别到期望额度 ' + guideCardApplyMoney(parsed.limit) + ' 元，请选择信用卡类型。';
   }
-
-  // 缺什么就把可选项列出来；每次都用 guideSayInvalid，避免重复提问被去重吞掉
   var tipHtml = '';
   if (!s.cardType) tipHtml += '<p class="guide-tip">可选卡种：' + guideCardApplyTypesText() + '</p>';
-  if (!s.purpose) tipHtml += '<p class="guide-tip">可选用途：' + guideCardApplyPurposesText() + '</p>';
   guideSayInvalid(guideMessage('<p>' + prompt + '</p>' + tipHtml));
   return true;
 }
