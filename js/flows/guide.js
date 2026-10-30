@@ -4145,10 +4145,30 @@ function guideHoldingAccountTail() {
 }
 
 // 在产品名里做模糊匹配（先整串，再最长公共子串 ≥3）
+// 持仓对应的产品编号（与在售产品一致：按产品列表顺序 1001 起）
+function guideHoldingCode(h) {
+  try {
+    var list = (mockData && mockData.products) || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && h && list[i].name === h.name) return String(1001 + i);
+    }
+  } catch (e) { /* 忽略 */ }
+  return '';
+}
+
 function guideHoldingFind(text) {
   var t = String(text || '').replace(/\s/g, '');
   if (!t) return null;
   var list = guideHoldingList();
+
+  // 先按产品编号匹配（如「赎回1001」「1002 全部」）
+  var byCode = null;
+  list.forEach(function (h) {
+    var code = guideHoldingCode(h);
+    if (!code) return;
+    if (t.indexOf(code) !== -1) { if (!byCode) byCode = h; }
+  });
+  if (byCode) return byCode;
   var best = null, bestScore = 0;
   list.forEach(function (h) {
     var name = String(h.name || '');
@@ -4168,6 +4188,9 @@ function guideHoldingAmount(text) {
   var t = String(text || '');
   var p = guideHoldingFind(t);
   if (p && p.name) t = t.replace(p.name, ' ');
+  // 产品编号（1001–1005）不是金额
+  t = t.replace(/\b10(0[1-9]|[1-9]\d)\b/g, ' ');
+  t = t.replace(/编号|产品号|代码/g, ' ');
   t = t.replace(/\d+\s*(天|年|期|个月|月)/g, ' ');
   var m = t.match(/(\d+(?:\.\d+)?)\s*(万|w|W)?/);
   if (!m) return 0;
