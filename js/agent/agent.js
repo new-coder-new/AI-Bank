@@ -1122,7 +1122,8 @@ function agentRiskBadge(level) {
 // ---- 转账金额分级确认 ----
 // 档位定义：金额决定「下限档」，可疑度决定「附加档」，最终取更严者，确保两者都不漏。
 var AGENT_TRANSFER_TIERS = {
-  T1: { rank: 1, name: '免确认', needConfirm: false, needVerify: false, needManual: false },
+  // T1 也保留确认卡：任何转账都必须用户点确认，避免模型误判/注入造成静默扣款
+  T1: { rank: 1, name: '确认执行', needConfirm: true, needVerify: false, needManual: false },
   T2: { rank: 2, name: '密码确认', needConfirm: true, needVerify: false, needManual: false },
   T3: { rank: 3, name: '二次验证', needConfirm: true, needVerify: true, needManual: false },
   T4: { rank: 4, name: '人工复核', needConfirm: true, needVerify: true, needManual: true }
@@ -1171,7 +1172,7 @@ function agentTierBadge(tier) {
   if (tier.rank >= 4) return { text: '人工复核', color: '#991b1b', bg: '#fee2e2', border: '#fecaca' };
   if (tier.rank === 3) return { text: '二次验证', color: '#c2410c', bg: '#fff7ed', border: '#fed7aa' };
   if (tier.rank === 2) return { text: '密码确认', color: '#b45309', bg: '#fffbeb', border: '#fde68a' };
-  return { text: '免确认', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' };
+  return { text: '确认执行', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' };
 }
 
 // ------------------------------ 5. 计划执行器 + 可视化 ------------------------------
