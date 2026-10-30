@@ -8,6 +8,82 @@ let passwordInputs = {};
 let fingerprintEnabled = true;
 
 // 显示安全验证弹窗
+
+// 短信验证码弹窗（演示固定 123456）：供非确认卡路径使用（理财 / 鲜花 / 语音）
+function showOtpVerification(purpose, callback) {
+  var id = 'otp-verify-' + Date.now();
+  var overlay = document.createElement('div');
+  overlay.id = id;
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:16px;padding:22px 22px 18px;width:320px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3);">' +
+    '<div style="font-size:16px;font-weight:700;color:#111827;text-align:center;">短信验证码</div>' +
+    '<div style="font-size:12px;color:#6B7280;text-align:center;margin:8px 0 14px;">' + escapeHtml(purpose || '') + '<br>验证码已发送至尾号 **** 的手机（演示：123456）</div>' +
+    '<input id="' + id + '-input" maxlength="6" inputmode="numeric" placeholder="请输入 6 位验证码" style="width:100%;box-sizing:border-box;height:40px;padding:0 12px;border:1px solid #E5E7EB;border-radius:10px;font-size:15px;letter-spacing:2px;text-align:center;outline:none;">' +
+    '<div id="' + id + '-err" style="color:#DC2626;font-size:12px;margin-top:8px;min-height:16px;"></div>' +
+    '<div style="display:flex;gap:10px;margin-top:8px;">' +
+    '<button id="' + id + '-ok" style="flex:1;height:40px;border:none;border-radius:10px;background:#0B4F9C;color:#fff;font-weight:600;cursor:pointer;">确认</button>' +
+    '<button id="' + id + '-cancel" style="flex:1;height:40px;border:1px solid #E5E7EB;border-radius:10px;background:#fff;color:#374151;cursor:pointer;">取消</button>' +
+    '</div></div>';
+  document.body.appendChild(overlay);
+  function done(ok) {
+    var el = document.getElementById(id);
+    if (el) el.remove();
+    callback(!!ok);
+  }
+  overlay.querySelector('#' + id + '-ok').onclick = function () {
+    var val = String((document.getElementById(id + '-input') || {}).value || '').trim();
+    if (val !== '123456') {
+      var err = document.getElementById(id + '-err');
+      if (err) err.textContent = '验证码不正确，请重新输入';
+      return;
+    }
+    if (typeof requestFundVerify === 'function') requestFundVerify();
+    done(true);
+  };
+  overlay.querySelector('#' + id + '-cancel').onclick = function () { done(false); };
+}
+
+// 人脸确认（演示模拟：点击后 2 秒通过）
+function showFaceVerification(purpose, callback) {
+  var id = 'face-verify-' + Date.now();
+  var overlay = document.createElement('div');
+  overlay.id = id;
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:18px;padding:24px;width:300px;max-width:90vw;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.35);">' +
+    '<div style="font-size:16px;font-weight:700;color:#111827;">人脸确认</div>' +
+    '<div style="font-size:12px;color:#6B7280;margin:6px 0 16px;">' + escapeHtml(purpose || '') + '，请正对摄像头</div>' +
+    '<div id="' + id + '-circle" style="width:132px;height:132px;margin:0 auto 14px;border-radius:50%;border:3px dashed #0B4F9C;display:flex;align-items:center;justify-content:center;background:#EAF2FB;">' +
+    '<svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="#0B4F9C" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="9" r="3.4"/><path d="M5 20c1.6-3.3 4-5 7-5s5.4 1.7 7 5"/></svg>' +
+    '</div>' +
+    '<div id="' + id + '-state" style="font-size:12px;color:#94A3B8;margin-bottom:14px;">等待开始识别</div>' +
+    '<div style="display:flex;gap:10px;">' +
+    '<button id="' + id + '-start" style="flex:1;height:40px;border:none;border-radius:10px;background:#0B4F9C;color:#fff;font-weight:600;cursor:pointer;">开始识别</button>' +
+    '<button id="' + id + '-cancel" style="flex:1;height:40px;border:1px solid #E5E7EB;border-radius:10px;background:#fff;color:#374151;cursor:pointer;">取消</button>' +
+    '</div></div>';
+  document.body.appendChild(overlay);
+  var timer = null;
+  function done(ok) {
+    if (timer) clearTimeout(timer);
+    var el = document.getElementById(id);
+    if (el) el.remove();
+    callback(!!ok);
+  }
+  overlay.querySelector('#' + id + '-start').onclick = function () {
+    var st = document.getElementById(id + '-state');
+    var cir = document.getElementById(id + '-circle');
+    if (st) { st.textContent = '识别中，请保持正脸…'; st.style.color = '#0B4F9C'; }
+    if (cir) { cir.style.borderStyle = 'solid'; cir.style.boxShadow = '0 0 0 6px rgba(11,79,156,.12)'; }
+    timer = setTimeout(function () {
+      if (st) { st.textContent = '人脸比对通过'; st.style.color = '#15803D'; }
+      if (typeof requestFundVerify === 'function') requestFundVerify();
+      done(true);
+    }, 1800);
+  };
+  overlay.querySelector('#' + id + '-cancel').onclick = function () { done(false); };
+}
+
 function showSecurityVerification(purpose, callback) {
   const popupId = 'security-verify-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
   securityVerifyCallbacks[popupId] = callback;
@@ -1212,35 +1288,47 @@ function verifyAmountRisk(amount, purpose, actions) {
       return;
     }
     var tier;
-    try {
-      tier = agentTransferTier(amt, null);
-    } catch (e) {
-      resolve({ ok: true, tier: null, pendingReview: false });
-      return;
+    try { tier = agentTransferTier(amt, null); }
+    catch (e) { resolve({ ok: true, tier: null, pendingReview: false }); return; }
+    if (!tier || tier.rank < 1) { resolve({ ok: true, tier: tier, pendingReview: false }); return; }
+
+    var steps = [];
+    // T1：指纹 / 交易密码
+    if (tier.needPassword && typeof showSecurityVerification === 'function') {
+      steps.push(function (next) {
+        showSecurityVerification(purpose + ' ' + manualReviewMoney(amt) + ' · 指纹/密码确认', function (ok) { next(!!ok); });
+      });
     }
-    if (!tier || tier.rank < 2) {
-      resolve({ ok: true, tier: tier, pendingReview: false });
-      return;
+    // T2+：短信验证码
+    if (tier.needOtp && typeof showOtpVerification === 'function') {
+      steps.push(function (next) {
+        showOtpVerification(purpose + ' ' + manualReviewMoney(amt) + ' · 短信验证码', function (ok) { next(!!ok); });
+      });
     }
-    if (typeof showSecurityVerification !== 'function') {
-      resolve({ ok: false, tier: tier, pendingReview: false });
-      return;
+    // T3+：人脸确认
+    if (tier.needFace && typeof showFaceVerification === 'function') {
+      steps.push(function (next) {
+        showFaceVerification(purpose + ' ' + manualReviewMoney(amt) + ' · 人脸确认', function (ok) { next(!!ok); });
+      });
     }
-    var label = tier.needManual
-      ? 'T4 大额交易 · 二次验证后提交人工复核'
-      : (tier.needVerify ? 'T3 大额交易 · 二次验证' : 'T2 交易 · 密码确认');
-    showSecurityVerification(purpose + ' ' + manualReviewMoney(amt) + ' · ' + label, function (ok) {
-      if (!ok) {
-        resolve({ ok: false, tier: tier, pendingReview: false });
-        return;
+
+    function runSteps(i) {
+      if (i >= steps.length) {
+        // T4：转人工复核，不执行
+        if (tier.needManual) {
+          var review = submitManualReview({ amount: amt, purpose: purpose, source: 'UI', actions: Array.isArray(actions) ? actions : [], tier: tier });
+          resolve({ ok: false, tier: tier, pendingReview: true, reviewId: review && review.id });
+          return;
+        }
+        resolve({ ok: true, tier: tier, pendingReview: false });
       }
-      if (tier.needManual) {
-        var review = submitManualReview({ amount: amt, purpose: purpose, source: 'UI', actions: Array.isArray(actions) ? actions : [], tier: tier });
-        resolve({ ok: false, tier: tier, pendingReview: true, reviewId: review && review.id });
-        return;
-      }
-      resolve({ ok: true, tier: tier, pendingReview: false });
-    });
+      steps[i](function (ok) {
+        if (!ok) { resolve({ ok: false, tier: tier, pendingReview: false }); return; }
+        runSteps(i + 1);
+      });
+    }
+    if (!steps.length) { resolve({ ok: true, tier: tier, pendingReview: false }); return; }
+    runSteps(0);
   });
 }
 

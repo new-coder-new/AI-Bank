@@ -1122,11 +1122,11 @@ function agentRiskBadge(level) {
 // ---- 转账金额分级确认 ----
 // 档位定义：金额决定「下限档」，可疑度决定「附加档」，最终取更严者，确保两者都不漏。
 var AGENT_TRANSFER_TIERS = {
-  // T1 也保留确认卡：任何转账都必须用户点确认，避免模型误判/注入造成静默扣款
-  T1: { rank: 1, name: '确认执行', needConfirm: true, needVerify: false, needManual: false },
-  T2: { rank: 2, name: '密码确认', needConfirm: true, needVerify: false, needManual: false },
-  T3: { rank: 3, name: '二次验证', needConfirm: true, needVerify: true, needManual: false },
-  T4: { rank: 4, name: '人工复核', needConfirm: true, needVerify: true, needManual: true }
+  // 任何档位都必须先点确认卡；验证方式按档位递进
+  T1: { rank: 1, name: '指纹/密码确认', needConfirm: true, needPassword: true, needOtp: false, needFace: false, needManual: false },
+  T2: { rank: 2, name: '短信验证码', needConfirm: true, needPassword: false, needOtp: true, needFace: false, needManual: false },
+  T3: { rank: 3, name: '短信验证码+人脸', needConfirm: true, needPassword: false, needOtp: true, needFace: true, needManual: false },
+  T4: { rank: 4, name: '短信+人脸+人工复核', needConfirm: true, needPassword: false, needOtp: true, needFace: true, needManual: true }
 };
 
 // 演示环境固定验证码，真实场景应由短信/OTP 下发
@@ -1134,9 +1134,9 @@ var AGENT_DEMO_OTP = '123456';
 
 function agentAmountTier(amount) {
   var a = Number(amount) || 0;
-  if (a >= 50000) return 'T4';
-  if (a >= 5000) return 'T3';
-  if (a >= 500) return 'T2';
+  if (a >= 100000) return 'T4';
+  if (a >= 10000) return 'T3';
+  if (a >= 1000) return 'T2';
   return 'T1';
 }
 
@@ -1159,7 +1159,10 @@ function agentTransferTier(amount, risk) {
     name: tier.name,
     rank: tier.rank,
     needConfirm: tier.needConfirm,
-    needVerify: tier.needVerify,
+    needPassword: !!tier.needPassword,
+    needOtp: !!tier.needOtp,
+    needFace: !!tier.needFace,
+    needVerify: !!(tier.needOtp || tier.needFace),
     needManual: tier.needManual,
     byAmount: byAmount,
     byRisk: byRisk,
@@ -1169,10 +1172,10 @@ function agentTransferTier(amount, risk) {
 }
 
 function agentTierBadge(tier) {
-  if (tier.rank >= 4) return { text: '人工复核', color: '#991b1b', bg: '#fee2e2', border: '#fecaca' };
-  if (tier.rank === 3) return { text: '二次验证', color: '#c2410c', bg: '#fff7ed', border: '#fed7aa' };
-  if (tier.rank === 2) return { text: '密码确认', color: '#b45309', bg: '#fffbeb', border: '#fde68a' };
-  return { text: '确认执行', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' };
+  if (tier.rank >= 4) return { text: '短信+人脸+人工复核', color: '#991b1b', bg: '#fee2e2', border: '#fecaca' };
+  if (tier.rank === 3) return { text: '短信+人脸确认', color: '#c2410c', bg: '#fff7ed', border: '#fed7aa' };
+  if (tier.rank === 2) return { text: '短信验证码', color: '#b45309', bg: '#fffbeb', border: '#fde68a' };
+  return { text: '指纹/密码确认', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' };
 }
 
 // ------------------------------ 5. 计划执行器 + 可视化 ------------------------------
@@ -1279,13 +1282,26 @@ function agentRenderPlanConfirm(id, plan, results) {
   }
 
   var verifyHtml = '';
-  if (tier && tier.needVerify) {
+  if (tier && tier.needPassword) {
     verifyHtml =
       '<div class="agent-verify-box" id="' + id + '-verify">' +
-      '<div class="agent-verify-title">' + (tier.needManual ? '大额交易，请输入验证码，通过后提交人工复核' : '请输入二次验证码') + '</div>' +
+      '<div class="agent-verify-title">点击下方按钮后完成指纹 / 交易密码验证</div>' +
+      '<div class="agent-verify-err" id="' + id + '-otp-err"></div>' +
+      '</div>';
+  }
+  if (tier && tier.needOtp) {
+    verifyHtml =
+      '<div class="agent-verify-box" id="' + id + '-verify">' +
+      '<div class="agent-verify-title">' +
+      (tier.needManual ? '大额交易：短信验证码 + 人脸确认，通过后提交人工复核' : (tier.needFace ? '请输入短信验证码，并完成人脸确认' : '请输入短信验证码')) +
+      '</div>' +
       '<div class="agent-verify-hint">验证码已发送至尾号 **** 的手机（演示验证码：' + AGENT_DEMO_OTP + '）</div>' +
       '<input class="agent-verify-input" id="' + id + '-otp" type="text" inputmode="numeric" maxlength="6" placeholder="请输入 6 位验证码" autocomplete="off">' +
       '<div class="agent-verify-err" id="' + id + '-otp-err"></div>' +
+      (tier.needFace
+        ? '<div style="margin-top:8px;"><button class="agent-face-btn" onclick="agentStartFaceVerify(\'' + id + '\')">开始人脸确认</button>' +
+          '<span class="agent-face-state" id="' + id + '-face-state" style="margin-left:8px;font-size:12px;color:#94A3B8;">未完成</span></div>'
+        : '') +
       '</div>';
   }
 
@@ -1312,20 +1328,38 @@ function agentRenderPlanConfirm(id, plan, results) {
 
 var AGENT_PENDING_PLANS = {};
 
+
+// 确认卡上的「开始人脸确认」按钮
+function agentStartFaceVerify(id) {
+  if (typeof showFaceVerification !== 'function') return;
+  showFaceVerification('人脸确认', function (ok) {
+    window.__AGENT_FACE_OK = window.__AGENT_FACE_OK || {};
+    window.__AGENT_FACE_OK[id] = !!ok;
+    var el = document.getElementById(id + '-face-state');
+    if (el) { el.textContent = ok ? '人脸已通过' : '未完成'; el.style.color = ok ? '#15803D' : '#94A3B8'; }
+  });
+}
+
 async function agentApprovePlan(id) {
   var rec = AGENT_PENDING_PLANS[id];
   if (!rec || rec.status !== 'pending') return;
 
-  // —— T2 密码确认：金额达到 ¥500–4,999 时先完成一次安全验证 ——
-  if (rec.tier && rec.tier.key === 'T2' && typeof showSecurityVerification === 'function') {
-    var t2ok = await new Promise(function (resolve) {
-      showSecurityVerification('密码确认（' + agentFmt(rec.plan && rec.plan.confirm && rec.plan.confirm.actions ? rec.plan.confirm.actions.reduce(function (s, a) { return s + agentPlanActionAmount(a); }, 0) : 0) + '）', function (ok) { resolve(!!ok); });
+  // —— T1：指纹 / 交易密码确认 ——
+  if (rec.tier && rec.tier.needPassword && typeof showSecurityVerification === 'function') {
+    var __amt = (rec.plan && rec.plan.confirm && rec.plan.confirm.actions)
+      ? rec.plan.confirm.actions.reduce(function (s, a) { return s + agentPlanActionAmount(a); }, 0) : 0;
+    var t1ok = await new Promise(function (resolve) {
+      showSecurityVerification('指纹/密码确认（' + agentFmt(__amt) + '）', function (ok) { resolve(!!ok); });
     });
-    if (!t2ok) return;
+    if (!t1ok) {
+      var errT1 = document.getElementById(id + '-otp-err');
+      if (errT1) errT1.textContent = '验证未通过，本次未执行任何操作';
+      return;
+    }
   }
 
-  // —— 二次验证闸门：验证码不通过则绝不执行，也不改变状态，用户可重新输入 ——
-  if (rec.tier && rec.tier.needVerify) {
+  // —— 短信验证码闸门（T2+）：不通过则绝不执行，也不改变状态 ——
+  if (rec.tier && rec.tier.needOtp) {
     var input = document.getElementById(id + '-otp');
     var errEl = document.getElementById(id + '-otp-err');
     var got = input ? String(input.value || '').trim() : '';
@@ -1341,8 +1375,28 @@ async function agentApprovePlan(id) {
       return;
     }
     if (input) input.disabled = true;
-    if (errEl) { errEl.textContent = '验证通过'; errEl.className = 'agent-verify-err ok'; }
+    if (errEl) { errEl.textContent = '验证码通过'; errEl.className = 'agent-verify-err ok'; }
     if (typeof requestFundVerify === 'function') requestFundVerify();
+  }
+
+  // —— 人脸确认闸门（T3+）：未完成人脸不继续 ——
+  if (rec.tier && rec.tier.needFace) {
+    var faceState = document.getElementById(id + '-face-state');
+    if (!(window.__AGENT_FACE_OK && window.__AGENT_FACE_OK[id])) {
+      if (typeof showFaceVerification === 'function') {
+        var faceOk = await new Promise(function (resolve) {
+          showFaceVerification('人脸确认（' + agentFmt(rec.tier.rank >= 4 ? 100000 : 10000) + ' 以上交易）', function (ok) { resolve(!!ok); });
+        });
+        window.__AGENT_FACE_OK = window.__AGENT_FACE_OK || {};
+        window.__AGENT_FACE_OK[id] = !!faceOk;
+        if (faceState) { faceState.textContent = faceOk ? '人脸已通过' : '未完成'; faceState.style.color = faceOk ? '#15803D' : '#94A3B8'; }
+      }
+    }
+    if (!(window.__AGENT_FACE_OK && window.__AGENT_FACE_OK[id])) {
+      var errFace = document.getElementById(id + '-otp-err');
+      if (errFace) errFace.textContent = '请先完成人脸确认（本次未执行任何操作）';
+      return;
+    }
   }
 
   // —— T4：验证通过后只提交人工复核，不执行任何扣款 ——

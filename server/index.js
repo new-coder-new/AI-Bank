@@ -652,11 +652,11 @@ const routes = {
       });
     }
     // 服务端独立判定：≥ ¥5,000（T3）必须携带一次性的验证令牌
-    if (amt >= 5000 && !consumeVerifyToken(req)) {
-      return { ok: false, error: '需要安全验证（金额达到二次验证档）' };
+    if (amt >= 1000 && !consumeVerifyToken(req)) {
+      return { ok: false, error: '需要安全验证（金额达到短信验证档）' };
     }
     // ≥ ¥50,000（T4）：不直接扣款，转服务端人工复核
-    if (amt >= 50000) {
+    if (amt >= 100000) {
       DB.userProfile.manualReviews = DB.userProfile.manualReviews || [];
       const reviewId = 'SRV' + Date.now();
       DB.userProfile.manualReviews.unshift({
@@ -709,7 +709,7 @@ const routes = {
   'POST /api/wealth/buy': async (req) => {
     const { product, amount, idempotencyKey } = await readBody(req);
     const amt = Number(amount) || 0;
-    if (amt >= 5000 && !consumeVerifyToken(req)) return { ok: false, error: '需要安全验证（金额达到二次验证档）' };
+    if (amt >= 1000 && !consumeVerifyToken(req)) return { ok: false, error: '需要安全验证（金额达到短信验证档）' };
     if (idempotencyKey) {
       DB.__idem = DB.__idem || {};
       const k = 'buy:' + String(idempotencyKey);
@@ -734,7 +734,7 @@ const routes = {
   // 理财赎回
   'POST /api/wealth/redeem': async (req) => {
     const { product, amount, idempotencyKey } = await readBody(req);
-    if (Number(amount) >= 5000 && !consumeVerifyToken(req)) return { ok: false, error: '需要安全验证（金额达到二次验证档）' };
+    if (Number(amount) >= 1000 && !consumeVerifyToken(req)) return { ok: false, error: '需要安全验证（金额达到短信验证档）' };
     if (idempotencyKey) {
       DB.__idem = DB.__idem || {};
       const k = 'redeem:' + String(idempotencyKey);
@@ -807,7 +807,7 @@ const routes = {
       const k = 'fund:' + String(idempotencyKey);
       if (DB.__idem[k]) return Object.assign({}, DB.__idem[k], { duplicate: true });
     }
-    if (amt >= 5000 && !consumeVerifyToken(req)) return { ok: false, error: '需要安全验证（金额达到二次验证档）' };
+    if (amt >= 1000 && !consumeVerifyToken(req)) return { ok: false, error: '需要安全验证（金额达到短信验证档）' };
     const d = DB.userProfile.debitCard;
     if (amt > d.available) return { ok: false, error: '余额不足' };
     d.available -= amt; d.frozen += amt;

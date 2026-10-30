@@ -1318,3 +1318,18 @@
 /* 屏蔽输入框左侧的「+」（全部服务）按钮 */
 .func-btn { display: none !important; }
 
+
+
+/* 确认卡上的人脸确认按钮 */
+.agent-face-btn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #0B4F9C;
+  border-radius: 8px;
+  background: #EAF2FB;
+  color: #0B4F9C;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.agent-face-btn:hover { background: #DCEBFA; }
