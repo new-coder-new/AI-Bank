@@ -427,8 +427,9 @@ function guideOpenOverview() {
 function guideMainModuleGuess(text) {
   var t = String(text || '');
   if (!t) return '';
-  if (/(鲜花|花束|花|蛋糕|生日礼物|生日|送花|订花)/.test(t)) return 'life';
-  if (/(订阅|会员|续费|自动续费|退订|网盘|VIP|vip|年卡|月卡|季卡)/.test(t)) return 'life';
+  // 一级模块与首页入口保持一致：订阅管理、生日鲜花各自独立（不再有「生活订购」这一层）
+  if (/(鲜花|花束|花|蛋糕|生日礼物|生日|送花|订花)/.test(t)) return 'flower';
+  if (/(订阅|会员|续费|自动续费|退订|网盘|VIP|vip|年卡|月卡|季卡)/.test(t)) return 'sub';
   if (/(理财|基金|申购|赎回|持仓|持有|风险测评|风险评估|投资|收益|产品)/.test(t)) return 'wealth';
   if (/(账单|流水|收支|消费统计|异常交易|消费记录|交易记录)/.test(t)) return 'bill';
   // 卡片模块：单个「卡」字也算（办卡 / 我的卡 / 卡丢了）
@@ -674,6 +675,9 @@ async function guideHandleText(text) {
       var guessMod = guideMainModuleGuess(text);
       var isReadOnly = (typeof guideIsReadOnlyQuery === 'function') && guideIsReadOnlyQuery(text);
       if (guessMod && !isReadOnly) {
+        // 首页已把「生活订购」拆成两个独立入口：订阅管理 / 生日鲜花
+        if (guessMod === 'sub') { guideStartSubManage(); return true; }
+        if (guessMod === 'flower') { guideStartBirthdayFlower(); return true; }
         guideOpenService(guessMod);
         return true;
       }
@@ -5053,14 +5057,16 @@ function guideStartBirthdayFlower() {
   currentModule = 'life';
   var n = (typeof guideNearestBirthday === 'function') ? guideNearestBirthday() : null;
   appendMessage(guideMessage(
-    '<p>鲜花下单统一从主页面「今日提醒」进入。</p>' +
-    (n ? '<p class="guide-tip">最近的生日：' + guideFlowerEsc(n.name) + (n.relation ? '（' + guideFlowerEsc(n.relation) + '）' : '') +
-      ' ' + Number(String(n.birthday).split('-')[0]) + ' 月 ' + Number(String(n.birthday).split('-')[1]) + ' 日，还有 ' + n.days + ' 天' +
-      '；需要在今日提醒里点「订鲜花+蛋糕」。' : '') +
+    '<p>生日鲜花包含这些操作</p>' +
+    '<div class="guide-rows">' +
+    '<div class="guide-row"><div class="guide-row-title">订鲜花+蛋糕</div><div class="guide-row-example">例如：给林小雨订一束花</div></div>' +
+    '<div class="guide-row"><div class="guide-row-title">查看鲜花订单</div><div class="guide-row-example">例如：查看鲜花订单</div></div>' +
+    '<div class="guide-row"><div class="guide-row-title">生日提醒</div><div class="guide-row-example">例如：最近谁的生日</div></div>' +
+    '</div>' +
+    (n ? '<p class="guide-tip">最近：' + guideFlowerEsc(n.name) + (n.relation ? '（' + guideFlowerEsc(n.relation) + '）' : '') +
+      ' ' + Number(String(n.birthday).split('-')[0]) + ' 月 ' + Number(String(n.birthday).split('-')[1]) + ' 日，还有 ' + n.days + ' 天</p>' : '') +
     '<p class="guide-tip">可下单的联系人：' + guideFlowerContactsText() + '</p>' +
-    '<div class="guide-chips">' +
-    '<button class="guide-chip" onclick="guideStartFlowerList()">查看鲜花订单</button>' +
-    '</div>'
+    '<p class="guide-tip">直接说出你的需求即可（照示例说也行）。</p>'
   ));
   scrollToBottom();
 }

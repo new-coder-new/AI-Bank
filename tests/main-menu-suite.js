@@ -90,10 +90,10 @@ const CASES = [
   { text: '把白金卡额度提到8万', module: 'card', desc: '调额不直通' },
   { text: '设个单笔限额2万', module: 'card', desc: '限额不直通' },
   { text: '我的卡丢了', module: 'card', desc: '卡丢了' },
-  { text: '订阅某易云年卡', module: 'life', desc: '订阅也不直通' },
-  { text: '帮我退订某度网盘', module: 'life', desc: '退订口语' },
-  { text: '给林小雨订一束花', module: 'life', desc: '订花不直通' },
-  { text: '订个生日蛋糕', module: 'life', desc: '蛋糕不直通' }
+  { text: '订阅某易云年卡', module: 'sub', desc: '订阅进订阅管理菜单' },
+  { text: '帮我退订某度网盘', module: 'sub', desc: '退订口语进订阅管理' },
+  { text: '给林小雨订一束花', module: 'flower', desc: '订花进生日鲜花菜单' },
+  { text: '订个生日蛋糕', module: 'flower', desc: '蛋糕进生日鲜花菜单' }
 ];
 
 const NO_FLOW = ['transfer', 'aa', 'wealth', 'cardApply', 'cardLimit', 'txn', 'lost', 'sub'];
@@ -107,7 +107,7 @@ const NO_FLOW = ['transfer', 'aa', 'wealth', 'cardApply', 'cardLimit', 'txn', 'l
     let err = '';
     try { await __g.guideHandleText(c.text); await tick(3); } catch (e) { err = e.message; }
     const snap = snapshot();
-    const noFlow = NO_FLOW.every((k) => !snap[k]);
+    const noFlow = NO_FLOW.every((k) => !snap[k]) || (snap.sub === 'choose' && NO_FLOW.filter((k) => k !== 'sub').every((k) => !snap[k]));
     const mod = __g.guideMainModuleGuess(c.text);
     // 菜单已打开：最后一条消息包含该模块的二级菜单特征（示例行）
     const openedMenu = /例如：/.test(snap.last) || /请选择|包含这些|请告诉我你垫付|我的卡片|风险测评/.test(snap.last);
