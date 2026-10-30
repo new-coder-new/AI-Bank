@@ -136,20 +136,7 @@ const mockData = {
       minPayment: 842.05,
       // 数据更新时间戳：用于 C4/C5 判断额度数据是否最新、刷新后是否一致
       limitUpdatedAt: '2026-09-20 10:30:00'
-    },
-    loan: {
-      type: '个人住房按揭贷款',
-      contractNo: '房按字2023第08866号',
-      amount: 850000,
-      remaining: 712580.36,
-      monthlyPayment: 4580.25,
-      rate: 4.20,
-      startDate: '2023-08-15',
-      endDate: '2053-08-14',
-      repayMethod: '等额本息',
-      status: '正常还款中',
-    },
-    recentTxns: [
+    },recentTxns: [
       { type: 'income', amount: 15000.00, desc: '工资收入（某某科技有限公司）', time: '2026-09-14 09:00:12', channel: '企业网银代发' },
       { type: 'expense', amount: 3500.00, desc: '房贷月供扣款', time: '2026-09-14 08:30:00', channel: '自动扣款' },
       { type: 'expense', amount: 268.50, desc: '消费-某某超市（清远万达店）', time: '2026-09-13 19:25:33', channel: '微信支付' },

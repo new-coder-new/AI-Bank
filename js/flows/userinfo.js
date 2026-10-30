@@ -55,16 +55,6 @@ function showUserInfo() {
           <!-- 贷款信息 -->
           <div class="data-card">
             <div class="data-card-title">🏠 贷款信息</div>
-            <div class="data-row"><span class="data-label">贷款类型</span><span class="data-value">${u.loan.type}</span></div>
-            <div class="data-row"><span class="data-label">贷款合同号</span><span class="data-value">${u.loan.contractNo}</span></div>
-            <div class="data-row"><span class="data-label">贷款金额</span><span class="data-value">¥ ${u.loan.amount.toLocaleString()}</span></div>
-            <div class="data-row"><span class="data-label">剩余本金</span><span class="data-value" style="font-weight:600;">¥ ${u.loan.remaining.toLocaleString()}</span></div>
-            <div class="data-row"><span class="data-label">月供金额</span><span class="data-value expense">¥ ${u.loan.monthlyPayment.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</span></div>
-            <div class="data-row"><span class="data-label">贷款利率</span><span class="data-value">${u.loan.rate}%</span></div>
-            <div class="data-row"><span class="data-label">放款日期</span><span class="data-value">${u.loan.startDate}</span></div>
-            <div class="data-row"><span class="data-label">到期日期</span><span class="data-value">${u.loan.endDate}</span></div>
-            <div class="data-row"><span class="data-label">还款方式</span><span class="data-value">${u.loan.repayMethod}</span></div>
-            <div class="data-row"><span class="data-label">贷款状态</span><span class="data-value" style="color:#22c55e;font-weight:600;">${u.loan.status}</span></div>
           </div>
 
           <!-- 最近交易记录 -->

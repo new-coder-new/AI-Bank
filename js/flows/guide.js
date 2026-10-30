@@ -1068,7 +1068,7 @@ function guideTransferParse(text, kind) {
   var negativeAmount = /[-负]\s*\d/.test(t);
   // 一句话里有多个数字时取「最后一个」当金额：手机号在前、金额在后（如「1300 200」→ 200）
   var nums = [];
-  var numRe = /(\d[\d,]*(?:\.\d+)?)\s*(亿|万|w|W|千|k|K)?/g;
+  var numRe = /(\d[\d,]*(?:\.\d+)?)\s*(亿|千万|百万|万|w|W|千|k|K)?/g;
   var nm;
   while ((nm = numRe.exec(t)) !== null) {
     nums.push({ text: nm[0], value: nm[1], unit: nm[2], prefix: t.slice(0, nm.index) });
@@ -1095,6 +1095,8 @@ function guideTransferParse(text, kind) {
     var last = nums[amtIdx];
     amount = parseFloat(last.value.replace(/,/g, ''));
     if (last.unit === '亿') amount *= 100000000;
+    else if (last.unit === '千万') amount *= 10000000;
+    else if (last.unit === '百万') amount *= 1000000;
     else if (last.unit === '万' || last.unit === 'w' || last.unit === 'W') amount *= 10000;
     else if (last.unit === '千' || last.unit === 'k' || last.unit === 'K') amount *= 1000;
     if (!(amount > 0) || negativeAmount) amount = null;

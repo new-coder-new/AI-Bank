@@ -246,7 +246,7 @@ function renderUserInfoPage() {
 
 function renderUserInfoOverview(u) {
   const d = u.debitCard;
-  const l = u.loan;
+  const l = {};   // 贷款模块已下线
   // 与首页「总资产」使用同一口径：储蓄卡余额 + 理财持仓 + 定期/基金/房产
   let assets = null;
   if (typeof agentTotalAssets === 'function') {
@@ -259,7 +259,7 @@ function renderUserInfoOverview(u) {
   const totalAssets = assets
     ? Number(assets.total) || 0
     : Number(d.balance) + holdingsValue + Number(apiAssets.fixed || 100000) + Number(apiAssets.fund || 45511) + Number(apiAssets.property || 600000);
-  const netAsset = totalAssets - (Number(l.remaining) || 0);
+  const netAsset = totalAssets;
   const todayNet = d.todayIncome - d.todayExpense;
   return `
     <section class="userinfo-section ui-overview-card">

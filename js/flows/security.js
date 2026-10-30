@@ -281,14 +281,12 @@ function maskUserInfoCard(num) {
 function renderUserInfoCards(u) {
   const d = u.debitCard;
   const c = u.creditCard;
-  const l = u.loan;
   const creditStatus = c.status || '正常';
   return `
     <section class="userinfo-section">
       <div class="ui-segmented">
         <button class="card-tab active" onclick="switchCardTab('debit', this)">储蓄卡</button>
         <button class="card-tab" onclick="switchCardTab('credit', this)">信用卡</button>
-        <button class="card-tab" onclick="switchCardTab('loan', this)">贷款</button>
       </div>
 
       <!-- 储蓄卡 -->
@@ -346,33 +344,7 @@ function renderUserInfoCards(u) {
         </div>
       </div>
 
-      <!-- 贷款 -->
-      <div id="cardTab-loan" class="card-tab-content" style="display:none;">
-        <div class="ui-account-card loan">
-          <div class="ui-account-top"><span>${l.type}</span><span>${l.status}</span></div>
-          <div class="ui-account-contract">${l.contractNo}</div>
-          <div class="ui-account-bottom">
-            <div><span>剩余本金</span><strong>¥${l.remaining.toLocaleString()}</strong></div>
-            <div style="text-align:right;"><span>月供</span><strong>¥${l.monthlyPayment.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</strong></div>
-          </div>
-        </div>
-        <div class="ui-metric-row">
-          <div><span>贷款金额</span><b>¥${l.amount.toLocaleString()}</b></div>
-          <div><span>贷款利率</span><b>${l.rate}%</b></div>
-          <div><span>贷款状态</span><b>${l.status}</b></div>
-        </div>
-        <div class="ui-collapse" onclick="toggleDetail('loan-detail')">
-          <span>贷款详情</span><span class="ui-chevron" id="loan-detail-arrow">⌄</span>
-        </div>
-        <div id="loan-detail" class="ui-detail" style="display:none;">
-          <div class="ui-info-grid">
-            <div class="ui-info-row"><span>放款日期</span><b>${l.startDate}</b></div>
-            <div class="ui-info-row"><span>到期日期</span><b>${l.endDate}</b></div>
-            <div class="ui-info-row"><span>还款方式</span><b>${l.repayMethod}</b></div>
-            <div class="ui-info-row"><span>合同号</span><b>${l.contractNo}</b></div>
-          </div>
-        </div>
-      </div>
+
     </section>
   `;
 }

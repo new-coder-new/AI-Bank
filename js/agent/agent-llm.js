@@ -92,7 +92,7 @@ var AGENT_TOOL_SPECS = {
   'wealth.redeem': { group: '理财', desc: '赎回已持有的理财产品。属于资金操作，系统会先请用户确认', params: { product: { type: 'string', description: '持仓产品名称' }, amount: { type: 'number', description: '赎回金额（元），不传表示全部赎回' } } },
 
   'budget.status': { group: '预算', desc: '检查月度预算执行水位、剩余额度与按当前速度可维持的天数', params: {} },
-  'loan.inquiry': { group: '借款', desc: '查询预授信可借额度、年化利率与分期月供，用于资金不足时的方案评估。属于只读查询', params: { amount: { type: 'number', description: '需要借款的金额（元）' } } },  'budget.set': { group: '预算', desc: '设置日/周/月/年预算。系统会先请用户确认', params: { amount: { type: 'number', description: '预算金额（元）', required: true }, period: { type: 'string', enum: ['day', 'week', 'month', 'year'], description: '预算周期', required: true } } },
+ 'budget.set': { group: '预算', desc: '设置日/周/月/年预算。系统会先请用户确认', params: { amount: { type: 'number', description: '预算金额（元）', required: true }, period: { type: 'string', enum: ['day', 'week', 'month', 'year'], description: '预算周期', required: true } } },
   'budget.createFund': { group: '预算', desc: '创建专项预算账户（出差基金、装修基金等）。系统会先请用户确认', params: { name: { type: 'string', description: '专项名称，如 上海出差专项预算', required: true }, amount: { type: 'number', description: '专项金额（元）', required: true }, deadline: { type: 'string', description: '截止日期 YYYY-MM-DD' } } },
 
   'life.scanBirthdays': { group: '生活', desc: '扫描家庭联系人生日，返回最近一位及其剩余天数与偏好（常用花材、蛋糕尺寸、忌口）', params: { withinDays: { type: 'integer', description: '扫描范围天数，默认 15' } } },
@@ -216,7 +216,6 @@ function agentSystemPrompt() {
     '【不可逾越的资金安全约束】',
     'A. 转账金额 ≥ ¥5,000 必须触发二次验证；≥ ¥500 需要用户确认。这套分级由系统强制实施，你无需在回答里复述档位，但绝不能声称"已跳过验证"或"无需确认"。',
     'B. 任何转账都不得使账户余额变为负数。若用户要求的金额超过可用余额（可先调 account.balance 查看），不要调用 transfer.execute——系统会拒绝，你应当改为向用户说明资金缺口，并按"优先不借钱"的顺序给出方案：① 降低金额 ② 分批转账 ③ 用信用卡（属透支，有利息）④ 贷款（会产生利息，通常约定不得用于投资）。',
-    'C. 用户主动询问可借额度时，调用 loan.inquiry 查询真实额度与利率，并提示利息成本；不要编造额度或利率。',
     'D. 严禁协助任何形式的信用资金套现、代收代付、刷单返利等违规或涉诈行为。',
     '',
     '【回答要求】',

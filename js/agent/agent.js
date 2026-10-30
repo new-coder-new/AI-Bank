@@ -44,8 +44,6 @@ function buildDefaultAgentMemory() {
       monthlyAvgExpense: 7520,
       confirmThreshold: 500,
       verifyThreshold: 5000,   // 金额达到此值必须二次验证
-      loanQuota: 200000,       // 预授信可借额度
-      loanRate: 3.45           // 消费贷参考年化利率（%）
     },
     family: [
       { name: '林小雨', relation: '爱人', birthdayOffset: 3, favoriteFlower: '向日葵', cakeSize: '6寸', avoid: ['香菜'] },
@@ -776,27 +774,7 @@ registerAgentTool('wealth.redeem', {
   }
 });
 
-// —— 借款类（仅在用户主动询问资金缺口方案时使用）——
-registerAgentTool('loan.inquiry', {
-  label: '查询可借额度与利率', risk: 'low',
-  run: function (args) {
-    var need = Number(args && args.amount) || 0;
-    var u = mockData.userProfile || {};
-    var quota = u.loanQuota || 200000;
-    var rate = u.loanRate || 3.45;
-    var canBorrow = Math.min(quota, Math.max(need, 0) || quota);
-    var monthly = rate / 100 / 12;
-    var months = 12;
-    var repay = canBorrow > 0
-      ? canBorrow * monthly * Math.pow(1 + monthly, months) / (Math.pow(1 + monthly, months) - 1)
-      : 0;
-    return {
-      summary: '预授信额度 ¥' + agentFmtInt(quota) + '，年化利率约 ' + rate + '%。' +
-        (need > 0 ? '若借 ¥' + agentFmtInt(canBorrow) + ' 分 12 期，每月约需还款 ¥' + agentFmtInt(repay) + '。' : ''),
-      data: { quota: quota, rate: rate, canBorrow: canBorrow, months: months, monthlyRepay: repay }
-    };
-  }
-});
+
 
 // —— 预算类 ——
 registerAgentTool('budget.status', {
@@ -1859,14 +1837,6 @@ function agentShortageCardHtml(check, payee) {
     '<div class="agent-shortage-row shortage"><span>资金缺口</span><span>-¥' + agentFmt(check.shortage) + '</span></div>' +
     '</div>' +
     '<div class="agent-shortage-note">为保护你的账户，系统已在交易前拦截，<b>余额不会被扣成负数</b>。</div>' +
-    '<div class="agent-followup">' +
-    '<span class="agent-followup-label">可以这样解决：</span>' +
-    '<div class="agent-followup-line">① 改为转账上限金额 ¥' + cap + '</div>' +
-    '<div class="agent-followup-line">② 自己调整金额（直接告诉我数字）</div>' +
-    '<div class="agent-followup-line">③ 拆成多笔分批转账</div>' +
-    '<div class="agent-followup-line">④ 了解可借额度与利率</div>' +
-    '<div class="agent-followup-line">⑤ 用信用卡支付</div>' +
-    '</div>' +
     '</div></div></div>';
 }
 
