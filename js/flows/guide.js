@@ -2032,7 +2032,9 @@ async function guideAAStep(text) {
   if (s.stage === 'askMore') {
     appendMessage(guideMessage('<p>还有其他参与人吗？</p><p class="guide-tip">回复「没有」继续；也可以继续补充参与人</p>'));
   } else if (!(Number(s.total) > 0) && !s.participants.length) {
-    appendMessage(guideMessage('<p>请告诉我你垫付的总金额和除你外需要收款的参与人</p>'));
+    // 与入口首句保持一致（含示例）
+    appendMessage(guideMessage('<p>请告诉我你垫付的总金额和除你外需要收款的参与人。</p>' +
+      '<p class="guide-tip">例如：1000元 张三和李四</p>'));
   } else if (!s.participants.length) {
     appendMessage(guideMessage('<p>麻烦告诉我除你外需要收款的参与人</p>'));
   } else {
