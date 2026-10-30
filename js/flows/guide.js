@@ -2434,8 +2434,7 @@ function guideWealthShowAllProducts() {
   var list = (typeof mockData !== 'undefined' && mockData.products) || [];
   appendMessage(guideMessage(
     '<p>在售理财产品（共 ' + list.length + ' 支）</p>' +
-    guideWealthProductsHtml(guideWealthValidProfile(), { showAll: true }) +
-    '<p class="guide-tip">回复「编号 + 金额」即可申购，例如：1001 5000</p>'
+    guideWealthProductsHtml(guideWealthValidProfile(), { showAll: true })
   ));
   scrollToBottom();
 }
@@ -2524,7 +2523,6 @@ function guideWealthProductsHtml(profile, opts) {
     : '<p>当前在售产品：</p>';
   var inner = '<div class="data-card prod-card">' + head +
     '<div class="prod-list">' + rows + '</div>' + moreBtn +
-    '<p class="guide-tip">直接说「产品编号/产品名称 + 金额」即可，例如「编号1001 1000」。</p>' +
     '</div>';
   window.__wealthProducts = window.__wealthProducts || {};
   window.__wealthProducts[boxId] = inner;
