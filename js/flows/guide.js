@@ -270,36 +270,60 @@ function guideEnsureBirthdayHold() {
     var now = new Date();
     var ym = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2);
     var month = now.getMonth() + 1;
-    var list = (u.birthdayContacts || []).slice();
-    var hasBirthday = list.some(function (c) {
-      var parts = String(c.birthday || '').split('-').map(Number).filter(function (x) { return !isNaN(x); });
-      var m = parts.length >= 2 ? parts[parts.length - 2] : NaN;
-      return m === month;
-    });
-    if (!hasBirthday) return u.flowerHold || null;
-    if (u.flowerHold && u.flowerHold.month === ym) return u.flowerHold;   // 本月已预留
-
-    var amount = 1000;
-    if ((Number(d.available) || 0) < amount) return null;
+    var PER = 1000;   // 每位本月过生日的联系人各锁 ¥1000
 
     var today = ym + '-' + ('0' + now.getDate()).slice(-2);
     var lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     var releaseDate = lastDay.getFullYear() + '-' + ('0' + (lastDay.getMonth() + 1)).slice(-2) + '-' + ('0' + lastDay.getDate()).slice(-2);
 
-    d.available = Math.round((Number(d.available) - amount) * 100) / 100;
-    d.frozen = Math.round((Number(d.frozen) || 0) + amount * 100) / 100;
+    // 本月过生日的联系人
+    var list = (u.birthdayContacts || []).slice();
+    var targets = [];
+    list.forEach(function (c) {
+      var parts = String(c.birthday || '').split('-').map(Number).filter(function (x) { return !isNaN(x); });
+      var m = parts.length >= 2 ? parts[parts.length - 2] : NaN;
+      if (m === month && c.name) targets.push(c.name);
+    });
+    if (!targets.length) return null;
+
+    if (!Array.isArray(u.flowerHolds)) u.flowerHolds = [];
     if (!d.frozenItems) d.frozenItems = [];
-    var freezeId = 'FZ-FLOWER-' + ym;
-    d.frozenItems.push({
-      id: freezeId, type: '生日鲜花预留', reason: '本月有联系人生日',
-      amount: amount, freezeDate: today, releaseDate: releaseDate, status: '冻结中'
-    });
     if (!u.lockedFunds) u.lockedFunds = [];
-    u.lockedFunds.push({
-      purpose: '生日鲜花预留', amount: amount, freezeDate: today, releaseDate: releaseDate,
-      autoTransfer: false, frozen: true, status: '已锁定', freezeId: freezeId
+
+    // 每位联系人一笔：本月已锁过的跳过
+    targets.forEach(function (name) {
+      var key = 'FZ-FLOWER-' + ym + '-' + name;
+      var exists = u.flowerHolds.some(function (h) { return h && h.key === key && h.status === '已锁定'; });
+      if (exists) return;
+      if ((Number(d.available) || 0) < PER) return;   // 可用不足则跳过
+
+      d.available = Math.round((Number(d.available) - PER) * 100) / 100;
+      d.frozen = Math.round((Number(d.frozen) || 0) + PER * 100) / 100;
+      d.frozenItems.push({
+        id: key, type: '生日鲜花预留', reason: name + ' 本月生日',
+        amount: PER, freezeDate: today, releaseDate: releaseDate, status: '冻结中'
+      });
+      u.lockedFunds.push({
+        purpose: '生日鲜花预留（' + name + '）', amount: PER, freezeDate: today, releaseDate: releaseDate,
+        autoTransfer: false, frozen: true, status: '已锁定', freezeId: key
+      });
+      u.flowerHolds.push({
+        key: key, month: ym, name: name, amount: PER,
+        freezeDate: today, releaseDate: releaseDate, status: '已锁定'
+      });
     });
-    u.flowerHold = { month: ym, amount: amount, freezeDate: today, releaseDate: releaseDate };
+
+    // 汇总给界面展示
+    var active = u.flowerHolds.filter(function (h) { return h && h.month === ym && h.status === '已锁定'; });
+    if (!active.length) return null;
+    var total = active.reduce(function (s2, h) { return s2 + (Number(h.amount) || 0); }, 0);
+    u.flowerHold = {
+      month: ym,
+      count: active.length,
+      amount: total,
+      names: active.map(function (h) { return h.name; }),
+      releaseDate: releaseDate
+    };
     if (typeof saveUserData === 'function') saveUserData();
     return u.flowerHold;
   } catch (e) { return null; }
@@ -332,7 +356,7 @@ function guideHomeRemindersHtml() {
   // ②.5 本月生日鲜花预留（有预留才显示）
   if (hold && hold.amount) {
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
-      '<div class="mini-row-sub">已为生日鲜花预留 ¥' + hold.amount + '（可用余额已扣减，' + hold.releaseDate + ' 自动解冻）</div></div></div>');
+      '<div class="mini-row-sub">已为' + (hold.count > 1 ? hold.count + ' 位本月生日（' + (hold.names || []).join('、') + '）' : (hold.names || [])[0] + '生日') + '预留 ¥' + hold.amount + '（可用余额已扣减，' + hold.releaseDate + ' 解冻）</div></div></div>');
   }
 
   // ③④⑤ 节日鲜花：只在临近（≤2 天）时才提醒，避免常年占版面
