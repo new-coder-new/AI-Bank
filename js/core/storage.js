@@ -244,7 +244,7 @@ function renderUserInfoOverview(u) {
         <div><span>理财持仓</span><b>¥${holdingsValue.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</b></div>
         <div><span>净资产</span><b>¥${netAsset.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</b></div>
       </div>
-      <div class="ui-footnote">总资产 = 储蓄卡余额 + 理财持仓 + 定期/基金/房产；净资产已扣除贷款 ¥${Number(l.remaining).toLocaleString('zh-CN', {minimumFractionDigits: 2})}。</div>
+      <div class="ui-footnote">总资产 = 储蓄卡余额 + 理财持仓 + 定期/基金/房产。</div>
     </section>
     <section class="userinfo-section">
       <div class="ui-card-head">
