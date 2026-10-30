@@ -719,6 +719,8 @@ function guideCancelPendingScheduled() {
   appendMessage(guideMessage('<p>已取消本次定时转账，未创建任务。</p>'));
   scrollToBottom();
   return true;
+
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('transfer'); }, 400);
 }
 // 认不出的输入专用输出：跳过「同一句不重复」去重，保证每次都能看到反馈
 function guideSayInvalid(html) {
@@ -2184,6 +2186,8 @@ function guideAACancel() {
   }
   GUIDE_AA = null;
   scrollToBottom();
+
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('transfer'); }, 400);
 }
 
 function guideAASubmit() {
@@ -4950,6 +4954,8 @@ function guideSubCancelOp() {
     appendMessage(guideMessage('<p>未执行取消，订阅状态保持原样。</p>'));
   }
   scrollToBottom();
+
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
 }
 
 // 订阅会话统一入口（异步：自动续费的是/否可能要问模型）
@@ -5877,6 +5883,8 @@ function guideFlowerCancelSubmit() {
     (paid ? '，已退回 ¥' + refund + (fee > 0 ? '（扣除配送前 24 小时内取消服务费 ¥' + fee + '）' : '') : '，该订单未支付，无需退款') +
     '。</p>'));
   scrollToBottom();
+
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('flower'); }, 400);
 }
 
 function guideFlowerCancelOp() {
