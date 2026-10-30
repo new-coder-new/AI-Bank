@@ -804,7 +804,7 @@ async function guideHandleText(text) {
 
   // GUIDE_WRAPUP_HANDLED：业务完成后的「还需要办理其他业务吗？」待答状态
   if (GUIDE_WRAPUP) {
-    var plainWrap = t.replace(/[。.!！?？,，\s]/g, '');
+    var plainWrap = t.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');   // 只保留中英文与数字，剔除各种标点
     // ① 明确不需要 → 回到主菜单卡片
     if (/^(退出|不需要|不用了|不用|不了|不用啦|算了|取消|没了|不要|否)$/.test(plainWrap)) {
       GUIDE_WRAPUP = null;
@@ -821,8 +821,8 @@ async function guideHandleText(text) {
       guideOpenModuleMenu(wrapMod);
       return true;
     }
-    // ③ 其它输入：清掉待答状态，按正常逻辑处理
-    GUIDE_WRAPUP = null;
+    // ③ 其它输入：保留待答状态，按正常逻辑处理；
+    //    真正的业务开始时会由 guideResetAllSessions() 清掉它
   }
 
   // 停在确认卡上：没点按钮又说了别的话，只提醒一句「请完成上述操作。」
