@@ -2178,7 +2178,7 @@ function guideWealthProductsHtml(profile, opts) {
     : '<p>当前在售产品：</p>';
   var inner = '<div class="data-card prod-card">' + head +
     '<div class="prod-list">' + rows + '</div>' + moreBtn +
-    '<p class="guide-tip">直接说「产品名称 + 金额」即可，例如「稳健增利90天 50000」。</p>' +
+    '<p class="guide-tip">直接说「产品编号/产品名称 + 金额」即可，例如「编号1001 1000」。</p>' +
     '</div>';
   window.__wealthProducts = window.__wealthProducts || {};
   window.__wealthProducts[boxId] = inner;
@@ -2266,7 +2266,11 @@ async function guideWealthStep(text) {
   var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
 
   if (guideIsNegativeAmount(t)) {
-    guideAsk(guideMessage('<p>申购金额需要大于 0，请重新输入（例如「5000」）。</p>'));
+    var minAmt = (GUIDE_WEALTH && GUIDE_WEALTH.product) ? (Number(GUIDE_WEALTH.product.minAmount) || 0) : 0;
+    var negTip = minAmt > 0
+      ? ('申购金额不能低于起购金额 ¥' + guidePlainMoney(minAmt) + '，请重新输入。')
+      : '申购金额需要大于 0，请重新输入。';
+    guideAsk(guideMessage('<p>' + negTip + '</p>'));
     return true;
   }
 
