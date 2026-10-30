@@ -292,7 +292,7 @@ function guideHomeRemindersHtml() {
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
       '<div class="mini-row-title">💐 情人节：2 月 14 日，' + vText + '</div>' +
       '<div class="mini-row-sub">推荐：简约玫瑰 ¥299</div></div>' +
-      '<button class="mini-link" onclick="guideStartFlowerList()">查看鲜花订单</button></div>');
+      '<button class="mini-link" onclick="guideStartValentineFlower()">订情人节鲜花</button></div>');
   }
 
   var momDate = guideNthSundayNext(5, 2);
@@ -300,7 +300,7 @@ function guideHomeRemindersHtml() {
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
       '<div class="mini-row-title">🌷 母亲节：' + guideFlowerDisplayDate(momDate.str) + '，' + momDate.text + '</div>' +
       '<div class="mini-row-sub">推荐：康乃馨礼盒 ¥128</div></div>' +
-      '<button class="mini-link" onclick="guideStartFlowerList()">查看鲜花订单</button></div>');
+      '<button class="mini-link" onclick="guideStartParentsDayFlower(\'mother\')">订母亲节鲜花</button></div>');
   }
 
   var dadDate = guideNthSundayNext(6, 3);
@@ -308,7 +308,7 @@ function guideHomeRemindersHtml() {
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
       '<div class="mini-row-title">🌿 父亲节：' + guideFlowerDisplayDate(dadDate.str) + '，' + dadDate.text + '</div>' +
       '<div class="mini-row-sub">推荐：百合礼盒 ¥199</div></div>' +
-      '<button class="mini-link" onclick="guideStartFlowerList()">查看鲜花订单</button></div>');
+      '<button class="mini-link" onclick="guideStartParentsDayFlower(\'father\')">订父亲节鲜花</button></div>');
   }
 
   if (!rows.length) return '';
@@ -362,7 +362,6 @@ function guideUpcomingBirthdays(limitDays) {
 
 // 情人节一键下单：优先「爱人」关系，默认玫瑰礼盒 + 2 月 14 日下午
 function guideStartValentineFlower() {
-  return guideFlowerOrderDisabled();   // 下单已下线：只展示订单
   guideResetAllSessions();
   var bday = (mockData.userProfile && mockData.userProfile.birthdayContacts) || [];
   var contacts = guideFlowerContacts();
@@ -378,7 +377,6 @@ function guideStartValentineFlower() {
 
 // 母亲节 / 父亲节下单：优先对应关系的联系人
 function guideStartParentsDayFlower(kind) {
-  return guideFlowerOrderDisabled();   // 下单已下线：只展示订单
   guideResetAllSessions();
   var isMom = kind === 'mother';
   var wantRel = isMom ? '母亲' : '父亲';
@@ -409,7 +407,6 @@ function guideStartParentsDayFlower(kind) {
 }
 // 按联系人生成预填订单（通用）：opts.bouquet / opts.monthDay / opts.slot / opts.card / opts.note
 function guideStartFlowerPreset(name, opts) {
-  return guideFlowerOrderDisabled();   // 下单已下线：只展示订单
   var o = opts || {};
   var contacts = guideFlowerContacts();
   var target = String(name || '');
@@ -463,7 +460,6 @@ function guideStartFlowerPreset(name, opts) {
 }
 // 点生日提醒直接进鲜花确认（收花人/手机号/地址按联系人自动填好，可改）
 function guideStartFlowerForContact(name) {
-  return guideFlowerOrderDisabled();   // 下单已下线：只展示订单
   // 生日礼：鲜花 + 蛋糕（默认 6 寸，可在卡片里改成 8 寸或不加蛋糕）
   guideStartFlowerPreset(name, { cake: '6寸水果蛋糕' });
   return;
@@ -1180,6 +1176,21 @@ async function guideHandleText(text) {
   if (guideAAPhraseIntent(t)) {
     GUIDE_AA = { total: 0, participants: [], stage: 'slots', pendingNames: [], pickOptions: [] };
     return guideLockedRun(function () { return guideAAStep(t); });
+  }
+
+  // 鲜花下单意图：「给林小雨订一束花 / 订束玫瑰 / 订个蛋糕」
+  // （查看订单的说法在上面已单独处理，这里只匹配下单动作）
+  if (/(订|买|送|来|要).{0,8}(花|鲜花|花束|蛋糕)/.test(t) && !/(订单|取消|查|看|记录)/.test(t)) {
+    var flowerName = '';
+    (typeof guideContactNames === 'function' ? guideContactNames().split('、') : []).forEach(function (n) {
+      if (n && t.indexOf(n) !== -1 && n.length > flowerName.length) flowerName = n;
+    });
+    if (flowerName && typeof guideStartFlowerForContact === 'function') {
+      guideStartFlowerForContact(flowerName);
+    } else if (typeof guideStartFlowerOrder === 'function') {
+      guideStartFlowerOrder();
+    }
+    return true;
   }
 
   // 去掉口语前缀，便于识别「我要转账」「帮我转账」
@@ -5333,24 +5344,24 @@ function guideFlowerContactsText() {
 function guideStartBirthdayFlower() {
   guideResetAllSessions();
   currentModule = 'flower';
-  // 下单能力暂时下线：生日鲜花只展示历史订单
-  appendMessage(guideMessage('<p>生日鲜花目前只支持查看鲜花订单，下单功能暂未开放。</p>'));
+  var nearest = (typeof guideNearestBirthday === 'function') ? guideNearestBirthday() : null;
+  appendMessage(guideMessage(
+    '<p>生日鲜花包含这些操作</p>' +
+    '<div class="guide-rows">' +
+    '<div class="guide-row"><div class="guide-row-title">订鲜花+蛋糕</div><div class="guide-row-example">例如：给林小雨订一束花</div></div>' +
+    '<div class="guide-row"><div class="guide-row-title">查看鲜花订单</div><div class="guide-row-example">例如：查看鲜花订单</div></div>' +
+    '<div class="guide-row"><div class="guide-row-title">生日提醒</div><div class="guide-row-example">例如：最近谁的生日</div></div>' +
+    '</div>' +
+    (nearest ? '<p class="guide-tip">最近：' + guideFlowerEsc(nearest.name) + (nearest.relation ? '（' + guideFlowerEsc(nearest.relation) + '）' : '') +
+      ' ' + Number(String(nearest.birthday).split('-')[0]) + ' 月 ' + Number(String(nearest.birthday).split('-')[1]) + ' 日，还有 ' + nearest.days + ' 天</p>' : '') +
+    '<p class="guide-tip">可下单的联系人：' + guideFlowerContactsText() + '</p>' +
+    '<p class="guide-tip">直接说出你的需求即可（照示例说也行）。</p>'
+  ));
   scrollToBottom();
-  if (typeof guideStartFlowerList === 'function') guideStartFlowerList();
 }
 
-
-// 下单功能暂时下线时的统一提示：只展示订单，不进入下单流程
-function guideFlowerOrderDisabled() {
-  guideResetAllSessions();
-  currentModule = 'flower';
-  appendMessage(guideMessage('<p>下单功能暂未开放，目前只能查看鲜花订单。</p>'));
-  scrollToBottom();
-  if (typeof guideStartFlowerList === 'function') guideStartFlowerList();
-}
 
 function guideStartFlowerOrder(opts) {
-  return guideFlowerOrderDisabled();   // 下单已下线：只展示订单
   guideResetAllSessions();
   var pre = opts || {};
   GUIDE_FLOWER = {
@@ -5990,9 +6001,9 @@ async function guideFlowerSession(t) {
       guideStartFlowerList();
       return true;
     }
-    // 下单相关说法：明确告知暂未开放（生日鲜花目前只读）
+    // 下单相关说法：直接进入下单流程
     if (/(订|买|下单|送花|订花|来一束|花束|蛋糕)/.test(t)) {
-      guideSayInvalid(guideMessage('<p>下单功能暂未开放，目前只能查看鲜花订单。</p>'));
+      if (typeof guideStartFlowerOrder === 'function') guideStartFlowerOrder();
       return true;
     }
     appendMessage(guideMessage('<p>可以查看上面的订单；如需取消，告诉我「取消李四的鲜花订单」。</p>'));
