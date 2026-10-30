@@ -24,6 +24,25 @@ function guideMessage(inner) {
     '<div class="msg-bubble agent-bubble">' + inner + '</div></div></div>';
 }
 
+
+// 退出时清理「待确认」的计划：标记取消并收起卡片，避免确认卡守卫继续拦截后续输入
+function guideAbortPendingPlans() {
+  try {
+    if (typeof AGENT_PENDING_PLANS === 'object' && AGENT_PENDING_PLANS) {
+      Object.keys(AGENT_PENDING_PLANS).forEach(function (k) {
+        var rec = AGENT_PENDING_PLANS[k];
+        if (!rec || rec.status !== 'pending') return;
+        rec.status = 'cancelled';
+        var footer = (typeof document !== 'undefined' && document.getElementById) ? document.getElementById(k + '-footer') : null;
+        if (footer) footer.innerHTML = '<div class="agent-reject-card">已取消，本次未发生任何交易。</div>';
+      });
+    }
+    if (typeof window !== 'undefined' && window.__pendingScheduledTransfers) {
+      Object.keys(window.__pendingScheduledTransfers).forEach(function (c) { window.__pendingScheduledTransfers[c] = null; });
+    }
+  } catch (e) { /* 清理失败不影响退出 */ }
+}
+
 function guideResetAllSessions() {
   GUIDE_TRANSFER = null;
   GUIDE_AA = null;
@@ -590,6 +609,7 @@ function guidePickSub(serviceKey, subKey) {
 }
 
 function guideBackToMenu() {
+  guideAbortPendingPlans();
   guideResetAllSessions();
   currentModule = 'chat';
   renderServiceWelcome();
@@ -597,6 +617,7 @@ function guideBackToMenu() {
 
 // 静默退出：清理本轮会话但不展示首页卡片（用户说「退出」时用）
 function guideExitSilently() {
+  guideAbortPendingPlans();
   guideResetAllSessions();
   currentModule = 'chat';
   appendMessage(guideMessage('<p>已退出当前流程。</p>'));
@@ -808,6 +829,7 @@ async function guideHandleText(text) {
     // ① 明确不需要 → 回到主菜单卡片
     if (/^(退出|不需要|不用了|不用|不了|不用啦|算了|取消|没了|不要|否)$/.test(plainWrap)) {
       GUIDE_WRAPUP = null;
+      guideAbortPendingPlans();
       guideResetAllSessions();
       currentModule = 'chat';
       renderServiceWelcome();
