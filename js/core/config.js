@@ -188,6 +188,23 @@ const mockData = {
 // ========== 基础工具函数 ==========
 function appendMessage(html) {
   const chatInner = document.getElementById('chatInner');
+  if (!chatInner) return;
+  // 同一句追问不重复刷屏：如果这条消息是提问、且和上一条 AI 消息一字不差，就不再追加
+  try {
+    var raw = String(html || '');
+    var isAsk = /[？?]/.test(raw) || /麻烦告诉我|请问|请提供|请回复|请选择|请输入/.test(raw);
+    if (isAsk && location.hash !== '#nodup') {
+      var prev = chatInner.querySelectorAll('.message:not(.user) .msg-bubble');
+      if (prev.length) {
+        var probe = document.createElement('div');
+        probe.innerHTML = raw;
+        var inner = probe.querySelector('.msg-bubble') || probe;
+        var nextText = String(inner.textContent || '').replace(/\s+/g, '');
+        var lastText = String(prev[prev.length - 1].textContent || '').replace(/\s+/g, '');
+        if (nextText && nextText === lastText) return;
+      }
+    }
+  } catch (e) { /* 去重失败不影响正常输出 */ }
   const div = document.createElement('div');
   div.innerHTML = html;
   chatInner.appendChild(div.firstElementChild);

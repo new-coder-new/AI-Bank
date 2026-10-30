@@ -865,6 +865,22 @@ function guideAIFirstSkipped(t) {
   return false;
 }
 
+// 去掉「AI 理解」等标签后再输出，并避免连续重复同一句追问
+function guideAsk(html) {
+  var target = (typeof document !== 'undefined' && document.querySelectorAll)
+    ? document.querySelectorAll('.message:not(.user) .msg-bubble') : null;
+  if (target && target.length) {
+    var last = target[target.length - 1];
+    var probe = document.createElement('div');
+    probe.innerHTML = html;
+    var inner = probe.querySelector('.msg-bubble') || probe;
+    var nextText = String(inner.textContent || '').replace(/\s+/g, '');
+    var lastText = String(last.textContent || '').replace(/\s+/g, '');
+    if (nextText && nextText === lastText) return;   // 一模一样就不再刷一条
+  }
+  appendMessage(html);
+  scrollToBottom();
+}
 // 文本解析：服务名 / 子功能名 / 返回菜单，命中则接管，返回 true
 async function guideHandleText(text) {
   var t = String(text || '').trim().replace(/[。.!！?？,，\s]+$/g, '');
@@ -1595,13 +1611,21 @@ function guideContactNames() {
   }).join('、') || '暂无联系人';
 }
 
-function guideUnknownPayeeNotice(name) {
+function guideUnknownPayeeNotice(name, sourceText) {
   var n = (typeof escapeHtml === 'function') ? escapeHtml(name) : name;
-  appendMessage(guideMessage(
+  var src = String(sourceText || '');
+  // 句子里没有转账动词、也没有金额，说明不是在下转账指令（可能只是随口一句）
+  // 这时不要把它当「收款人姓名」念出来，改成通用追问，避免出现「你个傻比 → 『个啥比』不在通讯录里」
+  var likeTransfer = /(转|打款|汇款|付款|付给|给|向|帮|替)/.test(src) || /\d/.test(src);
+  if (src && !likeTransfer) {
+    guideAsk(guideMessage('<p>没太听懂。可以直接说收款人和金额，例如「张三 100」。</p>' +
+      '<p class="guide-tip">例如：张三 100 / 张三转 100 / 给李雷转 1.5 万</p>'));
+    return;
+  }
+  guideAsk(guideMessage(
     '<p>「<b>' + n + '</b>」不在通讯录里。姓名转账只支持通讯录联系人：' + guideContactNames() + '。</p>' +
     '<p class="guide-tip">可以改用手机号转账，或先在「联系人」中新增后再试。</p>'
   ));
-  scrollToBottom();
 }
 
 // 这句话像不像「再转一笔」的转账指令（用于流程锁：不能被当成备注吞掉）
@@ -1777,7 +1801,7 @@ function guideTransferStep(text) {
 
   // 姓名转账：非通讯录姓名直接提示，不进入槽位
   if (s.kind === 'name' && !parsed.payee && parsed.unknownName) {
-    guideUnknownPayeeNotice(parsed.unknownName);
+    guideUnknownPayeeNotice(parsed.unknownName, t);
     return true;
   }
 
@@ -1795,6 +1819,12 @@ function guideTransferStep(text) {
     return true;
   }
 
+  // 负数金额或只写了负号：直接给明确提示，不进 AI 兜底（避免反复追问同一句）
+  if (/^\s*[-−负]/.test(t) && /\d/.test(t) && !(parsed.amount > 0)) {
+    guideAsk(guideMessage('<p>转账金额需要大于 0，请重新输入（例如「1000」）。</p>'));
+    return true;
+  }
+
   // 本地没抽全：中文数字（一百 / 一万五 / 两百块）或两个槽位都没抽到 → AI 兜底
   // 注意：单个数字字（如「张三」里的「三」）不算中文数字，避免把姓名误判为金额
   var hasCnNumber = /[一二三四五六七八九十百千万两]{2,}|[一二三四五六七八九十百千万两]+(?=\s*(?:元|块|万|千|百|钱))/.test(t);
@@ -1805,7 +1835,7 @@ function guideTransferStep(text) {
 
   // 缺什么问什么（姓名 / 手机号）
   if (s.kind === 'phone') {
-    if (s.phone) { appendMessage(guideMessage('<p>麻烦告诉我转账金额</p>')); scrollToBottom(); return true; }
+    if (s.phone) { guideAsk(guideMessage('<p>麻烦告诉我转账金额</p>')); return true; }
     if (s.amount > 0) {
       var phoneTip = parsed.phoneLike
         ? '<p class="guide-tip">「' + parsed.phoneLike + '」位数不足 11 位，没有当作手机号；金额已按 ' + s.amount + ' 元记录。</p>'
@@ -1825,8 +1855,11 @@ function guideTransferStep(text) {
     return true;
   }
   if (s.payee) {
-    appendMessage(guideMessage('<p>麻烦告诉我转账金额</p>'));
-    scrollToBottom();
+    if (/^[-−]?\s*负?\s*\d/.test(t) && /^[-−]|负/.test(t)) {
+      guideAsk(guideMessage('<p>转账金额需要大于 0，请重新输入（例如「1000」）。</p>'));
+    } else {
+      guideAsk(guideMessage('<p>麻烦告诉我转账金额</p>'));
+    }
     return true;
   }
   if (s.amount > 0) {
@@ -1874,7 +1907,7 @@ function guideTransferAskRemark() {
   if (!s) return;
   s.stage = 'askRemark';
   s.remarkBoxId = 'transfer-remark-' + Date.now();
-  appendMessage(guideMessage(
+  guideAsk(guideMessage(
     '<div id="' + s.remarkBoxId + '">' +
     '<p>是否需要添加备注？</p>' +
     '<div class="guide-chips">' +
@@ -1882,7 +1915,6 @@ function guideTransferAskRemark() {
     '<button class="guide-chip" onclick="guideTransferRemarkChoice(false)">否</button>' +
     '</div></div>'
   ));
-  scrollToBottom();
 }
 
 function guideTransferRemarkChoice(need) {
@@ -2025,7 +2057,7 @@ async function guideTimedStep(text) {
   }
 
   if (!parsed.payee && parsed.unknownName) {
-    guideUnknownPayeeNotice(parsed.unknownName);
+    guideUnknownPayeeNotice(parsed.unknownName, t);
     return true;
   }
 
@@ -2172,7 +2204,11 @@ async function guideTransferAIFallback(text) {
   if (phone) s.phone = phone;
   if (amount > 0) s.amount = amount;
 
-  var aiTag = parsed ? '<span class="guide-ai-tag">AI 理解</span> ' : '';
+  var aiTag = '';
+  if (!(amount > 0) && /[-−负]/.test(String(text || '')) && /\d/.test(String(text || ''))) {
+    guideAsk(guideMessage('<p>转账金额需要大于 0，请重新输入（例如「1000」）。</p>'));
+    return true;
+  }
   var hasTarget = s.kind === 'phone' ? !!s.phone : !!s.payee;
   if (hasTarget && s.amount > 0) {
     if (s.kind === 'timed') {
@@ -2192,18 +2228,18 @@ async function guideTransferAIFallback(text) {
   }
   if (s.kind === 'phone') {
     if (s.phone) {
-      appendMessage(guideMessage('<p>' + aiTag + '麻烦告诉我转账金额</p>'));
+      guideAsk(guideMessage('<p>麻烦告诉我转账金额</p>'));
     } else if (s.amount > 0) {
-      appendMessage(guideMessage('<p>' + aiTag + '请问收款手机号是多少？</p>'));
+      guideAsk(guideMessage('<p>请问收款手机号是多少？</p>'));
     } else {
       var reply = parsed && parsed.reply ? String(parsed.reply) : '';
       appendMessage(guideMessage('<p>' + (reply || '没太听懂。可以直接说手机号和金额，例如「13800138000 100」。') + '</p>' +
         '<p class="guide-tip">例如：13800138000 100</p>'));
     }
   } else if (s.payee) {
-    appendMessage(guideMessage('<p>' + aiTag + '麻烦告诉我转账金额</p>'));
+    guideAsk(guideMessage('<p>麻烦告诉我转账金额</p>'));
   } else if (s.amount > 0) {
-    appendMessage(guideMessage('<p>' + aiTag + '请问要转给谁？</p>'));
+    guideAsk(guideMessage('<p>请问要转给谁？</p>'));
   } else {
     var reply2 = parsed && parsed.reply ? String(parsed.reply) : '';
     appendMessage(guideMessage('<p>' + (reply2 || '没太听懂。可以直接说收款人和金额，例如「张三 100」。') + '</p>' +
@@ -3787,12 +3823,11 @@ function guideTxnLimitAskLimits() {
   var s = GUIDE_TXN_LIMIT;
   if (!s) return;
   var label = s.card ? guideCardLabel(s.card) : '';
-  appendMessage(guideMessage(
+  guideAsk(guideMessage(
     (label ? '<p>正在为「<b>' + guideCardLimitEsc(label) + '</b>」设置交易限制。</p>' : '') +
     '<p>请设置单笔限额与每日限额。</p>' +
     '<p class="guide-tip">只改一项时，另一项回复「不变」即可，例如「1000，不变」。</p>'
   ));
-  scrollToBottom();
 }
 
 function guideTxnLimitPickCard(cardId) {
@@ -3977,7 +4012,7 @@ async function guideTxnLimitStep(text) {
   }
 
   if (s.single == null) {
-    appendMessage(guideMessage('<p>请输入单笔限额</p>'));
+    guideAsk(guideMessage('<p>请输入单笔限额</p>'));
     scrollToBottom();
     return true;
   }
@@ -4150,7 +4185,7 @@ function guideCardLostStep(text) {
   var digits = t.replace(/\D/g, '');
 
   if (digits.length < 4) {
-    appendMessage(guideMessage('<p>请提供 4 位卡片尾号。</p>'));
+    guideAsk(guideMessage('<p>请提供 4 位卡片尾号。</p>'));
     scrollToBottom();
     return true;
   }
@@ -5177,7 +5212,7 @@ function guideStartSubCancel() {
       guideSubCycleText(sub.cycle) + '・' + (sub.autoRenew !== false ? '自动续费开启' : '自动续费关闭') + '</b></div>';
   }).join('');
   if (GUIDE_SUB && GUIDE_SUB.mode === 'cancel') GUIDE_SUB.listShown = true;
-  appendMessage(guideMessage('<p>请选择你想要取消的订阅项目。</p>' +
+  guideAsk(guideMessage('<p>请选择你想要取消的订阅项目。</p>' +
     '<div class="report-panel"><div class="report-panel-title">有效订阅</div>' + rows + '</div>'));
   scrollToBottom();
 }
