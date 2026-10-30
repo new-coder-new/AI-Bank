@@ -236,7 +236,7 @@ function guideHomeRemindersHtml() {
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
       '<div class="mini-row-title">💐 情人节：2 月 14 日，' + vText + '</div>' +
       '<div class="mini-row-sub">推荐：简约玫瑰 ¥299</div></div>' +
-      '<button class="mini-link" onclick="guideStartValentineFlower()">订情人节鲜花</button></div>');
+      '<button class="mini-link" onclick="guideStartFlowerList()">查看鲜花订单</button></div>');
   }
 
   var momDate = guideNthSundayNext(5, 2);
@@ -244,7 +244,7 @@ function guideHomeRemindersHtml() {
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
       '<div class="mini-row-title">🌷 母亲节：' + guideFlowerDisplayDate(momDate.str) + '，' + momDate.text + '</div>' +
       '<div class="mini-row-sub">推荐：康乃馨礼盒 ¥128</div></div>' +
-      '<button class="mini-link" onclick="guideStartParentsDayFlower(\'mother\')">订母亲节鲜花</button></div>');
+      '<button class="mini-link" onclick="guideStartFlowerList()">查看鲜花订单</button></div>');
   }
 
   var dadDate = guideNthSundayNext(6, 3);
@@ -252,7 +252,7 @@ function guideHomeRemindersHtml() {
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
       '<div class="mini-row-title">🌿 父亲节：' + guideFlowerDisplayDate(dadDate.str) + '，' + dadDate.text + '</div>' +
       '<div class="mini-row-sub">推荐：百合礼盒 ¥199</div></div>' +
-      '<button class="mini-link" onclick="guideStartParentsDayFlower(\'father\')">订父亲节鲜花</button></div>');
+      '<button class="mini-link" onclick="guideStartFlowerList()">查看鲜花订单</button></div>');
   }
 
   if (!rows.length) return '';
@@ -306,6 +306,7 @@ function guideUpcomingBirthdays(limitDays) {
 
 // 情人节一键下单：优先「爱人」关系，默认玫瑰礼盒 + 2 月 14 日下午
 function guideStartValentineFlower() {
+  return guideFlowerOrderDisabled();   // 下单已下线：只展示订单
   guideResetAllSessions();
   var bday = (mockData.userProfile && mockData.userProfile.birthdayContacts) || [];
   var contacts = guideFlowerContacts();
@@ -321,6 +322,7 @@ function guideStartValentineFlower() {
 
 // 母亲节 / 父亲节下单：优先对应关系的联系人
 function guideStartParentsDayFlower(kind) {
+  return guideFlowerOrderDisabled();   // 下单已下线：只展示订单
   guideResetAllSessions();
   var isMom = kind === 'mother';
   var wantRel = isMom ? '母亲' : '父亲';
@@ -351,6 +353,7 @@ function guideStartParentsDayFlower(kind) {
 }
 // 按联系人生成预填订单（通用）：opts.bouquet / opts.monthDay / opts.slot / opts.card / opts.note
 function guideStartFlowerPreset(name, opts) {
+  return guideFlowerOrderDisabled();   // 下单已下线：只展示订单
   var o = opts || {};
   var contacts = guideFlowerContacts();
   var target = String(name || '');
@@ -404,6 +407,7 @@ function guideStartFlowerPreset(name, opts) {
 }
 // 点生日提醒直接进鲜花确认（收花人/手机号/地址按联系人自动填好，可改）
 function guideStartFlowerForContact(name) {
+  return guideFlowerOrderDisabled();   // 下单已下线：只展示订单
   // 生日礼：鲜花 + 蛋糕（默认 6 寸，可在卡片里改成 8 寸或不加蛋糕）
   guideStartFlowerPreset(name, { cake: '6寸水果蛋糕' });
   return;
@@ -575,7 +579,8 @@ function guideActiveFlowLabel() {
   // 订阅：只有进了子模块（添加 / 取消 / 自动续费 / 全取消）才加锁，
   // 停在「请选择操作」的阶段不算进行中，避免用户说「取消所有订阅」被流程锁拦住
   if (GUIDE_SUB && /^(add|cancel|manage|cancel-all)$/.test(String(GUIDE_SUB.mode || ''))) return '订阅管理';
-  if (GUIDE_FLOWER) return '鲜花订购';
+  // 鲜花：只看订单列表不算「进行中流程」；改单/取消才算
+  if (GUIDE_FLOWER && /^(order|modify|cancel)$/.test(String(GUIDE_FLOWER.mode || ''))) return '鲜花订购';
   return '';
 }
 
@@ -715,8 +720,13 @@ async function guideHandleText(text) {
   //   ⑦ 规则失配且像「想看某功能」→ 再交给模型识别（guideAIIntent）
   //   ⑧ 全失配 → 返回 false，由 chat.js 输出统一兜底话术
   // ─────────────────────────────────────────────────────────────────────
-  // ① AI 优先（意图层）：没有进行中的流程时，先让模型判断模块；判不出再走规则
-  if (!guideActiveFlowLabel() && guideAIFirstEnabled() && !guideAIFirstSkipped(t)) {
+  // ① AI 优先（意图层）：没有进行中的会话时，先让模型判断模块；判不出再走规则
+  //    注意：鲜花「只看订单」这类只读会话虽然不算流程锁，但也不应再走模块意图路由，
+  //    否则「给我订一束玫瑰」会被模型判成订阅之类的业务。
+  var hasSessionContext = guideActiveFlowLabel() ||
+    !!(GUIDE_TRANSFER || GUIDE_AA || GUIDE_WEALTH || GUIDE_HOLDING || GUIDE_SUB ||
+       GUIDE_CARD_APPLY || GUIDE_CARD_LIMIT || GUIDE_TXN_LIMIT || GUIDE_CARD_LOST || GUIDE_FLOWER);
+  if (!hasSessionContext && guideAIFirstEnabled() && !guideAIFirstSkipped(t)) {
     try {
       if (await guideAIRouteIntent(t)) return true;
     } catch (e) { /* 模型失败 → 规则兜底 */ }
@@ -5055,23 +5065,24 @@ function guideFlowerContactsText() {
 function guideStartBirthdayFlower() {
   guideResetAllSessions();
   currentModule = 'life';
-  var n = (typeof guideNearestBirthday === 'function') ? guideNearestBirthday() : null;
-  appendMessage(guideMessage(
-    '<p>生日鲜花包含这些操作</p>' +
-    '<div class="guide-rows">' +
-    '<div class="guide-row"><div class="guide-row-title">订鲜花+蛋糕</div><div class="guide-row-example">例如：给林小雨订一束花</div></div>' +
-    '<div class="guide-row"><div class="guide-row-title">查看鲜花订单</div><div class="guide-row-example">例如：查看鲜花订单</div></div>' +
-    '<div class="guide-row"><div class="guide-row-title">生日提醒</div><div class="guide-row-example">例如：最近谁的生日</div></div>' +
-    '</div>' +
-    (n ? '<p class="guide-tip">最近：' + guideFlowerEsc(n.name) + (n.relation ? '（' + guideFlowerEsc(n.relation) + '）' : '') +
-      ' ' + Number(String(n.birthday).split('-')[0]) + ' 月 ' + Number(String(n.birthday).split('-')[1]) + ' 日，还有 ' + n.days + ' 天</p>' : '') +
-    '<p class="guide-tip">可下单的联系人：' + guideFlowerContactsText() + '</p>' +
-    '<p class="guide-tip">直接说出你的需求即可（照示例说也行）。</p>'
-  ));
+  // 下单能力暂时下线：生日鲜花只展示历史订单
+  appendMessage(guideMessage('<p>生日鲜花目前只支持查看鲜花订单，下单功能暂未开放。</p>'));
   scrollToBottom();
+  if (typeof guideStartFlowerList === 'function') guideStartFlowerList();
+}
+
+
+// 下单功能暂时下线时的统一提示：只展示订单，不进入下单流程
+function guideFlowerOrderDisabled() {
+  guideResetAllSessions();
+  currentModule = 'life';
+  appendMessage(guideMessage('<p>下单功能暂未开放，目前只能查看鲜花订单。</p>'));
+  scrollToBottom();
+  if (typeof guideStartFlowerList === 'function') guideStartFlowerList();
 }
 
 function guideStartFlowerOrder(opts) {
+  return guideFlowerOrderDisabled();   // 下单已下线：只展示订单
   guideResetAllSessions();
   var pre = opts || {};
   GUIDE_FLOWER = {
@@ -5702,7 +5713,17 @@ async function guideFlowerSession(t) {
       var target3 = guideFlowerOrders().filter(function (x) { return x.status === '待配送' && t.indexOf(x.recipient) !== -1; })[0];
       if (target3) { guideFlowerCancelStart(target3.id); return true; }
     }
-    appendMessage(guideMessage('<p>请点订单上的【取消订单】，或告诉我「取消李四的鲜花订单」。</p>'));
+    // 先识别「查看订单」这类只读请求，避免「订单」里的「订」被当成下单
+    if (/(查看|看看|查询|显示|我的订单|订单列表|鲜花订单)/.test(t)) {
+      guideStartFlowerList();
+      return true;
+    }
+    // 下单相关说法：明确告知暂未开放（生日鲜花目前只读）
+    if (/(订|买|下单|送花|订花|来一束|花束|蛋糕)/.test(t)) {
+      guideSayInvalid(guideMessage('<p>下单功能暂未开放，目前只能查看鲜花订单。</p>'));
+      return true;
+    }
+    appendMessage(guideMessage('<p>可以查看上面的订单；如需取消，告诉我「取消李四的鲜花订单」。</p>'));
     scrollToBottom();
     return true;
   }

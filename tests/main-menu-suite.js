@@ -109,8 +109,10 @@ const NO_FLOW = ['transfer', 'aa', 'wealth', 'cardApply', 'cardLimit', 'txn', 'l
     const snap = snapshot();
     const noFlow = NO_FLOW.every((k) => !snap[k]) || (snap.sub === 'choose' && NO_FLOW.filter((k) => k !== 'sub').every((k) => !snap[k]));
     const mod = __g.guideMainModuleGuess(c.text);
-    // 菜单已打开：最后一条消息包含该模块的二级菜单特征（示例行）
-    const openedMenu = /例如：/.test(snap.last) || /请选择|包含这些|请告诉我你垫付|我的卡片|风险测评/.test(snap.last);
+    // 已进入该模块：二级菜单（含示例行）或只读页（鲜花目前只展示订单）
+    const openedMenu = /例如：/.test(snap.last) ||
+      /请选择|包含这些|请告诉我你垫付|我的卡片|风险测评/.test(snap.last) ||
+      (c.module === 'flower' && /鲜花订单|生日鲜花|暂未开放/.test(snap.last));
     const pass = !err && noFlow && mod === c.module && openedMenu;
     rows.push({ ...c, pass, err, snap, mod, openedMenu });
   }
