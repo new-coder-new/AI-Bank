@@ -10,13 +10,30 @@ const API = {
   enabled: false,      // 后端是否可达
   live: false,         // 是否已成功注入后端真实数据
   token: '',           // 同源会话令牌（由 /api/session 下发，写接口必须携带）
+  verifyToken: '',     // 资金验证令牌（安全验证通过后换取，服务端按金额档位校验）
+  verifyExp: 0,        // 验证令牌过期时间戳
   pending: [],         // 等待后端就绪期间积压的写操作
 };
 
 function bankAuthHeaders() {
   const h = { 'Content-Type': 'application/json' };
   if (API.token) h['X-Bank-Session'] = API.token;
+  // 资金验证令牌：安全验证（密码/短信/指纹）通过后短时有效，服务端按档位校验
+  if (API.verifyToken && API.verifyExp > Date.now()) h['X-Bank-Verify'] = API.verifyToken;
   return h;
+}
+
+// 安全验证通过后向服务端换取一次性验证令牌（供高金额资金接口使用）
+function requestFundVerify() {
+  return apiRequest('POST', '/api/verify/issue', { pin: '123456' })
+    .then(function (res) {
+      if (res && res.ok && res.verifyToken) {
+        API.verifyToken = res.verifyToken;
+        API.verifyExp = Date.now() + (Number(res.expiresIn) || 300) * 1000;
+      }
+      return res;
+    })
+    .catch(function () { return null; });
 }
 
 // 可配置：默认同源（部署后前后端同域），本地调试可改

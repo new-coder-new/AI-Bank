@@ -1341,6 +1341,7 @@ async function agentApprovePlan(id) {
     }
     if (input) input.disabled = true;
     if (errEl) { errEl.textContent = '验证通过'; errEl.className = 'agent-verify-err ok'; }
+    if (typeof requestFundVerify === 'function') requestFundVerify();
   }
 
   // —— T4：验证通过后只提交人工复核，不执行任何扣款 ——

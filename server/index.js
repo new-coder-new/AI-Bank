@@ -481,6 +481,39 @@ function settlePendingRedemptions(db) {
   } catch (e) { return 0; }
 }
 
+
+// 资金类接口频控（按 IP 的滑动窗口）
+const FUND_RATE = new Map();
+function fundRateLimited(req, bucket, max, windowMs) {
+  const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
+  const key = bucket + ':' + ip;
+  const nowTs = Date.now();
+  const arr = (FUND_RATE.get(key) || []).filter((t) => nowTs - t < windowMs);
+  if (arr.length >= max) { FUND_RATE.set(key, arr); return true; }
+  arr.push(nowTs);
+  FUND_RATE.set(key, arr);
+  return false;
+}
+
+// T3 服务端验证令牌：客户端验证（密码/短信/指纹）通过后才签发，5 分钟有效、一次性
+const VERIFY_TOKENS = new Map();
+const VERIFY_TTL = 5 * 60 * 1000;
+function issueVerifyToken(purpose) {
+  const token = crypto.randomBytes(18).toString('hex');
+  VERIFY_TOKENS.set(token, { purpose: purpose || 'fund', exp: Date.now() + VERIFY_TTL });
+  return token;
+}
+function consumeVerifyToken(req) {
+  const token = String(req.headers['x-bank-verify'] || '');
+  if (!token) return false;
+  const rec = VERIFY_TOKENS.get(token);
+  if (!rec || rec.exp < Date.now()) { VERIFY_TOKENS.delete(token); return false; }
+  VERIFY_TOKENS.delete(token);   // 一次性
+  return true;
+}
+// 演示密码（可用环境变量覆盖）
+const DEMO_PIN = process.env.BANK_DEMO_PIN || '123456';
+
 // ------------------------------ 路由 ------------------------------
 const routes = {
   // 健康检查
@@ -524,6 +557,13 @@ const routes = {
   'GET /api/insights': () => ({ insights: generateInsights() }),
 
   // 转账（真实扣减）
+  // 资金验证令牌签发（客户端安全验证通过后调用，5 分钟有效、一次性）
+  'POST /api/verify/issue': async (req) => {
+    const { pin } = await readBody(req);
+    if (String(pin || '') !== DEMO_PIN) return { ok: false, error: '验证失败' };
+    return { ok: true, verifyToken: issueVerifyToken('fund'), expiresIn: Math.floor(VERIFY_TTL / 1000) };
+  },
+
   'POST /api/transfer': async (req) => {
     const { payee, amount, idempotencyKey } = await readBody(req);
     const amt = Math.round((Number(amount) || 0) * 100) / 100;
@@ -557,6 +597,10 @@ const routes = {
       Object.keys(DB.__idem).forEach((k) => {
         if (DB.__idem[k] && Date.now() - (DB.__idem[k].at || 0) > 600000) delete DB.__idem[k];
       });
+    }
+    // 服务端独立判定：≥ ¥5,000（T3）必须携带一次性的验证令牌
+    if (amt >= 5000 && !consumeVerifyToken(req)) {
+      return { ok: false, error: '需要安全验证（金额达到二次验证档）' };
     }
     const d = DB.userProfile.debitCard;
     if (amt > d.available) return { ok: false, error: '余额不足', available: d.available };
@@ -592,8 +636,14 @@ const routes = {
 
   // 理财申购（真实扣减余额，增加持仓）
   'POST /api/wealth/buy': async (req) => {
-    const { product, amount } = await readBody(req);
+    const { product, amount, idempotencyKey } = await readBody(req);
     const amt = Number(amount) || 0;
+    if (amt >= 5000 && !consumeVerifyToken(req)) return { ok: false, error: '需要安全验证（金额达到二次验证档）' };
+    if (idempotencyKey) {
+      DB.__idem = DB.__idem || {};
+      const k = 'buy:' + String(idempotencyKey);
+      if (DB.__idem[k]) return Object.assign({}, DB.__idem[k], { duplicate: true });
+    }
     const p = DB.products.find((x) => x.name === product);
     if (!p) return { ok: false, error: '产品不存在' };
     if (amt < (p.minAmount || 0)) return { ok: false, error: `低于起购金额 ¥${p.minAmount}` };
@@ -604,12 +654,20 @@ const routes = {
     if (h) { h.amount += amt; h.cost += amt; }
     else DB.userProfile.holdings.push({ name: product, icon: p.icon, amount: amt, cost: amt, profit: 0, profitRate: 0, buyDate: fmtDate(now()), status: '持有中' });
     addTxn('expense', amt, `申购理财-${product}`, '理财申购');
-    return { ok: true, balance: d.balance, available: d.available, holdings: DB.userProfile.holdings };
+    const __res = { ok: true, balance: d.balance, available: d.available, holdings: DB.userProfile.holdings };
+    if (idempotencyKey && DB.__idem) DB.__idem['buy:' + String(idempotencyKey)] = Object.assign({ at: Date.now() }, __res);
+    return __res;
   },
 
   // 理财赎回
   'POST /api/wealth/redeem': async (req) => {
-    const { product, amount } = await readBody(req);
+    const { product, amount, idempotencyKey } = await readBody(req);
+    if (Number(amount) >= 5000 && !consumeVerifyToken(req)) return { ok: false, error: '需要安全验证（金额达到二次验证档）' };
+    if (idempotencyKey) {
+      DB.__idem = DB.__idem || {};
+      const k = 'redeem:' + String(idempotencyKey);
+      if (DB.__idem[k]) return Object.assign({}, DB.__idem[k], { duplicate: true });
+    }
     const h = DB.userProfile.holdings.find((x) => x.name === product);
     if (!h) return { ok: false, error: '无此持仓' };
     const prodDef = DB.products.find((x) => x.name === product) || {};
@@ -841,7 +899,11 @@ const routes = {
   },
 
   // 重置数据
-  'POST /api/reset': () => {
+  'POST /api/reset': (req) => {
+    const adminToken = process.env.BANK_ADMIN_TOKEN;
+    if (adminToken && String(req.headers['x-bank-admin'] || '') !== adminToken) {
+      return { ok: false, error: '需要管理员令牌' };
+    }
     DB = buildDB();
     saveDB(DB);
     return { ok: true, message: '数据已重置' };
@@ -879,6 +941,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   const key = `${req.method} ${pathname}`;
+  // 资金类写接口频控：同一 IP 每分钟最多 20 次
+  const FUND_PATHS = ['/api/transfer', '/api/transfer/reverse', '/api/wealth/buy', '/api/wealth/redeem', '/api/card/'];
+  if (req.method === 'POST' && FUND_PATHS.some((p) => pathname.startsWith(p))) {
+    if (fundRateLimited(req, 'fund', 20, 60000)) return sendJSON(res, 429, { ok: false, error: '操作过于频繁，请稍后再试' });
+  }
   const handler = routes[key];
 
   if (!handler) {

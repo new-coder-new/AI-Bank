@@ -97,6 +97,7 @@ function inputPassword(num, popupId) {
     setTimeout(() => {
       if (!document.getElementById(popupId)) return;
       if (passwordInputs[popupId] === '123456') {
+        if (typeof requestFundVerify === 'function') requestFundVerify();
         closeSecurityVerify(popupId, true);
       } else {
         securityAttempts[popupId] = (securityAttempts[popupId] || 0) + 1;
@@ -247,7 +248,7 @@ function showFingerprintVerify(popupId) {
       演示环境不会调用系统指纹传感器；点击按钮即代表验证通过。
     </div>
     <div style="display:flex;gap:10px;">
-      <button onclick="closeSecurityVerify('${popupId}', true)" style="flex:1;padding:12px;border:none;background:linear-gradient(135deg,#0B4F9C,#1F6FD0);color:#fff;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">模拟指纹验证</button>
+      <button onclick="if (typeof requestFundVerify === 'function') requestFundVerify(); closeSecurityVerify('${popupId}', true)" style="flex:1;padding:12px;border:none;background:linear-gradient(135deg,#0B4F9C,#1F6FD0);color:#fff;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">模拟指纹验证</button>
       <button onclick="closeSecurityVerify('${popupId}', false)" style="flex:1;padding:12px;border:none;background:#f3f4f6;color:#666;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">取消</button>
     </div>
   `;
