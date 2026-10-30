@@ -618,8 +618,14 @@ function guideBackToMenu() {
 // 静默退出：清理本轮会话但不展示首页卡片（用户说「退出」时用）
 function guideExitSilently() {
   guideAbortPendingPlans();
+  var exitMod = currentModule;
   guideResetAllSessions();
   currentModule = 'chat';
+  // 在某个模块流程里退出：先问「还需要办理其他 XX 业务吗？」（与办完的衔接一致）
+  if (exitMod && exitMod !== 'chat' && typeof guideModuleWrapUp === 'function') {
+    guideModuleWrapUp(exitMod);
+    return;
+  }
   appendMessage(guideMessage('<p>已退出当前流程。</p>'));
   scrollToBottom();
 }
@@ -3033,8 +3039,8 @@ function guideCardApplyCancel() {
   GUIDE_CARD_APPLY = null;
   if (!guideConfirmCardCollapse(boxId, '已取消卡片申请，未提交任何资料。')) {
     appendMessage(guideMessage('<p>已取消卡片申请，未提交任何资料。</p>'));
-  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
   }
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
   scrollToBottom();
 }
 
@@ -3893,6 +3899,7 @@ function guideCardLostSubmit() {
     function (ok) {
       if (!ok) {
         guideCardLostCollapse('未通过安全验证，已取消挂失，卡片状态保持不变。');
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
         return;
       }
       guideCardLostApply(card);
@@ -4936,6 +4943,8 @@ function guideSubCancelAllOp() {
     appendMessage(guideMessage('<p>未执行取消，订阅状态保持原样。</p>'));
   }
   scrollToBottom();
+
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
 }
 function guideSubCancelOp() {
   var boxId = GUIDE_SUB && GUIDE_SUB.boxId;
@@ -5880,6 +5889,8 @@ function guideFlowerCancelOp() {
     appendMessage(guideMessage('<p>已取消本次操作，鲜花订单保持不变。</p>'));
   }
   scrollToBottom();
+
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('flower'); }, 400);
 }
 
 // 鲜花会话统一入口
