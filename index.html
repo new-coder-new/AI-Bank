@@ -5,79 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0B4F9C">
 <title>智能金融助手 · 智银银行</title>
-<link rel="stylesheet" href="css/style.css?v=20261105z">
+<link rel="stylesheet" href="css/style.css?v=20261106a">
 </head>
 <body>
 
-<!-- 登录页 -->
-<div id="loginOverlay" style="position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;background:linear-gradient(160deg,#F2F6FC,#DFE9F7);">
-  <div style="width:340px;max-width:92vw;background:#fff;border-radius:18px;padding:28px 26px 24px;box-shadow:0 24px 70px rgba(8,58,115,.18);">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-      <div style="width:38px;height:38px;border-radius:11px;background:#0B4F9C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">AI</div>
-      <div>
-        <div style="font-size:17px;font-weight:700;color:#0F172A;">智能金融助手</div>
-        <div style="font-size:12px;color:#94A3B8;">智银银行 · AI 管家</div>
-      </div>
-    </div>
-    <div style="font-size:12px;color:#94A3B8;margin:14px 0 18px;">请登录后使用，账号与密码为演示凭据。</div>
-    <label style="display:block;font-size:12px;color:#475569;margin-bottom:6px;">账号</label>
-    <input id="loginUser" class="flower-input" style="width:100%;box-sizing:border-box;margin-bottom:14px;" placeholder="请输入账号" autocomplete="username" />
-    <label style="display:block;font-size:12px;color:#475569;margin-bottom:6px;">密码</label>
-    <input id="loginPass" class="flower-input" type="password" style="width:100%;box-sizing:border-box;margin-bottom:10px;" placeholder="请输入密码" autocomplete="current-password" />
-    <div id="loginErr" style="display:none;color:#DC2626;font-size:12px;margin-bottom:10px;"></div>
-    <button id="loginBtn" onclick="doLogin()" style="width:100%;height:42px;border:none;border-radius:10px;background:#0B4F9C;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">登录</button>
-    <div style="margin-top:14px;font-size:11px;color:#94A3B8;text-align:center;">演示账号 admin / 2006</div>
-  </div>
-</div>
-<script>
-// 登录页逻辑：成功后写入令牌并刷新，让各模块按已登录状态初始化
-function showLoginOverlay() {
-  var ov = document.getElementById('loginOverlay');
-  if (ov) ov.style.display = 'flex';
-  var app = document.querySelector('.main');
-  if (app) app.style.visibility = 'hidden';
-}
-function hideLoginOverlay() {
-  var ov = document.getElementById('loginOverlay');
-  if (ov) ov.style.display = 'none';
-  var app = document.querySelector('.main');
-  if (app) app.style.visibility = 'visible';
-}
-async function doLogin() {
-  var u = (document.getElementById('loginUser') || {}).value || '';
-  var p = (document.getElementById('loginPass') || {}).value || '';
-  var err = document.getElementById('loginErr');
-  if (err) { err.style.display = 'none'; }
-  try {
-    var res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: String(u).trim(), password: String(p) })
-    });
-    var j = await res.json();
-    if (j && j.ok && j.token) {
-      sessionStorage.setItem('bankToken', j.token);
-      location.reload();
-    } else if (err) {
-      err.textContent = (j && j.error) || '登录失败，请重试';
-      err.style.display = 'block';
-    }
-  } catch (e) {
-    if (err) { err.textContent = '网络异常，请稍后再试'; err.style.display = 'block'; }
-  }
-}
-// 页面加载即判断登录态
-(function () {
-  var logged = false;
-  try { logged = !!sessionStorage.getItem('bankToken'); } catch (e) { }
-  if (!logged) showLoginOverlay();
-  document.addEventListener('DOMContentLoaded', function () {
-    if (!logged) showLoginOverlay();
-    var pass = document.getElementById('loginPass');
-    if (pass) pass.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
-  });
-})();
-</script>
+
 
 <div class="main">
   <div class="topbar">
@@ -162,50 +94,50 @@ async function doLogin() {
 
 
 <!-- 模块化JS - 按依赖顺序加载 -->
-<script src="js/core/icons.js?v=20261105z"></script>
+<script src="js/core/icons.js?v=20261106a"></script>
 <!-- 本地密钥（可选）：js/core/config.local.js 已被 git 忽略；缺失时由服务端用环境变量兜底，无 Key 则 AI 能力自动降级 -->
-<script src="js/core/config.local.js?v=20261105z"></script>
-<script src="js/core/config.js?v=20261105z"></script>
-<script src="js/core/api.js?v=20261105z"></script>
-<script src="js/core/visualization.js?v=20261105z"></script>
-<script src="js/core/storage.js?v=20261105z"></script>
-<script src="js/flows/security.js?v=20261105z"></script>
-<script src="js/flows/transfer.js?v=20261105z"></script>
-<script src="js/flows/wealth.js?v=20261105z"></script>
-<script src="js/flows/card.js?v=20261105z"></script>
-<script src="js/flows/subscription.js?v=20261105z"></script>
-<script src="js/flows/budget.js?v=20261105z"></script>
-<script src="js/flows/userinfo.js?v=20261105z"></script>
-<script src="js/flows/analysis.js?v=20261105z"></script>
-<script src="js/flows/flower.js?v=20261105z"></script>
-<script src="js/core/voice.js?v=20261105z"></script>
-<script src="js/agent/ai.js?v=20261105z"></script>
-<script src="js/core/intent.js?v=20261105z"></script>
+<script src="js/core/config.local.js?v=20261106a"></script>
+<script src="js/core/config.js?v=20261106a"></script>
+<script src="js/core/api.js?v=20261106a"></script>
+<script src="js/core/visualization.js?v=20261106a"></script>
+<script src="js/core/storage.js?v=20261106a"></script>
+<script src="js/flows/security.js?v=20261106a"></script>
+<script src="js/flows/transfer.js?v=20261106a"></script>
+<script src="js/flows/wealth.js?v=20261106a"></script>
+<script src="js/flows/card.js?v=20261106a"></script>
+<script src="js/flows/subscription.js?v=20261106a"></script>
+<script src="js/flows/budget.js?v=20261106a"></script>
+<script src="js/flows/userinfo.js?v=20261106a"></script>
+<script src="js/flows/analysis.js?v=20261106a"></script>
+<script src="js/flows/flower.js?v=20261106a"></script>
+<script src="js/core/voice.js?v=20261106a"></script>
+<script src="js/agent/ai.js?v=20261106a"></script>
+<script src="js/core/intent.js?v=20261106a"></script>
 <!-- 智能层：记忆 / 工具 / 风险 / 计划 / 洞察与场景 -->
-<script src="js/agent/agent.js?v=20261105z"></script>
+<script src="js/agent/agent.js?v=20261106a"></script>
 <!-- v6 认知层：画像分析 / 消费决策 / 风险识别 / 跨场景规划 / 展示增强 -->
-<script src="js/agent/profile.js?v=20261105z"></script>
-<script src="js/agent/decision.js?v=20261105z"></script>
-<script src="js/agent/riskdetect.js?v=20261105z"></script>
-<script src="js/agent/planner.js?v=20261105z"></script>
-<script src="js/agent/display.js?v=20261105z"></script>
+<script src="js/agent/profile.js?v=20261106a"></script>
+<script src="js/agent/decision.js?v=20261106a"></script>
+<script src="js/agent/riskdetect.js?v=20261106a"></script>
+<script src="js/agent/planner.js?v=20261106a"></script>
+<script src="js/agent/display.js?v=20261106a"></script>
 <!-- 信用卡额度与调额层：区分申请/审批/生效额度 + 调额流程 + 纯数学计算 -->
-<script src="js/flows/cardlimit.js?v=20261105z"></script>
+<script src="js/flows/cardlimit.js?v=20261106a"></script>
 <!-- 卡片服务：卡片申请 / 交易限制 / 卡片挂失（全部服务 → 卡片分组） -->
-<script src="js/flows/cardservice.js?v=20261105z"></script>
-<script src="js/agent/agentsvc.js?v=20261105z"></script>
+<script src="js/flows/cardservice.js?v=20261106a"></script>
+<script src="js/agent/agentsvc.js?v=20261106a"></script>
 <!-- v7 理解层与知识增强层：指代消解 / 金融知识库(RAG) / 场景推理 -->
-<script src="js/agent/context.js?v=20261105z"></script>
-<script src="js/agent/kb.js?v=20261105z"></script>
-<script src="js/agent/scenario.js?v=20261105z"></script>
-<script src="js/agent/insights.js?v=20261105z"></script>
-<script src="js/agent/agent-llm.js?v=20261105z"></script>
-<script src="js/flows/chat.js?v=20261105z"></script>
+<script src="js/agent/context.js?v=20261106a"></script>
+<script src="js/agent/kb.js?v=20261106a"></script>
+<script src="js/agent/scenario.js?v=20261106a"></script>
+<script src="js/agent/insights.js?v=20261106a"></script>
+<script src="js/agent/agent-llm.js?v=20261106a"></script>
+<script src="js/flows/chat.js?v=20261106a"></script>
 <!-- 服务向导：对话起始欢迎语 + 五类服务二级菜单 + 模块内上下文 -->
 <!-- 服务向导三层：规则识别（0 模型调用）→ 模型识别（唯一调模型处）→ 流程与渲染 -->
-<script src="js/flows/guide-rules.js?v=20261105z"></script>
-<script src="js/flows/guide-ai.js?v=20261105z"></script>
-<script src="js/flows/guide.js?v=20261105z"></script>
-<script src="js/core/ui.js?v=20261105z"></script>
+<script src="js/flows/guide-rules.js?v=20261106a"></script>
+<script src="js/flows/guide-ai.js?v=20261106a"></script>
+<script src="js/flows/guide.js?v=20261106a"></script>
+<script src="js/core/ui.js?v=20261106a"></script>
 </body>
 </html>

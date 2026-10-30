@@ -485,18 +485,6 @@ function settlePendingRedemptions(db) {
 // 资金类接口频控（按 IP 的滑动窗口）
 const FUND_RATE = new Map();
 
-// 登录限流：防止暴力猜密码
-const LOGIN_RATE = new Map();
-function loginRateLimited(req) {
-  const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
-  const nowTs = Date.now();
-  const arr = (LOGIN_RATE.get(ip) || []).filter((t) => nowTs - t < 60000);
-  if (arr.length >= 5) { LOGIN_RATE.set(ip, arr); return true; }
-  arr.push(nowTs);
-  LOGIN_RATE.set(ip, arr);
-  return false;
-}
-
 function fundRateLimited(req, bucket, max, windowMs) {
   const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
   const key = bucket + ':' + ip;
@@ -537,9 +525,6 @@ function consumeVerifyToken(req) {
 }
 // 演示密码（可用环境变量覆盖）
 
-// 登录凭据（演示默认 admin / 2006，可用环境变量覆盖）
-const LOGIN_USER = process.env.BANK_LOGIN_USER || 'admin';
-const LOGIN_PASS = process.env.BANK_LOGIN_PASS || '2006';
 const DEMO_PIN = process.env.BANK_DEMO_PIN || '123456';
 
 // ------------------------------ 路由 ------------------------------
@@ -979,24 +964,10 @@ const server = http.createServer(async (req, res) => {
   catch (e) { res.writeHead(400); res.end('Bad Request'); return; }
   const pathname = url.pathname;
 
-  // 登录：账号密码换会话令牌（登录接口本身不需要令牌，但必须来自页面）
-  if (pathname === '/api/login') {
-    if (!isSameOriginStrict(req)) return sendJSON(res, 403, { ok: false, error: 'Forbidden' });
-    if (loginRateLimited(req)) return sendJSON(res, 429, { ok: false, error: '尝试过于频繁，请稍后再试' });
-    const body = await readBody(req, 8 * 1024);
-    const username = String((body && body.username) || '').trim();
-    const password = String((body && body.password) || '');
-    if (username !== LOGIN_USER || password !== LOGIN_PASS) {
-      return sendJSON(res, 401, { ok: false, error: '账号或密码错误' });
-    }
-    return sendJSON(res, 200, { ok: true, token: issueSession() });
-  }
-
-  // 会话校验/续期：必须已登录
+  // 会话令牌：页面内领取（登录页已移除，改为同源页面直接发放）
   if (pathname === '/api/session') {
-    if (!isSameOriginStrict(req)) return sendJSON(res, 403, { ok: false, error: 'Forbidden' });
-    if (!hasValidSession(req)) return sendJSON(res, 401, { ok: false, error: '未登录' });
-    return sendJSON(res, 200, { ok: true, token: String(req.headers['x-bank-session'] || '') });
+    if (!isSameOriginStrict(req)) return sendJSON(res, 403, { ok: false, error: 'Forbidden：会话令牌只能从页面内领取' });
+    return sendJSON(res, 200, { ok: true, token: issueSession() });
   }
 
   // AI 代理（真实 Key 只在服务端）
