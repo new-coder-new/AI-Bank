@@ -4307,11 +4307,13 @@ function guideHoldingChoose(mode) {
   if (mode === 'sub') {
     s.mode = 'sub';
     s.stage = 'subSlots';
-    appendMessage(guideMessage('<p>请告诉我要追加申购的产品名称以及申购金额。</p>'));
+    appendMessage(guideMessage('<p>请告诉我追加申购的产品编号和申购金额。</p>' +
+      '<p class="guide-tip">例如：追加1003，1000元</p>'));
   } else {
     s.mode = 'redeem';
     s.stage = 'redeemSlots';
-    appendMessage(guideMessage('<p>您可以选择赎回全部持仓，或者指定产品并告知赎回金额（全额赎回可直接回复“全额”）。</p>'));
+    appendMessage(guideMessage('<p>您可选择回复“全额”赎回全部持仓，或指定产品并告知赎回金额。</p>' +
+      '<p class="guide-tip">例如：全额 / 赎回1001，1000 元</p>'));
   }
   scrollToBottom();
 }
