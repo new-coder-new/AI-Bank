@@ -14,6 +14,42 @@
 //   4. 说「返回 / 菜单」回到一级菜单；「新对话」会重置模块上下文。
 // ==========================================================================
 
+
+// 点按钮后统一显示：保留问题，并在下方记录所选（例如「是否添加备注：否」）
+(function bindChipRecorder() {
+  if (typeof document === 'undefined' || !document.addEventListener) return;
+  if (typeof window !== 'undefined' && window.__guideChipRecorderBound) return;
+  if (typeof window !== 'undefined') window.__guideChipRecorderBound = true;
+  document.addEventListener('click', function (ev) {
+    var btn = ev.target && ev.target.closest ? ev.target.closest('.guide-chip') : null;
+    if (!btn) return;
+    setTimeout(function () {
+      try {
+        var bubble = btn.closest('.msg-bubble');
+        if (!bubble) return;
+        var chips = btn.closest('.guide-chips');
+        if (!chips || !chips.parentNode) return;        // 已被处理函数收起（说明已记录）
+        var text = bubble.textContent || '';
+        if (text.indexOf('？') === -1) return;          // 只在问句上记录
+        var label = (btn.textContent || '').trim();
+        if (!label || label.length > 8) return;         // 只记录简短选项（是/否/确认/取消…）
+        var ps = bubble.querySelectorAll('p');
+        var question = '';
+        for (var i = 0; i < ps.length; i++) {
+          var t = (ps[i].textContent || '').trim();
+          if (t && t.indexOf('？') !== -1) { question = t.replace(/[？?]$/, ''); break; }
+        }
+        if (!question) return;
+        chips.parentNode.removeChild(chips);
+        var note = document.createElement('p');
+        note.className = 'guide-tip';
+        note.textContent = question + '：' + label;
+        bubble.appendChild(note);
+      } catch (e) { /* 记录失败不影响交互 */ }
+    }, 0);
+  }, true);
+})();
+
 function guideChip(label, onclick) {
   return '<button class="guide-chip" onclick="' + onclick + '">' + label + '</button>';
 }
