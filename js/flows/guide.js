@@ -1749,6 +1749,10 @@ function guideAAParse(text) {
   t = t.replace(/^[\s、,，;；]*(向|给|帮|让|请|找)/, '');
   var names = t.split(/[、,，;；\s]+/)
     .map(function (x) { return x.trim().replace(/^(向|给|帮|让|请|找)/, '').replace(/[。.！!]$/, ''); })
+    .filter(Boolean)
+    // 发起人本人不算参与人：「我和张三」「我、李四」
+    .filter(function (n) { return !/^(我|本人|自己|咱们|我们|咱|俺)$/.test(n); })
+    .map(function (n) { return n.replace(/^(我和|我跟|我与|我、|本人和|自己和)/, '').trim(); })
     .filter(Boolean);
   return { total: total, names: names };
 }
@@ -1768,11 +1772,11 @@ function guideAAAddNames(names) {
     var name = names[i];
     var matches = (mockData.contacts || []).filter(function (c) { return c.name === name; });
     if (matches.length === 0) {
-      appendMessage(guideMessage(
+      s.stage = 'askMore';   // 关键：进入「还要加人吗」，接下来回「没有了」才能结束名单
+      guideSayInvalid(guideMessage(
         '<p>「<b>' + guideAAEsc(name) + '</b>」不在通讯录里。AA 收款只能选择通讯录联系人：' + guideContactNames() + '。</p>' +
         '<p class="guide-tip">可以继续告诉我其他人，或回复「没有」结束名单。</p>'
       ));
-      scrollToBottom();
       return false;
     }
     if (matches.length === 1) {
@@ -1836,8 +1840,8 @@ function guideAANoMore() {
   }
   if (!s.participants.length) {
     s.stage = 'slots';
-    appendMessage(guideMessage('<p>麻烦告诉我除你外需要收款的参与人</p>'));
-    scrollToBottom();
+    guideSayInvalid(guideMessage('<p>AA 收款至少要有一位参与人，请从通讯录里选：' + guideContactNames() + '。</p>' +
+      '<p class="guide-tip">例如：1000元 张三和李四</p>'));
     return;
   }
   guideAAConfirm();
@@ -1972,11 +1976,11 @@ async function guideAAStep(text) {
     return true;
   }
 
-  // 「还有其他参与人吗」的回答：本地先认常见说法，认不出交给模型判断
-  if (s.stage === 'askMore' && /^(没有|没有了|没|无|否|不|不用|就这些|这些|够了|结束|是的|对)$/.test(t)) {
-    if (/^(是的|对)$/.test(t)) {
-      appendMessage(guideMessage('<p>请告诉我还要收谁？</p>'));
-      scrollToBottom();
+  // 「还有其他参与人吗」的回答：常见说法直接结束名单（含「没有了 / 就这些 / 不用了」）
+  var noMoreRe = /^(没有|没有了|没了|没|无|否|不|不用|不用了|不加了|不找了|就这些|这些|就他们|就我俩|够了|结束|名单结束|ok|OK|好的|嗯|是的|对)$/;
+  if (noMoreRe.test(t) && (s.stage === 'askMore' || s.participants.length > 0)) {
+    if (/^(是的|对|好的|ok|OK|嗯)$/.test(t) && s.stage === 'askMore' && !s.participants.length) {
+      guideAsk(guideMessage('<p>请告诉我还要收谁？</p>'));
       return true;
     }
     guideAANoMore();
