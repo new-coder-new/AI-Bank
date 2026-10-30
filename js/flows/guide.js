@@ -639,6 +639,28 @@ function guideSlotsComplete(module, text) {
 //       不抽槽位、不建会话、不跨模块直通。只读查询与帮助类仍放行。
 var GUIDE_MODULE_LABELS = { chat: '主菜单', transfer: '转账', bill: '账单分析', card: '卡片管理', wealth: '理财', sub: '订阅管理', flower: '生日鲜花' };
 
+
+// 一级模块起始页（只停在二级菜单、没有进行中流程）时，乱说一句应按本模块提示
+function guideModuleMenuHint(module) {
+  try {
+    var key = module || currentModule;
+    if (!key || key === 'chat') return '';
+    if (key === 'sub') {
+      return '<p>请选择订阅管理里的操作：</p>' +
+        '<p class="guide-tip">添加订阅 / 取消订阅 / 管理自动续费。</p>';
+    }
+    if (key === 'flower') {
+      return '<p>请选择生日鲜花里的操作：</p>' +
+        '<p class="guide-tip">订鲜花+蛋糕 / 查看鲜花订单 / 生日提醒。</p>';
+    }
+    var svc = (typeof guideServiceByKey === 'function') ? guideServiceByKey(key) : null;
+    if (!svc || !svc.subs || !svc.subs.length) return '';
+    var names = svc.subs.map(function (x) { return x.label; }).join(' / ');
+    return '<p>请选择' + guideModuleLabel(key) + '里的操作：</p>' +
+      '<p class="guide-tip">' + names + '。</p>';
+  } catch (e) { return ''; }
+}
+
 function guideModuleLabel(key) {
   return GUIDE_MODULE_LABELS[key] || '当前模块';
 }
@@ -1307,6 +1329,15 @@ async function guideHandleText(text) {
   if (guideIsMenuIntent(t)) {
     guideAIIntent(t);
     return true;
+  }
+
+  // ⑤ 停在某个一级模块的二级菜单上乱说：按本模块提示，而不是通用「抱歉」
+  if (currentModule && currentModule !== 'chat' && !guideActiveFlowLabel()) {
+    var menuHint = guideModuleMenuHint(currentModule);
+    if (menuHint) {
+      guideSayInvalid(guideMessage(menuHint));
+      return true;
+    }
   }
 
   return false;
@@ -5134,7 +5165,7 @@ async function guideSubSession(t) {
     // 停在「请选择」不算进行中流程，这里只提示怎么选，不输出流程锁文案
     appendMessage(guideMessage(
       '<p>请选择订阅管理里的操作：</p>' +
-      '<p class="guide-tip">添加订阅 / 取消订阅 / 管理自动续费，也可以直接说「取消所有订阅」。</p>'
+      '<p class="guide-tip">添加订阅 / 取消订阅 / 管理自动续费。</p>'
     ));
     scrollToBottom();
     return true;
