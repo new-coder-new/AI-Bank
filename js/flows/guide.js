@@ -505,7 +505,7 @@ function guideStartFlowerPreset(name, opts) {
   }
 
   GUIDE_FLOWER = {
-    mode: 'order', stage: 'slots',
+    mode: 'order', stage: 'confirm',
     order: {
       recipient: target,
       phone: c.phoneFull || c.phone || '',
@@ -5477,27 +5477,29 @@ function guideStartBirthdayFlower() {
 function guideStartFlowerOrder(opts) {
   guideResetAllSessions();
   var pre = opts || {};
+  var contacts = guideFlowerContacts();
+  var name = pre.recipient && contacts.indexOf(pre.recipient) !== -1 ? pre.recipient : (contacts[0] || '');
+  var c = (mockData.contacts || []).filter(function (x) { return x && x.name === name; })[0] || {};
+  var bq = pre.bouquet ? guideFlowerBouquet(pre.bouquet) : null;
   GUIDE_FLOWER = {
-    mode: 'order', stage: 'slots',
+    mode: 'order', stage: 'confirm',
     order: {
-      recipient: pre.recipient || '', phone: pre.phone || '', address: pre.address || '',
-      bouquet: pre.bouquet || '', date: pre.date || '', slot: pre.slot || '',
-      card: pre.card || '', payMethod: '储蓄卡'
+      recipient: name,
+      phone: pre.phone || c.phoneFull || c.phone || '',
+      address: pre.address || c.address || '清远市清城区XX小区',
+      bouquet: bq ? bq.name : (FLOWER_BOUQUETS[0] ? FLOWER_BOUQUETS[0].name : ''),
+      cake: pre.cake || '无蛋糕',
+      date: pre.date || guideFlowerDateStr(1),
+      slot: pre.slot || 'afternoon',
+      card: pre.card || '生日快乐',
+      payMethod: '储蓄卡'
     },
     editing: null
   };
   currentModule = 'flower';
-  appendMessage(guideMessage(
-    '<p>请告诉我收花人、手机号、收货地址、花束款式、配送日期和配送时段。</p>' +
-    '<p class="guide-tip">可选花束：' + FLOWER_BOUQUETS.map(function (b) { return b.name; }).join('、') + '</p>' +
-    '<p class="guide-tip">配送时段：' + FLOWER_SLOTS.map(function (s) { return s.text; }).join('、') + '</p>' +
-    '<p class="guide-tip">只能为联系人下单，可选收花人：' + guideFlowerContactsText() + '</p>' +
-    '<p class="guide-tip">默认使用储蓄卡支付，可随时改成信用卡。</p>'
-  ));
-  scrollToBottom();
+  // 表单卡：所有字段在卡片里选/填，填完点「提交订单」，不再多轮对话收集
+  guideFlowerConfirm();
 }
-
-// 同一收花人、同一配送日已有待配送订单 → 视为重复
 function guideFlowerDuplicate(recipient, date) {
   if (!recipient || !date) return null;
   var list = guideFlowerOrders().filter(function (o) {
@@ -5544,7 +5546,7 @@ function guideFlowerOrderCard(s) {
   var tot = guideFlowerOrderTotal(o);
   var totalText = '花束 ¥' + (tot.bouquet ? tot.bouquet.price : 0) +
     (tot.cake && tot.cake.price ? ' + 蛋糕 ¥' + tot.cake.price : '') + ' = ¥' + tot.total;
-  return '<div class="data-card flower-form"><div class="data-card-title">确认鲜花订单</div>' +
+  return '<div class="data-card flower-form"><div class="data-card-title">填写鲜花订单</div>' +
     '<div class="data-row"><span class="data-label">收花人</span><span class="data-value">' +
       '<select class="flower-input" id="flRecipient">' + recipientOpts + '</select></span></div>' +
     '<div class="data-row"><span class="data-label">联系电话</span><span class="data-value">' +
@@ -5692,10 +5694,11 @@ async function guideFlowerSubmit() {
   var today = guideFlowerDateStr(0);
 
   if (o.date < today) {
-    appendMessage(guideMessage('<p>配送日期不能早于今天（' + guideFlowerDisplayDate(today) + '），请重新告诉我配送日期。</p>'));
+    appendMessage(guideMessage('<p>配送日期不能早于今天（' + guideFlowerDisplayDate(today) + '），请在表单里重新选择配送日期后再提交。</p>'));
     scrollToBottom();
-    s.order.date = '';
-    s.stage = 'slots';
+    s.order.date = guideFlowerDateStr(1);
+    s.stage = 'confirm';
+    guideFlowerConfirm();
     return true;
   }
   if (o.card && o.card.length > 30) o.card = o.card.slice(0, 30);
@@ -5703,8 +5706,9 @@ async function guideFlowerSubmit() {
     appendMessage(guideMessage('<p>收花人必须是联系人，当前「' + guideFlowerEsc(o.recipient) + '」不在联系人里，请重新选择收花人。</p>' +
       '<p class="guide-tip">可选收花人：' + guideFlowerEsc(guideFlowerContactsText()) + '</p>'));
     scrollToBottom();
-    s.order.recipient = '';
-    s.stage = 'slots';
+    s.order.recipient = guideFlowerContacts()[0] || '';
+    s.stage = 'confirm';
+    guideFlowerConfirm();
     return true;
   }
 
@@ -5718,9 +5722,10 @@ async function guideFlowerSubmit() {
   }
 
   if (!(price > 0)) {
-    appendMessage(guideMessage('<p>该花束没有有效价格，请重新选择款式。</p>'));
+    appendMessage(guideMessage('<p>该花束没有有效价格，请在表单里重新选择款式。</p>'));
     scrollToBottom();
-    s.stage = 'slots';
+    s.stage = 'confirm';
+    guideFlowerConfirm();
     return true;
   }
 
