@@ -436,6 +436,34 @@ function guideMainModuleGuess(text) {
 }
 
 // 这句话是否已经把该模块的必需槽位说全（确定性判断，不做抽取）
+
+// 句子是否已经点名了某个二级功能（「定时转账」「卡片限额」「AA收款」…）
+function guideExplicitSubCommand(text) {
+  var t = String(text || '');
+  if (/(姓名转账|手机号转账|定时转账|AA收款|aa收款|我的卡片|额度调整|调额|提额|交易限制|限额|每日|单笔|卡片挂失|挂失|解挂|卡片申请|申请信用卡)/.test(t)) return true;
+  if (/(申请|办|新办|开通).{0,4}卡/.test(t)) return true;        // 「我要申请一张信用卡」
+  if (/额度/.test(t) && /(调|提|改|升|降)/.test(t)) return true;   // 「我要调我的信用卡额度」
+  if (/(产品申购|申购|赎回|持仓|风险评估|风险测评)/.test(t)) return true;
+  if (/(订阅|续费|会员|鲜花|花束|蛋糕)/.test(t)) return true;
+  return false;
+}
+
+// 句子是否带了任何「业务实体」（金额、手机号、联系人、产品、卡片、时间）
+function guideHasBusinessEntity(text) {
+  var t = String(text || '');
+  if (/1\d{10}/.test(t)) return true;
+  if (/\d/.test(t)) return true;                                  // 任意数字（金额/尾号/数量）
+  if (/(今天|明天|后天|下周|周[一二三四五六日天]|星期[一二三四五六日天]|上午|下午|晚上|早上|中午|\d+点)/.test(t)) return true;
+  if (typeof guideContactNames === 'function') {
+    var hit = guideContactNames().split('、').some(function (n) { return n && t.indexOf(n) !== -1; });
+    if (hit) return true;
+  }
+  if (typeof guideWealthFindProduct === 'function' && guideWealthFindProduct(t)) return true;
+  if (/(某易云|某讯|某度网盘|某健身|某视频|某阅读|某音乐)/.test(t)) return true;
+  if (/(白金|金卡|标准金卡|青年卡|旅行卡)/.test(t)) return true;
+  return false;
+}
+
 function guideSlotsComplete(module, text) {
   var t = String(text || '');
   var hasAmount = /(\d+(?:\.\d+)?)\s*(元|块|万|w|W|千|k|K)?/.test(t) && !/^\s*$/.test(t);
@@ -636,7 +664,9 @@ async function guideHandleText(text) {
     var noSlotsAllowed = !(typeof window !== 'undefined' && window.__GUIDE_MAIN_NO_SLOTS__ === false);
     if (atMain && noSlotsAllowed) {
       var guessMod = guideMainModuleGuess(text);
-      if (guessMod && !guideSlotsComplete(guessMod, text)) {
+      // 只有「纯模块词」（没点名二级功能、也没带任何业务实体）才只开菜单；
+      // 其余情况保持原有直通/追问行为，避免把明确指令打回菜单。
+      if (guessMod && guessMod !== 'bill' && !guideExplicitSubCommand(text) && !guideHasBusinessEntity(text)) {
         guideOpenService(guessMod);
         return true;
       }
