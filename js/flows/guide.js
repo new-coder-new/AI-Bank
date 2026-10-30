@@ -2646,7 +2646,7 @@ async function guideCardApplyStep(text) {
 
   if (parsed.cardType) s.cardType = parsed.cardType;
   if (Number(parsed.limit) > 0) s.limit = parsed.limit;
-  if (parsed.purpose) s.purpose = parsed.purpose;
+  if (parsed.purpose && CARD_APPLY_PURPOSES.indexOf(parsed.purpose) !== -1) s.purpose = parsed.purpose;
 
   // 三样齐了 → 整理确认
   if (s.cardType && Number(s.limit) > 0 && s.purpose) {
@@ -2661,8 +2661,11 @@ async function guideCardApplyStep(text) {
     prompt = '识别到期望额度 ' + guideCardApplyMoney(parsed.limit) + ' 元，请选择信用卡类型和使用用途。';
   }
 
-  appendMessage(guideMessage('<p>' + prompt + '</p>'));
-  scrollToBottom();
+  // 缺什么就把可选项列出来；每次都用 guideSayInvalid，避免重复提问被去重吞掉
+  var tipHtml = '';
+  if (!s.cardType) tipHtml += '<p class="guide-tip">可选卡种：' + guideCardApplyTypesText() + '</p>';
+  if (!s.purpose) tipHtml += '<p class="guide-tip">可选用途：' + guideCardApplyPurposesText() + '</p>';
+  guideSayInvalid(guideMessage('<p>' + prompt + '</p>' + tipHtml));
   return true;
 }
 
