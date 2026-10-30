@@ -1098,10 +1098,25 @@ function agentAssessTransferRisk(payee, amount) {
     score += Math.min(28, Math.round((ratio - 2) * 5));
     reasons.push({ label: '金额高于历史平均转账 ' + ratio.toFixed(1) + ' 倍', detail: '历史平均单笔 ¥' + agentFmtInt(avg) });
   }
-  if (amount >= 50000) { score += 20; reasons.push({ label: '单笔金额达到大额标准', detail: '¥50,000 及以上需人工复核' }); }
-  else if (amount >= 20000) { score += 10; reasons.push({ label: '单笔金额较大', detail: '超过 ¥20,000' }); }
+  // 金额分档与 T1–T4 阈值对齐：大额本身就该拉高可疑度，不能只靠「历史均值倍数」
+  if (amount >= 100000) {
+    score += 55;
+    reasons.push({ label: '单笔金额达到 T4 大额标准', detail: '≥ ¥100,000：短信+人脸+人工复核' });
+  } else if (amount >= 10000) {
+    score += 35;
+    reasons.push({ label: '单笔金额达到 T3 档位', detail: '¥10,000–99,999：短信+人脸确认' });
+  } else if (amount >= 1000) {
+    score += 15;
+    reasons.push({ label: '单笔金额达到 T2 档位', detail: '¥1,000–9,999：短信验证码' });
+  }
   var h = new Date().getHours();
   if (h >= 0 && h < 6) { score += 15; reasons.push({ label: '凌晨时段交易', detail: '非惯常交易时段（00:00-06:00）' }); }
+
+  // 超均倍数极高时再补一点（封顶 10 分），避免「金额大但均值也大」被低估
+  if (ratio >= 10) {
+    score += 10;
+    reasons.push({ label: '金额远超历史水平', detail: '约为历史平均单笔的 ' + ratio.toFixed(1) + ' 倍' });
+  }
 
   score = Math.min(99, score);
   var level = score >= 60 ? 'high' : (score >= 30 ? 'medium' : 'low');
