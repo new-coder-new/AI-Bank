@@ -2084,12 +2084,26 @@ function guideWealthProductCode(p) {
   return idx >= 0 ? String(1001 + idx) : '';
 }
 
+// 判断文本里的四位数是不是「产品编号」：
+//   ① 明确写了「编号 / 产品编号 / 代码」 → 是
+//   ② 句子里同时有两个数字（编号 + 金额） → 是
+//   ③ 只有一个四位数（如「1000」「1001」） → 当金额，不当编号
+function guideWealthCodeCandidate(text) {
+  var t = String(text || '');
+  var m = t.match(/(?:^|[^\d])(10\d{2})(?![\d])/);
+  if (!m) return null;
+  var nums = t.match(/\d+(?:\.\d+)?/g) || [];
+  if (/(编号|产品编号|代码|code)/i.test(t)) return m[1];
+  if (nums.length >= 2) return m[1];
+  return null;
+}
+
 // 从文本里识别四位数产品编号（1001-1099）
 function guideWealthFindByCode(text) {
-  var m = String(text || '').match(/(?:^|[^\d])(10\d{2})(?![\d])/);
-  if (!m) return null;
+  var code = guideWealthCodeCandidate(text);
+  if (!code) return null;
   var list = mockData.products || [];
-  var idx = Number(m[1]) - 1001;
+  var idx = Number(code) - 1001;
   return list[idx] || null;
 }
 
@@ -2256,10 +2270,10 @@ function guideWealthFindProduct(text) {
 
 function guideWealthParse(text) {
   var t = String(text || '');
-  // 四位数产品编号不是金额：先摘掉，避免「1001 5000」把 1001 当申购金额
-  var codeHit = t.match(/(?:^|[^\d])(10\d{2})(?![\d])/);
+  // 只有被判定为「产品编号」时才从金额里剔除；单个 1000 / 1001 仍然当金额
   var product = guideWealthFindProduct(t);
-  if (codeHit) t = t.replace(codeHit[0], ' ');
+  var codeCandidate = guideWealthCodeCandidate(t);
+  if (codeCandidate && product) t = t.replace(codeCandidate, ' ');
   // 产品名里常带数字（90天 / 三年 / 3期），先剔除再抽金额，避免「稳健增利90天」把 90 当金额
   if (product && product.name) t = t.replace(product.name, ' ');
   t = t.replace(/\d+\s*(天|日|年|期|个月|月)/g, ' ');
