@@ -336,14 +336,19 @@ function renderUserInfoCards(u) {
           <div><span>已用额度</span><b>¥${totalUsed.toLocaleString()}</b></div>
           <div><span>本期账单</span><b>¥${(Number(c.currentBill) || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2})}</b></div>
         </div>
-        <div class="ui-info-grid">
-          ${cardList.length ? cardList.map(function (card) {
-            const limit = Number(card.limit) || 0;
-            const used = Number(card.used) || 0;
-            return '<div class="ui-info-row"><span>' + card.cardType + '（尾号 ' + card.tail + '）</span>' +
-              '<b>额度 ¥' + limit.toLocaleString() + ' · 已用 ¥' + used.toLocaleString() + ' · 可用 ¥' + (limit - used).toLocaleString() + '</b></div>';
-          }).join('') : '<div class="ui-info-row"><span>信用卡</span><b>暂无</b></div>'}
-        </div>
+        ${cardList.length ? cardList.map(function (card, idx) {
+          const limit = Number(card.limit) || 0;
+          const used = Number(card.used) || 0;
+          const avail = limit - used;
+          return '<div class="ui-account-card credit" style="margin-top:12px;">' +
+            '<div class="ui-account-top"><span>' + card.cardType + '</span><span>' + (card.status || '正常') + '</span></div>' +
+            '<div class="ui-account-number">**** **** **** ' + card.tail + '</div>' +
+            '<div class="ui-account-bottom">' +
+              '<div><span>信用额度</span><strong>¥' + limit.toLocaleString() + '</strong></div>' +
+              '<div style="text-align:right;"><span>可用额度</span><strong>¥' + avail.toLocaleString() + '</strong></div>' +
+            '</div>' +
+          '</div>';
+        }).join('') : '<div class="ui-empty" style="padding:16px 0;color:#94A3B8;font-size:13px;">暂无信用卡</div>'}
         <div class="ui-collapse" onclick="toggleDetail('credit-detail')">
           <span>账单详情</span><span class="ui-chevron" id="credit-detail-arrow">⌄</span>
         </div>
