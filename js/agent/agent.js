@@ -1391,6 +1391,15 @@ function agentRejectPlan(id) {
     footer.innerHTML = '<div class="agent-reject-card">已取消，本次未发生任何交易。</div>';
   }
   scrollToBottom();
+  // 取消也算一次业务：回到对应模块菜单
+  try {
+    if (typeof guideModuleWrapUp === 'function') {
+      var acts = ((rec && rec.plan && rec.plan.confirm && rec.plan.confirm.actions) || []);
+      var tool0 = (acts[0] && acts[0].tool) || '';
+      var mod = /^transfer/.test(tool0) ? 'transfer' : (typeof currentModule !== 'undefined' && currentModule !== 'chat' ? currentModule : 'transfer');
+      setTimeout(function () { guideModuleWrapUp(mod); }, 400);
+    }
+  } catch (e) { /* 衔接失败不影响取消 */ }
 }
 
 // ------------------------------ 6. Agent 主入口 ------------------------------

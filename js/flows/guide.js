@@ -2742,6 +2742,7 @@ function guideWealthSubmit() {
 function guideWealthCancel() {
   GUIDE_WEALTH = null;
   appendMessage(guideMessage('<p>已取消申购，账户未发生扣款。</p>'));
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('wealth'); }, 400);
   scrollToBottom();
 }
 
@@ -2972,6 +2973,7 @@ function guideCardApplyCancel() {
   GUIDE_CARD_APPLY = null;
   if (!guideConfirmCardCollapse(boxId, '已取消卡片申请，未提交任何资料。')) {
     appendMessage(guideMessage('<p>已取消卡片申请，未提交任何资料。</p>'));
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
   }
   scrollToBottom();
 }
@@ -3292,6 +3294,7 @@ function guideCardLimitCancel() {
     wrap.innerHTML = '<p>已取消额度调整申请，额度保持不变。</p>';
   } else {
     appendMessage(guideMessage('<p>已取消额度调整申请，额度保持不变。</p>'));
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
   }
   scrollToBottom();
 }
@@ -3728,6 +3731,7 @@ function guideTxnLimitCancel() {
     wrap.innerHTML = '<p>已取消修改，交易限制保持原配置。</p>';
   } else {
     appendMessage(guideMessage('<p>已取消修改，交易限制保持原配置。</p>'));
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
   }
   scrollToBottom();
 }
@@ -3891,6 +3895,7 @@ function guideCardLostCollapse(text) {
 
 function guideCardLostCancel() {
   guideCardLostCollapse('已取消挂失，卡片状态保持不变。');
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
 }
 
 // ------------------------------ 持仓管理：追加申购 / 赎回（对话式） ------------------------------
@@ -4212,6 +4217,7 @@ async function guideHoldingSubSubmit() {
     if (risk && risk.pendingReview) return;
     if (!risk || !risk.ok) {
       appendMessage(guideMessage('<p>已取消本次追加申购，账户未发生扣款。</p>'));
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('wealth'); }, 400);
       scrollToBottom();
       return;
     }
@@ -4347,6 +4353,7 @@ function guideHoldingModify() {
 function guideHoldingCancel() {
   GUIDE_HOLDING = null;
   appendMessage(guideMessage('<p>已取消，持仓保持不变。</p>'));
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('wealth'); }, 400);
   scrollToBottom();
 }
 
@@ -4539,6 +4546,7 @@ async function guideSubAddSubmit() {
     if (risk && risk.pendingReview) return;
     if (!risk || !risk.ok) {
       appendMessage(guideMessage('<p>已取消订阅，账户未发生扣款。</p>'));
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
       scrollToBottom();
       return;
     }
