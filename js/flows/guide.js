@@ -4951,7 +4951,7 @@ function guideStartSubManage() {
   GUIDE_SUB = { mode: 'choose', stage: 'choose' };
   currentModule = 'sub';
   appendMessage(guideMessage(
-    '<p>订阅管理包含这些操作：</p>' +
+    '<p>订阅管理包含以下操作：</p>' +
     '<div class="guide-rows">' +
     '<div class="guide-row"><div class="guide-row-title">添加订阅</div><div class="guide-row-example">例如：我想要订阅某易云年卡</div></div>' +
     '<div class="guide-row"><div class="guide-row-title">取消订阅</div><div class="guide-row-example">例如：取消所有订阅</div></div>' +
@@ -5518,7 +5518,7 @@ function guideStartBirthdayFlower() {
   currentModule = 'flower';
   var nearest = (typeof guideNearestBirthday === 'function') ? guideNearestBirthday() : null;
   appendMessage(guideMessage(
-    '<p>生日鲜花包含这些操作</p>' +
+    '<p>生日鲜花包含以下操作：</p>' +
     '<div class="guide-rows">' +
     '<div class="guide-row"><div class="guide-row-title">订鲜花+蛋糕</div><div class="guide-row-example">例如：给林小雨订一束花</div></div>' +
     '<div class="guide-row"><div class="guide-row-title">查看鲜花订单</div><div class="guide-row-example">例如：查看鲜花订单</div></div>' +

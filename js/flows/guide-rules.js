@@ -17,7 +17,7 @@ var GUIDE_SERVICES = [
   {
     key: 'transfer', label: '转账', icon: 'transfer',
     aliases: ['智能转账', '转账服务'],
-    prompt: '您好，请问你需要姓名转账、手机号转账、定时转账，还是AA收款？',
+    prompt: '转账收款包含以下操作：',
     subs: [
       { key: 'name', label: '姓名转账', example: '给张三转账1000元', run: function () { guideStartNameTransfer(); } },
       { key: 'phone', label: '手机号转账', example: '转账给13800138000', run: function () { guideStartPhoneTransfer(); } },
@@ -28,7 +28,7 @@ var GUIDE_SERVICES = [
   {
     key: 'bill', label: '账单分析', icon: 'bill',
     aliases: ['账单'],
-    prompt: '账单分析包含收支结构、支出构成和近 7 日趋势，也可以直接看异常交易：',
+    prompt: '账单分析包含以下操作：',
     subs: [
       { key: 'overview', label: '账单分析', example: '分析本月账单', aliases: ['财务总览', '消费统计', '账单报告', '账单'], run: function () { showBillOverview(); } },
       { key: 'abnormal', label: '异常交易', example: '查看异常交易', run: function () { showAbnormalAlert(); } }
@@ -37,7 +37,7 @@ var GUIDE_SERVICES = [
   {
     key: 'card', label: '卡片管理', icon: 'card',
     aliases: ['卡片'],
-    prompt: '卡片管理包含这些操作，请选择：',
+    prompt: '卡片管理包含以下操作：',
     subs: [
       { key: 'apply', label: '卡片申请', example: '办一张金卡，额度5万', aliases: ['申请信用卡'], run: function () { guideStartCardApply(); } },
       { key: 'mycards', label: '我的卡片', example: '查看我的信用卡', aliases: ['我的信用卡'], run: function () { showCardMyCards(); } },
@@ -49,7 +49,7 @@ var GUIDE_SERVICES = [
   {
     key: 'wealth', label: '理财', icon: 'wealth',
     aliases: ['理财服务', '投资理财'],
-    prompt: '理财服务包含这些内容，请选择：',
+    prompt: '理财包含以下操作：',
     subs: [
       { key: 'products', label: '产品申购', example: '申购1001，5000元', aliases: ['产品', '申购'], run: function () { guideStartWealthPurchase(); } },
       { key: 'risk', label: '风险评估', example: '做一次风险测评', run: function () { startRiskAssessment(); } },
@@ -60,7 +60,7 @@ var GUIDE_SERVICES = [
   {
     key: 'life', label: '生活订购', icon: 'bell',
     aliases: ['生活', '生活服务'],
-    prompt: '生活订购包含这些服务，请选择：',
+    prompt: '生活订购包含以下操作：',
     subs: [
       { key: 'subscribe', label: '订阅管理', example: '订阅某易云年卡', aliases: ['我的订阅'], run: function () { guideStartSubManage(); } },
       { key: 'birthday', label: '生日鲜花', example: '给林小雨订一束花', aliases: ['鲜花订购', '订花', '买花', '鲜花订单'], run: function () { guideStartBirthdayFlower(); } }
