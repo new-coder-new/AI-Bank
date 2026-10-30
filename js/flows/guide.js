@@ -2863,14 +2863,12 @@ async function guideWealthStep(text) {
     return true;
   }
   if (Number(s.amount) > 0) {
-    appendMessage(guideMessage('<p>请告诉我产品编号和申购金额，例如「1001，1000」。</p>' +
-    '<p class="guide-tip">回复“退出”终止本次业务。</p>'));
+    appendMessage(guideMessage('<p>请告诉我产品编号和申购金额，例如「1001，1000」。</p>'));
   scrollToBottom();
   return true;
   }
 
-  appendMessage(guideMessage('<p>请告诉我产品编号和申购金额，例如「1001，1000」。</p>' +
-    '<p class="guide-tip">回复“退出”终止本次业务。</p>'));
+  appendMessage(guideMessage('<p>请告诉我产品编号和申购金额，例如「1001，1000」。</p>'));
   scrollToBottom();
   return true;
 }
@@ -2895,8 +2893,8 @@ function guideWealthConfirm() {
   var p = s.product;
   if (!p) {
     s.stage = 'slots';
-    appendMessage(guideMessage('<p>请告诉我产品编号和申购金额，例如「1001，1000」。</p>' +
-      '<p class="guide-tip">回复“退出”终止本次业务。</p>'));
+    appendMessage(guideMessage('<p>请告诉我产品编号和申购金额，例如「1001，1000」。</p>'
+  ));
     scrollToBottom();
     return;
   }
