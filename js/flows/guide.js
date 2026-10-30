@@ -890,6 +890,11 @@ async function guideHandleText(text) {
 
 var GUIDE_TRANSFER = null;
 
+// 负数或「负」开头的金额：各模块统一拦截，避免 -1000 被当成 1000
+function guideIsNegativeAmount(text) {
+  return /(^|[^\d])[-−负]\s*\d/.test(String(text || ''));
+}
+
 function guidePlainMoney(n) {
   var v = Number(n) || 0;
   return (Math.round(v) === v) ? String(v) : v.toFixed(2);
@@ -1893,6 +1898,10 @@ function guideAASubmit() {
   scrollToBottom();
 }
 async function guideAAStep(text) {
+  if (guideIsNegativeAmount(text)) {
+    guideAsk(guideMessage('<p>垫付金额需要大于 0，请重新输入（例如「600」）。</p>'));
+    return true;
+  }
   var t = String(text || '').trim();
   var s = GUIDE_AA;
   if (!s) return true;
@@ -2045,6 +2054,27 @@ function guideWealthRecommendations(profile) {
   return list.slice(0, 2);
 }
 
+// 产品固定编号：1001 起，按商品表顺序分配（编号稳定，不随排序变化）
+function guideWealthProductCode(p) {
+  var list = mockData.products || [];
+  var idx = -1;
+  for (var i = 0; i < list.length; i++) {
+    var it = list[i];
+    if (!it || !p) continue;
+    if (it === p || it.name === p.name) { idx = i; break; }
+  }
+  return idx >= 0 ? String(1001 + idx) : '';
+}
+
+// 从文本里识别四位数产品编号（1001-1099）
+function guideWealthFindByCode(text) {
+  var m = String(text || '').match(/(?:^|[^\d])(10\d{2})(?![\d])/);
+  if (!m) return null;
+  var list = mockData.products || [];
+  var idx = Number(m[1]) - 1001;
+  return list[idx] || null;
+}
+
 function guideWealthProductLine(p, i) {
   var circled = '①②③④⑤⑥⑦⑧⑨';
   var mark = circled.charAt(i) || (i + 1);
@@ -2104,7 +2134,7 @@ function guideWealthProdRow(p, i, recSet, opts) {
   var hidden = (o.hiddenStart != null && i >= o.hiddenStart) ? ' list-hidden' : '';
   return '<div class="prod-item' + hidden + '" style="border-left-color:' + riskColor + ';">' +
     '<div class="prod-main">' +
-      '<b class="prod-name">' + guideWealthEsc(p.name) + '</b>' +
+      '<b class="prod-name">' + (guideWealthProductCode(p) ? '<span class="prod-code">' + guideWealthProductCode(p) + '</span> ' : '') + guideWealthEsc(p.name) + '</b>' +
       '<span class="prod-tag" style="color:' + riskColor + ';">R' + level + '</span>' +
       (isRec ? '<span class="prod-badge">推荐</span>' : '') +
       (o.userLevel ? '<span class="prod-fit" style="color:' + (fit ? '#16A34A' : '#94A3B8') + ';">' + (fit ? '适配' : '超出承受力') + '</span>' : '') +
@@ -2182,6 +2212,8 @@ function guideWealthCancelAssess() {
 
 // 产品名模糊匹配：整串命中优先，否则取最长公共子串（≥3 字）
 function guideWealthFindProduct(text) {
+  var byCode = (typeof guideWealthFindByCode === 'function') ? guideWealthFindByCode(text) : null;
+  if (byCode) return byCode;
   var t = String(text || '').replace(/\s/g, '');
   if (!t) return null;
   var best = null;
@@ -2205,7 +2237,10 @@ function guideWealthFindProduct(text) {
 
 function guideWealthParse(text) {
   var t = String(text || '');
+  // 四位数产品编号不是金额：先摘掉，避免「1001 5000」把 1001 当申购金额
+  var codeHit = t.match(/(?:^|[^\d])(10\d{2})(?![\d])/);
   var product = guideWealthFindProduct(t);
+  if (codeHit) t = t.replace(codeHit[0], ' ');
   // 产品名里常带数字（90天 / 三年 / 3期），先剔除再抽金额，避免「稳健增利90天」把 90 当金额
   if (product && product.name) t = t.replace(product.name, ' ');
   t = t.replace(/\d+\s*(天|日|年|期|个月|月)/g, ' ');
@@ -2223,6 +2258,11 @@ async function guideWealthStep(text) {
   var t = String(text || '').trim();
   var s = GUIDE_WEALTH;
   var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
+
+  if (guideIsNegativeAmount(t)) {
+    guideAsk(guideMessage('<p>申购金额需要大于 0，请重新输入（例如「5000」）。</p>'));
+    return true;
+  }
 
   // ① 需要先测评
   if (s.stage === 'risk') {
@@ -2759,6 +2799,10 @@ function guideCardLimitParse(text) {
 }
 
 async function guideCardLimitStep(text) {
+  if (guideIsNegativeAmount(text)) {
+    guideAsk(guideMessage('<p>目标额度需要大于 0，请重新输入（例如「80000」）。</p>'));
+    return true;
+  }
   var t = String(text || '').trim();
   var s = GUIDE_CARD_LIMIT;
   var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
@@ -3082,6 +3126,10 @@ function guideTypingBubble() {
 }
 
 async function guideTxnLimitStep(text) {
+  if (guideIsNegativeAmount(text) && !/(不变|不改变|保持原样|不改)/.test(text)) {
+    guideAsk(guideMessage('<p>限额需要大于 0，请重新输入（例如「20000」）。</p>'));
+    return true;
+  }
   var t = String(text || '').trim();
   var s = GUIDE_TXN_LIMIT;
   if (!s) return true;
@@ -3620,6 +3668,10 @@ function guideHoldingAllRedeemIntent(text) {
   return /(全部|所有|一键|都|清仓|全卖|全赎|整笔)/.test(s);
 }
 async function guideHoldingStep(text) {
+  if (guideIsNegativeAmount(text)) {
+    guideAsk(guideMessage('<p>金额需要大于 0，请重新输入。</p>'));
+    return true;
+  }
   var t = String(text || '').trim();
   var plain = t.replace(/[。.!！?？,，、\s]/g, '');
   var s = GUIDE_HOLDING;
