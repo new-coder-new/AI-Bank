@@ -415,6 +415,58 @@ function guideOpenOverview() {
 }
 
 // 二级菜单：某一类服务的子功能
+
+// ------------------------------ 主菜单：模块判定 + 槽位完整性 ------------------------------
+// 设计：主菜单只判「属于哪个一级模块」，并检查这句话是否已经把必需槽位说全。
+//   完备 → 保持「一句话直通」（如「给张三转账1000元」直接进流程）
+//   不完备 → 只打开该模块的二级菜单，不创建任何会话（避免半截会话）
+// 开关：window.__GUIDE_MAIN_NO_SLOTS__ = false 可关闭这段限制（恢复旧行为）。
+
+// 主菜单的一句话属于哪个一级模块（纯规则，不调模型）
+function guideMainModuleGuess(text) {
+  var t = String(text || '');
+  if (!t) return '';
+  if (/(鲜花|花束|玫瑰|康乃馨|向日葵|百合|郁金香|蛋糕|生日礼物)/.test(t)) return 'life';
+  if (/(订阅|会员|续费|自动续费|退订)/.test(t)) return 'life';
+  if (/(理财|基金|申购|赎回|持仓|风险测评)/.test(t)) return 'wealth';
+  if (/(账单|流水|收支|消费统计|异常交易)/.test(t)) return 'bill';
+  if (/(卡片|信用卡|挂失|解挂|额度|限额)/.test(t)) return 'card';
+  if (/(转账|转帐|汇款|打钱|转钱|付款|付给|打给|转给|AA)/.test(t)) return 'transfer';
+  return '';
+}
+
+// 这句话是否已经把该模块的必需槽位说全（确定性判断，不做抽取）
+function guideSlotsComplete(module, text) {
+  var t = String(text || '');
+  var hasAmount = /(\d+(?:\.\d+)?)\s*(元|块|万|w|W|千|k|K)?/.test(t) && !/^\s*$/.test(t);
+  var hasPhone = /1\d{10}/.test(t);
+  var hasName = (typeof guideContactNames === 'function') &&
+    guideContactNames().split('、').some(function (n) { return n && t.indexOf(n) !== -1; });
+  var hasTime = (typeof guideLooksTimedTransfer === 'function') && guideLooksTimedTransfer(t);
+  var hasCard = /(\d{4})/.test(t.replace(/\D/g, '').length >= 4 ? t : '') || /(白金|金卡|标准金卡|青年卡|旅行卡)/.test(t);
+  var hasProduct = (typeof guideWealthFindProduct === 'function') && !!guideWealthFindProduct(t);
+
+  if (module === 'transfer') {
+    if (/(AA|aa|分摊|平摊)/.test(t)) return hasAmount && hasName;
+    if (hasTime) return hasAmount && (hasName || hasPhone);
+    return hasAmount && (hasName || hasPhone);
+  }
+  if (module === 'wealth') return hasAmount && hasProduct;
+  if (module === 'card') {
+    if (/(限额|每日|单笔)/.test(t)) return hasCard && /\d{3,}/.test(t);
+    if (/(额度|提额|调额)/.test(t)) return hasCard && /\d{3,}/.test(t);
+    if (/(挂失)/.test(t)) return hasCard;
+    if (/(申请|办|新办)/.test(t)) return /(白金|金卡|青年卡|旅行卡)/.test(t) && /\d{3,}/.test(t);
+    return false;
+  }
+  if (module === 'life') {
+    if (/(鲜花|花束|蛋糕|花)/.test(t)) return hasName;
+    return /(某易云|某讯|某度网盘|某健身|某视频|某阅读|某音乐|会员|VIP|年卡|月卡|季卡)/.test(t);
+  }
+  // 账单分析类都是只读，直接放行
+  return true;
+}
+
 function guideOpenService(key) {
   if (typeof guideActiveFlowLabel === 'function' && guideActiveFlowLabel()) {
     guideFlowLockedNotice();
@@ -576,6 +628,20 @@ function guideAsk(html) {
 // 文本解析：服务名 / 子功能名 / 返回菜单，命中则接管，返回 true
 async function guideHandleText(text) {
   if (typeof window !== 'undefined') window.__GUIDE_LAST_TEXT = String(text || '');
+
+  // 主菜单守卫：只判一级模块；槽位不齐时只打开该模块的二级菜单，不创建半截会话
+  try {
+    var atMain = (typeof guideActiveFlowLabel === 'function') && !guideActiveFlowLabel() &&
+      (typeof guideAwaitingFinalAction !== 'function' || !guideAwaitingFinalAction());
+    var noSlotsAllowed = !(typeof window !== 'undefined' && window.__GUIDE_MAIN_NO_SLOTS__ === false);
+    if (atMain && noSlotsAllowed) {
+      var guessMod = guideMainModuleGuess(text);
+      if (guessMod && !guideSlotsComplete(guessMod, text)) {
+        guideOpenService(guessMod);
+        return true;
+      }
+    }
+  } catch (e) { /* 守卫失败不影响正常流程 */ }
   var t = String(text || '').trim().replace(/[。.!！?？,，\s]+$/g, '');
   if (!t) return false;
 
