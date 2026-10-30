@@ -72,12 +72,28 @@ const CASES = [
   { text: '转账1000给张三', module: 'transfer', desc: '金额在前也不直通' },
   { text: '转账 500', module: 'transfer', desc: '半截指令不直通' },
   { text: 'AA收款', module: 'transfer', desc: '点名子功能也不直通' },
+  { text: '我想汇点钱给我妈', module: 'transfer', desc: '口语汇款' },
+  { text: '打500块钱给李四', module: 'transfer', desc: '打钱口语' },
+  { text: '我要转账', module: 'transfer', desc: '纯模块意图' },
   { text: '理财', module: 'wealth', desc: '模块词' },
   { text: '申购1001，5000元', module: 'wealth', desc: '产品+金额也不直通' },
+  { text: '我想买点基金', module: 'wealth', desc: '买基金口语' },
+  { text: '我持有多少', module: 'wealth', desc: '持仓口语' },
+  { text: '帮我赎回稳健增利90天', module: 'wealth', desc: '赎回也不直通' },
   { text: '分析本月账单', module: 'bill', desc: '账单也先进菜单' },
+  { text: '最近有没有异常交易', module: 'bill', desc: '异常交易' },
+  { text: '我想办卡', module: 'card', desc: '办卡口语（本次 bug）' },
+  { text: '我想办一张金卡', module: 'card', desc: '办卡+卡种' },
+  { text: '开一张信用卡', module: 'card', desc: '开卡口语' },
   { text: '挂失尾号6789的卡', module: 'card', desc: '挂失也不直通' },
   { text: '我要申请一张信用卡', module: 'card', desc: '申请也不直通' },
-  { text: '订阅某易云年卡', module: 'life', desc: '订阅也不直通' }
+  { text: '把白金卡额度提到8万', module: 'card', desc: '调额不直通' },
+  { text: '设个单笔限额2万', module: 'card', desc: '限额不直通' },
+  { text: '我的卡丢了', module: 'card', desc: '卡丢了' },
+  { text: '订阅某易云年卡', module: 'life', desc: '订阅也不直通' },
+  { text: '帮我退订某度网盘', module: 'life', desc: '退订口语' },
+  { text: '给林小雨订一束花', module: 'life', desc: '订花不直通' },
+  { text: '订个生日蛋糕', module: 'life', desc: '蛋糕不直通' }
 ];
 
 const NO_FLOW = ['transfer', 'aa', 'wealth', 'cardApply', 'cardLimit', 'txn', 'lost', 'sub'];
