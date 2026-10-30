@@ -805,10 +805,13 @@ async function guideHandleText(text) {
   // GUIDE_WRAPUP_HANDLED：业务完成后的「还需要办理其他业务吗？」待答状态
   if (GUIDE_WRAPUP) {
     var plainWrap = t.replace(/[。.!！?？,，\s]/g, '');
-    // ① 明确不需要 → 静默结束，不弹卡
+    // ① 明确不需要 → 回到主菜单卡片
     if (/^(退出|不需要|不用了|不用|不了|不用啦|算了|取消|没了|不要|否)$/.test(plainWrap)) {
       GUIDE_WRAPUP = null;
-      guideExitSilently();
+      guideResetAllSessions();
+      currentModule = 'chat';
+      renderServiceWelcome();
+      scrollToBottom();
       return true;
     }
     // ② 明确需要 → 打开本模块二级菜单
