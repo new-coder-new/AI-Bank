@@ -2096,7 +2096,8 @@ function guideWealthFindByCode(text) {
 function guideWealthProductLine(p, i) {
   var circled = '①②③④⑤⑥⑦⑧⑨';
   var mark = circled.charAt(i) || (i + 1);
-  return '<div>' + mark + ' <b>' + guideWealthEsc(p.name) + '</b>（R' + p.riskLevel + '，' +
+  var code = (typeof guideWealthProductCode === 'function') ? guideWealthProductCode(p) : '';
+  return '<div>' + (code ? '<span class="prod-code">' + code + '</span> ' : '') + mark + ' <b>' + guideWealthEsc(p.name) + '</b>（R' + p.riskLevel + '，' +
     guideWealthEsc(guideWealthTerm(p)) + '，参考' + guideWealthEsc(p.rateLabel || '年化') + ' ' + guideWealthEsc(p.rate) + '）</div>';
 }
 
@@ -2278,7 +2279,10 @@ async function guideWealthStep(text) {
   var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
 
   if (guideIsNegativeAmount(t)) {
-    var minAmt = (GUIDE_WEALTH && GUIDE_WEALTH.product) ? (Number(GUIDE_WEALTH.product.minAmount) || 0) : 0;
+    // 句子里可能同时带了产品（编号或名称）：先认出来，负数提示才能给出准确起购额
+    var negProd = (typeof guideWealthFindProduct === 'function') ? guideWealthFindProduct(t) : null;
+    if (negProd && !s.product) s.product = negProd;
+    var minAmt = (s.product && Number(s.product.minAmount)) || 0;
     var negTip = minAmt > 0
       ? ('申购金额不能低于起购金额 ¥' + guidePlainMoney(minAmt) + '，请重新输入。')
       : '申购金额需要大于 0，请重新输入。';
