@@ -66,8 +66,40 @@ var GUIDE_INTENT_MODULES = {
 
 async function guideAIRouteIntent(text) {
   if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return false;
-  var obj = null;
-  try {
+
+  var t0 = String(text || '');
+
+  // ① 只读查询 / 卡片列表 / 持仓查询：交给规则层与主链路，不进模型（省额度也更快）
+  if (typeof guideIsReadOnlyQuery === 'function' && guideIsReadOnlyQuery(t0)) return false;
+  if (typeof guideIsCardListQuery === 'function' && guideIsCardListQuery(t0)) return false;
+  if (typeof guideIsHoldingsQuery === 'function' && guideIsHoldingsQuery(t0)) return false;
+
+  // ② 确定性高的说法：规则直接给出模块，不调模型
+  var ruleModule = '';
+  if (/(取消|退订|不要了|终止|解约)/.test(t0) && /(订阅|会员|VIP|网盘|年卡|月卡)/.test(t0)) {
+    // 取消类必须先判，否则「取消订阅」里的「订」会被误判成添加
+    ruleModule = /(所有|全部|都)/.test(t0) ? 'sub.cancel-all' : 'sub.cancel';
+  } else if (/(自动续费|续费|不续费)/.test(t0) && /(订阅|会员|网盘|VIP|开|关|关掉|管理)/.test(t0)) {
+    ruleModule = 'sub.renew';
+  } else if (/(持仓|持有|买了哪些|买过哪些|有哪些产品|我的产品|收益情况)/.test(t0)) {
+    ruleModule = 'wealth.holding';
+  } else if (/(流水|账单|收支|消费统计|支出结构|花销)/.test(t0)) {
+    ruleModule = 'bill.analysis';
+  } else if (/(异常|可疑).{0,4}(交易|消费|记录)/.test(t0)) {
+    ruleModule = 'bill.abnormal';
+  } else if (/(AA|aa|分摊|平摊|各付|一人|每人)/.test(t0) && /(收|转|付|分摊|平摊)/.test(t0)) {
+    ruleModule = 'transfer.aa';
+  } else if (/1\d{10}/.test(t0) && /(转|汇|打款|付款)/.test(t0)) {
+    ruleModule = 'transfer.phone';
+  } else if (/(风险测评|风险评估|测评|风险等级)/.test(t0)) {
+    ruleModule = 'wealth.risk';
+  } else if (/(订阅|会员|年卡|月卡)/.test(t0) && /(订|开通|想要|添加|买)/.test(t0)) {
+    ruleModule = 'sub.add';
+  }
+
+  var obj = ruleModule ? { module: ruleModule } : null;
+
+  if (!obj) try {
     obj = await guideLLMJson(
       '你是银行 App 的意图路由器。把用户的话归到唯一模块，模块枚举：' +
       Object.keys(GUIDE_INTENT_MODULES).join('、') + '、none。' +
