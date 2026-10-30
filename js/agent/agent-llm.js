@@ -561,7 +561,7 @@ function agentLLMRenderNextSteps(state) {
     '<div class="agent-followup" style="margin-top:0;">' +
     '<span class="agent-followup-label">接下来我可以替你：</span>' +
     picked.map(function (t) {
-      return '<button class="agent-task" onclick="agentLLMQuickAsk(\'' + t.replace(/'/g, "\\'") + '\')">' + t + '</button>';
+      return '<div class="agent-followup-line">· ' + t + '</div>';
     }).join('') +
     '</div></div></div></div>';
   appendMessage(html);

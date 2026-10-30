@@ -194,10 +194,7 @@ function agentAlertCardHtml(a) {
     '<div class="agent-insight-title">' + a.title + '</div>' +
     '<div class="agent-insight-desc">' + a.detail + '</div>' +
     '</div></div>' +
-    '<div class="agent-tasks">' +
-    '<button class="agent-task" onclick="agentRunAlertAction(\'' + a.action + '\', ' + (a.adjustAmount || 0) + ')">' + (a.actionLabel || '查看') + '</button>' +
-    '<button class="agent-task ghost" onclick="this.closest(\'.agent-tasks\').style.display=\'none\';">先不用</button>' +
-    '</div>' +
+    '<div class="agent-tasks-note">如需处理，直接告诉我怎么做即可（例如「调整预算」「体检负债风险」）。</div>' +
     '</div></div></div>';
 }
 

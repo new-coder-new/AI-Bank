@@ -1310,3 +1310,9 @@
 .bank-muted { color: var(--bank-muted) !important; }
 /* 列表折叠与「展开更多」 */
 .list-hidden { display: none !important; }
+
+/* 主动拦截 / 主动提醒卡：不再放按钮，改为纯文本说明 */
+.agent-followup-line { font-size: 12.5px; color: #334155; line-height: 1.9; }
+.agent-tasks-note { margin-top: 8px; font-size: 12px; color: #94A3B8; line-height: 1.6; }
+.dark-mode .agent-followup-line { color: #C9D5E5; }
+.dark-mode .agent-tasks-note { color: #8A97A8; }

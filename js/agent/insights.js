@@ -283,8 +283,7 @@ function agentProactiveCardHtml(ev) {
     '<div class="agent-insight-title">' + ev.title + '</div>' +
     '<div class="agent-insight-desc">' + ev.detail + '</div>' +
     '</div></div>' +
-    '<div class="agent-tasks"><button class="agent-task" onclick="agentRunTask(\'' + ev.taskKey + '\')">' + ev.taskLabel + '</button>' +
-    '<button class="agent-task ghost" onclick="this.closest(\'.msg-bubble\').querySelector(\'.agent-proactive-foot\').style.display=\'block\';this.style.display=\'none\';">稍后再说</button></div>' +
+    '<div class="agent-tasks-note">需要处理时直接说一声即可，例如「' + (ev.taskLabel || '帮我看看') + '」。</div>' +
     '<div class="agent-proactive-foot">好的，我记下了。等你需要时直接对我说一声就行。</div>' +
     '</div></div></div>';
 }
@@ -639,7 +638,7 @@ function agentRenderFollowUps(planId, items) {
   var html = '<div class="agent-followup" id="' + id + '">' +
     '<span class="agent-followup-label">接下来我可以替你：</span>' +
     items.map(function (x) {
-      return '<button class="agent-task" onclick="agentRunTask(\'' + x.key + '\')">' + x.label + '</button>';
+      return '<div class="agent-followup-line">· ' + x.label + '</div>';
     }).join('') +
     '</div>';
   var anchor = document.getElementById(planId + '-footer');

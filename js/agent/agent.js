@@ -1861,11 +1861,11 @@ function agentShortageCardHtml(check, payee) {
     '<div class="agent-shortage-note">为保护你的账户，系统已在交易前拦截，<b>余额不会被扣成负数</b>。</div>' +
     '<div class="agent-followup">' +
     '<span class="agent-followup-label">可以这样解决：</span>' +
-    '<button class="agent-task" onclick="agentShortageFix(\'cap\',' + check.capAmount + ',\'' + safeName + '\')">① 改为转账上限金额 ¥' + cap + '</button>' +
-    '<button class="agent-task" onclick="agentShortageFix(\'adjust\',0,\'' + safeName + '\')">② 我自己调整金额</button>' +
-    '<button class="agent-task" onclick="agentShortageFix(\'split\',0,\'' + safeName + '\')">③ 拆成多笔分批转账</button>' +
-    '<button class="agent-task" onclick="agentShortageFix(\'loan\',0,\'' + safeName + '\')">④ 了解可借额度与利率</button>' +
-    '<button class="agent-task" onclick="agentShortageFix(\'card\',0,\'' + safeName + '\')">⑤ 用信用卡支付</button>' +
+    '<div class="agent-followup-line">① 改为转账上限金额 ¥' + cap + '</div>' +
+    '<div class="agent-followup-line">② 自己调整金额（直接告诉我数字）</div>' +
+    '<div class="agent-followup-line">③ 拆成多笔分批转账</div>' +
+    '<div class="agent-followup-line">④ 了解可借额度与利率</div>' +
+    '<div class="agent-followup-line">⑤ 用信用卡支付</div>' +
     '</div>' +
     '</div></div></div>';
 }
