@@ -4210,9 +4210,31 @@ function guideStartHoldings() {
   scrollToBottom();
 }
 
+
+// 收起问句下的选项按钮，并在下方记录所选（例如「需要赎回还是追加申购呢：赎回」）
+function guideCollapseChoiceChips(questionText, choice) {
+  try {
+    var bubbles = document.querySelectorAll('.message:not(.user) .msg-bubble');
+    for (var i = bubbles.length - 1; i >= 0; i--) {
+      var b = bubbles[i];
+      if ((b.textContent || '').indexOf(questionText) === -1) continue;
+      var chips = b.querySelector('.guide-chips');
+      if (!chips || !chips.parentNode) continue;
+      chips.parentNode.removeChild(chips);
+      var note = document.createElement('p');
+      note.className = 'guide-tip';
+      note.textContent = String(questionText).replace(/[？?]$/, '') + '：' + choice;
+      b.appendChild(note);
+      return true;
+    }
+  } catch (e) { /* 收起失败不影响流程 */ }
+  return false;
+}
+
 function guideHoldingChoose(mode) {
   var s = GUIDE_HOLDING;
   if (!s) return;
+  guideCollapseChoiceChips('需要赎回还是追加申购呢', mode === 'sub' ? '追加申购' : '赎回');
   if (mode === 'sub') {
     s.mode = 'sub';
     s.stage = 'subSlots';
