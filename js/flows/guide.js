@@ -1012,6 +1012,23 @@ async function guideHandleText(text) {
   //   ⑦ 规则失配且像「想看某功能」→ 再交给模型识别（guideAIIntent）
   //   ⑧ 全失配 → 返回 false，由 chat.js 输出统一兜底话术
   // ─────────────────────────────────────────────────────────────────────
+  // ①-预 鲜花下单（本地确定性规则）：在生日鲜花模块里，「订一束向日葵 / 给林小雨送花」
+  // 这类说法直接进下单，避免被模型误判成别的业务而落到模块菜单兜底。
+  if (currentModule === 'flower' && !GUIDE_FLOWER) {
+    var flowerBuy = /(订|买|送|来|要|下单)/.test(t) &&
+      /(鲜花|花束|花|蛋糕|玫瑰|百合|康乃馨|向日葵|郁金香|桔梗|满天星)/.test(t) &&
+      !/(订单|取消|查|看|记录|多少钱|几位|生日提醒)/.test(t);
+    if (flowerBuy) {
+      var hitName = '';
+      (typeof guideContactNames === 'function' ? guideContactNames().split('、') : []).forEach(function (nm) {
+        if (nm && t.indexOf(nm) !== -1 && nm.length > hitName.length) hitName = nm;
+      });
+      if (hitName && typeof guideStartFlowerForContact === 'function') guideStartFlowerForContact(hitName);
+      else if (typeof guideStartFlowerOrder === 'function') guideStartFlowerOrder();
+      return true;
+    }
+  }
+
   // ① AI 优先（意图层）：没有进行中的会话时，先让模型判断模块；判不出再走规则
   //    注意：鲜花「只看订单」这类只读会话虽然不算流程锁，但也不应再走模块意图路由，
   //    否则「给我订一束玫瑰」会被模型判成订阅之类的业务。
@@ -5353,6 +5370,16 @@ function guideFlowerApplyEdit(text) {
   if (!t) return null;
   var m;
 
+  // 收花人（只能从联系人里选）
+  if (/(收花人|送给|换给|改给|给)/.test(t) && !/给.*(卡|账户)/.test(t)) {
+    var names = guideFlowerContacts();
+    var foundName = '';
+    names.forEach(function (n2) {
+      if (n2 && t.indexOf(n2) !== -1 && n2.length > foundName.length) foundName = n2;
+    });
+    if (foundName) { o.recipient = foundName; return '收花人 ' + foundName; }
+  }
+
   // 收货地址
   if (/(收货地址|地址)/.test(t)) {
     m = t.match(/(?:收货地址|地址)[^，,。;；]*?(?:改为|改成|换成|设为|是|为|成)\s*([^，,。;；]+)/);
@@ -5657,6 +5684,7 @@ function guideFlowerConfirm() {
   s.stage = 'confirm';
   s.boxId = s.boxId || ('flower-confirm-' + Date.now());
   appendMessage(guideMessage('<div id="' + s.boxId + '">' + guideFlowerOrderCard(s) +
+    '<p class="guide-tip">可直接说要改的项，例如「换成向日葵花束」「日期改成11月2日」「贺卡改成生日快乐」。</p>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideFlowerSubmit()">提交订单</button>' +
     '<button class="guide-chip" onclick="guideFlowerCancelOp()">取消</button>' +
@@ -5671,17 +5699,36 @@ async function guideFlowerOrderStep(text) {
   var parsed = guideFlowerParse(t);
   var o = s.order;
 
-  // 确认阶段的自由输入：先看是否要改字段，再处理支付 / 确认 / 取消
-  if (s.stage === 'confirm') {
-    var edited = guideFlowerApplyEdit(t);
-    if (edited) {
-      var oldBox = s.boxId ? document.getElementById(s.boxId) : null;
-      if (oldBox) oldBox.innerHTML = '<p>已更新：' + guideFlowerEsc(edited) + '。</p>';
-      s.boxId = null;
+  // 会话中途的改单指令（带「改成/换成/换给…」才按改单处理，避免吞掉首句的多字段信息）
+  var editIntent = /(改成|改为|换成|换给|改给|改到|设为|换个|换一束|修改|调整)/.test(t);
+  if (s.stage !== 'confirm' && !editIntent) {
+    // 非改单语句：继续走正常槽位解析
+  } else {
+  var edited = guideFlowerApplyEdit(t);
+  if (edited) {
+    var oldBox = s.boxId ? document.getElementById(s.boxId) : null;
+    if (oldBox) oldBox.innerHTML = '<p>已更新：' + guideFlowerEsc(edited) + '。</p>';
+    s.boxId = null;
+    if (s.stage === 'confirm') {
       s.stage = 'confirm';
       guideFlowerConfirm();
       return true;
     }
+    appendMessage(guideMessage('<p>已更新：' + guideFlowerEsc(edited) + '。</p>'));
+    if (o.recipient && o.phone && o.address && o.bouquet && o.date && o.slot) {
+      guideFlowerConfirm();
+    } else {
+      appendMessage(guideMessage('<p>' + guideFlowerMissingPrompt(o) + '</p>' +
+        '<p class="guide-tip">可选花束：' + FLOWER_BOUQUETS.map(function (b) { return b.name; }).join('、') + '</p>' +
+        '<p class="guide-tip">配送时段：' + FLOWER_SLOTS.map(function (x) { return x.text; }).join('、') + '</p>'));
+      scrollToBottom();
+    }
+    return true;
+  }
+  }
+
+  // 确认阶段的自由输入：支付方式 / 确认 / 取消
+  if (s.stage === 'confirm') {
     if (/信用卡/.test(t)) { o.payMethod = '信用卡'; appendMessage(guideMessage('<p>已切换为信用卡支付。</p>')); guideFlowerConfirm(); return true; }
     if (/储蓄卡|借记卡/.test(t)) { o.payMethod = '储蓄卡'; appendMessage(guideMessage('<p>已切换为储蓄卡支付。</p>')); guideFlowerConfirm(); return true; }
     if (/^(确认|提交|提交订单|确定|是|好|行)$/.test(t.replace(/[吧呢啊呀。.!！?？\s]/g, ''))) { return guideFlowerSubmit(); }
