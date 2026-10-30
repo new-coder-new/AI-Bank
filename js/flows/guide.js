@@ -4815,17 +4815,29 @@ async function guideSubSession(t) {
       guideExitSilently();
       return true;
     }
-    if (/(添加|新增|开通|订一个|买一个)/.test(t)) { guideSubChoose('add'); return true; }
-    if (/(所有|全部|都).{0,4}(取消|退订|不要)|(取消|退订).{0,4}(所有|全部)/.test(t)) {
+    // 一键取消全部
+    if (/(所有|全部|都).{0,6}(取消|退订|不要)|(取消|退订|不要).{0,6}(所有|全部)/.test(t)) {
       guideSubCancelAllStart();
       return true;
     }
-    if (/(取消订阅|退订|终止|不要了|退掉)/.test(t)) { guideSubChoose('cancel'); return true; }
-    if (/(自动续费|续费|管理|开启|关闭)/.test(t)) {
+    // 自动续费类（「某度网盘不续费了」「关闭某讯的自动续费」）
+    if (/(自动续费|续费|续订|开启|关闭|关掉|管理)/.test(t)) {
       // 「关闭某讯 VIP 的自动续费」这类直接说完整的，直接进自动续费流程
       var svcQuick = guideSubFindService(t);
       if (svcQuick) { guideStartSubAutoRenew(); return guideSubManageStep(t); }
       guideSubChoose('renew');
+      return true;
+    }
+    // 取消订阅：先判取消（「退订某度网盘 / 某易云不要了 / 我不想订阅某易云了」）
+    var cancelWord = /(取消|退订|退掉|退了|终止|不想|不要了|不要|不再|不用|别订|停掉|停止|不订了)/;
+    var svcHint = /(订阅|会员|VIP|vip|网盘|音乐|视频|阅读|健身|某)/;
+    if (cancelWord.test(t) && (svcHint.test(t) || /取消订阅|退订/.test(t))) {
+      guideSubChoose('cancel');
+      return true;
+    }
+    // 添加订阅：「订阅某易云年卡 / 开通某讯会员 / 我想订个网盘」
+    if (/(订阅|开通|订|买)/.test(t) && /(某|VIP|vip|会员|年卡|月卡|季卡|网盘|音乐|视频|阅读|健身)/.test(t)) {
+      guideSubChoose('add');
       return true;
     }
     // 停在「请选择」不算进行中流程，这里只提示怎么选，不输出流程锁文案
