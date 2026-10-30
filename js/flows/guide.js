@@ -623,7 +623,7 @@ async function guideHandleText(text) {
   if (GUIDE_AA) {
     if (/^(取消|不做了|算了|退出|返回|菜单)$/.test(t)) {
       GUIDE_AA = null;
-      guideBackToMenu();
+      guideExitSilently();
       return true;
     }
     if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
@@ -635,7 +635,7 @@ async function guideHandleText(text) {
   if (GUIDE_WEALTH) {
     if (/^(取消|不做了|算了|退出|返回|菜单)$/.test(t)) {
       GUIDE_WEALTH = null;
-      guideBackToMenu();
+      guideExitSilently();
       return true;
     }
     if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
@@ -647,7 +647,7 @@ async function guideHandleText(text) {
   if (GUIDE_CARD_APPLY) {
     if (/^(取消|不办了|算了|退出|返回|菜单)$/.test(t)) {
       GUIDE_CARD_APPLY = null;
-      guideBackToMenu();
+      guideExitSilently();
       return true;
     }
     if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
@@ -659,7 +659,7 @@ async function guideHandleText(text) {
   if (GUIDE_CARD_LIMIT) {
     if (/^(取消|不调了|算了|退出|返回|菜单)$/.test(t)) {
       GUIDE_CARD_LIMIT = null;
-      guideBackToMenu();
+      guideExitSilently();
       return true;
     }
     if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
@@ -672,7 +672,7 @@ async function guideHandleText(text) {
     // 只有「返回 / 菜单」才退出会话；「取消」交给流程本身，回「已取消，持仓保持不变。」
     if (/^(返回|菜单|返回菜单|退出)$/.test(t)) {
       GUIDE_HOLDING = null;
-      guideBackToMenu();
+      guideExitSilently();
       return true;
     }
     return guideLockedRun(function () { return guideHoldingStep(t); });
@@ -692,7 +692,7 @@ async function guideHandleText(text) {
   if (GUIDE_TXN_LIMIT) {
     if (/^(取消|不设了|算了|退出|返回|菜单)$/.test(t)) {
       GUIDE_TXN_LIMIT = null;
-      guideBackToMenu();
+      guideExitSilently();
       return true;
     }
     return guideLockedRun(function () { return guideTxnLimitStep(t); });
@@ -702,7 +702,7 @@ async function guideHandleText(text) {
   if (GUIDE_CARD_LOST) {
     if (/^(取消|不挂了|算了|退出|返回|菜单)$/.test(t)) {
       GUIDE_CARD_LOST = null;
-      guideBackToMenu();
+      guideExitSilently();
       return true;
     }
     return guideLockedRun(function () { return guideCardLostStep(t); });
@@ -800,6 +800,12 @@ async function guideHandleText(text) {
   var actionable = guideTryActionableCommand(t);
   if (actionable === true) return true;
   if (actionable && typeof actionable.then === 'function') return true;
+
+  // 空闲时（没有进行中的流程、没有待确认的卡）说「取消 / 算了」：只回一句，不再弹首页卡
+  if (/^(取消|算了|不用了|不|不要|放弃)$/.test(t) && !guideActiveFlowLabel() && !guideAwaitingFinalAction()) {
+    guideAsk(guideMessage('<p>当前没有进行中的操作。需要办理什么业务，直接说就行。</p>'));
+    return true;
+  }
 
   // 返回一级菜单
   if (/^(返回|返回菜单|服务菜单|主菜单|菜单|首页|服务列表)$/.test(t)) {
@@ -1221,7 +1227,7 @@ function guideTransferStep(text) {
   var t = String(text || '').trim();
   if (/^(取消|不转了|算了|退出|返回|菜单)$/.test(t)) {
     GUIDE_TRANSFER = null;
-    guideBackToMenu();
+    guideExitSilently();
     return true;
   }
 
@@ -2811,7 +2817,7 @@ async function guideCardLimitStep(text) {
   if (s.stage === 'pickCard') {
     if (/^(取消|不调了|算了|退出|返回|菜单)$/.test(plain)) {
       GUIDE_CARD_LIMIT = null;
-      guideBackToMenu();
+      guideExitSilently();
       return true;
     }
     var picked = guidePickCardFromText(t, s.cards || []);
@@ -3139,7 +3145,7 @@ async function guideTxnLimitStep(text) {
     var plainPick = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
     if (/^(取消|不改了|算了|退出|返回|菜单)$/.test(plainPick)) {
       GUIDE_TXN_LIMIT = null;
-      guideBackToMenu();
+      guideExitSilently();
       return true;
     }
     var picked = guidePickCardFromText(t, s.cards || []);
@@ -4536,7 +4542,7 @@ async function guideSubSession(t) {
   if (s.mode === 'choose') {
     if (/^(返回|菜单|返回菜单|退出|取消|不看了)$/.test(plain)) {
       GUIDE_SUB = null;
-      guideBackToMenu();
+      guideExitSilently();
       return true;
     }
     if (/(添加|新增|开通|订一个|买一个)/.test(t)) { guideSubChoose('add'); return true; }
@@ -4581,7 +4587,7 @@ async function guideSubSession(t) {
 
   if (/^(返回|菜单|返回菜单|退出)$/.test(plain)) {
     GUIDE_SUB = null;
-    guideBackToMenu();
+    guideExitSilently();
     return true;
   }
 
@@ -5446,7 +5452,7 @@ async function guideFlowerSession(t) {
     if (s.stage === 'confirm' && /^(取消|不|算了)$/.test(plain)) { guideFlowerCancelOp(); return true; }
     if (/^(返回|菜单|返回菜单|退出|取消|不订了|算了)$/.test(plain) && s.stage !== 'confirm') {
       GUIDE_FLOWER = null;
-      guideBackToMenu();
+      guideExitSilently();
       return true;
     }
     return guideFlowerOrderStep(t);
@@ -5475,7 +5481,7 @@ async function guideFlowerSession(t) {
     // 列表模式必须有出口：返回/菜单/退出/取消（未指定订单）都回到一级菜单
     if (/^(返回|菜单|返回菜单|退出|取消|不看了|算了)$/.test(plain)) {
       GUIDE_FLOWER = null;
-      guideBackToMenu();
+      guideExitSilently();
       return true;
     }
     if (/修改|改一下|换款式|改款式/.test(t)) {
