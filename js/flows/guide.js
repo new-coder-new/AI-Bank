@@ -4673,7 +4673,7 @@ function guideStartSubManage() {
     '<p>订阅管理包含这些操作：</p>' +
     '<div class="guide-rows">' +
     '<div class="guide-row"><div class="guide-row-title">添加订阅</div><div class="guide-row-example">例如：我想要订阅某易云年卡</div></div>' +
-    '<div class="guide-row"><div class="guide-row-title">取消订阅</div><div class="guide-row-example">例如：我不想订阅某易云了</div></div>' +
+    '<div class="guide-row"><div class="guide-row-title">取消订阅</div><div class="guide-row-example">例如：取消所有订阅</div></div>' +
     '<div class="guide-row"><div class="guide-row-title">管理自动续费</div><div class="guide-row-example">例如：某度网盘年卡不续费了</div></div>' +
     '<div class="guide-row"><div class="guide-row-title">可订阅会员</div><div class="guide-row-example">例如：能订哪些会员</div></div>' +
     '</div>' +
