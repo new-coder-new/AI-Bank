@@ -560,6 +560,13 @@ function guideCancelPendingScheduled() {
   scrollToBottom();
   return true;
 }
+// 认不出的输入专用输出：跳过「同一句不重复」去重，保证每次都能看到反馈
+function guideSayInvalid(html) {
+  if (typeof window !== 'undefined') window.__DEDUPE_BREAK__ = true;
+  appendMessage(html);
+  scrollToBottom();
+}
+
 function guideAsk(html) {
   // 去重统一交给 appendMessage（按「用户轮次」判断），这里只负责输出 + 滚动
   appendMessage(html);
@@ -2882,9 +2889,8 @@ async function guideCardLimitStep(text) {
       guideCardLimitPickCard(picked.id);
       return true;
     }
-    if (s.listShown) { s.listShown = false; return true; }
-    appendMessage(guideMessage('<p>请回复卡片尾号（如 6789）或卡种（白金 / 金卡）。</p>'));
-    scrollToBottom();
+    if (s.listShown) s.listShown = false;
+    guideSayInvalid(guideMessage('<p>没听懂你要调整哪张卡。请回复卡片尾号（如 6789）或卡种（白金 / 金卡）。</p>'));
     return true;
   }
 
@@ -3207,9 +3213,8 @@ async function guideTxnLimitStep(text) {
     }
     var picked = guidePickCardFromText(t, s.cards || []);
     if (picked) { guideTxnLimitPickCard(picked.id); return true; }
-    if (s.listShown) { s.listShown = false; return true; }
-    appendMessage(guideMessage('<p>请回复卡片尾号（如 6789）或卡种（白金 / 金卡）。</p>'));
-    scrollToBottom();
+    if (s.listShown) s.listShown = false;
+    guideSayInvalid(guideMessage('<p>没听懂你要设置哪张卡。请回复卡片尾号（如 6789）或卡种（白金 / 金卡）。</p>'));
     return true;
   }
 
@@ -4189,11 +4194,10 @@ async function guideSubAddStep(text) {
     scrollToBottom();
     return true;
   }
-  // 入口刚展示过服务和价格（含扣费周期说明），这里不再重复一遍
-  if (s.listShown) { s.listShown = false; return true; }
-  appendMessage(guideMessage('<p>请选择订阅服务与扣费周期。</p>' +
+  // 认不出用户说的服务时也要有回应：不再静默
+  if (s.listShown) s.listShown = false;
+  guideSayInvalid(guideMessage('<p>没听懂你想订哪一项，请从下面选择（可同时说周期）。</p>' +
     '<div class="report-panel"><div class="report-panel-title">可订阅服务</div>' + guideSubPresetRows() + '</div>'));
-  scrollToBottom();
   return true;
 }
 
@@ -4373,13 +4377,11 @@ async function guideSubManageStep(text) {
   if (want !== null) s.newAutoRenew = want;
 
   if (!s.target) {
-    // 刚刚已经展示过订阅清单（入口那句「需要取消或开启哪一项」），这里不再重复追问
-    if (s.listShown && !svc) { s.listShown = false; return true; }
-    var hint = svc ? ('没有找到「' + guideSubEsc(svc.name) + '」的有效订阅。') : '';
+    if (s.listShown && !svc) s.listShown = false;
+    var hint = svc ? ('没有找到「' + guideSubEsc(svc.name) + '」的有效订阅。') : '没听懂你想管理哪一项。';
     var names = guideSubActive().map(function (x) { return x.name; }).join('、') || '暂无订阅';
-    appendMessage(guideMessage('<p>' + hint + '</p><p>请告诉我要管理哪一项订阅的自动续费。</p>' +
+    guideSayInvalid(guideMessage('<p>' + hint + '</p><p>请告诉我要管理哪一项订阅的自动续费。</p>' +
       '<p class="guide-tip">当前有效订阅：' + guideSubEsc(names) + '</p>'));
-    scrollToBottom();
     return true;
   }
   if (s.newAutoRenew === null) {
@@ -4469,12 +4471,12 @@ async function guideSubCancelStep(text) {
   }
   var target = svc && svc.kind === 'active' ? svc.sub : (svc ? guideSubActive().filter(function (x) { return guideSubNormName(x.name) === guideSubNormName(svc.name); })[0] : null);
   if (!target) {
-    if (s.listShown && !svc) { s.listShown = false; return true; }
-    var hint2 = svc ? ('没有找到「' + guideSubEsc(svc.name) + '」的有效订阅。') : '';
+    // 用户说了与订阅无关的话：每句都要给回应，不能静默
+    if (s.listShown && !svc) s.listShown = false;
+    var hint2 = svc ? ('没有找到「' + guideSubEsc(svc.name) + '」的有效订阅。') : '没听懂你想取消哪一项。';
     var names2 = guideSubActive().map(function (x) { return x.name; }).join('、') || '暂无订阅';
-    appendMessage(guideMessage('<p>' + hint2 + '</p><p>请选择你想要取消的订阅项目。</p>' +
+    guideSayInvalid(guideMessage('<p>' + hint2 + '</p><p>请选择你想要取消的订阅项目。</p>' +
       '<p class="guide-tip">当前有效订阅：' + guideSubEsc(names2) + '</p>'));
-    scrollToBottom();
     return true;
   }
   s.target = target;
