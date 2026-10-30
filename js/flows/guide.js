@@ -1607,6 +1607,16 @@ function guideTransferStep(text) {
   // ④ 收槽位阶段
   var parsed = guideTransferParse(t, s.kind);
 
+  // 已有收款人、只缺金额时：完全不像金额的输入（如「哈哈哈」）直接重复问金额，
+  // 不再走模型 / 陌生姓名提示，保证连续追问一致
+  if (s.kind !== 'timed' && (s.payee || s.phone) && !(Number(s.amount) > 0) && !(Number(parsed.amount) > 0)) {
+    var amountish = /\d/.test(t) || /[一二三四五六七八九十百千万两]/.test(t) || /(元|块|万|千)/.test(t);
+    if (!amountish) {
+      guideSayInvalid(guideMessage('<p>麻烦告诉我转账金额</p>'));
+      return true;
+    }
+  }
+
   // 姓名转账：非通讯录姓名直接提示，不进入槽位
   if (s.kind === 'name' && !parsed.payee && parsed.unknownName) {
     guideUnknownPayeeNotice(parsed.unknownName, t);
