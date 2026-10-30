@@ -5,86 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0B4F9C">
 <title>智能金融助手 · 智银银行</title>
-<link rel="stylesheet" href="css/style.css?v=20261104k">
+<link rel="stylesheet" href="css/style.css?v=20261104m">
 </head>
 <body>
 
-<!-- 智能体抽屉：能力与记忆 -->
-<div class="agent-drawer-overlay" id="agentDrawerOverlay" onclick="toggleAgentDrawer()"></div>
-<aside class="agent-drawer" id="agentDrawer">
-  <div class="agent-drawer-header">
-    <div class="logo">
-      <div class="logo-icon">AI</div>
-      <div class="logo-copy">
-        <div class="logo-title">智能金融助手</div>
-        <div class="logo-cap">智银银行 · AI 管家</div>
-      </div>
-      <span class="badge">AI</span>
-    </div>
-    <button class="agent-drawer-close" onclick="toggleAgentDrawer()" aria-label="关闭菜单">✕</button>
-  </div>
-
-  <button class="drawer-account" onclick="drawerGo(showUserInfoFromTopbar)">
-    <span class="drawer-avatar">陈</span>
-    <span class="drawer-account-copy">
-      <b>小陈</b>
-      <small>白金客户 · VIP3</small>
-    </span>
-    <span class="drawer-account-arrow">›</span>
-  </button>
-
-  <div class="agent-drawer-section">
-    <div class="nav-title">AI 管家</div>
-    <div class="nav-item active" data-module="chat" onclick="switchModule('chat', this)">
-      <span class="nav-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z"/></svg></span>
-      <span>AI 对话</span>
-    </div>
-  </div>
-
-  <div class="agent-drawer-section">
-    <div class="nav-title">银行服务</div>
-    <div class="nav-item" data-module="transfer" onclick="switchModule('transfer', this)">
-      <span class="nav-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span>
-      <span>智能转账</span>
-    </div>
-    <div class="nav-item" data-module="scheduled" onclick="switchModule('scheduled', this)">
-      <span class="nav-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 1.8"/></svg></span>
-      <span>定时转账</span>
-    </div>
-    <div class="nav-item" data-module="bill" onclick="switchModule('bill', this)">
-      <span class="nav-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16l-3-2-2 2-2-2-2 2-2-2-3 2Z"/><path d="M9 8h6M9 12h6"/></svg></span>
-      <span>账单分析</span>
-    </div>
-    <div class="nav-item" data-module="wealth" onclick="switchModule('wealth', this)">
-      <span class="nav-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l5-5 3 3 7-8"/><path d="M15 7h4v4"/></svg></span>
-      <span>理财服务</span>
-    </div>
-    <div class="nav-item" data-module="card" onclick="switchModule('card', this)">
-      <span class="nav-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><path d="M7 15h3"/></svg></span>
-      <span>卡片管理</span>
-    </div>
-    <div class="nav-item" data-module="subscribe" onclick="switchModule('subscribe', this)">
-      <span class="nav-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6"/><path d="M10.5 19a2 2 0 0 0 3 0"/></svg></span>
-      <span>订阅管理</span>
-    </div>
-  </div>
-
-  <div class="agent-drawer-section">
-    <div class="nav-title">AI 记忆</div>
-    <div id="agentMemoryBox" class="agent-memory-box"></div>
-  </div>
-
-  <div class="drawer-settings">
-    <button onclick="drawerGo(showManual)">使用手册</button>
-    <button onclick="drawerGo(toggleDarkMode)" id="darkModeBtn">深色模式</button>
-  </div>
-</aside>
 
 <div class="main">
   <div class="topbar">
-    <button class="agent-menu-btn" id="agentMenuBtn" onclick="toggleAgentDrawer()" title="打开菜单" aria-label="打开菜单">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-    </button>
     <div class="brand">
       <div class="logo-icon">AI</div>
       <div class="brand-copy">
@@ -183,50 +110,50 @@
 
 
 <!-- 模块化JS - 按依赖顺序加载 -->
-<script src="js/core/icons.js?v=20261104k"></script>
+<script src="js/core/icons.js?v=20261104m"></script>
 <!-- 本地密钥（可选）：js/core/config.local.js 已被 git 忽略；缺失时由服务端用环境变量兜底，无 Key 则 AI 能力自动降级 -->
-<script src="js/core/config.local.js?v=20261104k"></script>
-<script src="js/core/config.js?v=20261104k"></script>
-<script src="js/core/api.js?v=20261104k"></script>
-<script src="js/core/visualization.js?v=20261104k"></script>
-<script src="js/core/storage.js?v=20261104k"></script>
-<script src="js/flows/security.js?v=20261104k"></script>
-<script src="js/flows/transfer.js?v=20261104k"></script>
-<script src="js/flows/wealth.js?v=20261104k"></script>
-<script src="js/flows/card.js?v=20261104k"></script>
-<script src="js/flows/subscription.js?v=20261104k"></script>
-<script src="js/flows/budget.js?v=20261104k"></script>
-<script src="js/flows/userinfo.js?v=20261104k"></script>
-<script src="js/flows/analysis.js?v=20261104k"></script>
-<script src="js/flows/flower.js?v=20261104k"></script>
-<script src="js/core/voice.js?v=20261104k"></script>
-<script src="js/agent/ai.js?v=20261104k"></script>
-<script src="js/core/intent.js?v=20261104k"></script>
+<script src="js/core/config.local.js?v=20261104m"></script>
+<script src="js/core/config.js?v=20261104m"></script>
+<script src="js/core/api.js?v=20261104m"></script>
+<script src="js/core/visualization.js?v=20261104m"></script>
+<script src="js/core/storage.js?v=20261104m"></script>
+<script src="js/flows/security.js?v=20261104m"></script>
+<script src="js/flows/transfer.js?v=20261104m"></script>
+<script src="js/flows/wealth.js?v=20261104m"></script>
+<script src="js/flows/card.js?v=20261104m"></script>
+<script src="js/flows/subscription.js?v=20261104m"></script>
+<script src="js/flows/budget.js?v=20261104m"></script>
+<script src="js/flows/userinfo.js?v=20261104m"></script>
+<script src="js/flows/analysis.js?v=20261104m"></script>
+<script src="js/flows/flower.js?v=20261104m"></script>
+<script src="js/core/voice.js?v=20261104m"></script>
+<script src="js/agent/ai.js?v=20261104m"></script>
+<script src="js/core/intent.js?v=20261104m"></script>
 <!-- 智能层：记忆 / 工具 / 风险 / 计划 / 洞察与场景 -->
-<script src="js/agent/agent.js?v=20261104k"></script>
+<script src="js/agent/agent.js?v=20261104m"></script>
 <!-- v6 认知层：画像分析 / 消费决策 / 风险识别 / 跨场景规划 / 展示增强 -->
-<script src="js/agent/profile.js?v=20261104k"></script>
-<script src="js/agent/decision.js?v=20261104k"></script>
-<script src="js/agent/riskdetect.js?v=20261104k"></script>
-<script src="js/agent/planner.js?v=20261104k"></script>
-<script src="js/agent/display.js?v=20261104k"></script>
+<script src="js/agent/profile.js?v=20261104m"></script>
+<script src="js/agent/decision.js?v=20261104m"></script>
+<script src="js/agent/riskdetect.js?v=20261104m"></script>
+<script src="js/agent/planner.js?v=20261104m"></script>
+<script src="js/agent/display.js?v=20261104m"></script>
 <!-- 信用卡额度与调额层：区分申请/审批/生效额度 + 调额流程 + 纯数学计算 -->
-<script src="js/flows/cardlimit.js?v=20261104k"></script>
+<script src="js/flows/cardlimit.js?v=20261104m"></script>
 <!-- 卡片服务：卡片申请 / 交易限制 / 卡片挂失（全部服务 → 卡片分组） -->
-<script src="js/flows/cardservice.js?v=20261104k"></script>
-<script src="js/agent/agentsvc.js?v=20261104k"></script>
+<script src="js/flows/cardservice.js?v=20261104m"></script>
+<script src="js/agent/agentsvc.js?v=20261104m"></script>
 <!-- v7 理解层与知识增强层：指代消解 / 金融知识库(RAG) / 场景推理 -->
-<script src="js/agent/context.js?v=20261104k"></script>
-<script src="js/agent/kb.js?v=20261104k"></script>
-<script src="js/agent/scenario.js?v=20261104k"></script>
-<script src="js/agent/insights.js?v=20261104k"></script>
-<script src="js/agent/agent-llm.js?v=20261104k"></script>
-<script src="js/flows/chat.js?v=20261104k"></script>
+<script src="js/agent/context.js?v=20261104m"></script>
+<script src="js/agent/kb.js?v=20261104m"></script>
+<script src="js/agent/scenario.js?v=20261104m"></script>
+<script src="js/agent/insights.js?v=20261104m"></script>
+<script src="js/agent/agent-llm.js?v=20261104m"></script>
+<script src="js/flows/chat.js?v=20261104m"></script>
 <!-- 服务向导：对话起始欢迎语 + 五类服务二级菜单 + 模块内上下文 -->
 <!-- 服务向导三层：规则识别（0 模型调用）→ 模型识别（唯一调模型处）→ 流程与渲染 -->
-<script src="js/flows/guide-rules.js?v=20261104k"></script>
-<script src="js/flows/guide-ai.js?v=20261104k"></script>
-<script src="js/flows/guide.js?v=20261104k"></script>
-<script src="js/core/ui.js?v=20261104k"></script>
+<script src="js/flows/guide-rules.js?v=20261104m"></script>
+<script src="js/flows/guide-ai.js?v=20261104m"></script>
+<script src="js/flows/guide.js?v=20261104m"></script>
+<script src="js/core/ui.js?v=20261104m"></script>
 </body>
 </html>
