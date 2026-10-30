@@ -35,6 +35,25 @@ mockData = {
   }
 };
 
+// 运行环境 stub：guide.js 依赖 config.js 里的全局状态
+currentModule = 'chat';
+GUIDE_WRAPUP = null;
+GUIDE_FLOWER = null;
+GUIDE_HOLDING = null;
+GUIDE_SUB = null;
+GUIDE_WEALTH = null;
+GUIDE_TRANSFER = null;
+GUIDE_AA = null;
+GUIDE_CARD_APPLY = null;
+GUIDE_CARD_LIMIT = null;
+GUIDE_TXN_LIMIT = null;
+GUIDE_CARD_LOST = null;
+guideActiveFlowLabel = () => '';
+guideModuleWrapUp = () => {};
+guideOpenModuleMenu = () => {};
+guideExitSilently = () => {};
+guideModuleLabel = (k) => k;
+
 appendMessage = (h) => logs.push(String(h));
 scrollToBottom = () => {};
 escapeHtml = (s) => String(s == null ? '' : s);
