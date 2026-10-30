@@ -934,6 +934,14 @@ function manualReviewActionAmount(a) {
 }
 
 async function adminApproveReview(id) {
+  // 人工复核通过会真正执行资金操作：先过一道安全验证（交易密码），
+  // 避免用户在界面上自己点「通过」绕过 T4 大额复核。
+  if (typeof showSecurityVerification === 'function') {
+    var __ok = await new Promise(function (resolve) {
+      showSecurityVerification('人工复核通过（' + (id || '') + '）', function (ok) { resolve(!!ok); });
+    });
+    if (!__ok) return;
+  }
   var list = mockData.userProfile.manualReviews || [];
   var record = list.find(function (r) { return r.id === id; });
   if (!record || record.status !== '待人工复核') return;

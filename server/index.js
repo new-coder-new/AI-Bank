@@ -515,6 +515,23 @@ const routes = {
     const payeeName = String(payee || '').trim();
     if (!Number.isFinite(amt) || amt <= 0) return { ok: false, error: '金额无效' };
     if (!payeeName) return { ok: false, error: '缺少收款人' };
+    // 交易限额（用户在卡片管理里设置的单笔/日累计限额）
+    const tl = DB.userProfile.txnLimit || {};
+    const singleLimit = Number(tl.single) || 0;
+    const dailyLimit = Number(tl.daily) || 0;
+    if (singleLimit > 0 && amt > singleLimit) {
+      return { ok: false, error: '超过单笔限额 ¥' + singleLimit + '（本次 ¥' + amt + '）' };
+    }
+    if (dailyLimit > 0) {
+      const todayStr = fmtDate(now());
+      if (!DB.userProfile.transferDaily || DB.userProfile.transferDaily.date !== todayStr) {
+        DB.userProfile.transferDaily = { date: todayStr, amount: 0 };
+      }
+      const spent = Number(DB.userProfile.transferDaily.amount) || 0;
+      if (spent + amt > dailyLimit) {
+        return { ok: false, error: '超过每日限额 ¥' + dailyLimit + '（今日已转 ¥' + spent + '）' };
+      }
+    }
     // 幂等：同一笔提交（双击/重试）只扣一次。只在成功扣款后记录结果，
     // 避免失败请求留下“成功”占位导致重试被误判为已完成。
     const idemKey = idempotencyKey ? 'transfer:' + String(idempotencyKey) : null;
@@ -533,6 +550,9 @@ const routes = {
     addTxn('expense', amt, `转账给${payee}`, '智能转账');
     const id = Math.max(0, ...DB.userProfile.transferHistory.map((t) => t.id)) + 1;
     DB.userProfile.transferHistory.unshift({ id, payee: payeeName, account: '****', amount: amt, time: fmtDateTime(now()), status: '已完成', channel: '智能转账' });
+    if (dailyLimit > 0) {
+      DB.userProfile.transferDaily.amount = Math.round(((Number(DB.userProfile.transferDaily.amount) || 0) + amt) * 100) / 100;
+    }
     const result = { ok: true, balance: d.balance, available: d.available, transferId: id };
     if (idemKey && DB.__idem) DB.__idem[idemKey] = Object.assign({ at: Date.now() }, result);
     return result;

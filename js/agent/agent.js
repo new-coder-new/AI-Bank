@@ -569,6 +569,26 @@ registerAgentTool('transfer.execute', {
       if (!known) return { ok: false, summary: '收款人「' + payee + '」不在通讯录，姓名转账已拒绝' };
     }
 
+    // 交易限额门禁：单笔 / 日累计（用户在卡片管理里设置）
+    var limitCfg = (typeof txnLimitData === 'function') ? (txnLimitData() || {}) : ((mockData.userProfile && mockData.userProfile.txnLimit) || {});
+    var singleLimit = Number(limitCfg.single) || 0;
+    var dailyLimit = Number(limitCfg.daily) || 0;
+    var todayStr = (function () {
+      var d = new Date();
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    })();
+    var u0 = mockData.userProfile;
+    if (!u0.transferDaily || u0.transferDaily.date !== todayStr) u0.transferDaily = { date: todayStr, amount: 0 };
+    if (singleLimit > 0 && amount > singleLimit) {
+      return { ok: false, summary: '超过单笔限额 ¥' + agentFmt(singleLimit) + '（本次 ¥' + agentFmt(amount) + '），转账已拒绝' };
+    }
+    if (dailyLimit > 0) {
+      var spentToday = Number(u0.transferDaily.amount) || 0;
+      if (spentToday + amount > dailyLimit) {
+        return { ok: false, summary: '超过每日限额 ¥' + agentFmt(dailyLimit) + '（今日已转 ¥' + agentFmt(spentToday) + '），转账已拒绝' };
+      }
+    }
+
     // 余额门禁：工具层再校验一次。工具有多个调用入口（Function Calling / 规则层 / 计划执行器），
     // 不能只靠 UI 拦截，否则新增入口就会漏。
     var avail = Number(mockData.userProfile.debitCard.available);
@@ -721,6 +741,10 @@ registerAgentTool('wealth.buy', {
         profit: 0, profitRate: 0, buyDate: agentDateStr(0), status: '持有中',
         riskLevel: prod.riskLevel
       });
+    }
+    // 累计当日转账额（日累计限额用）
+    if (dailyLimit > 0) {
+      u0.transferDaily.amount = Math.round(((Number(u0.transferDaily.amount) || 0) + amount) * 100) / 100;
     }
     saveUserData();
     // 数据真实化：同步后端
