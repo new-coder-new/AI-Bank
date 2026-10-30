@@ -4397,7 +4397,7 @@ async function guideHoldingStep(text) {
     return true;
   }
 
-  // 确认阶段：支持直接打字「确认 / 修改 / 取消」，不必点按钮
+  // 确认阶段：支持直接打字「确认 / 取消」，不必点按钮
   if (s.stage === 'subConfirm' || s.stage === 'redeemConfirm' || s.stage === 'redeemAllConfirm') {
     if (/^(确认|确定|确认申购|确认赎回|确认一键赎回|是|好|好的|行|可以|继续|提交|提交申请)$/.test(plain)) {
       if (s.stage === 'subConfirm') { guideHoldingSubSubmit(); return true; }
@@ -4407,7 +4407,7 @@ async function guideHoldingStep(text) {
     }
     if (/^(修改|改一下|重填|重新填写|重新输入)$/.test(plain)) { guideHoldingModify(); return true; }
     if (/^(取消|不|不要|算了|退出)$/.test(plain)) { guideHoldingCancel(); return true; }
-    appendMessage(guideMessage('<p>请点击按钮，或直接回复「确认 / 修改 / 取消」。</p>'));
+    appendMessage(guideMessage('<p>请点击按钮，或直接回复「确认 / 取消」。</p>'));
     scrollToBottom();
     return true;
   }
@@ -4443,7 +4443,6 @@ function guideHoldingSubConfirm() {
     (s.riskOverride ? '<p class="guide-tip">⚠️ 该产品风险等级高于你的风险承受能力，已按你的确认继续。</p>' : '') +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideHoldingSubSubmit()">确认申购</button>' +
-    '<button class="guide-chip" onclick="guideHoldingModify()">修改</button>' +
     '<button class="guide-chip" onclick="guideHoldingCancel()">取消</button>' +
     '</div>'
   ));
@@ -4543,7 +4542,6 @@ function guideHoldingRedeemConfirm() {
     (s.full ? '<p class="guide-tip">本次为全额赎回，赎回后该持仓清空。</p>' : '') +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideHoldingRedeemSubmit()">确认赎回</button>' +
-    '<button class="guide-chip" onclick="guideHoldingModify()">修改</button>' +
     '<button class="guide-chip" onclick="guideHoldingCancel()">取消</button>' +
     '</div>'
   ));
