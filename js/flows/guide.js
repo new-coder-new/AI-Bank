@@ -4481,8 +4481,7 @@ function guideSubShowCatalog() {
   }).join('');
   appendMessage(guideMessage(
     '<p>可订阅的会员服务（共 ' + SUB_PRESETS.length + ' 项）</p>' +
-    '<div class="report-panel"><div class="report-panel-title">可订阅会员</div>' + rows + '</div>' +
-    '<p class="guide-tip">回复「服务名 + 周期」即可开通，例如：某易云 年卡</p>'
+    '<div class="report-panel"><div class="report-panel-title">可订阅会员</div>' + rows + '</div>'
   ));
   scrollToBottom();
 }
