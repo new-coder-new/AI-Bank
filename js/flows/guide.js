@@ -260,8 +260,54 @@ function guideNthSundayNext(month, nth) {
   };
 }
 // 主菜单提醒卡：一张卡里放「异常交易 / 生日 / 情人节」三类提醒
+
+// 联系人生日在「本月」时，自动锁定活期 ¥1000 作为生日鲜花预留（月末自动解冻）
+function guideEnsureBirthdayHold() {
+  try {
+    var u = mockData.userProfile;
+    if (!u || !u.debitCard) return null;
+    var d = u.debitCard;
+    var now = new Date();
+    var ym = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2);
+    var month = now.getMonth() + 1;
+    var list = (u.birthdayContacts || []).slice();
+    var hasBirthday = list.some(function (c) {
+      var parts = String(c.birthday || '').split('-').map(Number).filter(function (x) { return !isNaN(x); });
+      var m = parts.length >= 2 ? parts[parts.length - 2] : NaN;
+      return m === month;
+    });
+    if (!hasBirthday) return u.flowerHold || null;
+    if (u.flowerHold && u.flowerHold.month === ym) return u.flowerHold;   // 本月已预留
+
+    var amount = 1000;
+    if ((Number(d.available) || 0) < amount) return null;
+
+    var today = ym + '-' + ('0' + now.getDate()).slice(-2);
+    var lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    var releaseDate = lastDay.getFullYear() + '-' + ('0' + (lastDay.getMonth() + 1)).slice(-2) + '-' + ('0' + lastDay.getDate()).slice(-2);
+
+    d.available = Math.round((Number(d.available) - amount) * 100) / 100;
+    d.frozen = Math.round((Number(d.frozen) || 0) + amount * 100) / 100;
+    if (!d.frozenItems) d.frozenItems = [];
+    var freezeId = 'FZ-FLOWER-' + ym;
+    d.frozenItems.push({
+      id: freezeId, type: '生日鲜花预留', reason: '本月有联系人生日',
+      amount: amount, freezeDate: today, releaseDate: releaseDate, status: '冻结中'
+    });
+    if (!u.lockedFunds) u.lockedFunds = [];
+    u.lockedFunds.push({
+      purpose: '生日鲜花预留', amount: amount, freezeDate: today, releaseDate: releaseDate,
+      autoTransfer: false, frozen: true, status: '已锁定', freezeId: freezeId
+    });
+    u.flowerHold = { month: ym, amount: amount, freezeDate: today, releaseDate: releaseDate };
+    if (typeof saveUserData === 'function') saveUserData();
+    return u.flowerHold;
+  } catch (e) { return null; }
+}
+
 function guideHomeRemindersHtml() {
   var rows = [];
+  var hold = (typeof guideEnsureBirthdayHold === 'function') ? guideEnsureBirthdayHold() : null;
 
   // ① 异常交易
   var abnormal = [];
@@ -283,6 +329,12 @@ function guideHomeRemindersHtml() {
       '</div><button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">订鲜花+蛋糕</button></div>');
   });
 
+  // ②.5 本月生日鲜花预留（有预留才显示）
+  if (hold && hold.amount) {
+    rows.push('<div class="mini-row"><div class="mini-row-main">' +
+      '<div class="mini-row-sub">已为生日鲜花预留 ¥' + hold.amount + '（可用余额已扣减，' + hold.releaseDate + ' 自动解冻）</div></div></div>');
+  }
+
   // ③④⑤ 节日鲜花：只在临近（≤2 天）时才提醒，避免常年占版面
   var FEST_WARN_DAYS = 2;
 
@@ -292,7 +344,7 @@ function guideHomeRemindersHtml() {
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
       '<div class="mini-row-title">💐 情人节：2 月 14 日，' + vText + '</div>' +
       '<div class="mini-row-sub">推荐：简约玫瑰 ¥299</div></div>' +
-      '<button class="mini-link" onclick="guideStartValentineFlower()">订情人节鲜花</button></div>');
+      '</div>');
   }
 
   var momDate = guideNthSundayNext(5, 2);
@@ -300,7 +352,7 @@ function guideHomeRemindersHtml() {
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
       '<div class="mini-row-title">🌷 母亲节：' + guideFlowerDisplayDate(momDate.str) + '，' + momDate.text + '</div>' +
       '<div class="mini-row-sub">推荐：康乃馨礼盒 ¥128</div></div>' +
-      '<button class="mini-link" onclick="guideStartParentsDayFlower(\'mother\')">订母亲节鲜花</button></div>');
+      '</div>');
   }
 
   var dadDate = guideNthSundayNext(6, 3);
@@ -308,7 +360,7 @@ function guideHomeRemindersHtml() {
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
       '<div class="mini-row-title">🌿 父亲节：' + guideFlowerDisplayDate(dadDate.str) + '，' + dadDate.text + '</div>' +
       '<div class="mini-row-sub">推荐：百合礼盒 ¥199</div></div>' +
-      '<button class="mini-link" onclick="guideStartParentsDayFlower(\'father\')">订父亲节鲜花</button></div>');
+      '</div>');
   }
 
   if (!rows.length) return '';
@@ -5537,8 +5589,7 @@ async function guideFlowerOrderStep(text) {
     if (allowed.indexOf(parsed.recipient) === -1) {
       appendMessage(guideMessage(
         '<p>「<b>' + guideFlowerEsc(parsed.recipient) + '</b>」不在联系人里，鲜花只能为联系人下单。</p>' +
-        '<p class="guide-tip">可选收花人：' + guideFlowerEsc(guideFlowerContactsText()) + '</p>' +
-        '<div class="guide-chips"><button class="guide-chip" onclick="guideStartBirthdayFlower()">查看生日联系人</button></div>'
+        '<p class="guide-tip">可选收花人：' + guideFlowerEsc(guideFlowerContactsText()) + '</p>'
       ));
       scrollToBottom();
       return true;
