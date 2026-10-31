@@ -9,7 +9,7 @@
 
 
 // 距离某个「月-日」还有多少天（当天为 0）
-function guideDaysUntilMonthDay(m, d) {
+function guideDaysUntilMonthDay(m: any, d: any) {
   var now = new Date();
   var todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   var next = new Date(now.getFullYear(), m - 1, d);
@@ -18,8 +18,8 @@ function guideDaysUntilMonthDay(m, d) {
 }
 
 // 某年某月第 n 个周日；若已过则顺延到明年
-function guideNthSundayNext(month, nth) {
-  function nthSunday(y) {
+function guideNthSundayNext(month: any, nth: any) {
+  function nthSunday(y: any) {
     var first = new Date(y, month - 1, 1);
     var offset = (7 - first.getDay()) % 7;   // 第一个周日
     return new Date(y, month - 1, 1 + offset + (nth - 1) * 7);
@@ -55,9 +55,9 @@ function guideEnsureBirthdayHold() {
 
     // 本月过生日的联系人
     var list = (u.birthdayContacts || []).slice();
-    var targets = [];
-    list.forEach(function (c) {
-      var parts = String(c.birthday || '').split('-').map(Number).filter(function (x) { return !isNaN(x); });
+    var targets: any[] = [];
+    list.forEach(function (c: any) {
+      var parts = String(c.birthday || '').split('-').map(Number).filter(function (x: any) { return !isNaN(x); });
       var m = parts.length >= 2 ? parts[parts.length - 2] : NaN;
       if (m === month && c.name) targets.push(c.name);
     });
@@ -68,9 +68,9 @@ function guideEnsureBirthdayHold() {
     if (!u.lockedFunds) u.lockedFunds = [];
 
     // 每位联系人一笔：本月已锁过的跳过
-    targets.forEach(function (name) {
+    targets.forEach(function (name: any) {
       var key = 'FZ-FLOWER-' + ym + '-' + name;
-      var exists = u.flowerHolds.some(function (h) { return h && h.key === key && h.status === '已锁定'; });
+      var exists = u.flowerHolds.some(function (h: any) { return h && h.key === key && h.status === '已锁定'; });
       if (exists) return;
       if ((Number(d.available) || 0) < PER) return;   // 可用不足则跳过
 
@@ -91,28 +91,28 @@ function guideEnsureBirthdayHold() {
     });
 
     // 汇总给界面展示
-    var active = u.flowerHolds.filter(function (h) { return h && h.month === ym && h.status === '已锁定'; });
+    var active = u.flowerHolds.filter(function (h: any) { return h && h.month === ym && h.status === '已锁定'; });
     if (!active.length) return null;
-    var total = active.reduce(function (s2, h) { return s2 + (Number(h.amount) || 0); }, 0);
+    var total = active.reduce(function (s2: any, h: any) { return s2 + (Number(h.amount) || 0); }, 0);
     u.flowerHold = {
       month: ym,
       count: active.length,
       amount: total,
-      names: active.map(function (h) { return h.name; }),
+      names: active.map(function (h: any) { return h.name; }),
       releaseDate: releaseDate
     };
     if (typeof saveUserData === 'function') saveUserData();
     return u.flowerHold;
-  } catch (e) { return null; }
+  } catch (e: any) { return null; }
 }
 
 function guideHomeRemindersHtml() {
-  var rows = [];
+  var rows: any[] = [];
   var hold = (typeof guideEnsureBirthdayHold === 'function') ? guideEnsureBirthdayHold() : null;
 
   // ① 异常交易
-  var abnormal = [];
-  try { abnormal = (typeof detectAbnormalTxns === 'function') ? (detectAbnormalTxns() || []) : []; } catch (e) { abnormal = []; }
+  var abnormal: any[] = [];
+  try { abnormal = (typeof detectAbnormalTxns === 'function') ? (detectAbnormalTxns() || []) : []; } catch (e: any) { abnormal = []; }
   if (abnormal.length) {
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
       '<div class="mini-row-title">⚠️ 检测到 ' + abnormal.length + ' 笔异常交易</div>' +
@@ -122,7 +122,7 @@ function guideHomeRemindersHtml() {
 
   // ② 生日：只在临近（≤2 天）时提醒，且 2 天内全部列出；没有就不显示
   var bdays = guideUpcomingBirthdays(2);
-  bdays.forEach(function (n) {
+  bdays.forEach(function (n: any) {
     var days = n.days === 0 ? '今天生日' : '还有 ' + n.days + ' 天';
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
       '<div class="mini-row-title">🎂 ' + guideEsc(n.name) + '生日' + (days === '今天生日' ? '就是今天' : '，' + days) + '</div>' +
@@ -174,7 +174,7 @@ function guideNearestBirthday() {
   var list = (mockData.userProfile && mockData.userProfile.birthdayContacts) || [];
   var today = new Date();
   var todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  var items = list.map(function (c) {
+  var items = list.map(function (c: any) {
     var parts = String(c.birthday || '').split('-').map(Number);
     var m = parts.length >= 2 ? parts[parts.length - 2] : NaN;
     var d = parts.length >= 2 ? parts[parts.length - 1] : NaN;
@@ -183,19 +183,19 @@ function guideNearestBirthday() {
     if (next < todayMid) next = new Date(today.getFullYear() + 1, m - 1, d);
     var days = Math.round((Number(next) - Number(todayMid)) / 86400000);
     return { name: c.name, relation: c.relation || '', birthday: m + '-' + d, days: days, flower: c.flower || '', price: c.price || 0, next: next };
-  }).filter(Boolean).sort(function (a, b) { return a.days - b.days; });
+  }).filter(Boolean).sort(function (a: any, b: any) { return a.days - b.days; });
   return items[0] || null;
 }
 
 // 7 天内要过生日的联系人（按天数升序，去重）
-function guideUpcomingBirthdays(limitDays) {
+function guideUpcomingBirthdays(limitDays: any) {
   if (typeof syncContactsBirthdays === 'function') syncContactsBirthdays();
   var list = (mockData.userProfile && mockData.userProfile.birthdayContacts) || [];
   var today = new Date();
   var todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  var seen = {};
-  var items = [];
-  list.forEach(function (c) {
+  var seen: Record<string, any> = {};
+  var items: any[] = [];
+  list.forEach(function (c: any) {
     if (!c || !c.name || seen[c.name]) return;
     var parts = String(c.birthday || '').split('-').map(Number);
     var m = parts.length >= 2 ? parts[parts.length - 2] : NaN;
@@ -207,9 +207,9 @@ function guideUpcomingBirthdays(limitDays) {
     seen[c.name] = true;
     items.push({ name: c.name, relation: c.relation || '', birthday: m + '-' + d, days: days, flower: c.flower || '', price: c.price || 0, next: next });
   });
-  items.sort(function (a, b) { return a.days - b.days; });
+  items.sort(function (a: any, b: any) { return a.days - b.days; });
   var lim = (typeof limitDays === 'number') ? limitDays : 7;
-  return items.filter(function (x) { return x.days <= lim; });
+  return items.filter(function (x: any) { return x.days <= lim; });
 }
 // 主菜单生日提醒卡（紧凑一行 + 一个按钮）
 
@@ -218,7 +218,7 @@ function guideStartValentineFlower() {
   guideResetAllSessions();
   var bday = (mockData.userProfile && mockData.userProfile.birthdayContacts) || [];
   var contacts = guideFlowerContacts();
-  var pick = bday.filter(function (x) { return x && x.relation === '爱人' && contacts.indexOf(x.name) !== -1; })[0];
+  var pick = bday.filter(function (x: any) { return x && x.relation === '爱人' && contacts.indexOf(x.name) !== -1; })[0];
   var name = pick ? pick.name : (contacts[0] || '');
   if (!name) {
     appendMessage(guideMessage('<p>还没有可下单的联系人，请先在「联系人」里添加收花人。</p>'));
@@ -229,16 +229,16 @@ function guideStartValentineFlower() {
 }
 
 // 母亲节 / 父亲节下单：优先对应关系的联系人
-function guideStartParentsDayFlower(kind) {
+function guideStartParentsDayFlower(kind: any) {
   guideResetAllSessions();
   var isMom = kind === 'mother';
   var wantRel = isMom ? '母亲' : '父亲';
   var bday = (mockData.userProfile && mockData.userProfile.birthdayContacts) || [];
   var contacts = guideFlowerContacts();
-  var pick = bday.filter(function (x) { return x && x.relation === wantRel && contacts.indexOf(x.name) !== -1; })[0];
+  var pick = bday.filter(function (x: any) { return x && x.relation === wantRel && contacts.indexOf(x.name) !== -1; })[0];
   // 关系写「家人」但名字像父母的也兜底匹配
   if (!pick) {
-    pick = bday.filter(function (x) {
+    pick = bday.filter(function (x: any) {
       if (!x || contacts.indexOf(x.name) === -1) return false;
       return isMom ? /妈|母/.test(x.name) : /爸|父/.test(x.name);
     })[0];
@@ -259,13 +259,13 @@ function guideStartParentsDayFlower(kind) {
   });
 }
 // 按联系人生成预填订单（通用）：opts.bouquet / opts.monthDay / opts.slot / opts.card / opts.note
-function guideStartFlowerPreset(name, opts) {
+function guideStartFlowerPreset(name: any, opts: any) {
   var o = opts || {};
   var contacts = guideFlowerContacts();
   var target = String(name || '');
   if (contacts.indexOf(target) === -1) { guideStartFlowerOrder(); return; }
-  var c = (mockData.contacts || []).filter(function (x) { return x && x.name === target; })[0] || {};
-  var bd = ((mockData.userProfile && mockData.userProfile.birthdayContacts) || []).filter(function (x) { return x && x.name === target; })[0] || {};
+  var c = (mockData.contacts || []).filter(function (x: any) { return x && x.name === target; })[0] || {};
+  var bd = ((mockData.userProfile && mockData.userProfile.birthdayContacts) || []).filter(function (x: any) { return x && x.name === target; })[0] || {};
   var bouquet = o.bouquet ? guideFlowerBouquet(o.bouquet) : (bd.flower ? guideFlowerBouquet(bd.flower) : null);
 
   // 配送日期：优先指定「月-日」，否则用联系人生日
@@ -297,7 +297,7 @@ function guideStartFlowerPreset(name, opts) {
     editing: null
   };
   currentModule = 'flower';
-  var filled = [];
+  var filled: any[] = [];
   if (c.phoneFull || c.phone) filled.push('手机号 ' + (c.phoneFull || c.phone));
   filled.push('收货地址 ' + GUIDE_FLOWER.order.address);
   if (bouquet) filled.push('花束 ' + bouquet.name);
@@ -312,24 +312,24 @@ function guideStartFlowerPreset(name, opts) {
   guideFlowerConfirm();
 }
 // 点生日提醒直接进鲜花确认（收花人/手机号/地址按联系人自动填好，可改）
-function guideStartFlowerForContact(name) {
+function guideStartFlowerForContact(name: any) {
   // 生日礼：鲜花 + 蛋糕（默认 6 寸，可在卡片里改成 8 寸或不加蛋糕）
   guideStartFlowerPreset(name, { cake: '6寸水果蛋糕' });
   return;
 }
 
-function guideFlowerCake(name) {
-  return FLOWER_CAKES.filter(function (x) { return x.name === name; })[0] || FLOWER_CAKES[0];
+function guideFlowerCake(name: any) {
+  return FLOWER_CAKES.filter(function (x: any) { return x.name === name; })[0] || FLOWER_CAKES[0];
 }
 
 // 订单总价 = 花束 + 蛋糕
-function guideFlowerOrderTotal(o) {
+function guideFlowerOrderTotal(o: any) {
   var bq = guideFlowerBouquet(o && o.bouquet);
   var ck = guideFlowerCake(o && o.cake);
   return { bouquet: bq, cake: ck, total: (bq ? bq.price : 0) + (ck ? ck.price : 0) };
 }
 
-function guideFlowerDateStr(days) {
+function guideFlowerDateStr(days: any) {
   var d = new Date();
   d.setDate(d.getDate() + (Number(days) || 0));
   return d.getFullYear() + '-' + guidePad2(d.getMonth() + 1) + '-' + guidePad2(d.getDate());
@@ -357,13 +357,13 @@ function guideFlowerOrders() {
   return u.flowerOrders;
 }
 
-function guideFlowerSlot(slotKey) {
-  return FLOWER_SLOTS.filter(function (s) { return s.key === slotKey; })[0] || FLOWER_SLOTS[0];
+function guideFlowerSlot(slotKey: any) {
+  return FLOWER_SLOTS.filter(function (s: any) { return s.key === slotKey; })[0] || FLOWER_SLOTS[0];
 }
 
-function guideFlowerBouquet(name) {
+function guideFlowerBouquet(name: any) {
   if (!name) return null;
-  return FLOWER_BOUQUETS.filter(function (b) {
+  return FLOWER_BOUQUETS.filter(function (b: any) {
     return name.indexOf(b.name) !== -1 || b.name.indexOf(name) !== -1 ||
       (name.indexOf('玫瑰') !== -1 && b.name === '简约玫瑰') ||
       (name.indexOf('向日葵') !== -1 && b.name === '向日葵花束') ||
@@ -374,14 +374,14 @@ function guideFlowerBouquet(name) {
   })[0] || null;
 }
 
-function guideFlowerDisplayDate(date) {
+function guideFlowerDisplayDate(date: any) {
   if (!date) return '';
   var parts = String(date).split('-');
   return Number(parts[1]) + '月' + Number(parts[2]) + '日';
 }
 
 // 距离配送开始还有多少小时
-function guideFlowerHoursLeft(order) {
+function guideFlowerHoursLeft(order: any) {
   var slot = guideFlowerSlot(order && order.slot);
   var start = String((order && order.date) || '') + ' ' + String(slot.label).slice(0, 5);
   var t = Date.parse(start.replace(/-/g, '/'));
@@ -390,7 +390,7 @@ function guideFlowerHoursLeft(order) {
 }
 
 // 从一句话里抽鲜花订单的各个字段
-function guideFlowerParse(text) {
+function guideFlowerParse(text: any) {
   var raw = String(text || '');
   var out = { recipient: '', phone: '', address: '', bouquet: '', date: '', slot: '', card: '', payMethod: '' };
 
@@ -421,9 +421,9 @@ function guideFlowerParse(text) {
   }
 
   // 地址：取包含行政区/街道/小区的片段
-  var segs = raw.split(/[，,。；;\n]/).map(function (x) { return x.trim(); }).filter(Boolean);
-  var used = [];
-  segs.forEach(function (seg) {
+  var segs = raw.split(/[，,。；;\n]/).map(function (x: any) { return x.trim(); }).filter(Boolean);
+  var used: any[] = [];
+  segs.forEach(function (seg: any) {
     if (!out.phone && /1\d{10}/.test(seg)) { out.phone = seg.match(/1\d{10}/)[0]; used.push(seg); return; }
     if (!out.address && /(市|区|县|路|街|小区|号|楼|室|大道|花园|苑)/.test(seg) &&
       !/月|日|点|卡|玫瑰|向日葵|康乃馨|混搭/.test(seg)) {
@@ -435,15 +435,15 @@ function guideFlowerParse(text) {
   var rm = raw.match(/(?:送给|送|给|收花人|收件人)\s*[:：]?\s*([\u4e00-\u9fa5·]{2,4})/);
   if (rm) out.recipient = rm[1];
   if (!out.recipient) {
-    var leftover = segs.filter(function (seg) { return used.indexOf(seg) === -1; })
-      .map(function (seg) { return seg.replace(/(送给|送|给|收花人|收件人)/g, '').trim(); })
-      .filter(function (seg) { return /^[\u4e00-\u9fa5·]{2,4}$/.test(seg); })[0];
+    var leftover = segs.filter(function (seg: any) { return used.indexOf(seg) === -1; })
+      .map(function (seg: any) { return seg.replace(/(送给|送|给|收花人|收件人)/g, '').trim(); })
+      .filter(function (seg: any) { return /^[\u4e00-\u9fa5·]{2,4}$/.test(seg); })[0];
     if (leftover) out.recipient = leftover;
   }
 
   // 剩下的短文本若不像地址/花束/时间，当作贺卡留言
   if (!out.card) {
-    var maybe = segs.filter(function (seg) {
+    var maybe = segs.filter(function (seg: any) {
       var cleaned = seg.replace(/^(送给|送|给|收花人|收件人)\s*[:：]?\s*/, '').trim();
       if (out.recipient && cleaned === out.recipient) return false;
       if (used.indexOf(seg) !== -1) return false;
@@ -458,8 +458,8 @@ function guideFlowerParse(text) {
   return out;
 }
 
-function guideFlowerMissingPrompt(s) {
-  var miss = [];
+function guideFlowerMissingPrompt(s: any) {
+  var miss: any[] = [];
   if (!s.recipient) miss.push('收花人');
   if (!s.phone) miss.push('手机号');
   if (!s.address) miss.push('收货地址');
@@ -472,8 +472,8 @@ function guideFlowerMissingPrompt(s) {
 // 允许收花的人：生日联系人（为空时退回通讯录联系人）
 function guideFlowerContacts() {
   var b = (mockData.userProfile && mockData.userProfile.birthdayContacts) || [];
-  if (b.length) return b.map(function (x) { return x.name; });
-  return (mockData.contacts || []).map(function (x) { return x.name; });
+  if (b.length) return b.map(function (x: any) { return x.name; });
+  return (mockData.contacts || []).map(function (x: any) { return x.name; });
 }
 
 function guideFlowerContactsText() {
@@ -501,12 +501,12 @@ function guideStartBirthdayFlower() {
   scrollToBottom();
 }
 
-function guideStartFlowerOrder(opts) {
+function guideStartFlowerOrder(opts: any) {
   guideResetAllSessions();
   var pre = opts || {};
   var contacts = guideFlowerContacts();
   var name = pre.recipient && contacts.indexOf(pre.recipient) !== -1 ? pre.recipient : (contacts[0] || '');
-  var c = (mockData.contacts || []).filter(function (x) { return x && x.name === name; })[0] || {};
+  var c = (mockData.contacts || []).filter(function (x: any) { return x && x.name === name; })[0] || {};
   var bq = pre.bouquet ? guideFlowerBouquet(pre.bouquet) : null;
   GUIDE_FLOWER = {
     mode: 'order', stage: 'confirm',
@@ -527,16 +527,16 @@ function guideStartFlowerOrder(opts) {
   // 表单卡：所有字段在卡片里选/填，填完点「提交订单」，不再多轮对话收集
   guideFlowerConfirm();
 }
-function guideFlowerDuplicate(recipient, date) {
+function guideFlowerDuplicate(recipient: any, date: any) {
   if (!recipient || !date) return null;
-  var list = guideFlowerOrders().filter(function (o) {
+  var list = guideFlowerOrders().filter(function (o: any) {
     return o && o.status === '待配送' && o.recipient === recipient && o.date === date;
   });
   return list[0] || null;
 }
 
 // 重复下单时的统一提示
-function guideFlowerWarnDuplicate(order) {
+function guideFlowerWarnDuplicate(order: any) {
   appendMessage(guideMessage(
     '<p>「' + guideEsc(order.recipient) + '」在 ' + guideFlowerDisplayDate(order.date) + ' 已有一束待配送的鲜花（' +
     guideEsc(order.bouquet) + (order.cake && order.cake !== '无蛋糕' ? ' + ' + guideEsc(order.cake) : '') +
@@ -547,24 +547,24 @@ function guideFlowerWarnDuplicate(order) {
   scrollToBottom();
 }
 // 确认卡：字段都可直接点开修改（下拉 / 输入框 / 日期选择）
-function guideFlowerOrderCard(s) {
+function guideFlowerOrderCard(s: any) {
   var o = s.order;
   var slot = guideFlowerSlot(o.slot);
   var contacts = guideFlowerContacts();
-  var recipientOpts = contacts.map(function (n) {
+  var recipientOpts = contacts.map(function (n: any) {
     return '<option value="' + guideEsc(n) + '"' + (n === o.recipient ? ' selected' : '') + '>' + guideEsc(n) + '</option>';
   }).join('');
-  var bouquetOpts = FLOWER_BOUQUETS.map(function (b) {
+  var bouquetOpts = FLOWER_BOUQUETS.map(function (b: any) {
     return '<option value="' + guideEsc(b.name) + '"' + (b.name === o.bouquet ? ' selected' : '') + '>' +
       guideEsc(b.name) + '（¥' + b.price + '）</option>';
   }).join('');
-  var slotOpts = FLOWER_SLOTS.map(function (x) {
+  var slotOpts = FLOWER_SLOTS.map(function (x: any) {
     return '<option value="' + x.key + '"' + (x.key === o.slot ? ' selected' : '') + '>' + x.text + '</option>';
   }).join('');
-  var payOpts = ['储蓄卡', '信用卡'].map(function (p) {
+  var payOpts = ['储蓄卡', '信用卡'].map(function (p: any) {
     return '<option value="' + p + '"' + (p === (o.payMethod === '信用卡' ? '信用卡' : '储蓄卡') ? ' selected' : '') + '>' + p + '</option>';
   }).join('');
-  var cakeOpts = FLOWER_CAKES.map(function (x) {
+  var cakeOpts = FLOWER_CAKES.map(function (x: any) {
     return '<option value="' + x.name + '"' + (x.name === (o.cake || '无蛋糕') ? ' selected' : '') + '>' +
       x.name + (x.price ? '（¥' + x.price + '）' : '') + '</option>';
   }).join('');
@@ -602,7 +602,7 @@ function guideFlowerSyncForm() {
   var s = GUIDE_FLOWER;
   if (!s || !s.order) return;
   var o = s.order;
-  function val(id) { var el = document.getElementById(id); return el ? String(el.value || '').trim() : null; }
+  function val(id: any) { var el = document.getElementById(id); return el ? String(el.value || '').trim() : null; }
   var v;
   v = val('flRecipient'); if (v) o.recipient = v;
   v = val('flPhone'); if (v !== null) o.phone = v;
@@ -650,7 +650,7 @@ function guideFlowerConfirm() {
   scrollToBottom();
 }
 
-async function guideFlowerOrderStep(text) {
+async function guideFlowerOrderStep(text: any) {
   var t = String(text || '').trim();
   var s = GUIDE_FLOWER;
   var parsed = guideFlowerParse(t);
@@ -695,8 +695,8 @@ async function guideFlowerOrderStep(text) {
     return true;
   }
   appendMessage(guideMessage('<p>' + guideFlowerMissingPrompt(o) + '</p>' +
-    '<p class="guide-tip">可选花束：' + FLOWER_BOUQUETS.map(function (b) { return b.name; }).join('、') + '</p>' +
-    '<p class="guide-tip">配送时段：' + FLOWER_SLOTS.map(function (x) { return x.text; }).join('、') + '</p>'));
+    '<p class="guide-tip">可选花束：' + FLOWER_BOUQUETS.map(function (b: any) { return b.name; }).join('、') + '</p>' +
+    '<p class="guide-tip">配送时段：' + FLOWER_SLOTS.map(function (x: any) { return x.text; }).join('、') + '</p>'));
   scrollToBottom();
   return true;
 }
@@ -786,7 +786,7 @@ async function guideFlowerSubmit() {
         cakePrice: tot.cake ? tot.cake.price : 0,
         bouquetPrice: bouquet ? bouquet.price : 0
       });
-    } catch (e) { srvFlower = null; }
+    } catch (e: any) { srvFlower = null; }
     if (srvFlower && srvFlower.ok) {
       mockData.userProfile.debitCard.balance = Number(srvFlower.balance);
       mockData.userProfile.debitCard.available = Number(srvFlower.available);
@@ -864,10 +864,10 @@ function guideStartFlowerList() {
   GUIDE_FLOWER = { mode: 'list', stage: 'list' };
   currentModule = 'flower';
   var list = guideFlowerOrders();
-  var pending = list.filter(function (x) { return x.status === '待配送'; });
-  var done = list.filter(function (x) { return x.status !== '待配送'; });
-  var rows = function (arr) {
-    return arr.map(function (o2) {
+  var pending = list.filter(function (x: any) { return x.status === '待配送'; });
+  var done = list.filter(function (x: any) { return x.status !== '待配送'; });
+  var rows = function (arr: any) {
+    return arr.map(function (o2: any) {
       var slot = guideFlowerSlot(o2.slot);
       return '<div class="bank-sched-item">' +
         '<div class="bank-sched-date" style="background:#F5F8FD;color:#09407F;"><b>' + guideEsc(o2.status) + '</b><small>' + guideEsc(guideFlowerDisplayDate(o2.date)) + '</small></div>' +
@@ -882,12 +882,12 @@ function guideStartFlowerList() {
     }).join('');
   };
   var boxId = 'flower-list-' + Date.now();
-  var more = function (count, expanded) {
+  var more = function (count: any, expanded: any) {
     if (count <= 2) return '';
     return '<button class="card-more" onclick="guideFlowerListToggle(\'' + boxId + '\')">' +
       (expanded ? '收起列表' : '查看全部 ' + count + ' 笔') + '</button>';
   };
-  var build = function (expanded) {
+  var build = function (expanded: any) {
     var limit = expanded ? 999 : 2;
     return '<p>鲜花订单列表：</p>' +
       '<div class="report-panel"><div class="report-panel-title">待配送</div>' +
@@ -906,7 +906,7 @@ function guideStartFlowerList() {
 }
 
 // 展开 / 收起鲜花订单列表
-function guideFlowerListToggle(boxId) {
+function guideFlowerListToggle(boxId: any) {
   var box = document.getElementById(boxId);
   var build = (window.__flowerListBuild || {})[boxId];
   if (!box || !build) return;
@@ -917,9 +917,9 @@ function guideFlowerListToggle(boxId) {
 }
 
 // 删除一条鲜花订单记录（待配送的需先取消）
-function guideFlowerDeleteOrder(orderId) {
+function guideFlowerDeleteOrder(orderId: any) {
   var list = guideFlowerOrders();
-  var target = list.filter(function (x) { return x.id === orderId; })[0];
+  var target = list.filter(function (x: any) { return x.id === orderId; })[0];
   if (!target) {
     appendMessage(guideMessage('<p>该记录不存在，可能已被删除。</p>'));
     scrollToBottom();
@@ -939,8 +939,8 @@ function guideFlowerDeleteOrder(orderId) {
   guideStartFlowerList();
 }
 // 修改订单：配送日前可改
-function guideFlowerModifyStart(orderId) {
-  var order = guideFlowerOrders().filter(function (x) { return x.id === orderId; })[0];
+function guideFlowerModifyStart(orderId: any) {
+  var order = guideFlowerOrders().filter(function (x: any) { return x.id === orderId; })[0];
   if (!order) return;
   if (guideFlowerHoursLeft(order) < 0) {
     appendMessage(guideMessage('<p>该订单已过配送时间，无法修改。</p>'));
@@ -984,7 +984,7 @@ function guideFlowerModifyConfirm() {
 function guideFlowerModifySubmit() {
   var s = GUIDE_FLOWER;
   if (!s || s.stage !== 'modify-confirm' || !s.order) return;
-  var target = guideFlowerOrders().filter(function (x) { return x.id === s.order.id; })[0];
+  var target = guideFlowerOrders().filter(function (x: any) { return x.id === s.order.id; })[0];
   var bouquet = guideFlowerBouquet(s.newBouquet);
   if (target && bouquet) {
     var oldPrice = Number(target.paidAmount || target.price) || 0;
@@ -1031,8 +1031,8 @@ function guideFlowerModifySubmit() {
 }
 
 // 取消订单：不足 24 小时收服务费
-function guideFlowerCancelStart(orderId) {
-  var order = guideFlowerOrders().filter(function (x) { return x.id === orderId; })[0];
+function guideFlowerCancelStart(orderId: any) {
+  var order = guideFlowerOrders().filter(function (x: any) { return x.id === orderId; })[0];
   if (!order) return;
   GUIDE_FLOWER = { mode: 'cancel', stage: 'cancel-confirm', order: order, boxId: 'flower-cancel-' + Date.now() };
   currentModule = 'flower';
@@ -1059,7 +1059,7 @@ function guideFlowerCancelSubmit() {
   if (!s || s.stage !== 'cancel-confirm' || !s.order) return;
   var order = s.order;
   var hrs = guideFlowerHoursLeft(order);
-  var target = guideFlowerOrders().filter(function (x) { return x.id === order.id; })[0];
+  var target = guideFlowerOrders().filter(function (x: any) { return x.id === order.id; })[0];
   if (!target) {
     appendMessage(guideMessage('<p>订单不存在，可能已被取消。</p>'));
     GUIDE_FLOWER = null;
@@ -1122,7 +1122,7 @@ function guideFlowerCancelOp() {
 }
 
 // 鲜花会话统一入口
-async function guideFlowerSession(t) {
+async function guideFlowerSession(t: any) {
   var s = GUIDE_FLOWER;
   if (!s) return true;
   var plain = String(t || '').replace(/[吧呢啊呀。.!！?？\s]/g, '');
@@ -1143,7 +1143,7 @@ async function guideFlowerSession(t) {
     if (/^(返回|菜单|退出)$/.test(plain)) { GUIDE_FLOWER = null; guideBackToMenu(); return true; }
     var b2 = guideFlowerBouquet(t);
     if (b2) { s.newBouquet = b2.name; guideFlowerModifyConfirm(); return true; }
-    appendMessage(guideMessage('<p>要改成哪一款花束？可选：' + FLOWER_BOUQUETS.map(function (x) { return x.name; }).join('、') + '</p>'));
+    appendMessage(guideMessage('<p>要改成哪一款花束？可选：' + FLOWER_BOUQUETS.map(function (x: any) { return x.name; }).join('、') + '</p>'));
     scrollToBottom();
     return true;
   }
@@ -1164,11 +1164,11 @@ async function guideFlowerSession(t) {
       return true;
     }
     if (/修改|改一下|换款式|改款式/.test(t)) {
-      var target2 = guideFlowerOrders().filter(function (x) { return x.status === '待配送' && t.indexOf(x.recipient) !== -1; })[0];
+      var target2 = guideFlowerOrders().filter(function (x: any) { return x.status === '待配送' && t.indexOf(x.recipient) !== -1; })[0];
       if (target2) { guideFlowerModifyStart(target2.id); return true; }
     }
     if (/取消/.test(t)) {
-      var target3 = guideFlowerOrders().filter(function (x) { return x.status === '待配送' && t.indexOf(x.recipient) !== -1; })[0];
+      var target3 = guideFlowerOrders().filter(function (x: any) { return x.status === '待配送' && t.indexOf(x.recipient) !== -1; })[0];
       if (target3) { guideFlowerCancelStart(target3.id); return true; }
     }
     // 先识别「查看订单」这类只读请求，避免「订单」里的「订」被当成下单

@@ -100,7 +100,7 @@ async function guideSubAddStep(text: any) {
 
   if (svc && svc.kind === 'preset') s.preset = svc.preset;
   if (svc && svc.kind === 'active') {
-    appendMessage(guideMessage('<p>「' + guideEsc(svc.name) + '」已在订阅列表中，无需重复添加。</p>'));
+    appendMessage(guideMessage('<p>「' + guideEsc((svc as any).name) + '」已在订阅列表中，无需重复添加。</p>'));
     scrollToBottom();
     return true;
   }
@@ -339,13 +339,13 @@ async function guideSubManageStep(text: any) {
   }
 
   var target = svc && svc.kind === 'active' ? svc.sub : null;
-  if (!target && svc) target = guideSubActive().filter(function (x: any) { return guideSubNormName(x.name) === guideSubNormName(svc.name); })[0] || null;
+  if (!target && svc) target = guideSubActive().filter(function (x: any) { return guideSubNormName(x.name) === guideSubNormName((svc as any).name); })[0] || null;
   if (target) s.target = target;
   if (want !== null) s.newAutoRenew = want;
 
   if (!s.target) {
     if (s.listShown && !svc) s.listShown = false;
-    var hint = svc ? ('没有找到「' + guideEsc(svc.name) + '」的有效订阅。') : '没听懂你想管理哪一项。';
+    var hint = svc ? ('没有找到「' + guideEsc((svc as any).name) + '」的有效订阅。') : '没听懂你想管理哪一项。';
     var names = guideSubActive().map(function (x: any) { return x.name; }).join('、') || '暂无订阅';
     guideSayInvalid(guideMessage('<p>' + hint + '</p><p>请告诉我要管理哪一项订阅的自动续费。</p>' +
       '<p class="guide-tip">当前有效订阅：' + guideEsc(names) + '</p>'));
@@ -437,11 +437,11 @@ async function guideSubCancelStep(text: any) {
     if (GUIDE_SUB !== s) return true;
     if (ai && ai.preset) svc = { kind: 'preset', preset: ai.preset, name: ai.preset.name };
   }
-  var target = svc && svc.kind === 'active' ? svc.sub : (svc ? guideSubActive().filter(function (x: any) { return guideSubNormName(x.name) === guideSubNormName(svc.name); })[0] : null);
+  var target = svc && svc.kind === 'active' ? svc.sub : (svc ? guideSubActive().filter(function (x: any) { return guideSubNormName(x.name) === guideSubNormName((svc as any).name); })[0] : null);
   if (!target) {
     // 用户说了与订阅无关的话：每句都要给回应，不能静默
     if (s.listShown && !svc) s.listShown = false;
-    var hint2 = svc ? ('没有找到「' + guideEsc(svc.name) + '」的有效订阅。') : '没听懂你想取消哪一项。';
+    var hint2 = svc ? ('没有找到「' + guideEsc((svc as any).name) + '」的有效订阅。') : '没听懂你想取消哪一项。';
     var names2 = guideSubActive().map(function (x: any) { return x.name; }).join('、') || '暂无订阅';
     guideSayInvalid(guideMessage('<p>' + hint2 + '</p><p>请选择你想要取消的订阅项目。</p>' +
       '<p class="guide-tip">当前有效订阅：' + guideEsc(names2) + '</p>'));

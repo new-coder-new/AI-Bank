@@ -71,7 +71,7 @@ function showTransferForm(mode: any) {
         ? '按收款银行卡号转账；金额达到风控档位会升级确认与验证。'
         : '按姓名或手机号转账；金额达到风控档位会升级确认与验证。');
   const tabsHtml = m === 'smart'
-    ? '<div class="tabs">' + tabDefs.map((t, i) =>
+    ? '<div class="tabs">' + tabDefs.map((t: any, i: any) =>
       '<div class="tab' + (i === 0 ? ' active' : '') + '" onclick="switchTransferTab(this,\'' + t[0] + '\')">' + t[1] + '</div>'
     ).join('') + '</div>'
     : '';

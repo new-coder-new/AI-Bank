@@ -34,10 +34,10 @@
             return;
         setTimeout(function () {
             try {
-                var bubble = btn.closest('.msg-bubble');
+                var bubble = btn?.closest?.('.msg-bubble');
                 if (!bubble)
                     return;
-                var chips = btn.closest('.guide-chips');
+                var chips = btn?.closest?.('.guide-chips');
                 if (!chips || !chips.parentNode)
                     return; // 已被处理函数收起（说明已记录）
                 var text = bubble.textContent || '';

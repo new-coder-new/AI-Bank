@@ -199,7 +199,7 @@ async function guideCardApplySubmit() {
   // —— 服务端权威：后端在线时由服务端建档并发起复核 ——
   if (typeof API !== 'undefined' && API.live && typeof apiCardApply === 'function') {
     var srvApply = null;
-    try { srvApply = await apiCardApply(s.cardType, s.limit, s.purpose); } catch (e) { srvApply = null; }
+    try { srvApply = await apiCardApply(s.cardType, s.limit, s.purpose); } catch (e: any) { srvApply = null; }
     if (srvApply && srvApply.ok) {
       if (Array.isArray(srvApply.applications)) mockData.userProfile.cardApplications = srvApply.applications;
       saveUserData();
@@ -293,7 +293,7 @@ function guideCardLimitState() {
 // 当前可选的信用卡列表（含主卡与已核发的新卡）
 function guideCardLimitCards() {
   if (typeof cardServiceCards === 'function') {
-    try { return cardServiceCards() || []; } catch (e) { return []; }
+    try { return cardServiceCards() || []; } catch (e: any) { return []; }
   }
   return [];
 }
@@ -557,7 +557,7 @@ function guideCardLimitAIReason(text: any) {
     '你是银行 App 的意图解析器。用户在申请信用卡额度调整，需要识别「调整原因」，' +
     '只能从 消费需求增加/收入提升/信用记录良好/主动降低额度/长期不用/风险控制/其他 里选一个。' +
     '也请抽取目标额度（中文数字转阿拉伯数字）。只输出 JSON：{"reason":"或空","limit":数字或null}。',
-    function (o) {
+    function (o: any) {
       if (!o) return null;
       var r = CARD_LIMIT_REASONS.indexOf(o.reason) !== -1 ? o.reason : null;
       var l = Number(o.limit);
@@ -656,7 +656,7 @@ function guideCardLostSubmit() {
 
   showSecurityVerification(
     '信用卡挂失 · ' + (card.cardType || '信用卡') + ' 尾号 ' + (card.tail || '****'),
-    function (ok) {
+    function (ok: any) {
       if (!ok) {
         guideCardLostCollapse('未通过安全验证，已取消挂失，卡片状态保持不变。');
   if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
@@ -674,7 +674,7 @@ async function guideCardLostApply(card: any) {
   // —— 服务端权威：后端在线时由服务端冻结卡片 ——
   if (typeof API !== 'undefined' && API.live && typeof apiCardLost === 'function' && c.tail) {
     var srvLost = null;
-    try { srvLost = await apiCardLost(c.tail); } catch (e) { srvLost = null; }
+    try { srvLost = await apiCardLost(c.tail); } catch (e: any) { srvLost = null; }
     if (srvLost && srvLost.ok) {
       if (Array.isArray(srvLost.cards)) mockData.userProfile.creditCards = srvLost.cards;
       if (mockData.userProfile.creditCard) {

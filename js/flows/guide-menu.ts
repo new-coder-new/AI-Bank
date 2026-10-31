@@ -28,18 +28,18 @@
   if (typeof document === 'undefined' || !document.addEventListener) return;
   if (typeof window !== 'undefined' && window.__guideChipRecorderBound) return;
   if (typeof window !== 'undefined') window.__guideChipRecorderBound = true;
-  document.addEventListener('click', function (ev) {
+  document.addEventListener('click', function (ev: any) {
     var btn = ev.target && ev.target.closest ? ev.target.closest('.guide-chip') : null;
     if (!btn) return;
     setTimeout(function () {
       try {
-        var bubble = btn.closest('.msg-bubble');
+        var bubble = (btn as any)?.closest?.('.msg-bubble');
         if (!bubble) return;
-        var chips = btn.closest('.guide-chips');
+        var chips = (btn as any)?.closest?.('.guide-chips');
         if (!chips || !chips.parentNode) return;        // 已被处理函数收起（说明已记录）
         var text = bubble.textContent || '';
         if (text.indexOf('？') === -1) return;          // 只在问句上记录
-        var label = (btn.textContent || '').trim();
+        var label = ((btn as any).textContent || '').trim();
         if (!label || label.length > 8) return;         // 只记录简短选项（是/否/确认/取消…）
         var ps = bubble.querySelectorAll('p');
         var question = '';
@@ -58,17 +58,17 @@
   }, true);
 })();
 
-function guideChip(label, onclick) {
+function guideChip(label: any, onclick: any) {
   return '<button class="guide-chip" onclick="' + onclick + '">' + label + '</button>';
 }
 
-function guideMessage(inner) {
+function guideMessage(inner: any) {
   return '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">AI Bank 助手</div>' +
     '<div class="msg-bubble agent-bubble">' + inner + '</div></div></div>';
 }
 
-function guideChipsDone(boxId, note) {
+function guideChipsDone(boxId: any, note: any) {
   var box = boxId ? document.getElementById(boxId) : null;
   if (!box) return;
   var chips = box.querySelector('.guide-chips');
@@ -80,7 +80,7 @@ function guideChipsDone(boxId, note) {
     box.appendChild(tip);
   }
 }
-function guideTryActionableCommand(text) {
+function guideTryActionableCommand(text: any) {
   var t = String(text || '').trim();
   if (!t) return null;
 
@@ -91,7 +91,7 @@ function guideTryActionableCommand(text) {
     var hasPhone = /1\d{10}/.test(t);
     var kind = guideLooksTimedTransfer(t) ? 'timed' : ((/手机号|电话/.test(t) || hasPhone) ? 'phone' : 'name');
     var parsed = guideTransferParse(t, kind);
-    if (parsed.amount > 0 || parsed.phone) {
+    if ((parsed as any).amount > 0 || (parsed as any).phone) {
       /** @type {any} */
       GUIDE_TRANSFER = {
         kind: kind, payee: null, phone: null, amount: null, remark: '', stage: 'slots'
@@ -109,7 +109,7 @@ function guideTryActionableCommand(text) {
     if (kind === 'name') {
       var hitName = '';
       var names = (typeof guideContactNames === 'function') ? guideContactNames() : '';
-      names.split('、').forEach(function (n) {
+      names.split('、').forEach(function (n: any) {
         if (n && t.indexOf(n) !== -1 && n.length > hitName.length) hitName = n;
       });
       if (hitName) {
@@ -148,7 +148,7 @@ function guideTryActionableCommand(text) {
 }
 
 function renderServiceWelcome() {
-  var chips = GUIDE_HOME_ENTRIES.map(function (e) {
+  var chips = GUIDE_HOME_ENTRIES.map(function (e: any) {
     return guideChip(e.label, e.action);
   }).join('');
   var overviewChip = GUIDE_SHOW_OVERVIEW
@@ -183,7 +183,7 @@ function guideOpenOverview() {
 
 // 主菜单的一句话属于哪个一级模块（纯规则，不调模型）
 // 注意：这里是「宽进」——只要看得出属于哪个一级模块就返回，绝不在这里抽槽位。
-function guideMainModuleGuess(text) {
+function guideMainModuleGuess(text: any) {
   var t = String(text || '');
   if (!t) return '';
   // 一级模块与首页入口保持一致：订阅管理、生日鲜花各自独立（不再有「生活订购」这一层）
@@ -203,7 +203,7 @@ function guideMainModuleGuess(text) {
 // 这句话是否已经把该模块的必需槽位说全（确定性判断，不做抽取）
 
 // 句子是否已经点名了某个二级功能（「定时转账」「卡片限额」「AA收款」…）
-function guideExplicitSubCommand(text) {
+function guideExplicitSubCommand(text: any) {
   var t = String(text || '');
   if (/(姓名转账|手机号转账|定时转账|AA收款|aa收款|我的卡片|额度调整|调额|提额|交易限制|限额|每日|单笔|卡片挂失|挂失|解挂|卡片申请|申请信用卡)/.test(t)) return true;
   if (/(申请|办|新办|开通).{0,4}卡/.test(t)) return true;        // 「我要申请一张信用卡」
@@ -214,13 +214,13 @@ function guideExplicitSubCommand(text) {
 }
 
 // 句子是否带了任何「业务实体」（金额、手机号、联系人、产品、卡片、时间）
-function guideHasBusinessEntity(text) {
+function guideHasBusinessEntity(text: any) {
   var t = String(text || '');
   if (/1\d{10}/.test(t)) return true;
   if (/\d/.test(t)) return true;                                  // 任意数字（金额/尾号/数量）
   if (/(今天|明天|后天|下周|周[一二三四五六日天]|星期[一二三四五六日天]|上午|下午|晚上|早上|中午|\d+点)/.test(t)) return true;
   if (typeof guideContactNames === 'function') {
-    var hit = guideContactNames().split('、').some(function (n) { return n && t.indexOf(n) !== -1; });
+    var hit = guideContactNames().split('、').some(function (n: any) { return n && t.indexOf(n) !== -1; });
     if (hit) return true;
   }
   if (typeof guideWealthFindProduct === 'function' && guideWealthFindProduct(t)) return true;
@@ -229,12 +229,12 @@ function guideHasBusinessEntity(text) {
   return false;
 }
 
-function guideSlotsComplete(module, text) {
+function guideSlotsComplete(module: any, text: any) {
   var t = String(text || '');
   var hasAmount = /(\d+(?:\.\d+)?)\s*(元|块|万|w|W|千|k|K)?/.test(t) && !/^\s*$/.test(t);
   var hasPhone = /1\d{10}/.test(t);
   var hasName = (typeof guideContactNames === 'function') &&
-    guideContactNames().split('、').some(function (n) { return n && t.indexOf(n) !== -1; });
+    guideContactNames().split('、').some(function (n: any) { return n && t.indexOf(n) !== -1; });
   var hasTime = (typeof guideLooksTimedTransfer === 'function') && guideLooksTimedTransfer(t);
   var hasCard = /(\d{4})/.test(t.replace(/\D/g, '').length >= 4 ? t : '') || /(白金|金卡|标准金卡|青年卡|旅行卡)/.test(t);
   var hasProduct = (typeof guideWealthFindProduct === 'function') && !!guideWealthFindProduct(t);
@@ -263,7 +263,7 @@ function guideSlotsComplete(module, text) {
 // 打开某个一级模块的二级菜单（不抽槽位、不建业务会话）
 
 // 业务完成后的衔接：总结一句 → 提示还能继续 → 回到当前模块二级菜单（不弹首页卡）
-function guideModuleWrapUp(module, summary) {
+function guideModuleWrapUp(module: any, summary: any) {
   try {
     var mod = module || (currentModule !== 'chat' ? currentModule : '');
     if (!mod) return;
@@ -278,20 +278,20 @@ function guideModuleWrapUp(module, summary) {
   } catch (e) { /* 衔接失败不影响已完成的操作 */ }
 }
 
-function guideOpenModuleMenu(key) {
+function guideOpenModuleMenu(key: any) {
   if (key === 'sub') { guideStartSubManage(); return; }
   if (key === 'flower') { guideStartBirthdayFlower(); return; }
   guideOpenService(key);
 }
 
 // 是否是「切换到 XX」这类命令，返回目标模块 key
-function guideSwitchModuleTarget(text) {
+function guideSwitchModuleTarget(text: any) {
   var t = String(text || '').trim();
   if (!/^(切换|切换到|切换至|切到|转到|换到|去|改到)/.test(t)) return '';
   return guideMainModuleGuess(t) || '';
 }
 
-function guideOpenService(key) {
+function guideOpenService(key: any) {
   if (typeof guideActiveFlowLabel === 'function' && guideActiveFlowLabel()) {
     guideFlowLockedNotice();
     return;
@@ -301,7 +301,7 @@ function guideOpenService(key) {
   guideResetAllSessions();
   currentModule = s.key;
   // 二级菜单不再提供按钮：列出「功能名：示例说法」，用户直接说话进入
-  var rows = s.subs.map(function (sub) {
+  var rows = s.subs.map(function (sub: any) {
     return '<div class="guide-row"><div class="guide-row-title">' + sub.label + '</div>' +
       (sub.example ? '<div class="guide-row-example">例如：' + sub.example + '</div>' : '') + '</div>';
   }).join('');
@@ -315,14 +315,14 @@ function guideOpenService(key) {
 }
 
 // 进入某个子功能：执行对应流程，并保持模块上下文
-function guidePickSub(serviceKey, subKey) {
+function guidePickSub(serviceKey: any, subKey: any) {
   if (typeof guideActiveFlowLabel === 'function' && guideActiveFlowLabel()) {
     guideFlowLockedNotice();
     return;
   }
   var s = guideServiceByKey(serviceKey);
   if (!s) return;
-  var sub = s.subs.filter(function (x) { return x.key === subKey; })[0];
+  var sub = s.subs.filter(function (x: any) { return x.key === subKey; })[0];
   if (!sub) return;
   guideResetAllSessions();
   currentModule = s.key;
@@ -356,7 +356,7 @@ function guideExitSilently() {
 }
 
 // 流程锁提示：当前流程没走完，不允许跳去别的功能 / 重新开一单
-function guideFlowLockedNotice(extra) {
+function guideFlowLockedNotice(extra: any) {
   var label = guideActiveFlowLabel() || '业务';
   appendMessage(guideMessage(
     '<p>正在' + label + '流程，请先完成本轮操作。</p>' +
@@ -388,7 +388,7 @@ function guideCancelPendingScheduled() {
   if (typeof window === 'undefined' || !window.__pendingScheduledTransfers) return false;
   var ids = Object.keys(window.__pendingScheduledTransfers);
   if (!ids.length) return false;
-  ids.forEach(function (id) {
+  ids.forEach(function (id: any) {
     delete window.__pendingScheduledTransfers[id];
     var card = document.getElementById(id);
     if (card) card.innerHTML = '<div class="bank-cancelled">已取消，未创建定时转账任务。</div>';
@@ -400,20 +400,20 @@ function guideCancelPendingScheduled() {
   if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('transfer'); }, 400);
 }
 // 认不出的输入专用输出：跳过「同一句不重复」去重，保证每次都能看到反馈
-function guideSayInvalid(html) {
+function guideSayInvalid(html: any) {
   if (typeof window !== 'undefined') window.__DEDUPE_BREAK__ = true;
   appendMessage(html);
   scrollToBottom();
 }
 
-function guideAsk(html) {
+function guideAsk(html: any) {
   // 去重统一交给 appendMessage（按「用户轮次」判断），这里只负责输出 + 滚动
   appendMessage(html);
   scrollToBottom();
 }
 
 // 文本解析：服务名 / 子功能名 / 返回菜单，命中则接管，返回 true
-async function guideHandleText(text) {
+async function guideHandleText(text: any) {
   if (typeof window !== 'undefined') window.__GUIDE_LAST_TEXT = String(text || '');
 
   // 主菜单守卫（硬规则）：主菜单只识别「属于哪个一级模块」，然后打开该模块的二级菜单。
@@ -567,7 +567,7 @@ async function guideHandleText(text) {
       !/(订单|取消|查|看|记录|多少钱|几位|生日提醒)/.test(t);
     if (flowerBuy) {
       var hitName = '';
-      (typeof guideContactNames === 'function' ? guideContactNames().split('、') : []).forEach(function (nm) {
+      (typeof guideContactNames === 'function' ? guideContactNames().split('、') : []).forEach(function (nm: any) {
         if (nm && t.indexOf(nm) !== -1 && nm.length > hitName.length) hitName = nm;
       });
       if (hitName && typeof guideStartFlowerForContact === 'function') guideStartFlowerForContact(hitName);
@@ -620,7 +620,7 @@ async function guideHandleText(text) {
       return true;
     }
     if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
-    if (guideServiceByKey('transfer') && guideServiceByKey('transfer').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
+    if (guideServiceByKey('transfer') && (guideServiceByKey('transfer') as any).subs.some(function (x: any) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
     return guideLockedRun(function () { return guideAAStep(t); });
   }
 
@@ -632,7 +632,7 @@ async function guideHandleText(text) {
       return true;
     }
     if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
-    if (guideServiceByKey('wealth') && guideServiceByKey('wealth').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
+    if (guideServiceByKey('wealth') && guideServiceByKey('wealth').subs.some(function (x: any) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
     return guideLockedRun(function () { return guideWealthStep(t); });
   }
 
@@ -644,7 +644,7 @@ async function guideHandleText(text) {
       return true;
     }
     if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
-    if (guideServiceByKey('card') && guideServiceByKey('card').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
+    if (guideServiceByKey('card') && guideServiceByKey('card').subs.some(function (x: any) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
     return guideLockedRun(function () { return guideCardApplyStep(t); });
   }
 
@@ -656,7 +656,7 @@ async function guideHandleText(text) {
       return true;
     }
     if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
-    if (guideServiceByKey('card') && guideServiceByKey('card').subs.some(function (x) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
+    if (guideServiceByKey('card') && guideServiceByKey('card').subs.some(function (x: any) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
     return guideLockedRun(function () { return guideCardLimitStep(t); });
   }
 
@@ -848,7 +848,7 @@ async function guideHandleText(text) {
   // （查看订单的说法在上面已单独处理，这里只匹配下单动作）
   if (/(订|买|送|来|要).{0,8}(花|鲜花|花束|蛋糕)/.test(t) && !/(订单|取消|查|看|记录)/.test(t)) {
     var flowerName = '';
-    (typeof guideContactNames === 'function' ? guideContactNames().split('、') : []).forEach(function (n) {
+    (typeof guideContactNames === 'function' ? guideContactNames().split('、') : []).forEach(function (n: any) {
       if (n && t.indexOf(n) !== -1 && n.length > flowerName.length) flowerName = n;
     });
     if (flowerName && typeof guideStartFlowerForContact === 'function') {
@@ -865,7 +865,7 @@ async function guideHandleText(text) {
   // ① 精确匹配：当前模块的子功能（模块内上下文，支持别名：产品 ↔ 产品申购、持仓 ↔ 持仓管理）
   var cur = guideServiceByKey(currentModule);
   if (cur) {
-    var hitSub = cur.subs.filter(function (x) {
+    var hitSub = cur.subs.filter(function (x: any) {
       var names = [x.label].concat(x.aliases || []);
       return names.indexOf(bare) !== -1;
     })[0];
@@ -912,34 +912,34 @@ async function guideHandleText(text) {
 }
 
 // 负数或「负」开头的金额：各模块统一拦截，避免 -1000 被当成 1000
-function guideEscapeText(v) {
+function guideEscapeText(v: any) {
   return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
 }
 
-function guideIsNegativeAmount(text) {
+function guideIsNegativeAmount(text: any) {
   return /(^|[^\d])[-−负]\s*\d/.test(String(text || ''));
 }
 
-function guidePlainMoney(n) {
+function guidePlainMoney(n: any) {
   var v = Number(n) || 0;
   return (Math.round(v) === v) ? String(v) : v.toFixed(2);
 }
 
 // —— 定时转账的日期 / 时间 / 重复解析 ——
-function guidePad2(n) { return (Number(n) < 10 ? '0' : '') + Number(n); }
+function guidePad2(n: any) { return (Number(n) < 10 ? '0' : '') + Number(n); }
 
-function guideDateStr(d) {
+function guideDateStr(d: any) {
   return d.getFullYear() + '-' + guidePad2(d.getMonth() + 1) + '-' + guidePad2(d.getDate());
 }
 
-function guideOffsetDate(days) {
+function guideOffsetDate(days: any) {
   var d = new Date();
   d.setDate(d.getDate() + Number(days || 0));
   return guideDateStr(d);
 }
 
 // month 为空表示「本月 D 号」，若已过则顺延到下月
-function guideMonthDayDate(month, day) {
+function guideMonthDayDate(month: any, day: any) {
   var now = new Date();
   var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   var y = now.getFullYear();
@@ -954,7 +954,7 @@ function guideMonthDayDate(month, day) {
   return guideDateStr(d);
 }
 
-function guideUnknownPayeeNotice(name, sourceText) {
+function guideUnknownPayeeNotice(name: any, sourceText: any) {
   var n = (typeof escapeHtml === 'function') ? escapeHtml(name) : name;
   var src = String(sourceText || '');
   // 句子里没有转账动词、也没有金额，说明不是在下转账指令（可能只是随口一句）
@@ -971,7 +971,7 @@ function guideUnknownPayeeNotice(name, sourceText) {
   ));
 }
 
-function guideConfirmCardDone(boxId, statusText) {
+function guideConfirmCardDone(boxId: any, statusText: any) {
   var box = boxId ? document.getElementById(boxId) : null;
   if (!box) return false;
   var chips = box.querySelector('.guide-chips');
@@ -986,7 +986,7 @@ function guideConfirmCardDone(boxId, statusText) {
   return true;
 }
 
-function guideConfirmCardCollapse(boxId, text) {
+function guideConfirmCardCollapse(boxId: any, text: any) {
   var box = boxId ? document.getElementById(boxId) : null;
   if (box) { box.innerHTML = '<p>' + text + '</p>'; return true; }
   return false;
@@ -1013,7 +1013,7 @@ function guidePhoneResolvePayee() {
 // 会话里展示的收款对象：手机号转账有姓名时显示「姓名（手机号）」
 
 // 时间段模糊时的追问：只说了「明天下午」就再问「下午几点」
-function guidePeriodQuestion(period, date) {
+function guidePeriodQuestion(period: any, date: any) {
   var label = { '凌晨': '凌晨', '早上': '早上', '上午': '上午', '中午': '中午', '下午': '下午', '晚上': '晚上' }[period] || period;
   return '<p>请问 ' + (date ? (date + ' ') : '') + label + '几点执行？</p>' +
     '<p class="guide-tip">例如：3点 / 15:00</p>';
@@ -1030,7 +1030,7 @@ function guideCommitTransfer() {
   }
 }
 
-function guideEsc(v) {
+function guideEsc(v: any) {
   return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
 }
 
@@ -1058,12 +1058,12 @@ function guideStartWealthPurchase() {
 }
 
 // 从一句话里认卡：尾号 4 位 / 卡种关键词 / 第 N 张
-function guidePickCardFromText(text, cards) {
+function guidePickCardFromText(text: any, cards: any) {
   var t = String(text || '');
   if (!cards || !cards.length) return null;
-  var byTail = cards.filter(function (x) { return x.tail && t.indexOf(String(x.tail)) !== -1; })[0];
+  var byTail = cards.filter(function (x: any) { return x.tail && t.indexOf(String(x.tail)) !== -1; })[0];
   if (byTail) return byTail;
-  var byType = cards.filter(function (x) {
+  var byType = cards.filter(function (x: any) {
     var label = String(x.cardType || '');
     return label && (t.indexOf(label) !== -1 || (label.indexOf('白金') !== -1 && /白金/.test(t)) || (label.indexOf('金卡') !== -1 && /金卡/.test(t)));
   })[0];
@@ -1079,11 +1079,11 @@ function guidePickCardFromText(text, cards) {
 
 // 调额记录：只展示 记录标题 / 状态・日期，最新置顶
 function showCardLimitRecords() {
-  var list = (mockData.userProfile.manualReviews || []).filter(function (r) {
-    return r && r.actions && r.actions.some(function (a) { return a.tool === 'card.applyLimit'; });
+  var list = (mockData.userProfile.manualReviews || []).filter(function (r: any) {
+    return r && r.actions && r.actions.some(function (a: any) { return a.tool === 'card.applyLimit'; });
   });
   var rows = list.length
-    ? list.map(function (r) {
+    ? list.map(function (r: any) {
       var st = r.status === '待人工复核' ? '待复核' : (r.status || '待复核');
       return '<div class="report-row"><span>' + guideEsc(r.purpose) + '</span><b>' + guideEsc(st) + '・' + guideEsc((r.submittedAt || '').split(' ')[0]) + '</b></div>';
     }).join('')
@@ -1100,11 +1100,11 @@ function showCardLimitRecords() {
   scrollToBottom();
 }
 
-function guideTxnLimitFlagText(v) {
+function guideTxnLimitFlagText(v: any) {
   return v === 'allow' ? '允许' : '禁止';
 }
 
-function guideTxnLimitValue(text) {
+function guideTxnLimitValue(text: any) {
   var m = String(text || '').match(/(\d+(?:\.\d+)?)\s*(万|w|W)?/);
   if (!m) return null;
   var v = parseFloat(m[1]);
@@ -1113,7 +1113,7 @@ function guideTxnLimitValue(text) {
 }
 
 // 本地先认「允许 / 禁止」；认不出再交给 AI 理解「是/否/可以/算了」这类说法
-function guideTxnLimitFlag(text) {
+function guideTxnLimitFlag(text: any) {
   var t = String(text || '').trim().replace(/[。.!！?？,，、\s]/g, '');
   if (!t) return null;
   if (/(禁止|不允许|不可以|不行|关闭|别允许|关掉)/.test(t)) return 'block';
@@ -1121,13 +1121,13 @@ function guideTxnLimitFlag(text) {
   return null;
 }
 
-function guideTxnLimitNightQuestion(prefix) {
+function guideTxnLimitNightQuestion(prefix: any) {
   return '<p>' + (prefix || '') + '是否允许夜间交易（23:00-06:00）？</p>';
 }
 
 // 交易限制：多卡时先选卡
-function guideTxnLimitPickHtml(cards) {
-  var rows = cards.map(function (c, i) {
+function guideTxnLimitPickHtml(cards: any) {
+  var rows = cards.map(function (c: any, i: any) {
     var right = (c.txnLimit && Number(c.txnLimit.single) > 0)
       ? ('单笔 ¥' + Number(c.txnLimit.single).toLocaleString('zh-CN'))
       : '未单独设置';
@@ -1150,10 +1150,10 @@ function guideTxnLimitAskLimits() {
   ));
 }
 
-function guideTxnLimitPickCard(cardId) {
+function guideTxnLimitPickCard(cardId: any) {
   var s = GUIDE_TXN_LIMIT;
   if (!s || !Array.isArray(s.cards)) return;
-  var card = s.cards.filter(function (c) { return c.id === cardId; })[0];
+  var card = s.cards.filter(function (c: any) { return c.id === cardId; })[0];
   if (!card) return;
   s.card = card;
   s.stage = 'limits';
@@ -1184,7 +1184,7 @@ function guideTypingBubble() {
   return id;
 }
 
-async function guideTxnLimitStep(text) {
+async function guideTxnLimitStep(text: any) {
   if (guideIsNegativeAmount(text) && !/(不变|不改变|保持原样|不改)/.test(text)) {
     guideAsk(guideMessage('<p>限额需要大于 0，请重新输入（例如「20000」）。</p>'));
     return true;
@@ -1256,7 +1256,7 @@ async function guideTxnLimitStep(text) {
     if (new RegExp('(每日|日累计|每天|一天)[^，,、/\\s]{0,6}' + KEEP_WORD).test(t)) keepDaily = true;
     if (!keepSingle && !keepDaily) {
       // 位置映射：第一个片段 → 单笔，第二个片段 → 每日（如「1000，不变」）
-      var parts = t.split(/[，,、\/\s]+/).filter(function (x) { return x; });
+      var parts = t.split(/[，,、\/\s]+/).filter(function (x: any) { return x; });
       var keepIdx = -1;
       for (var pi = 0; pi < parts.length; pi++) {
         if (KEEP_RE.test(parts[pi].replace(/[。.!！?？]/g, ''))) { keepIdx = pi; break; }
@@ -1290,7 +1290,7 @@ async function guideTxnLimitStep(text) {
   if (mDaily) { s.daily = guideTxnLimitToVal(mDaily); rest = rest.replace(mDaily[0], ' '); }
 
   // 剩下的裸数字按出现顺序处理：1 个 → 默认日累计；2 个 → 先单笔、后日累计
-  var restNums = [];
+  var restNums: any[] = [];
   var reNum = /(\d+(?:\.\d+)?)\s*(万|w|W)?/g;
   var mm;
   while ((mm = reNum.exec(rest))) {
@@ -1376,7 +1376,7 @@ async function guideTxnLimitStep(text) {
   return true;
 }
 // 当前生效的限额（用于「不变」）：优先该卡自己的设置，否则继承账户默认
-function guideTxnLimitCurrentValues(card) {
+function guideTxnLimitCurrentValues(card: any) {
   if (card && card.txnLimit) {
     return {
       single: Number(card.txnLimit.single) || null,
@@ -1432,7 +1432,7 @@ function guideTxnLimitSubmit() {
   } else {
     // 非主卡：限额记在该卡对象上，便于后续按卡校验
     var cardsNow = guideCardLimitCards();
-    var target = cardsNow.filter(function (x) { return x.id === s.card.id; })[0];
+    var target = cardsNow.filter(function (x: any) { return x.id === s.card.id; })[0];
     if (target) {
       target.txnLimit = { single: singleV, daily: dailyV, night: nightV, overseas: overseasV };
     }
@@ -1477,7 +1477,7 @@ function guideTxnLimitCancel() {
 // 收起某条消息卡片里的按钮，并在同一气泡里记录一行（仿「是否添加备注」的折叠效果）
 
 // 收起最后一条带按钮的卡片，并在卡片内记录一行（与「是否添加备注」一致）
-function guideCollapseLatestChips(note) {
+function guideCollapseLatestChips(note: any) {
   try {
     var bubbles = document.querySelectorAll('.message:not(.user) .msg-bubble');
     for (var i = bubbles.length - 1; i >= 0; i--) {
@@ -1495,7 +1495,7 @@ function guideCollapseLatestChips(note) {
   return false;
 }
 
-function guideCollapseCardNote(markerText, note) {
+function guideCollapseCardNote(markerText: any, note: any) {
   try {
     var bubbles = document.querySelectorAll('.message:not(.user) .msg-bubble');
     for (var i = bubbles.length - 1; i >= 0; i--) {
@@ -1514,7 +1514,7 @@ function guideCollapseCardNote(markerText, note) {
   return false;
 }
 
-function guideCollapseChoiceChips(questionText, choice) {
+function guideCollapseChoiceChips(questionText: any, choice: any) {
   try {
     var bubbles = document.querySelectorAll('.message:not(.user) .msg-bubble');
     for (var i = bubbles.length - 1; i >= 0; i--) {

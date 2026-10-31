@@ -8,7 +8,7 @@
 // 引导层：转账 / AA / 定时转账（由 guide.js 拆分而来）
 
 // 「是否重复？」卡片（答错会再弹一次，每次都记为最新一张）
-function guideTimedAskRepeat(prefix) {
+function guideTimedAskRepeat(prefix: any) {
   var s = GUIDE_TRANSFER;
   if (!s) return;
   s.stage = 'repeat';
@@ -23,7 +23,7 @@ function guideTimedAskRepeat(prefix) {
   scrollToBottom();
 }
 // 重复方式按钮
-function guideTimedRepeatChoose(repeat) {
+function guideTimedRepeatChoose(repeat: any) {
   var s = GUIDE_TRANSFER;
   if (!s || s.stage !== 'repeat') return;
   s.repeat = repeat;
@@ -32,7 +32,7 @@ function guideTimedRepeatChoose(repeat) {
 }
 
 // 供向导内部使用的轻量金额解析：支持千分位、亿/万/千，且跳过 11 位手机号。
-function guideParseSimpleAmount(text) {
+function guideParseSimpleAmount(text: any) {
   var s = String(text || '').replace(/,/g, '');
   s = s.replace(/1\d{10}/g, ' ');
   var m = s.match(/(\d+(?:\.\d+)?)\s*(亿|万|w|W|千|k|K)?/);
@@ -46,14 +46,14 @@ function guideParseSimpleAmount(text) {
   return v;
 }
 
-function guideTimedPhraseIntent(t) {
+function guideTimedPhraseIntent(t: any) {
   var s = String(t || '');
   if (!/(转给|转账|转帐|打钱|汇款|付款|转\s*\d|给.{1,6}转)/.test(s)) return false;
   return /(今天|明天|后天|大后天|下周|下个月|本周|上周|周[一二三四五六日天]|星期[一二三四五六日天]|\d{1,2}\s*月\s*\d{1,2}\s*[日号]|\d{1,2}\s*[点时]|\d{1,2}:\d{2}|上午|下午|晚上|中午|早上|凌晨|每月|每周|每天|每年)/.test(s);
 }
 
 // 一句话里出现 AA / 分摊 / 垫付 → AA 收款
-function guideAAPhraseIntent(t) {
+function guideAAPhraseIntent(t: any) {
   var s = String(t || '');
   return /(aa|AA|Aa|分摊|平摊|垫付)/.test(s);
 }
@@ -95,9 +95,9 @@ function guideStartTimedTransfer() {
 }
 
 // 从一句话里抽日期 / 时间 / 重复方式，命中后从原句剔除，避免干扰金额与收款人
-function guideTimedExtract(text) {
+function guideTimedExtract(text: any) {
   var t = String(text || '');
-  var out = { date: null, time: null, repeat: null, period: null };
+  var out: any = { date: null, time: null, repeat: null, period: null };
 
   if (/每年|每年度|年度|年付/.test(t)) out.repeat = '每年';
   else if (/每个月|每月|月付/.test(t)) out.repeat = '每月';
@@ -171,7 +171,7 @@ function guideTimedExtract(text) {
 }
 
 // 从一句话里抽收款人、手机号与金额（手机号先抽，避免 11 位数字被当成金额）
-function guideTransferParse(text, kind) {
+function guideTransferParse(text: any, kind: any) {
   var t = String(text || '').trim();
 
   var timedInfo = null;
@@ -192,7 +192,7 @@ function guideTransferParse(text, kind) {
   // 负号开头的数字不当作金额（避免「转-100」变成 +100）
   var negativeAmount = /[-负]\s*\d/.test(t);
   // 一句话里有多个数字时取「最后一个」当金额：手机号在前、金额在后（如「1300 200」→ 200）
-  var nums = [];
+  var nums: any[] = [];
   var numRe = /(\d[\d,]*(?:\.\d+)?)\s*(亿|千万|百万|万|w|W|千|k|K)?/g;
   var nm;
   while ((nm = numRe.exec(t)) !== null) {
@@ -200,7 +200,7 @@ function guideTransferParse(text, kind) {
     if (nm[0].length === 0) numRe.lastIndex += 1;
   }
   if (nums.length) {
-    var looksPhone = function (v) { return /^1\d{3,10}$/.test(String(v).replace(/,/g, '')); };
+    var looksPhone = function (v: any) { return /^1\d{3,10}$/.test(String(v).replace(/,/g, '')); };
     // 谁是手机号碎片：紧跟在「到 / 给 / 向 / 手机号 / 号码」后面的数字
     var fragIdx = -1;
     for (var fi = nums.length - 1; fi >= 0; fi--) {
@@ -227,9 +227,9 @@ function guideTransferParse(text, kind) {
     if (!(amount > 0) || negativeAmount) amount = null;
     t = t.replace(last.text, ' ');
     // 剩下的数字如果像「位数不足的手机号」，记下来提示用户
-    var leftovers = nums.filter(function (x, i) { return i !== amtIdx; })
-      .map(function (x) { return x.value.replace(/,/g, ''); });
-    var maybePhone = leftovers.filter(function (x) { return /^1\d{3,9}$/.test(x); })[0];
+    var leftovers = nums.filter(function (x: any, i: any) { return i !== amtIdx; })
+      .map(function (x: any) { return x.value.replace(/,/g, ''); });
+    var maybePhone = leftovers.filter(function (x: any) { return /^1\d{3,9}$/.test(x); })[0];
     if (!phone && maybePhone) phoneLike = maybePhone;
   }
   var rest = t
@@ -240,7 +240,7 @@ function guideTransferParse(text, kind) {
   var payee = null;
   var unknownName = '';
   if (rest) {
-    var contact = (mockData.contacts || []).filter(function (c) {
+    var contact = (mockData.contacts || []).filter(function (c: any) {
       return c.name && rest.indexOf(c.name) !== -1;
     })[0];
     if (contact) payee = contact.name;
@@ -260,7 +260,7 @@ function guideTransferParse(text, kind) {
 }
 // 备注阶段统一处理（即时转账 / 定时转账共用）：
 // 问「是否需要添加备注？」时认「是 / 否」，其它文字直接当备注内容；等备注内容时这一句就是备注
-function guideTransferHandleRemarkStage(text) {
+function guideTransferHandleRemarkStage(text: any) {
   var s = GUIDE_TRANSFER;
   if (!s) return false;
   if (s.stage !== 'askRemark' && s.stage !== 'remark') return false;
@@ -308,7 +308,7 @@ function guideTransferHandleRemarkStage(text) {
   return true;
 }
 
-function guideTransferStep(text) {
+function guideTransferStep(text: any) {
   var t = String(text || '').trim();
   if (/^(取消|不转了|算了|退出|返回|菜单)$/.test(t)) {
     GUIDE_TRANSFER = null;
@@ -327,7 +327,7 @@ function guideTransferStep(text) {
     return true;
   }
   var transferSvc = guideServiceByKey('transfer');
-  var subHit = transferSvc && transferSvc.subs.some(function (x) {
+  var subHit = transferSvc && transferSvc.subs.some(function (x: any) {
     return x.label === bare || (x.aliases || []).indexOf(bare) !== -1;
   }) as any;
   if (subHit) {
@@ -402,7 +402,7 @@ function guideTransferStep(text) {
 
   // 已有收款人、只缺金额时：完全不像金额的输入（如「哈哈哈」）直接重复问金额，
   // 不再走模型 / 陌生姓名提示，保证连续追问一致
-  if (s.kind !== 'timed' && (s.payee || s.phone) && !(Number(s.amount) > 0) && !(Number(parsed.amount) > 0)) {
+  if (s.kind !== 'timed' && (s.payee || s.phone) && !(Number(s.amount) > 0) && !(Number((parsed as any).amount) > 0)) {
     var amountish = /\d/.test(t) || /[一二三四五六七八九十百千万两]/.test(t) || /(元|块|万|千)/.test(t);
     if (!amountish) {
       guideSayInvalid(guideMessage('<p>麻烦告诉我转账金额</p>'));
@@ -418,7 +418,7 @@ function guideTransferStep(text) {
 
   if (parsed.phone) s.phone = parsed.phone;
   if (parsed.payee) s.payee = parsed.payee;
-  if (parsed.amount != null && parsed.amount > 0) s.amount = parsed.amount;
+  if ((parsed as any).amount != null && (parsed as any).amount > 0) s.amount = (parsed as any).amount;
 
   var hasTarget = s.kind === 'phone' ? !!s.phone : !!s.payee;
   if (hasTarget && s.amount > 0) {
@@ -431,7 +431,7 @@ function guideTransferStep(text) {
   }
 
   // 负数金额或只写了负号：直接给明确提示，不再交给模型（避免反复追问同一句）
-  if (/^\s*[-−负]/.test(t) && /\d/.test(t) && !(parsed.amount > 0)) {
+  if (/^\s*[-−负]/.test(t) && /\d/.test(t) && !((parsed as any).amount > 0)) {
     guideAsk(guideMessage('<p>转账金额需要大于 0，请重新输入（例如「1000」）。</p>'));
     return true;
   }
@@ -440,7 +440,7 @@ function guideTransferStep(text) {
   // 只有中文数字（一百 / 一万五 / 两百块）、口语长句、多槽位混说时才调用模型抽取。
   // 注意：单个数字字（如「张三」里的「三」）不算中文数字，避免把姓名误判为金额
   var hasCnNumber = /[一二三四五六七八九十百千万两]{2,}|[一二三四五六七八九十百千万两]+(?=\s*(?:元|块|万|千|百|钱))/.test(t);
-  if ((!parsed.payee && !parsed.phone && parsed.amount == null) || hasCnNumber) {
+  if ((!parsed.payee && !parsed.phone && (parsed as any).amount == null) || hasCnNumber) {
     guideTransferAIFallback(t);
     return true;
   }
@@ -502,7 +502,7 @@ function guideTransferAskRemark() {
   ));
 }
 
-function guideTransferRemarkChoice(need) {
+function guideTransferRemarkChoice(need: any) {
   var s = GUIDE_TRANSFER;
   if (!s) return;
   if (typeof guideChipsDone === 'function') guideChipsDone(s.remarkBoxId, '是否添加备注：' + (need ? '是' : '否'));
@@ -521,7 +521,7 @@ function guideTransferRemarkChoice(need) {
 // 目标字段：收款人 / 金额 / 执行时间；三样齐了再问「是否重复」，最后出确认卡。
 // 缺字段时按缺失组合给出不同问句，避免每次都从第一个字段重新问。
 
-function guideTimedMissingPrompt(s) {
+function guideTimedMissingPrompt(s: any) {
   var missPayee = !s.payee;
   var missAmount = !(Number(s.amount) > 0);
   var missDate = !s.date;
@@ -541,7 +541,7 @@ function guideTimedMissingPrompt(s) {
   return '请问收款人、转账金额和执行时间是多少？';
 }
 
-function guideTimedParseRepeat(text) {
+function guideTimedParseRepeat(text: any) {
   var s = String(text || '').trim();
   if (/^(否|不|不用|不需要|无|没有|不重复|单次|只转一次|一次)$/.test(s)) return '不重复';
   if (/每年|年度|年付/.test(s)) return '每年';
@@ -551,12 +551,12 @@ function guideTimedParseRepeat(text) {
   return null;
 }
 
-function guideTimedRepeatLabel(repeat) {
+function guideTimedRepeatLabel(repeat: any) {
   return ({ '每天': '每日循环执行', '每周': '每周循环执行', '每月': '每月循环执行', '每年': '每年循环执行' })[repeat] || '不重复';
 }
 
 // 把日期 + 时间拼成口语化文案：明天下午5点 / 10月30日上午9点
-function guideTimedWhenText(date, time) {
+function guideTimedWhenText(date: any, time: any) {
   if (!date || !time) return '';
   var today = guideOffsetDate(0);
   var tomorrow = guideOffsetDate(1);
@@ -582,7 +582,7 @@ function guideTimedWhenText(date, time) {
   return dayLabel + clock;
 }
 
-async function guideTimedStep(text) {
+async function guideTimedStep(text: any) {
   var t = String(text || '').trim();
   var s = GUIDE_TRANSFER;
   if (!s) return true;
@@ -638,7 +638,7 @@ async function guideTimedStep(text) {
   }
 
   if (parsed.payee) s.payee = parsed.payee;
-  if (parsed.amount != null && parsed.amount > 0) s.amount = parsed.amount;
+  if ((parsed as any).amount != null && (parsed as any).amount > 0) s.amount = (parsed as any).amount;
   if (parsed.date) s.date = parsed.date;
   if (parsed.time) s.time = parsed.time;
   if (parsed.period) s.period = parsed.period;
@@ -675,7 +675,7 @@ async function guideTimedStep(text) {
 function guideTimedConfirm() {
   var s = GUIDE_TRANSFER;
   if (!s) return;
-  var info = (mockData.contacts || []).filter(function (c) { return c.name === s.payee; })[0];
+  var info = (mockData.contacts || []).filter(function (c: any) { return c.name === s.payee; })[0];
   var task = {
     payee: s.payee,
     account: info ? (info.account || '') : '',
@@ -752,7 +752,7 @@ function guideStartAATransfer() {
 }
 
 // 从一句话里抽垫付总额与名单
-function guideAAParse(text) {
+function guideAAParse(text: any) {
   // 先剔除手机号，否则「张三 13800138000」会把 11 位号码当成垫付总额
   var t = String(text || '').replace(/1\d{10}/g, ' ');
   var total = 0;
@@ -773,29 +773,29 @@ function guideAAParse(text) {
   t = t.replace(/[和与跟及]/g, '、');
   t = t.replace(/^[\s、,，;；]*(向|给|帮|让|请|找)/, '');
   var names = t.split(/[、,，;；\s]+/)
-    .map(function (x) { return x.trim().replace(/^(向|给|帮|让|请|找)/, '').replace(/[。.！!]$/, ''); })
+    .map(function (x: any) { return x.trim().replace(/^(向|给|帮|让|请|找)/, '').replace(/[。.！!]$/, ''); })
     .filter(Boolean)
     // 发起人本人不算参与人：「我和张三」「我、李四」
-    .filter(function (n) { return !/^(我|本人|自己|咱们|我们|咱|俺)$/.test(n); })
-    .map(function (n) { return n.replace(/^(我和|我跟|我与|我、|本人和|自己和)/, '').trim(); })
+    .filter(function (n: any) { return !/^(我|本人|自己|咱们|我们|咱|俺)$/.test(n); })
+    .map(function (n: any) { return n.replace(/^(我和|我跟|我与|我、|本人和|自己和)/, '').trim(); })
     .filter(Boolean);
   return { total: total, names: names };
 }
 
-function guideAAPushParticipant(contact) {
+function guideAAPushParticipant(contact: any) {
   var s = GUIDE_AA;
   if (!s) return;
-  var exists = s.participants.some(function (p) { return p.phone === contact.phone; });
+  var exists = s.participants.some(function (p: any) { return p.phone === contact.phone; });
   if (!exists) s.participants.push({ name: contact.name, phone: contact.phone });
 }
 
 // 逐个解析名单：唯一命中直接加入；重名进入选择；不在通讯录则提示
 // 返回 true 表示这批名单已处理完，false 表示中途被打断（等待用户选择 / 补充）
-function guideAAAddNames(names) {
+function guideAAAddNames(names: any) {
   var s = GUIDE_AA;
   for (var i = 0; i < names.length; i++) {
     var name = names[i];
-    var matches = (mockData.contacts || []).filter(function (c) { return c.name === name; });
+    var matches = (mockData.contacts || []).filter(function (c: any) { return c.name === name; });
     if (matches.length === 0) {
       s.stage = 'askMore';   // 关键：进入「还要加人吗」，接下来回「没有了」才能结束名单
       guideSayInvalid(guideMessage(
@@ -818,9 +818,9 @@ function guideAAAddNames(names) {
   return true;
 }
 
-function guideAAPickPrompt(name, options) {
+function guideAAPickPrompt(name: any, options: any) {
   var circled = '①②③④⑤⑥⑦⑧⑨';
-  var items = options.map(function (c, i) {
+  var items = options.map(function (c: any, i: any) {
     return '<button class="guide-chip" onclick="guideAAPick(' + i + ')">' + (circled.charAt(i) || (i + 1)) + ' ' +
       guideEsc(c.name) + '（' + guideEsc(c.phone || '') + '）</button>';
   }).join('');
@@ -831,7 +831,7 @@ function guideAAPickPrompt(name, options) {
   scrollToBottom();
 }
 
-function guideAAPick(index) {
+function guideAAPick(index: any) {
   var s = GUIDE_AA;
   if (!s || s.stage !== 'pick') return;
   var contact = s.pickOptions[Number(index)];
@@ -879,13 +879,13 @@ function guideAAConfirm() {
   s.cardId = s.cardId || ('aa-confirm-' + Date.now());
   var splitCount = s.participants.length + 1;
   var per = s.total / splitCount;
-  var names = s.participants.map(function (p) { return p.name; }).join('、');
+  var names = s.participants.map(function (p: any) { return p.name; }).join('、');
   appendMessage(guideMessage(guideAAConfirmCardHtml(s, splitCount, per, names)));
   scrollToBottom();
 }
 
 // 一张卡片承载「确认 → 已发起」，取消按钮就在卡里
-function guideAAConfirmCardHtml(s, splitCount, per, names) {
+function guideAAConfirmCardHtml(s: any, splitCount: any, per: any, names: any) {
   return '<div class="data-card" id="' + s.cardId + '">' +
     '<div class="data-card-title">确认发起 AA 收款</div>' +
     '<div class="data-row"><span class="data-label">垫付总额</span><span class="data-value">¥' + guidePlainMoney(s.total) + '</span></div>' +
@@ -900,7 +900,7 @@ function guideAAConfirmCardHtml(s, splitCount, per, names) {
     '</div>';
 }
 
-function guideAAConfirmDoneHtml(s, splitCount, per, names) {
+function guideAAConfirmDoneHtml(s: any, splitCount: any, per: any, names: any) {
   return '<div class="data-card-title">已发起 AA 收款</div>' +
     '<div class="data-row"><span class="data-label">每人应付</span><span class="data-value"><b>¥' + guidePlainMoney(per) + '</b></span></div>' +
     '<div class="data-row"><span class="data-label">垫付总额</span><span class="data-value">¥' + guidePlainMoney(s.total) + '</span></div>' +
@@ -931,7 +931,7 @@ function guideAASubmit() {
   if (!s || s.stage !== 'confirm') return;
   var splitCount = s.participants.length + 1;
   var per = s.total / splitCount;
-  var names = s.participants.map(function (p) { return p.name; });
+  var names = s.participants.map(function (p: any) { return p.name; });
   var u = mockData.userProfile;
   if (!u.aaRequests) u.aaRequests = [];
   u.aaRequests.unshift({
@@ -958,7 +958,7 @@ function guideAASubmit() {
   GUIDE_AA = null;
   scrollToBottom();
 }
-async function guideAAStep(text) {
+async function guideAAStep(text: any) {
   if (guideIsNegativeAmount(text)) {
     guideAsk(guideMessage('<p>垫付金额需要大于 0，请重新输入（例如「600」）。</p>'));
     return true;
@@ -1017,8 +1017,8 @@ async function guideAAStep(text) {
   var parsed = guideAAParse(t);
 
   // 本地解析出的名字必须真的在通讯录里，否则（如「就我们几个搓一顿」）交给模型理解
-  var localNamesOk = parsed.names.length && parsed.names.every(function (n) {
-    return (mockData.contacts || []).some(function (c) { return c.name === n; });
+  var localNamesOk = parsed.names.length && parsed.names.every(function (n: any) {
+    return (mockData.contacts || []).some(function (c: any) { return c.name === n; });
   });
   if (!(parsed.total > 0) && !localNamesOk) {
     var aiAA = await guideAAAIExtract(t);

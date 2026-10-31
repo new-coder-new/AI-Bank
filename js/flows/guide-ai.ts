@@ -27,43 +27,43 @@
 
 // 意图路由表：模块 key → 进入该模块的处理函数（供 guideAIRouteIntent 命中后调用）
 var GUIDE_INTENT_MODULES = ({
-  'transfer.name': function (t) { GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
-  'transfer.phone': function (t) { GUIDE_TRANSFER = { kind: 'phone', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
-  'transfer.timed': function (t) { GUIDE_TRANSFER = { kind: 'timed', payee: null, phone: null, amount: null, remark: '', stage: 'slots', date: null, time: null, repeat: '不重复' }; guideTransferStep(t); },
-  'transfer.aa': function (t) { GUIDE_AA = { total: 0, participants: [], stage: 'slots', pendingNames: [], pickOptions: [] }; guideAAStep(t); },
+  'transfer.name': function (t: any) { GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
+  'transfer.phone': function (t: any) { GUIDE_TRANSFER = { kind: 'phone', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
+  'transfer.timed': function (t: any) { GUIDE_TRANSFER = { kind: 'timed', payee: null, phone: null, amount: null, remark: '', stage: 'slots', date: null, time: null, repeat: '不重复' }; guideTransferStep(t); },
+  'transfer.aa': function (t: any) { GUIDE_AA = { total: 0, participants: [], stage: 'slots', pendingNames: [], pickOptions: [] }; guideAAStep(t); },
   'bill.analysis': function () { if (typeof showBillOverview === 'function') showBillOverview(); },
   'bill.abnormal': function () { if (typeof showAbnormalAlert === 'function') showAbnormalAlert(); },
-  'card.apply': function (t) {
+  'card.apply': function (t: any) {
     guideStartCardApply();
     if (/(白金|金卡|旅行|青年|\d|消费|差旅|教育|购物)/.test(String(t || ''))) guideCardApplyStep(t);
   },
-  'card.limit': function (t) {
+  'card.limit': function (t: any) {
     guideStartCardLimitAdjust();
     if (/(额度|调到|提到|提高|降低|调高|调低|调整|原因)/.test(String(t || ''))) guideCardLimitStep(t);
   },
-  'card.txn': function (t) {
+  'card.txn': function (t: any) {
     guideStartTxnLimit();
     if (/\d/.test(String(t || ''))) guideTxnLimitStep(t);
   },
   'card.lost': function () { guideStartCardLost(); },
-  'wealth.buy': function (t) {
+  'wealth.buy': function (t: any) {
     guideStartWealthPurchase();
     if (typeof guideWealthFindProduct === 'function' && guideWealthFindProduct(t)) guideWealthStep(t);
   },
   'wealth.risk': function () { if (typeof startRiskAssessment === 'function') startRiskAssessment(); },
   'wealth.holding': function () { guideStartHoldings(); },
-  'sub.add': function (t) {
+  'sub.add': function (t: any) {
     GUIDE_SUB = { mode: 'add', stage: 'slots', preset: null, cycle: null, autoRenew: null, listShown: true };
     guideStartSubAdd();
     if (typeof guideSubFindService === 'function' && guideSubFindService(t)) guideSubAddStep(t);
   },
-  'sub.cancel': function (t) {
+  'sub.cancel': function (t: any) {
     GUIDE_SUB = { mode: 'cancel', stage: 'slots', target: null };
     guideStartSubCancel();
     if (typeof guideSubFindService === 'function' && guideSubFindService(t)) guideSubCancelStep(t);
   },
   'sub.cancel-all': function () { guideSubCancelAllStart(); },
-  'sub.renew': function (t) {
+  'sub.renew': function (t: any) {
     GUIDE_SUB = { mode: 'manage', stage: 'slots', target: null, newAutoRenew: null };
     guideStartSubAutoRenew();
     if (typeof guideSubFindService === 'function' && guideSubFindService(t)) guideSubManageStep(t);
@@ -123,7 +123,7 @@ async function guideAIRouteIntent(text: any) {
       '说「持仓 / 持有 / 买了哪些产品 / 收益情况」用 wealth.holding。',
       text
     );
-  } catch (e) { obj = null; }
+  } catch (e: any) { obj = null; }
   if (!obj || !obj.module || obj.module === 'none') return false;
   // 关键词纠偏：说「限额/每日/单笔/上限/被限制」而没说「提额/额度调整」时，强制归到交易限制
   var t0 = String(text || '');
@@ -140,7 +140,7 @@ async function guideAIRouteIntent(text: any) {
   }
   var fn = GUIDE_INTENT_MODULES[obj.module];
   if (!fn) return false;
-  try { guideResetAllSessions(); await fn(text); } catch (e) { return false; }
+  try { guideResetAllSessions(); await fn(text); } catch (e: any) { return false; }
   return true;
 }
 
@@ -182,8 +182,8 @@ async function guideAIIntent(text: any) {
     '<div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div></div></div>');
   scrollToBottom();
 
-  var pick = null;
-  try { pick = await guideAIIntentExtract(text); } catch (e) { pick = null; }
+  var pick: any = null;
+  try { pick = await guideAIIntentExtract(text); } catch (e: any) { pick = null; }
   var el = document.getElementById(loadingId);
   if (el) el.remove();
 
@@ -235,7 +235,7 @@ async function guideAIIntentExtract(text: any) {
   var m = content.match(/\{[\s\S]*\}/);
   if (!m) return null;
   var obj = null;
-  try { obj = JSON.parse(m[0]); } catch (e) { return null; }
+  try { obj = JSON.parse(m[0]); } catch (e: any) { return null; }
   if (!obj || !obj.service) return null;
   if (!guideServiceByKey(obj.service)) return null;
   return { service: obj.service, sub: obj.sub || '' };
@@ -278,7 +278,7 @@ async function guideTransferAIExtract(text: any, session: any) {
   var content = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
   var m = content.match(/\{[\s\S]*\}/);
   if (!m) return null;
-  try { return JSON.parse(m[0]); } catch (e) { return null; }
+  try { return JSON.parse(m[0]); } catch (e: any) { return null; }
 }
 
 
@@ -291,7 +291,7 @@ async function guideTransferAIFallback(text: any) {
   scrollToBottom();
 
   var parsed = null;
-  try { parsed = await guideTransferAIExtract(text, s); } catch (e) { parsed = null; }
+  try { parsed = await guideTransferAIExtract(text, s); } catch (e: any) { parsed = null; }
   var el = document.getElementById(loadingId);
   if (el) el.remove();
   // 异步返回时用户可能已经取消/切换到别的流程，旧结果不能再写入会话
@@ -389,7 +389,7 @@ async function guideLLMJson(system: any, user: any) {
     var m = content.match(/\{[\s\S]*\}/);
     if (!m) return null;
     return JSON.parse(m[0]);
-  } catch (e) {
+  } catch (e: any) {
     return null;
   }
 }
@@ -406,7 +406,7 @@ async function guideLLMJson(system: any, user: any) {
 async function guideAISlots(text: any, system: any, parse: any) {
   var loadId = (typeof guideTypingBubble === 'function') ? guideTypingBubble() : null;
   var obj = null;
-  try { obj = await guideLLMJson(system, text); } catch (e) { obj = null; }
+  try { obj = await guideLLMJson(system, text); } catch (e: any) { obj = null; }
   var el = loadId ? document.getElementById(loadId) : null;
   if (el) el.remove();
   if (typeof parse === 'function') return parse(obj);
@@ -425,7 +425,7 @@ function guideTimedAIExtract(text: any) {
     '重复方式只能是 不重复/每天/每周/每月/每年。' +
     '只说时间段没说钟点（如「明天下午」）时 time 返回空、period 填 上午/下午/晚上/中午/凌晨。' +
     '只输出 JSON：{"date":"YYYY-MM-DD或空","time":"HH:MM或空","period":"或空","repeat":"不重复|每天|每周|每月|每年或空"}',
-    function (o) {
+    function (o: any) {
       if (!o) return null;
       var date = /^\d{4}-\d{1,2}-\d{1,2}$/.test(o.date || '') ? String(o.date) : null;
       var time = /^\d{1,2}:\d{2}$/.test(o.time || '') ? guidePad2(String(o.time).split(':')[0]) + ':' + String(o.time).split(':')[1] : null;
@@ -447,7 +447,7 @@ function guideAAAIExtract(text: any) {
     '你是银行 App 的信息抽取器。用户在发起 AA 收款，需要「垫付总金额」和「除自己之外要收款的参与人名单」。' +
     '通讯录联系人只有：' + names + '。请只从通讯录里取名（没有就不要编）。' +
     '只输出 JSON：{"total":数字或null,"names":["姓名",…]}。',
-    function (o) {
+    function (o: any) {
       if (!o) return null;
       var total = Number(o.total);
       var list = Array.isArray(o.names) ? o.names.filter(function (n: any) { return typeof n === 'string' && n; }) : [];
@@ -468,7 +468,7 @@ function guideAAAIHasMore(text: any) {
     '你是银行 App 的意图解析器。系统在问「还有其他参与人吗？」，用户可能回答「没有了」「就这些人」「再加个李四」。' +
     '通讯录联系人只有：' + names + '。只输出 JSON：{"more":true|false,"names":["补充的姓名",…]}。' +
     '表示结束时 more 返回 false；无法判断时 more 返回 null。',
-    function (o) {
+    function (o: any) {
       if (!o) return null;
       var list = Array.isArray(o.names) ? o.names.filter(function (n: any) { return typeof n === 'string' && n; }) : [];
       var more = (o.more === true) ? true : (o.more === false ? false : null);
@@ -487,7 +487,7 @@ function guideCardApplyAIType(text: any) {
     '你是银行 App 的信用卡申请解析器。卡种只能是 白金信用卡/标准金卡/旅行信用卡/青年卡；' +
     '用途只能是 日常消费/出行差旅/教育培训/大额购物/其他。用户怎么说都要映射到这两个清单里。' +
     '只输出 JSON：{"cardType":"或空","purpose":"或空"}。',
-    function (o) {
+    function (o: any) {
       if (!o) return null;
       var t = CARD_APPLY_TYPES.filter(function (n: any) { return o.cardType && String(o.cardType).indexOf(n) !== -1; })[0] || null;
       var p = CARD_APPLY_PURPOSES.filter(function (n: any) { return o.purpose && String(o.purpose).indexOf(n) !== -1; })[0] || null;
@@ -552,7 +552,7 @@ async function guideHoldingAIIntent(text: any) {
       '判断不出来时 action 返回 null。不要输出其它内容。',
       text
     );
-  } catch (e) { obj = null; }
+  } catch (e: any) { obj = null; }
   var el = loadId ? document.getElementById(loadId) : null;
   if (el) el.remove();
   if (!obj || !obj.action) return null;
@@ -568,7 +568,7 @@ async function guideSubAIFlag(text: any) {
     text,
     '你是银行 App 的选项解析器。系统在问「是否开启自动续费」，用户可能回答是/否/开启/关闭/算了。' +
     '只输出 JSON：{"autoRenew": true|false|null}。同意→true，不同意→false，判断不出→null。',
-    function (o) {
+    function (o: any) {
       if (!o || o.autoRenew === null || o.autoRenew === undefined) return null;
       return { autoRenew: o.autoRenew === true };
     }
@@ -585,7 +585,7 @@ async function guideSubAIExtract(text: any) {
     '你是银行 App 的订阅解析器。可订阅服务只有：某易云 VIP、某讯 VIP、某度网盘 VIP。' +
     '扣费周期只有：按月扣费(/月)、按季扣费(/季)、按年扣费(/年)。' +
     '只输出 JSON：{"service":"服务名或空","cycle":"/月|/季|/年或空"}。',
-    function (o) {
+    function (o: any) {
       if (!o) return null;
       var svc = o.service ? String(o.service) : '';
       var preset = SUB_PRESETS.filter(function (p: any) {

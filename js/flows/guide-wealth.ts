@@ -22,7 +22,7 @@ function guideWealthValidProfile() {
 }
 
 // 从产品描述里取期限：90天 / 3年 / 灵活存取 / 长期
-function guideWealthTerm(p) {
+function guideWealthTerm(p: any) {
   var d = String((p && p.desc) || '');
   var m = d.match(/(\d+)\s*天/);
   if (m) return m[1] + '天';
@@ -32,15 +32,15 @@ function guideWealthTerm(p) {
   return '期限灵活';
 }
 
-function guideWealthRecommendations(profile) {
+function guideWealthRecommendations(profile: any) {
   var level = Number(profile && profile.level) || 1;
-  var list = (mockData.products || []).filter(function (p) { return Number(p.riskLevel) <= level; });
-  list.sort(function (a, b) { return parseFloat(b.rate) - parseFloat(a.rate); });
+  var list = (mockData.products || []).filter(function (p: any) { return Number(p.riskLevel) <= level; });
+  list.sort(function (a: any, b: any) { return parseFloat(b.rate) - parseFloat(a.rate); });
   return list.slice(0, 2);
 }
 
 // 产品固定编号：1001 起，按商品表顺序分配（编号稳定，不随排序变化）
-function guideWealthProductCode(p) {
+function guideWealthProductCode(p: any) {
   var list = mockData.products || [];
   var idx = -1;
   for (var i = 0; i < list.length; i++) {
@@ -55,7 +55,7 @@ function guideWealthProductCode(p) {
 //   ① 明确写了「编号 / 产品编号 / 代码」 → 是
 //   ② 句子里同时有两个数字（编号 + 金额） → 是
 //   ③ 只有一个四位数（如「1000」「1001」） → 当金额，不当编号
-function guideWealthCodeCandidate(text) {
+function guideWealthCodeCandidate(text: any) {
   var t = String(text || '');
   // ① 明确写了「编号 / 代码」：紧跟其后的四位数才是编号（避免「买1001元 编号为1000」取错）
   var explicit = t.match(/(?:编号|产品编号|代码|code)\s*(?:为|是|[:：])?\s*(\d{3,6})/i);
@@ -69,7 +69,7 @@ function guideWealthCodeCandidate(text) {
 }
 
 // 从文本里识别四位数产品编号（1001-1099）
-function guideWealthFindByCode(text) {
+function guideWealthFindByCode(text: any) {
   var cand = guideWealthCodeCandidate(text);
   if (!cand) return null;
   var list = mockData.products || [];
@@ -78,12 +78,12 @@ function guideWealthFindByCode(text) {
 }
 
 // 文本里写的编号（可能是写错/不存在的编号），用于给出明确提示
-function guideWealthExplicitCode(text) {
+function guideWealthExplicitCode(text: any) {
   var cand = guideWealthCodeCandidate(text);
   return (cand && cand.explicit) ? cand.code : null;
 }
 
-function guideWealthProductLine(p, i) {
+function guideWealthProductLine(p: any, i: any) {
   var circled = '①②③④⑤⑥⑦⑧⑨';
   var mark = circled.charAt(i) || (i + 1);
   var code = (typeof guideWealthProductCode === 'function') ? guideWealthProductCode(p) : '';
@@ -105,7 +105,7 @@ function guideWealthShowAllProducts() {
 }
 
 function guideWealthProductListHtml() {
-  var items = (mockData.products || []).map(function (p, i) {
+  var items = (mockData.products || []).map(function (p: any, i: any) {
     return guideWealthProductLine(p, i);
   }).join('');
   return '<div class="guide-list">' + items + '</div>';
@@ -118,7 +118,7 @@ function guideWealthAccountTail() {
 }
 
 // 产品行：左侧风险色条 + 名称/标签，右侧起购额与推荐标记
-function guideWealthProdRow(p, i, recSet, opts) {
+function guideWealthProdRow(p: any, i: any, recSet: any, opts: any) {
   var o = opts || {};
   var level = Number(p.riskLevel) || 1;
   var fit = o.userLevel >= level;
@@ -138,21 +138,21 @@ function guideWealthProdRow(p, i, recSet, opts) {
 }
 
 // 一张卡展示产品：推荐置顶，默认只显示 3 款，其余折叠
-function guideWealthProductsHtml(profile, opts) {
+function guideWealthProductsHtml(profile: any, opts: any) {
   var o = opts || {};
   var p = profile || guideWealthValidProfile();
   var level = p ? Number(p.level) || 0 : 0;
   var all = (mockData.products || []).slice();
   var recs = p ? guideWealthRecommendations(p) : [];
-  var recNames = {};
-  recs.forEach(function (r) { recNames[r.name] = true; });
+  var recNames: Record<string, any> = {};
+  recs.forEach(function (r: any) { recNames[r.name] = true; });
   // 推荐在前（按收益率降序），其余按风险等级从低到高
-  var rest = all.filter(function (x) { return !recNames[x.name]; })
-    .sort(function (a, b) { return (Number(a.riskLevel) || 9) - (Number(b.riskLevel) || 9); });
+  var rest = all.filter(function (x: any) { return !recNames[x.name]; })
+    .sort(function (a: any, b: any) { return (Number(a.riskLevel) || 9) - (Number(b.riskLevel) || 9); });
   var ordered = recs.concat(rest);
   var boxId = o.boxId || ('wealth-products-' + Date.now());
   var shown = o.showAll ? ordered.length : Math.min(3, ordered.length);
-  var rows = ordered.map(function (x, i) {
+  var rows = ordered.map(function (x: any, i: any) {
     return guideWealthProdRow(x, i, recNames, { userLevel: level, hiddenStart: shown });
   }).join('');
   var moreBtn = (ordered.length > 3)
@@ -173,7 +173,7 @@ function guideWealthProductsHtml(profile, opts) {
 }
 
 // 展开 / 收起产品列表（同一按钮来回切换）
-function guideWealthProductsToggle(boxId) {
+function guideWealthProductsToggle(boxId: any) {
   var box = document.getElementById(boxId);
   if (!box) return;
   var expanded = box.getAttribute('data-expanded') === '1';
@@ -183,7 +183,7 @@ function guideWealthProductsToggle(boxId) {
   scrollToBottom();
 }
 
-function guideWealthShowRecommendations(profile) {
+function guideWealthShowRecommendations(profile: any) {
   var p = profile || guideWealthValidProfile();
   if (!p) return;
   appendMessage(guideMessage(guideWealthProductsHtml(p, {}) +
@@ -207,14 +207,14 @@ function guideWealthCancelAssess() {
 }
 
 // 产品名模糊匹配：整串命中优先，否则取最长公共子串（≥3 字）
-function guideWealthFindProduct(text) {
+function guideWealthFindProduct(text: any) {
   var byCode = (typeof guideWealthFindByCode === 'function') ? guideWealthFindByCode(text) : null;
   if (byCode) return byCode;
   var t = String(text || '').replace(/\s/g, '');
   if (!t) return null;
   var best = null;
   var bestScore = 0;
-  (mockData.products || []).forEach(function (p) {
+  (mockData.products || []).forEach(function (p: any) {
     var name = String(p.name || '');
     if (!name) return;
     if (t.indexOf(name) !== -1) {
@@ -231,7 +231,7 @@ function guideWealthFindProduct(text) {
   return best;
 }
 
-function guideWealthParse(text) {
+function guideWealthParse(text: any) {
   var t = String(text || '');
   // 只有被判定为「产品编号」时才从金额里剔除；单个 1000 / 1001 仍然当金额
   var cand = (typeof guideWealthCodeCandidate === 'function') ? guideWealthCodeCandidate(t) : null;
@@ -251,7 +251,7 @@ function guideWealthParse(text) {
   return { product: product, amount: amount };
 }
 
-async function guideWealthStep(text) {
+async function guideWealthStep(text: any) {
   var t = String(text || '').trim();
   var s = GUIDE_WEALTH;
   var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
@@ -259,7 +259,7 @@ async function guideWealthStep(text) {
   // 写了「编号X」但 X 不存在：明确告诉用户可选编号，不再继续用旧产品
   var explicitCode = (typeof guideWealthExplicitCode === 'function') ? guideWealthExplicitCode(t) : null;
   if (explicitCode && !guideWealthFindByCode(t)) {
-    var allCodes = (mockData.products || []).map(function (p) { return guideWealthProductCode(p) + ' ' + p.name; }).join('、');
+    var allCodes = (mockData.products || []).map(function (p: any) { return guideWealthProductCode(p) + ' ' + p.name; }).join('、');
     guideAsk(guideMessage('<p>编号 ' + guideEscapeText(explicitCode) + ' 没有对应的理财产品。</p>' +
       '<p class="guide-tip">可选编号：' + guideEscapeText(allCodes) + '</p>'));
     return true;
@@ -462,17 +462,17 @@ function guideWealthCancel() {
 }
 
 // 理财申购：产品名与金额（支持简称、别称、口语说法）
-function guideWealthAIProduct(text) {
-  var list = (mockData.products || []).map(function (p) { return p.name; }).join('、');
+function guideWealthAIProduct(text: any) {
+  var list = (mockData.products || []).map(function (p: any) { return p.name; }).join('、');
   return guideAISlots(
     text,
     '你是银行 App 的理财申购解析器。在售产品只有：' + list + '。' +
     '用户可能用简称或口语描述，请匹配到清单里的产品名；也请抽取申购金额（中文数字转阿拉伯数字）。' +
     '只输出 JSON：{"product":"或空","amount":数字或null}。',
-    function (o) {
+    function (o: any) {
       if (!o) return null;
       var name = o.product ? String(o.product) : '';
-      var hit = (mockData.products || []).filter(function (p) { return name && (name.indexOf(p.name) !== -1 || p.name.indexOf(name) !== -1); })[0] || null;
+      var hit = (mockData.products || []).filter(function (p: any) { return name && (name.indexOf(p.name) !== -1 || p.name.indexOf(name) !== -1); })[0] || null;
       var amt = Number(o.amount);
       if (!(amt > 0)) amt = null;
       if (!hit && amt === null) return null;
@@ -482,7 +482,7 @@ function guideWealthAIProduct(text) {
 }
 
 function guideHoldingList() {
-  return (mockData.userProfile.holdings || []).filter(function (h) { return h && h.status !== '已赎回'; });
+  return (mockData.userProfile.holdings || []).filter(function (h: any) { return h && h.status !== '已赎回'; });
 }
 
 function guideHoldingAccountTail() {
@@ -493,7 +493,7 @@ function guideHoldingAccountTail() {
 
 // 在产品名里做模糊匹配（先整串，再最长公共子串 ≥3）
 // 持仓对应的产品编号（与在售产品一致：按产品列表顺序 1001 起）
-function guideHoldingCode(h) {
+function guideHoldingCode(h: any) {
   try {
     var list = (mockData && mockData.products) || [];
     for (var i = 0; i < list.length; i++) {
@@ -503,21 +503,21 @@ function guideHoldingCode(h) {
   return '';
 }
 
-function guideHoldingFind(text) {
+function guideHoldingFind(text: any) {
   var t = String(text || '').replace(/\s/g, '');
   if (!t) return null;
   var list = guideHoldingList();
 
   // 先按产品编号匹配（如「赎回1001」「1002 全部」）
   var byCode = null;
-  list.forEach(function (h) {
+  list.forEach(function (h: any) {
     var code = guideHoldingCode(h);
     if (!code) return;
     if (t.indexOf(code) !== -1) { if (!byCode) byCode = h; }
   });
   if (byCode) return byCode;
   var best = null, bestScore = 0;
-  list.forEach(function (h) {
+  list.forEach(function (h: any) {
     var name = String(h.name || '');
     if (!name) return;
     if (t.indexOf(name) !== -1) { if (name.length > bestScore) { best = h; bestScore = name.length; } return; }
@@ -531,7 +531,7 @@ function guideHoldingFind(text) {
   return best;
 }
 
-function guideHoldingAmount(text) {
+function guideHoldingAmount(text: any) {
   var t = String(text || '');
   var p = guideHoldingFind(t);
   if (p && p.name) t = t.replace(p.name, ' ');
@@ -547,8 +547,8 @@ function guideHoldingAmount(text) {
 }
 
 // 封闭期判断：产品名/描述里有天数或年期，且买入日 + 期限还没到
-function guideHoldingTermDays(h) {
-  var prod = (mockData.products || []).filter(function (p) { return p.name === h.name; })[0] || {};
+function guideHoldingTermDays(h: any) {
+  var prod = (mockData.products || []).filter(function (p: any) { return p.name === h.name; })[0] || {};
   var s = String(h.name || '') + ' ' + String(prod.desc || '');
   var m = s.match(/(\d+)\s*天/);
   if (m) return Number(m[1]);
@@ -557,7 +557,7 @@ function guideHoldingTermDays(h) {
   return 0;
 }
 
-function guideHoldingClosed(h) {
+function guideHoldingClosed(h: any) {
   var days = guideHoldingTermDays(h);
   if (!days) return false;
   var t = Date.parse(String(h.buyDate || '').replace(/-/g, '/'));
@@ -580,7 +580,7 @@ function guideStartHoldings() {
   scrollToBottom();
 }
 
-function guideHoldingChoose(mode) {
+function guideHoldingChoose(mode: any) {
   var s = GUIDE_HOLDING;
   if (!s) return;
   guideCollapseChoiceChips('需要赎回还是追加申购呢', mode === 'sub' ? '追加申购' : '赎回');
@@ -599,13 +599,13 @@ function guideHoldingChoose(mode) {
 }
 
 // 「全部赎回」类说法：卖/赎/取回/提现/清仓 + 全部/所有/一键/都
-function guideHoldingAllRedeemIntent(text) {
+function guideHoldingAllRedeemIntent(text: any) {
   var s = String(text || '').replace(/\s/g, '');
   if (!s) return false;
   if (!/(卖|赎|取回|提现|清仓|退出)/.test(s)) return false;
   return /(全部|所有|一键|都|清仓|全卖|全赎|整笔)/.test(s);
 }
-async function guideHoldingStep(text) {
+async function guideHoldingStep(text: any) {
   if (guideIsNegativeAmount(text)) {
     guideAsk(guideMessage('<p>金额需要大于 0，请重新输入。</p>'));
     return true;
@@ -695,16 +695,16 @@ async function guideHoldingStep(text) {
 
     // 本地没命中：让模型判断动作与产品/金额
     var aiRedeem = await guideHoldingAIIntent(t);
-    if (aiRedeem && aiRedeem.action === 'redeem_all') {
+    if (aiRedeem && (aiRedeem as any).action === 'redeem_all') {
       s.all = true;
       guideHoldingRedeemAllConfirm();
       return true;
     }
-    if (aiRedeem && aiRedeem.action === 'redeem') {
-      var aiProduct = guideHoldingFind(aiRedeem.product || '') || (mockData.userProfile.holdings || []).filter(function (h) { return h.name === aiRedeem.product; })[0];
+    if (aiRedeem && (aiRedeem as any).action === 'redeem') {
+      var aiProduct = guideHoldingFind((aiRedeem as any).product || '') || (mockData.userProfile.holdings || []).filter(function (h: any) { return h.name === (aiRedeem as any).product; })[0];
       if (aiProduct) {
         s.product = aiProduct;
-        if (aiRedeem.amount > 0) s.amount = aiRedeem.amount;
+        if ((aiRedeem as any).amount > 0) s.amount = (aiRedeem as any).amount;
         if (s.product && (s.full || Number(s.amount) > 0)) { guideHoldingRedeemConfirm(); return true; }
         appendMessage(guideMessage('<p>请问您赎回多少金额？全额赎回可直接回复“全额”</p>'));
         scrollToBottom();
@@ -750,7 +750,7 @@ async function guideHoldingStep(text) {
 function guideHoldingSubConfirm() {
   var s = GUIDE_HOLDING;
   if (!s || !s.product) return;
-  var prod = (mockData.products || []).filter(function (p) { return p.name === s.product.name; })[0] || {};
+  var prod = (mockData.products || []).filter(function (p: any) { return p.name === s.product.name; })[0] || {};
   var profile = guideWealthValidProfile();
   if (profile && Number(prod.riskLevel) > Number(profile.level) && !s.riskOverride) {
     s.stage = 'subRisk';
@@ -792,7 +792,7 @@ async function guideHoldingSubSubmit() {
   guideCollapseLatestChips('已确认申购。');
   var name = s.product.name;
   var amount = Number(s.amount) || 0;
-  var prod = (mockData.products || []).filter(function (p) { return p.name === name; })[0] || {};
+  var prod = (mockData.products || []).filter(function (p: any) { return p.name === name; })[0] || {};
   var minAmount = Number(prod.minAmount) || 0;
   var available = Number(mockData.userProfile && mockData.userProfile.debitCard && mockData.userProfile.debitCard.available) || 0;
 
@@ -899,7 +899,7 @@ function guideHoldingRedeemAllConfirm() {
   var s = GUIDE_HOLDING;
   if (!s) return;
   s.stage = 'redeemAllConfirm';
-  var closedNames = guideHoldingList().filter(guideHoldingClosed).map(function (h) { return h.name; });
+  var closedNames = guideHoldingList().filter(guideHoldingClosed).map(function (h: any) { return h.name; });
   appendMessage(guideMessage(
     '<p>确认一键发起全部可赎回产品的赎回申请；封闭期内产品暂不支持赎回，资金到期后返还活期主账户（尾号' +
     guideHoldingAccountTail() + '），是否继续？</p>' +

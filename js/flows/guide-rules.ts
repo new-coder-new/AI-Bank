@@ -76,7 +76,7 @@ var GUIDE_SERVICES = [
 ];
 
 
-function guideServiceByKey(key) {
+function guideServiceByKey(key: any) {
   for (var i = 0; i < GUIDE_SERVICES.length; i++) {
     if (GUIDE_SERVICES[i].key === key) return GUIDE_SERVICES[i];
   }
@@ -93,7 +93,7 @@ var GUIDE_SHOW_OVERVIEW = false;
 
 // 只读查询不应被「打开功能菜单」或「调额申请」劫持：
 // 「查余额 / 查信用卡额度 / 看交易记录」交回主链路（chat/agent 的只读处理器）。
-function guideIsReadOnlyQuery(text) {
+function guideIsReadOnlyQuery(text: any) {
   var s = String(text || '').trim();
   if (!s) return false;
   // 明确是变更类操作时不算只读查询
@@ -108,7 +108,7 @@ function guideIsReadOnlyQuery(text) {
 // 回答后把这一步的按钮收起来（保留一句已选项）
 
 // 「我要申请一张信用卡 / 办张金卡」→ 直接进卡片申请并解析卡种/额度/用途
-function guideIsCardApplyPhrase(t) {
+function guideIsCardApplyPhrase(t: any) {
   var s = String(t || '').trim();
   if (!s) return false;
   if (/(挂失|冻结|限额|额度调整|调额|提额|解挂|注销)/.test(s)) return false;
@@ -121,7 +121,7 @@ function guideIsCardApplyPhrase(t) {
 // 句子里带时间/日期说法 → 视为定时转账
 
 // 句子里带时间/日期说法 → 视为定时转账
-function guideLooksTimedTransfer(t) {
+function guideLooksTimedTransfer(t: any) {
   var s = String(t || '');
   if (/(定时|预约|计划|稍后|以后|到期执行)/.test(s)) return true;
   return /(明天|今天|后天|大后天|下周|下个?周|周[一二三四五六日天]|星期[一二三四五六日天]|月底|月初|下月|每月|每周|每天|明年|\d{1,2}\s*月\s*\d{1,2}\s*[日号]|\d{1,2}\s*[点时]|\d{1,2}\s*[:：]\s*\d{2}|上午|下午|晚上|早上|中午)/.test(s);
@@ -141,7 +141,7 @@ var GUIDE_HOME_ENTRIES = [
 
 
 // 「某度网盘年卡开一下自动续费 / 关闭某讯会员自动续费」→ 直接进管理自动续费
-function guideIsSubRenewManagePhrase(t) {
+function guideIsSubRenewManagePhrase(t: any) {
   var s = String(t || '').trim();
   if (!s) return false;
   if (!/续费/.test(s)) return false;
@@ -151,7 +151,7 @@ function guideIsSubRenewManagePhrase(t) {
 // 「某度网盘年卡不续费了」→ 关闭自动续费（订阅管理·管理自动续费）
 
 // 「某度网盘年卡不续费了」→ 关闭自动续费（订阅管理·管理自动续费）
-function guideIsSubRenewOffPhrase(t) {
+function guideIsSubRenewOffPhrase(t: any) {
   var s = String(t || '').trim();
   if (!s) return false;
   if (!/续费/.test(s)) return false;
@@ -160,7 +160,7 @@ function guideIsSubRenewOffPhrase(t) {
 // 「我不想订阅某易云了 / 取消某讯会员」→ 直接进取消订阅并带上服务
 
 // 「我不想订阅某易云了 / 取消某讯会员」→ 直接进取消订阅并带上服务
-function guideIsSubCancelPhrase(t) {
+function guideIsSubCancelPhrase(t: any) {
   var s = String(t || '').trim();
   if (!s) return false;
   if (!/(订阅|会员|vip|VIP|续费|某易云|易云|网易云|某讯|腾讯|某度|百度|网盘)/.test(s)) return false;
@@ -169,7 +169,7 @@ function guideIsSubCancelPhrase(t) {
 // 「我想要添加订阅 / 开通个会员」这类没点名服务的说法 → 直接进添加订阅
 
 // 「我想要添加订阅 / 开通个会员」这类没点名服务的说法 → 直接进添加订阅
-function guideIsSubAddPlain(t) {
+function guideIsSubAddPlain(t: any) {
   var s = String(t || '').trim();
   if (!s) return false;
   if (/(取消|退订|关闭|不订|不要|不想)/.test(s)) return false;
@@ -179,7 +179,7 @@ function guideIsSubAddPlain(t) {
 // 「我想要订阅某易云年卡 / 订购某度网盘年卡」→ 直接进添加订阅，并把服务与周期解析出来
 
 // 「我想要订阅某易云年卡 / 订购某度网盘年卡」→ 直接进添加订阅，并把服务与周期解析出来
-function guideIsSubAddPhrase(t) {
+function guideIsSubAddPhrase(t: any) {
   var s = String(t || '').trim();
   if (!s) return false;
   if (/(取消|退订|关闭|停止|解约)/.test(s)) return false;
@@ -189,7 +189,7 @@ function guideIsSubAddPhrase(t) {
 // 「我买了哪些产品 / 我持有几只基金」→ 看持仓管理，而不是产品推荐
 
 // 「我买了哪些产品 / 我持有几只基金」→ 看持仓管理，而不是产品推荐
-function guideIsHoldingsQuery(t) {
+function guideIsHoldingsQuery(t: any) {
   var s = String(t || '').trim();
   if (!s) return false;
   // 申购/买入/赎回这类是操作，不是查询
@@ -202,7 +202,7 @@ function guideIsHoldingsQuery(t) {
 // 「我现在有哪些卡 / 我的卡片 / 几张卡」→ 直接列出卡片
 
 // 「我现在有哪些卡 / 我的卡片 / 几张卡」→ 直接列出卡片
-function guideIsCardListQuery(t) {
+function guideIsCardListQuery(t: any) {
   var s = String(t || '').trim();
   if (!/卡/.test(s)) return false;
   // 变更类动作优先排除
@@ -215,7 +215,7 @@ function guideIsCardListQuery(t) {
 // 「我要调我的信用卡额度 / 提额」这类说法 → 直接进入额度调整对话，而不是只展示额度信息
 
 // 「我要调我的信用卡额度 / 提额」这类说法 → 直接进入额度调整对话，而不是只展示额度信息
-function guideIsCardLimitAdjustIntent(t) {
+function guideIsCardLimitAdjustIntent(t: any) {
   var s = String(t || '');
   if (!/额度|提额/.test(s)) return false;
   if (!/(信用卡|卡片|卡|额度)/.test(s)) return false;
@@ -224,7 +224,7 @@ function guideIsCardLimitAdjustIntent(t) {
 // 「分析账单 / 看看账单 / 消费统计 / 账单报告」这类说法 → 直接弹出账单分析
 
 // 「分析账单 / 看看账单 / 消费统计 / 账单报告」这类说法 → 直接弹出账单分析
-function guideIsBillAnalysisIntent(t) {
+function guideIsBillAnalysisIntent(t: any) {
   var s = String(t || '').trim();
   if (!/(账单|消费|收支|花销|流水)/.test(s)) return false;
   if (/^(账单|消费)$/.test(s)) return false;
@@ -234,7 +234,7 @@ function guideIsBillAnalysisIntent(t) {
 // 一句话里既有转账动作又有时间说法（「明天下午5点，给张三转1000元」）→ 定时转账
 
 // 确认卡上「允许打字」的内容：确认类 / 取消类 / 6 位验证码 / 鲜花确认卡的可改字段
-function guideIsFinalActionText(text) {
+function guideIsFinalActionText(text: any) {
   var t = String(text || '').trim();
   if (!t) return false;
   var plain = t.replace(/[吧呢啊呀。.!！?？,，\s]/g, '');
@@ -248,7 +248,7 @@ function guideIsFinalActionText(text) {
 // 打字取消「定时转账确认卡」（这类卡片由 transfer.js 管理）
 
 // 意图识别相关：去掉「想看 / 帮我 / 一下」等口语成分，只留下功能相关词
-function guideNormalizeText(text) {
+function guideNormalizeText(text: any) {
   return String(text || '').trim()
     .replace(/^(我想看一下|我想看看|我想看|我要看一下|我要看看|我要看|我想用|我要用|我想|我要|帮我|麻烦|请|看一下|看看|看下|查一下|查下|打开|进入|来一下)/, '')
     .replace(/(一下|的功能|功能|服务|模块|页面|界面|板块|吧|呢|啊|吗|，|,|。|！|!|\?|？|\s)/g, '')
@@ -258,7 +258,7 @@ function guideNormalizeText(text) {
 // 只在「明显是打开某功能」的短句上做模糊匹配，避免劫持「给张三转100」这类业务指令
 
 // 只在「明显是打开某功能」的短句上做模糊匹配，避免劫持「给张三转100」这类业务指令
-function guideIsMenuIntent(text) {
+function guideIsMenuIntent(text: any) {
   var s = String(text || '').trim();
   if (!s) return false;
   if (/\d/.test(s)) return false;
@@ -267,7 +267,7 @@ function guideIsMenuIntent(text) {
 }
 
 
-var GUIDE_SERVICE_KEYWORDS = {
+var GUIDE_SERVICE_KEYWORDS: Record<string, string[]> = {
   transfer: ['转账', '汇款', '打钱', '转钱', '付款'],
   bill: ['账单', '消费', '统计', '收支', '花销', '流水'],
   card: ['卡片', '信用卡', '额度', '挂失', '办卡'],
@@ -276,7 +276,7 @@ var GUIDE_SERVICE_KEYWORDS = {
 };
 
 
-var GUIDE_SUB_KEYWORDS = {
+var GUIDE_SUB_KEYWORDS: Record<string, any> = {
   transfer: {
     name: ['姓名转账', '按姓名', '姓名'],
     phone: ['手机号转账', '手机号', '电话号'],
@@ -307,7 +307,7 @@ var GUIDE_SUB_KEYWORDS = {
 // 关键词打分：命中子功能 → 直接进子功能；命中服务 → 进服务菜单；都没有 → null
 
 // 关键词打分：命中子功能 → 直接进子功能；命中服务 → 进服务菜单；都没有 → null
-function guideResolveIntent(text) {
+function guideResolveIntent(text: any) {
   var norm = guideNormalizeText(text);
   if (!norm) return null;
 
@@ -321,7 +321,7 @@ function guideResolveIntent(text) {
       var words = subs[k];
       for (var w = 0; w < words.length; w++) {
         if (norm.indexOf(words[w]) !== -1) {
-          var sub = svc.subs.filter(function (x) { return x.key === k; })[0];
+          var sub = svc.subs.filter(function (x: any) { return x.key === k; })[0];
           if (!sub) continue;
           var score = words[w].length;
           if (!best || score > best.score) best = { kind: 'sub', service: svc, sub: sub, score: score };
@@ -345,7 +345,7 @@ function guideResolveIntent(text) {
 // 规则层：本地关键词/正则命中就直接接管；都失配时才由 guide-ai.js 的模型识别补位
 
 // 按「服务名 + 别名」精确匹配一级服务（整词匹配，避免劫持自然语言指令）
-function guideResolveService(name) {
+function guideResolveService(name: any) {
   for (var i = 0; i < GUIDE_SERVICES.length; i++) {
     var s = GUIDE_SERVICES[i];
     var names = [s.label].concat(s.aliases || []);
@@ -364,20 +364,20 @@ function guideResolveService(name) {
 //   stage = 'slots'（收槽位）→ 'askRemark'（问备注）→ 'remark'（等备注内容）
 
 // 姓名转账只允许转给通讯录联系人
-function guideIsContact(name) {
-  return (mockData.contacts || []).some(function (c) { return c.name === name; });
+function guideIsContact(name: any) {
+  return (mockData.contacts || []).some(function (c: any) { return c.name === name; });
 }
 
 
 function guideContactNames() {
-  return (mockData.contacts || []).map(function (c) {
+  return (mockData.contacts || []).map(function (c: any) {
     return (typeof escapeHtml === 'function') ? escapeHtml(c.name) : c.name;
   }).join('、') || '暂无联系人';
 }
 
 
 // 这句话像不像「再转一笔」的转账指令（用于流程锁：不能被当成备注吞掉）
-function guideLooksLikeNewTransfer(text) {
+function guideLooksLikeNewTransfer(text: any) {
   var t = String(text || '').trim();
   if (!t) return false;
   var hasAmount = /\d/.test(t) || /[一二三四五六七八九十百千万两]+\s*(元|块)/.test(t);
@@ -388,7 +388,7 @@ function guideLooksLikeNewTransfer(text) {
 
 // 用户说「查询所有产品 / 全部产品 / 更多产品」时的意图判断
 // 理财内：问「有哪些理财产品 / 产品清单」
-function guideIsWealthCatalogQuery(text) {
+function guideIsWealthCatalogQuery(text: any) {
   var s = String(text || '').trim();
   if (!s) return false;
   // 「我买了哪些产品 / 我的持仓 / 持有收益」属于查询自己持有的，不是看货架
@@ -399,7 +399,7 @@ function guideIsWealthCatalogQuery(text) {
 }
 
 // 订阅内：问「能订哪些会员 / 有哪些可订阅」
-function guideIsSubCatalogQuery(text) {
+function guideIsSubCatalogQuery(text: any) {
   var s = String(text || '').trim();
   if (!s) return false;
   if (/(有哪些|哪些|有什么|有啥|能订|可以订|可订|能开|可以开).{0,8}(会员|订阅|VIP|vip|服务)/.test(s)) return true;
@@ -407,7 +407,7 @@ function guideIsSubCatalogQuery(text) {
   return /(可订阅|能订阅|会员清单|订阅清单)/.test(s);
 }
 
-function guideIsAllProductsIntent(text) {
+function guideIsAllProductsIntent(text: any) {
   var s = String(text || '').trim();
   if (!s) return false;
   if (/(所有|全部|其它|其他|更多|在售|别的|还有).{0,4}(产品|理财|基金)/.test(s)) return true;
@@ -434,20 +434,20 @@ var SUB_CYCLE_TEXT = { '/月': '按月扣费', '/季': '按季扣费', '/年': '
 
 
 // 从一句话里识别订阅服务（预设服务 + 现有订阅名）
-function guideSubFindService(text) {
+function guideSubFindService(text: any) {
   var t = String(text || '');
   if (!t) return null;
   // ① 预设服务全名
-  var preset = SUB_PRESETS.filter(function (p) {
+  var preset = SUB_PRESETS.filter(function (p: any) {
     var key = p.name.replace(' VIP', '').replace('VIP', '');
     return t.indexOf(key) !== -1;
   })[0];
   if (preset) return { kind: 'preset', preset: preset, name: preset.name.replace(/\s+/g, '') };
 
   // ② 现有订阅全名（优先于关键词，避免「某视频平台VIP」被当成「某讯 VIP」）
-  var active = guideSubActive().filter(function (s) { return t.indexOf(s.name) !== -1; })[0];
+  var active = guideSubActive().filter(function (s: any) { return t.indexOf(s.name) !== -1; })[0];
   if (active) return { kind: 'active', sub: active, name: active.name };
-  var fuzzy = guideSubActive().filter(function (s) {
+  var fuzzy = guideSubActive().filter(function (s: any) {
     var core = String(s.name || '').replace(/VIP|会员/g, '');
     return core && t.indexOf(core) !== -1;
   })[0];

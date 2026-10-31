@@ -23,7 +23,7 @@ function initDarkMode() {
 }
 
 // ========== 银行 App 首页 / 全部服务 ==========
-function toggleBankBalance(btn) {
+function toggleBankBalance(btn: any) {
   const el = document.querySelector('.bank-balance-amount');
   if (!el) return;
   const masked = el.classList.toggle('masked');
@@ -178,7 +178,7 @@ function checkTutorial() {
 
 // ========== 用户体验优化：动画效果 ==========
 // Toast提示
-function showToast(message, duration) {
+function showToast(message: any, duration: any) {
   duration = duration || 2000;
   const oldToast = document.getElementById('toast-notification');
   if (oldToast) oldToast.remove();
@@ -228,7 +228,7 @@ function showManual() {
     const overlay = document.createElement('div');
     overlay.id = 'manualOverlay';
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
-    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    overlay.onclick = function (e: any) { if (e.target === overlay) overlay.remove(); };
 
     const sections = [
       { title: '① 主菜单规则', items: [
@@ -314,7 +314,7 @@ function showManual() {
 
     overlay.innerHTML = html;
     document.body.appendChild(overlay);
-  } catch (e) {
+  } catch (e: any) {
     alert('使用手册加载失败: ' + e.message);
   }
 }
