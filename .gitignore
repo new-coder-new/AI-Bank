@@ -30,3 +30,5 @@ js/core/config.local.js
 
 # 本地工具产物（计划/草稿）
 .zcode/
+
+dist/

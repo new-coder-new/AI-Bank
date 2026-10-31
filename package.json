@@ -3,11 +3,20 @@
   "version": "1.0.0",
   "description": "AI 智能金融助手 · 单端口部署（前端 + 模拟银行核心后端）",
   "main": "server/index.js",
+  "type": "commonjs",
   "scripts": {
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit",
+    "test": "node tests/run-all.js"
   },
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {}
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21"
+  }
 }

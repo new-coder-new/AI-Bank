@@ -348,9 +348,9 @@ function guideHomeRemindersHtml() {
   bdays.forEach(function (n) {
     var days = n.days === 0 ? '今天生日' : '还有 ' + n.days + ' 天';
     rows.push('<div class="mini-row"><div class="mini-row-main">' +
-      '<div class="mini-row-title">🎂 ' + guideFlowerEsc(n.name) + '生日' + (days === '今天生日' ? '就是今天' : '，' + days) + '</div>' +
-      (n.flower ? '<div class="mini-row-sub">推荐：' + guideFlowerEsc(n.flower) + ' ¥' + n.price + '</div>' : '') +
-      '</div><button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideFlowerEsc(n.name) + '\')">订鲜花+蛋糕</button></div>');
+      '<div class="mini-row-title">🎂 ' + guideEsc(n.name) + '生日' + (days === '今天生日' ? '就是今天' : '，' + days) + '</div>' +
+      (n.flower ? '<div class="mini-row-sub">推荐：' + guideEsc(n.flower) + ' ¥' + n.price + '</div>' : '') +
+      '</div><button class="mini-link" onclick="guideStartFlowerForContact(\'' + guideEsc(n.name) + '\')">订鲜花+蛋糕</button></div>');
   });
 
   // ②.5 本月生日鲜花预留（有预留才显示）
@@ -2177,7 +2177,7 @@ function guideTransferConfirm() {
 // 重名联系人要求用户选择（① ② …）。
 var GUIDE_AA = null;
 
-function guideAAEsc(v) {
+function guideEsc(v) {
   return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
 }
 
@@ -2238,7 +2238,7 @@ function guideAAAddNames(names) {
     if (matches.length === 0) {
       s.stage = 'askMore';   // 关键：进入「还要加人吗」，接下来回「没有了」才能结束名单
       guideSayInvalid(guideMessage(
-        '<p>「<b>' + guideAAEsc(name) + '</b>」不在通讯录里。AA 收款只能选择通讯录联系人：' + guideContactNames() + '。</p>' +
+        '<p>「<b>' + guideEsc(name) + '</b>」不在通讯录里。AA 收款只能选择通讯录联系人：' + guideContactNames() + '。</p>' +
         '<p class="guide-tip">可以继续告诉我其他人，或回复「没有」结束名单。</p>'
       ));
       return false;
@@ -2261,10 +2261,10 @@ function guideAAPickPrompt(name, options) {
   var circled = '①②③④⑤⑥⑦⑧⑨';
   var items = options.map(function (c, i) {
     return '<button class="guide-chip" onclick="guideAAPick(' + i + ')">' + (circled.charAt(i) || (i + 1)) + ' ' +
-      guideAAEsc(c.name) + '（' + guideAAEsc(c.phone || '') + '）</button>';
+      guideEsc(c.name) + '（' + guideEsc(c.phone || '') + '）</button>';
   }).join('');
   appendMessage(guideMessage(
-    '<p>查询到 ' + options.length + ' 位【' + guideAAEsc(name) + '】，请选择你要收款的「' + guideAAEsc(name) + '」：</p>' +
+    '<p>查询到 ' + options.length + ' 位【' + guideEsc(name) + '】，请选择你要收款的「' + guideEsc(name) + '」：</p>' +
     '<div class="guide-chips">' + items + '</div>'
   ));
   scrollToBottom();
@@ -2329,7 +2329,7 @@ function guideAAConfirmCardHtml(s, splitCount, per, names) {
     '<div class="data-card-title">确认发起 AA 收款</div>' +
     '<div class="data-row"><span class="data-label">垫付总额</span><span class="data-value">¥' + guidePlainMoney(s.total) + '</span></div>' +
     '<div class="data-row"><span class="data-label">参与人数</span><span class="data-value">' + splitCount + ' 人（含我）</span></div>' +
-    '<div class="data-row"><span class="data-label">收款名单</span><span class="data-value">' + guideAAEsc(names) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">收款名单</span><span class="data-value">' + guideEsc(names) + '</span></div>' +
     '<div class="data-row"><span class="data-label">每人应付</span><span class="data-value"><b>¥' + guidePlainMoney(per) + '</b></span></div>' +
     '<div class="data-row"><span class="data-label">当前状态</span><span class="data-value">待发起</span></div>' +
     '<div class="guide-chips" style="margin-top:10px;">' +
@@ -2344,7 +2344,7 @@ function guideAAConfirmDoneHtml(s, splitCount, per, names) {
     '<div class="data-row"><span class="data-label">每人应付</span><span class="data-value"><b>¥' + guidePlainMoney(per) + '</b></span></div>' +
     '<div class="data-row"><span class="data-label">垫付总额</span><span class="data-value">¥' + guidePlainMoney(s.total) + '</span></div>' +
     '<div class="data-row"><span class="data-label">参与人数</span><span class="data-value">' + splitCount + ' 人（含我）</span></div>' +
-    '<div class="data-row"><span class="data-label">收款名单</span><span class="data-value">' + guideAAEsc(names) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">收款名单</span><span class="data-value">' + guideEsc(names) + '</span></div>' +
     '<div class="data-row"><span class="data-label">当前状态</span><span class="data-value" style="color:#B54708;">待收款</span></div>' +
     '<div class="guide-chips" style="margin-top:10px;">' +
     '<button class="guide-chip" onclick="showTransferHistory()">查看记录</button>' +
@@ -2521,10 +2521,6 @@ async function guideAAStep(text) {
 //   ③ 产品与金额可一次说完，也可分开说；确认后走 wealth.buy（含金额风控）。
 var GUIDE_WEALTH = null;
 
-function guideWealthEsc(v) {
-  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
-}
-
 function guideWealthProfile() {
   if (typeof riskProfile !== 'undefined' && riskProfile) return riskProfile;
   if (mockData.userProfile && mockData.userProfile.riskProfile) return mockData.userProfile.riskProfile;
@@ -2604,8 +2600,8 @@ function guideWealthProductLine(p, i) {
   var circled = '①②③④⑤⑥⑦⑧⑨';
   var mark = circled.charAt(i) || (i + 1);
   var code = (typeof guideWealthProductCode === 'function') ? guideWealthProductCode(p) : '';
-  return '<div>' + (code ? '<span class="prod-code">' + code + '</span> ' : '') + mark + ' <b>' + guideWealthEsc(p.name) + '</b>（R' + p.riskLevel + '，' +
-    guideWealthEsc(guideWealthTerm(p)) + '，参考' + guideWealthEsc(p.rateLabel || '年化') + ' ' + guideWealthEsc(p.rate) + '）</div>';
+  return '<div>' + (code ? '<span class="prod-code">' + code + '</span> ' : '') + mark + ' <b>' + guideEsc(p.name) + '</b>（R' + p.riskLevel + '，' +
+    guideEsc(guideWealthTerm(p)) + '，参考' + guideEsc(p.rateLabel || '年化') + ' ' + guideEsc(p.rate) + '）</div>';
 }
 
 // 全部在售产品（展开版，不折叠）；「查询所有产品」意图仍可用
@@ -2667,11 +2663,11 @@ function guideWealthProdRow(p, i, recSet, opts) {
   var hidden = (o.hiddenStart != null && i >= o.hiddenStart) ? ' list-hidden' : '';
   return '<div class="prod-item' + hidden + '" style="border-left-color:' + riskColor + ';">' +
     '<div class="prod-main">' +
-      '<b class="prod-name">' + (guideWealthProductCode(p) ? '<span class="prod-code">' + guideWealthProductCode(p) + '</span> ' : '') + guideWealthEsc(p.name) + '</b>' +
+      '<b class="prod-name">' + (guideWealthProductCode(p) ? '<span class="prod-code">' + guideWealthProductCode(p) + '</span> ' : '') + guideEsc(p.name) + '</b>' +
       '<span class="prod-tag" style="color:' + riskColor + ';">R' + level + '</span>' +
       (isRec ? '<span class="prod-badge">推荐</span>' : '') +
       (o.userLevel ? '<span class="prod-fit" style="color:' + (fit ? '#16A34A' : '#94A3B8') + ';">' + (fit ? '适配' : '超出承受力') + '</span>' : '') +
-      '<div class="prod-sub">' + guideWealthEsc(guideWealthTerm(p)) + ' · 参考' + guideWealthEsc(p.rateLabel || '年化') + ' ' + guideWealthEsc(p.rate) + '</div>' +
+      '<div class="prod-sub">' + guideEsc(guideWealthTerm(p)) + ' · 参考' + guideEsc(p.rateLabel || '年化') + ' ' + guideEsc(p.rate) + '</div>' +
     '</div>' +
     '<div class="prod-side">起购 ¥' + guidePlainMoney(p.minAmount || 0) + '</div>' +
     '</div>';
@@ -2701,7 +2697,7 @@ function guideWealthProductsHtml(profile, opts) {
         : '<button class="card-more" onclick="guideWealthProductsToggle(\'' + boxId + '\')">展开更多 ' + (ordered.length - 3) + ' 款产品</button>')
     : '';
   var head = p
-    ? '<p>您的风险测评结果：<b>' + guideWealthEsc(p.name) + ' R' + p.level + '</b>，以下为在售产品（推荐置顶）：</p>'
+    ? '<p>您的风险测评结果：<b>' + guideEsc(p.name) + ' R' + p.level + '</b>，以下为在售产品（推荐置顶）：</p>'
     : '<p>当前在售产品：</p>';
   var inner = '<div class="data-card prod-card">' + head +
     '<div class="prod-list">' + rows + '</div>' + moreBtn +
@@ -2909,7 +2905,7 @@ function guideWealthConfirm() {
   if (Number(p.riskLevel) > Number(profile.level) && !s.riskOverride) {
     // 风险等级高于承受能力：不直接拦截，提醒风险并让用户自行确认
     appendMessage(guideMessage(
-      '<p>「<b>' + guideWealthEsc(p.name) + '</b>」的风险等级是 <b>R' + p.riskLevel + '</b>，高于您的风险承受能力 <b>R' + profile.level + '</b>（' + guideWealthEsc(profile.name) + '）。</p>' +
+      '<p>「<b>' + guideEsc(p.name) + '</b>」的风险等级是 <b>R' + p.riskLevel + '</b>，高于您的风险承受能力 <b>R' + profile.level + '</b>（' + guideEsc(profile.name) + '）。</p>' +
       '<p class="guide-tip">该产品波动可能超过您的承受范围，是否仍要申购？</p>' +
       '<div class="guide-chips">' +
       '<button class="guide-chip" onclick="guideWealthRiskProceed()">仍然申购</button>' +
@@ -2938,7 +2934,7 @@ function guideWealthConfirm() {
 
   s.stage = 'confirm';
   appendMessage(guideMessage(
-    '<p>确认申购【<b>' + guideWealthEsc(p.name) + '</b>】<b>' + guidePlainMoney(s.amount) + '</b> 元，默认从活期主账户（尾号' +
+    '<p>确认申购【<b>' + guideEsc(p.name) + '</b>】<b>' + guidePlainMoney(s.amount) + '</b> 元，默认从活期主账户（尾号' +
     guideWealthAccountTail() + '）扣款，请确认</p>' +
     (s.riskOverride ? '<p class="guide-tip">⚠️ 该产品风险等级 R' + p.riskLevel + ' 高于你的风险承受能力 R' + profile.level + '，已按你的确认继续申购。</p>' : '') +
     '<div class="guide-chips">' +
@@ -3005,10 +3001,6 @@ function guideWealthCancel() {
 // 三个槽位可任意顺序输入，缺什么问什么；齐了出「已整理你的申请信息」确认卡，
 // 提交后写入 userProfile.cardApplications（状态 审核中），申请记录只展示 卡种・用途・状态・日期。
 var GUIDE_CARD_APPLY = null;
-
-function guideCardApplyEsc(v) {
-  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
-}
 
 function guideCardApplyTypesText() { return CARD_APPLY_TYPES.join('、'); }
 function guideCardApplyPurposesText() { return CARD_APPLY_PURPOSES.join('、'); }
@@ -3174,9 +3166,9 @@ function guideCardApplyConfirm() {
     '<div id="' + s.boxId + '">' +
     '<p>已整理你的申请信息</p>' +
     '<div class="data-card"><div class="data-card-title">申请信息</div>' +
-    '<div class="data-row"><span class="data-label">卡种</span><span class="data-value">' + guideCardApplyEsc(s.cardType) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">卡种</span><span class="data-value">' + guideEsc(s.cardType) + '</span></div>' +
     '<div class="data-row"><span class="data-label">期望额度</span><span class="data-value">' + guideCardApplyMoney(s.limit) + ' 元</span></div>' +
-    '<div class="data-row"><span class="data-label">主要用途</span><span class="data-value">' + guideCardApplyEsc(s.purpose) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">主要用途</span><span class="data-value">' + guideEsc(s.purpose) + '</span></div>' +
     '</div>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideCardApplySubmit()">提交申请</button>' +
@@ -3219,7 +3211,7 @@ async function guideCardApplySubmit() {
       return;
     }
     if (srvApply && srvApply.error) {
-      appendMessage(guideMessage('<p>申请未提交：' + guideCardApplyEsc(srvApply.error) + '</p>'));
+      appendMessage(guideMessage('<p>申请未提交：' + guideEsc(srvApply.error) + '</p>'));
       scrollToBottom();
       return;
     }
@@ -3265,8 +3257,8 @@ function guideCardApplyRecords() {
   var list = (typeof cardApplyList === 'function') ? cardApplyList() : [];
   var rows = list.length
     ? list.slice().reverse().map(function (a) {
-      return '<div class="report-row"><span>' + guideCardApplyEsc(a.cardType) + '・' + guideCardApplyEsc(a.purpose) + '</span>' +
-        '<b>' + guideCardApplyEsc(a.status) + '・' + guideCardApplyEsc(a.appliedAt) + '</b></div>';
+      return '<div class="report-row"><span>' + guideEsc(a.cardType) + '・' + guideEsc(a.purpose) + '</span>' +
+        '<b>' + guideEsc(a.status) + '・' + guideEsc(a.appliedAt) + '</b></div>';
     }).join('')
     : '<div class="report-empty">暂无申请记录</div>';
   appendMessage(guideMessage(
@@ -3280,10 +3272,6 @@ function guideCardApplyRecords() {
 // ------------------------------ 信用卡额度调整申请：目标额度 + 调整原因 ------------------------------
 // 两个槽位可任意顺序输入；齐了出「确认额度调整申请」，提交后写入复核审批队列（待复核）。
 var GUIDE_CARD_LIMIT = null;
-
-function guideCardLimitEsc(v) {
-  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
-}
 
 function guideCardLimitState() {
   var s = GUIDE_CARD_LIMIT;
@@ -3335,8 +3323,8 @@ function guidePickCardFromText(text, cards) {
 
 function guideCardLimitPickCardHtml(cards) {
   var rows = cards.map(function (c, i) {
-    return '<div class="report-row"><span>' + (i + 1) + '. ' + guideCardLimitEsc(c.cardType || '信用卡') +
-      '　尾号 ' + guideCardLimitEsc(c.tail || '----') + '</span><b>¥' + Number(c.limit || 0).toLocaleString('zh-CN') + '</b></div>';
+    return '<div class="report-row"><span>' + (i + 1) + '. ' + guideEsc(c.cardType || '信用卡') +
+      '　尾号 ' + guideEsc(c.tail || '----') + '</span><b>¥' + Number(c.limit || 0).toLocaleString('zh-CN') + '</b></div>';
   }).join('');
   return '<p>你有 ' + cards.length + ' 张信用卡，想调整哪一张的额度？</p>' +
     '<div class="report-panel" style="margin-top:8px;"><div class="report-panel-title">我的信用卡</div>' + rows + '</div>' +
@@ -3353,7 +3341,7 @@ function guideCardLimitPickCard(cardId) {
   s.stage = 'slots';
   var st = guideCardLimitState();
   appendMessage(guideMessage(
-    '<p>正在调整「<b>' + guideCardLimitEsc(guideCardLabel(card)) + '</b>」的额度。</p>' +
+    '<p>正在调整「<b>' + guideEsc(guideCardLabel(card)) + '</b>」的额度。</p>' +
     '<p>请告诉我想要调整到的目标额度。</p>' +
     '<p class="guide-tip">当前额度 ¥' + st.current.toLocaleString('zh-CN') +
       (Number(st.min) > 0 ? '，最低可调至 ¥' + st.min.toLocaleString('zh-CN') + '（已用额度）' : '') + '</p>'
@@ -3374,7 +3362,7 @@ function guideStartCardLimitAdjust() {
   GUIDE_CARD_LIMIT = { stage: 'slots', limit: 0, reason: null, cards: cards, card: cards[0] || null };
   var st = guideCardLimitState();
   appendMessage(guideMessage(
-    (cards[0] ? '<p>正在调整「<b>' + guideCardLimitEsc(guideCardLabel(cards[0])) + '</b>」的额度。</p>' : '') +
+    (cards[0] ? '<p>正在调整「<b>' + guideEsc(guideCardLabel(cards[0])) + '</b>」的额度。</p>' : '') +
     '<p>请告诉我想要调整到的目标额度，以及调整原因。</p>' +
     '<p class="guide-tip">可选原因：' + CARD_LIMIT_REASONS.join('、') + '</p>' +
     (st.current ? '<p class="guide-tip">当前额度 ¥' + st.current.toLocaleString('zh-CN') +
@@ -3513,9 +3501,9 @@ function guideCardLimitConfirm() {
     '<div id="' + s.cardBoxId + '-wrap">' +
     '<p>确认额度调整申请</p>' +
     '<div class="data-card" id="' + s.cardBoxId + '"><div class="data-card-title">申请信息</div>' +
-    (s.card ? '<div class="data-row"><span class="data-label">信用卡</span><span class="data-value">' + guideCardLimitEsc(guideCardLabel(s.card)) + '</span></div>' : '') +
+    (s.card ? '<div class="data-row"><span class="data-label">信用卡</span><span class="data-value">' + guideEsc(guideCardLabel(s.card)) + '</span></div>' : '') +
     '<div class="data-row"><span class="data-label">目标额度</span><span class="data-value">' + Number(s.limit).toLocaleString('zh-CN') + ' 元</span></div>' +
-    '<div class="data-row"><span class="data-label">调整原因</span><span class="data-value">' + guideCardLimitEsc(s.reason) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">调整原因</span><span class="data-value">' + guideEsc(s.reason) + '</span></div>' +
     '<div class="data-row"><span class="data-label">调整方向</span><span class="data-value">' + direction + '（当前 ¥' + st.current.toLocaleString('zh-CN') + '）</span></div>' +
     '</div>' +
     '<div class="guide-chips">' +
@@ -3556,7 +3544,7 @@ function guideCardLimitSubmit() {
     '<p>额度调整申请已提交，当前状态<b>待复核</b>，可点击入口查看复核进度。</p>' +
     '<div class="report-panel" style="margin-top:6px;">' +
     '<div class="report-panel-title">待复核</div>' +
-    '<div class="report-row"><span>' + (s.card ? guideCardLimitEsc(guideCardLabel(s.card)) + '・' : '') + '额度调整・' + guideCardLimitEsc(s.reason) + '</span>' +
+    '<div class="report-row"><span>' + (s.card ? guideEsc(guideCardLabel(s.card)) + '・' : '') + '额度调整・' + guideEsc(s.reason) + '</span>' +
     '<b>待复核・' + new Date().toLocaleDateString('zh-CN') + '</b></div>' +
     '</div>' +
     '<div class="guide-chips">' +
@@ -3589,7 +3577,7 @@ function showCardLimitRecords() {
   var rows = list.length
     ? list.map(function (r) {
       var st = r.status === '待人工复核' ? '待复核' : (r.status || '待复核');
-      return '<div class="report-row"><span>' + guideCardLimitEsc(r.purpose) + '</span><b>' + guideCardLimitEsc(st) + '・' + guideCardLimitEsc((r.submittedAt || '').split(' ')[0]) + '</b></div>';
+      return '<div class="report-row"><span>' + guideEsc(r.purpose) + '</span><b>' + guideEsc(st) + '・' + guideEsc((r.submittedAt || '').split(' ')[0]) + '</b></div>';
     }).join('')
     : '<div class="report-empty">暂无调额记录</div>';
 
@@ -3677,8 +3665,8 @@ function guideTxnLimitPickHtml(cards) {
     var right = (c.txnLimit && Number(c.txnLimit.single) > 0)
       ? ('单笔 ¥' + Number(c.txnLimit.single).toLocaleString('zh-CN'))
       : '未单独设置';
-    return '<div class="report-row"><span>' + (i + 1) + '. ' + guideCardLimitEsc(c.cardType || '信用卡') +
-      '　尾号 ' + guideCardLimitEsc(c.tail || '----') + '</span><b>' + right + '</b></div>';
+    return '<div class="report-row"><span>' + (i + 1) + '. ' + guideEsc(c.cardType || '信用卡') +
+      '　尾号 ' + guideEsc(c.tail || '----') + '</span><b>' + right + '</b></div>';
   }).join('');
   return '<p>你有 ' + cards.length + ' 张信用卡，要给哪一张设置交易限制？</p>' +
     '<div class="report-panel" style="margin-top:8px;"><div class="report-panel-title">我的信用卡</div>' + rows + '</div>' +
@@ -3690,7 +3678,7 @@ function guideTxnLimitAskLimits() {
   if (!s) return;
   var label = s.card ? guideCardLabel(s.card) : '';
   guideAsk(guideMessage(
-    (label ? '<p>正在为「<b>' + guideCardLimitEsc(label) + '</b>」设置交易限制。</p>' : '') +
+    (label ? '<p>正在为「<b>' + guideEsc(label) + '</b>」设置交易限制。</p>' : '') +
     '<p>请设置单笔限额与每日限额。</p>' +
     '<p class="guide-tip">例如：20000 50000（只改一项时，另一项说「不变」）</p>'
   ));
@@ -3940,7 +3928,7 @@ function guideTxnLimitConfirm() {
   appendMessage(guideMessage(
     '<div id="' + s.confirmBoxId + '-wrap">' +
     '<div class="data-card">' +
-    (s.card ? '<div class="data-row"><span class="data-label">信用卡</span><span class="data-value">' + guideCardLimitEsc(guideCardLabel(s.card)) + '</span></div>' : '') +
+    (s.card ? '<div class="data-row"><span class="data-label">信用卡</span><span class="data-value">' + guideEsc(guideCardLabel(s.card)) + '</span></div>' : '') +
     '<div class="data-row"><span class="data-label">单笔限额</span><span class="data-value">' + (Number(s.single) || 0).toLocaleString('zh-CN') + ' 元' + (s.keptSingle ? '<span style="color:#94A3B8;">（不变）</span>' : '') + '</span></div>' +
     '<div class="data-row"><span class="data-label">每日限额</span><span class="data-value">' + (Number(s.daily) || 0).toLocaleString('zh-CN') + ' 元' + (s.keptDaily ? '<span style="color:#94A3B8;">（不变）</span>' : '') + '</span></div>' +
     '<div class="data-row"><span class="data-label">夜间交易（23:00-06:00）</span><span class="data-value">' + guideTxnLimitFlagText(s.night) + '</span></div>' +
@@ -3999,7 +3987,7 @@ function guideTxnLimitSubmit() {
     }
   }
   GUIDE_TXN_LIMIT = null;
-  appendMessage(guideMessage('<p>' + (cardLabel ? guideCardLimitEsc(cardLabel) + ' ' : '') + '交易限制已更新完成。</p>'));
+  appendMessage(guideMessage('<p>' + (cardLabel ? guideEsc(cardLabel) + ' ' : '') + '交易限制已更新完成。</p>'));
   if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
   scrollToBottom();
 }
@@ -4019,10 +4007,6 @@ function guideTxnLimitCancel() {
 }
 // ------------------------------ 卡片挂失：尾号 + 二次确认（不区分临时/正式） ------------------------------
 var GUIDE_CARD_LOST = null;
-
-function guideCardLostEsc(v) {
-  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
-}
 
 function guideCardLostCards() {
   if (typeof cardServiceCards === 'function') return cardServiceCards();
@@ -4076,7 +4060,7 @@ function guideCardLostStep(text) {
   var tail = digits.slice(-4);
   var card = guideCardLostCards().filter(function (c) { return String(c.tail) === tail; })[0];
   if (!card) {
-    appendMessage(guideMessage('<p>未找到尾号 <b>' + guideCardLostEsc(tail) + '</b> 的卡片，请重新输入尾号。</p>'));
+    appendMessage(guideMessage('<p>未找到尾号 <b>' + guideEsc(tail) + '</b> 的卡片，请重新输入尾号。</p>'));
     scrollToBottom();
     return true;
   }
@@ -4087,7 +4071,7 @@ function guideCardLostStep(text) {
   s.confirmBoxId = 'card-lost-confirm-' + Date.now();
   appendMessage(guideMessage(
     '<div id="' + s.confirmBoxId + '">' +
-    '<p>请确认挂失尾号 <b>' + guideCardLostEsc(tail) + '</b> 的信用卡。</p>' +
+    '<p>请确认挂失尾号 <b>' + guideEsc(tail) + '</b> 的信用卡。</p>' +
     '<p class="guide-tip">挂失后卡片无法使用，资金交易需等补新卡后恢复正常。</p>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideCardLostSubmit()">确认挂失</button>' +
@@ -4141,14 +4125,14 @@ async function guideCardLostApply(card) {
       var boxIdSrv = GUIDE_CARD_LOST && GUIDE_CARD_LOST.confirmBoxId;
       GUIDE_CARD_LOST = null;
       if (boxIdSrv && typeof guideCardLostCollapse === 'function') guideCardLostCollapse('信用卡已挂失，新卡将在 3 个工作日内寄出。');
-      appendMessage(guideMessage('<p>信用卡已挂失（尾号 <b>' + guideFlowerEsc(c.tail) + '</b>），新卡将在 3 个工作日内寄出。</p>'));
+      appendMessage(guideMessage('<p>信用卡已挂失（尾号 <b>' + guideEsc(c.tail) + '</b>），新卡将在 3 个工作日内寄出。</p>'));
       scrollToBottom();
       if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
       return;
     }
     if (srvLost && srvLost.error) {
       GUIDE_CARD_LOST = null;
-      appendMessage(guideMessage('<p>挂失未执行：' + guideFlowerEsc(srvLost.error) + '</p>'));
+      appendMessage(guideMessage('<p>挂失未执行：' + guideEsc(srvLost.error) + '</p>'));
       scrollToBottom();
       return;
     }
@@ -4174,14 +4158,14 @@ async function guideCardLostApply(card) {
   var okBoxId = GUIDE_CARD_LOST && GUIDE_CARD_LOST.confirmBoxId;
   var okBox = okBoxId ? document.getElementById(okBoxId) : null;
   if (okBox) {
-    okBox.innerHTML = '<p>已确认挂失尾号 <b>' + guideCardLostEsc(c.tail || '****') + '</b> 的' + guideCardLostEsc(c.cardType || '信用卡') + '。</p>';
+    okBox.innerHTML = '<p>已确认挂失尾号 <b>' + guideEsc(c.tail || '****') + '</b> 的' + guideEsc(c.cardType || '信用卡') + '。</p>';
   }
   GUIDE_CARD_LOST = null;
 
   appendMessage(guideMessage(
     '<p>挂失办理成功，卡片状态已更新。</p>' +
     '<div class="data-card"><div class="data-card-title">挂失信息</div>' +
-    '<div class="data-row"><span class="data-label">卡片</span><span class="data-value">' + guideCardLostEsc(c.cardType || '信用卡') + ' · 尾号 ' + guideCardLostEsc(c.tail || '****') + '</span></div>' +
+    '<div class="data-row"><span class="data-label">卡片</span><span class="data-value">' + guideEsc(c.cardType || '信用卡') + ' · 尾号 ' + guideEsc(c.tail || '****') + '</span></div>' +
     '<div class="data-row"><span class="data-label">当前状态</span><span class="data-value" style="color:#B42318;">已挂失</span></div>' +
     '<div class="data-row"><span class="data-label">办理时间</span><span class="data-value">' + c.frozenAt + '</span></div>' +
     '</div>' +
@@ -4211,10 +4195,6 @@ function guideCardLostCancel() {
 // ------------------------------ 持仓管理：追加申购 / 赎回（对话式） ------------------------------
 // 入口：先展示持仓卡片概览，再问「需要赎回还是追加申购呢？」
 var GUIDE_HOLDING = null;
-
-function guideHoldingEsc(v) {
-  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
-}
 
 function guideHoldingList() {
   return (mockData.userProfile.holdings || []).filter(function (h) { return h && h.status !== '已赎回'; });
@@ -4479,7 +4459,7 @@ async function guideHoldingStep(text) {
     if (full) s.full = true;
     // 只说了产品：先查封闭期，封闭期内直接拒绝，不再问金额
     if (s.product && !(s.full || Number(s.amount) > 0) && guideHoldingClosed(s.product)) {
-      appendMessage(guideMessage('<p>【<b>' + guideHoldingEsc(s.product.name) + '</b>】当前处于封闭期，暂不支持赎回。</p>'));
+      appendMessage(guideMessage('<p>【<b>' + guideEsc(s.product.name) + '</b>】当前处于封闭期，暂不支持赎回。</p>'));
       scrollToBottom();
       s.product = null;
       s.amount = null;
@@ -4552,7 +4532,7 @@ function guideHoldingSubConfirm() {
   if (profile && Number(prod.riskLevel) > Number(profile.level) && !s.riskOverride) {
     s.stage = 'subRisk';
     appendMessage(guideMessage(
-      '<p>该产品风险等级 <b>R' + prod.riskLevel + '</b>，高于您 <b>R' + profile.level + ' ' + guideHoldingEsc(profile.name) + '</b>的风险承受等级，是否追加申购？</p>' +
+      '<p>该产品风险等级 <b>R' + prod.riskLevel + '</b>，高于您 <b>R' + profile.level + ' ' + guideEsc(profile.name) + '</b>的风险承受等级，是否追加申购？</p>' +
       '<div class="guide-chips">' +
       '<button class="guide-chip" onclick="guideHoldingSubSubmitAsRisk()">仍然追加</button>' +
       '<button class="guide-chip" onclick="guideHoldingCancel()">取消</button>' +
@@ -4563,7 +4543,7 @@ function guideHoldingSubConfirm() {
   }
   s.stage = 'subConfirm';
   appendMessage(guideMessage(
-    '<p>确认对【<b>' + guideHoldingEsc(s.product.name) + '</b>】追加申购 <b>' + guidePlainMoney(s.amount) + '</b> 元，默认从活期主账户（尾号' +
+    '<p>确认对【<b>' + guideEsc(s.product.name) + '</b>】追加申购 <b>' + guidePlainMoney(s.amount) + '</b> 元，默认从活期主账户（尾号' +
     guideHoldingAccountTail() + '）扣款，请确认</p>' +
     (s.riskOverride ? '<p class="guide-tip">⚠️ 该产品风险等级高于你的风险承受能力，已按你的确认继续。</p>' : '') +
     '<div class="guide-chips">' +
@@ -4624,7 +4604,7 @@ async function guideHoldingSubSubmit() {
   if (res && res.ok !== false) {
     appendMessage(guideMessage('<p>追加申购提交成功。</p>'));
   } else {
-    appendMessage(guideMessage('<p>追加申购失败：' + guideHoldingEsc((res && res.summary) || '业务执行异常') + '</p>'));
+    appendMessage(guideMessage('<p>追加申购失败：' + guideEsc((res && res.summary) || '业务执行异常') + '</p>'));
   }
   scrollToBottom();
 }
@@ -4636,7 +4616,7 @@ function guideHoldingRedeemConfirm() {
   var h = s.product;
 
   if (guideHoldingClosed(h)) {
-    appendMessage(guideMessage('<p>【<b>' + guideHoldingEsc(h.name) + '</b>】当前处于封闭期，暂不支持赎回。</p>'));
+    appendMessage(guideMessage('<p>【<b>' + guideEsc(h.name) + '</b>】当前处于封闭期，暂不支持赎回。</p>'));
     scrollToBottom();
     s.product = null;
     s.amount = null;
@@ -4663,7 +4643,7 @@ function guideHoldingRedeemConfirm() {
   s.stage = 'redeemConfirm';
   s.amount = amount;
   appendMessage(guideMessage(
-    '<p>确认赎回【<b>' + guideHoldingEsc(h.name) + '</b>】<b>' + guidePlainMoney(amount) + '</b> 元，资金预计 T+1 到账活期主账户（尾号' +
+    '<p>确认赎回【<b>' + guideEsc(h.name) + '</b>】<b>' + guidePlainMoney(amount) + '</b> 元，资金预计 T+1 到账活期主账户（尾号' +
     guideHoldingAccountTail() + '），请确认</p>' +
     (s.full ? '<p class="guide-tip">本次为全额赎回，赎回后该持仓清空。</p>' : '') +
     '<div class="guide-chips">' +
@@ -4684,9 +4664,9 @@ async function guideHoldingRedeemSubmit() {
   var res = await callAgentTool('wealth.redeem', { product: name, amount: amount });
   if (res && res.ok !== false) {
     var arriveText = (res && res.data && res.data.arriveDate) ? res.data.arriveDate : 'T+1';
-    appendMessage(guideMessage('<p>赎回申请已提交，资金预计 <b>' + guideHoldingEsc(arriveText) + '</b> 到账活期主账户（尾号' + guideHoldingAccountTail() + '）。</p>'));
+    appendMessage(guideMessage('<p>赎回申请已提交，资金预计 <b>' + guideEsc(arriveText) + '</b> 到账活期主账户（尾号' + guideHoldingAccountTail() + '）。</p>'));
   } else {
-    appendMessage(guideMessage('<p>赎回失败：' + guideHoldingEsc((res && res.summary) || '业务执行异常') + '</p>'));
+    appendMessage(guideMessage('<p>赎回失败：' + guideEsc((res && res.summary) || '业务执行异常') + '</p>'));
   }
   scrollToBottom();
 }
@@ -4700,7 +4680,7 @@ function guideHoldingRedeemAllConfirm() {
   appendMessage(guideMessage(
     '<p>确认一键发起全部可赎回产品的赎回申请；封闭期内产品暂不支持赎回，资金到期后返还活期主账户（尾号' +
     guideHoldingAccountTail() + '），是否继续？</p>' +
-    (closedNames.length ? '<p class="guide-tip">封闭期产品：' + guideHoldingEsc(closedNames.join('、')) + '</p>' : '') +
+    (closedNames.length ? '<p class="guide-tip">封闭期产品：' + guideEsc(closedNames.join('、')) + '</p>' : '') +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideHoldingRedeemAllSubmit()">确认一键赎回</button>' +
     '<button class="guide-chip" onclick="guideHoldingCancel()">取消</button>' +
@@ -4725,8 +4705,8 @@ async function guideHoldingRedeemAllSubmit() {
   appendMessage(guideMessage(
     '<p>一键赎回申请已提交，资金预计 T+1 到账活期主账户（尾号' + guideHoldingAccountTail() + '）。</p>' +
     '<p class="guide-tip">封闭期产品暂不支持赎回。</p>' +
-    (done.length ? '<p class="guide-tip">已受理：' + guideHoldingEsc(done.join('、')) + '</p>' : '') +
-    (closed.length ? '<p class="guide-tip">封闭期未赎回：' + guideHoldingEsc(closed.join('、')) + '</p>' : '')
+    (done.length ? '<p class="guide-tip">已受理：' + guideEsc(done.join('、')) + '</p>' : '') +
+    (closed.length ? '<p class="guide-tip">封闭期未赎回：' + guideEsc(closed.join('、')) + '</p>' : '')
   ));
   scrollToBottom();
 }
@@ -4740,13 +4720,13 @@ function guideHoldingModify() {
     s.riskOverride = false;
     s.stage = 'subSlots';
     appendMessage(guideMessage('<p>请重新告诉我产品名称和申购金额（当前产品：' +
-      guideHoldingEsc(s.product ? s.product.name : '未选') + '）。</p>'));
+      guideEsc(s.product ? s.product.name : '未选') + '）。</p>'));
   } else {
     s.amount = null;
     s.full = false;
     s.stage = 'redeemSlots';
     appendMessage(guideMessage('<p>请重新告诉我赎回的产品名称和金额（当前产品：' +
-      guideHoldingEsc(s.product ? s.product.name : '未选') + '，可回复“全额”）。</p>'));
+      guideEsc(s.product ? s.product.name : '未选') + '，可回复“全额”）。</p>'));
   }
   scrollToBottom();
 }
@@ -4762,10 +4742,6 @@ function guideHoldingCancel() {
 
 // ------------------------------ 订阅：添加订阅 / 订阅管理 / 取消订阅 ------------------------------
 var GUIDE_SUB = null;
-
-function guideSubEsc(v) {
-  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
-}
 
 function guideSubActive() {
   if (!Array.isArray(mockData.subscriptions)) mockData.subscriptions = [];
@@ -4812,7 +4788,7 @@ function guideSubShowCatalog() {
   var rows = SUB_PRESETS.map(function (p) {
     var key = String(p.name).replace(' VIP', '').replace('VIP', '');
     var mine = activeNames.some(function (n) { return n.indexOf(key) !== -1; });
-    return '<div class="report-row"><span>' + guideSubEsc(p.name) + (mine ? '（已订阅）' : '') + '</span>' +
+    return '<div class="report-row"><span>' + guideEsc(p.name) + (mine ? '（已订阅）' : '') + '</span>' +
       '<b>月 ¥' + p.prices['/月'] + ' / 季 ¥' + p.prices['/季'] + ' / 年 ¥' + p.prices['/年'] + '</b></div>';
   }).join('');
   appendMessage(guideMessage(
@@ -4824,7 +4800,7 @@ function guideSubShowCatalog() {
 
 function guideSubPresetRows() {
   return SUB_PRESETS.map(function (p) {
-    return '<div class="report-row"><span>' + guideSubEsc(p.name) + '</span>' +
+    return '<div class="report-row"><span>' + guideEsc(p.name) + '</span>' +
       '<b>月 ¥' + p.prices['/月'] + ' / 季 ¥' + p.prices['/季'] + ' / 年 ¥' + p.prices['/年'] + '</b></div>';
   }).join('');
 }
@@ -4860,7 +4836,7 @@ async function guideSubAddStep(text) {
 
   if (svc && svc.kind === 'preset') s.preset = svc.preset;
   if (svc && svc.kind === 'active') {
-    appendMessage(guideMessage('<p>「' + guideSubEsc(svc.name) + '」已在订阅列表中，无需重复添加。</p>'));
+    appendMessage(guideMessage('<p>「' + guideEsc(svc.name) + '」已在订阅列表中，无需重复添加。</p>'));
     scrollToBottom();
     return true;
   }
@@ -4909,7 +4885,7 @@ function guideSubAddConfirm() {
   appendMessage(guideMessage(
     '<div id="' + s.boxId + '">' +
     '<div class="data-card"><div class="data-card-title">确认新增订阅</div>' +
-    '<div class="data-row"><span class="data-label">订阅服务</span><span class="data-value">' + guideSubEsc(s.preset.name) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">订阅服务</span><span class="data-value">' + guideEsc(s.preset.name) + '</span></div>' +
     '<div class="data-row"><span class="data-label">扣费周期</span><span class="data-value">' + guideSubCycleText(s.cycle) + '</span></div>' +
     '<div class="data-row"><span class="data-label">自动续费</span><span class="data-value">' + (s.autoRenew ? '开启' : '关闭') + '</span></div>' +
     '<div class="data-row"><span class="data-label">首次扣费</span><span class="data-value expense">¥ ' + price.toFixed(2) + '</span></div>' +
@@ -4935,7 +4911,7 @@ async function guideSubAddSubmit() {
   // 重复检测：已有有效订阅时提示，不再重复添加
   var dup = guideSubActive().filter(function (x) { return guideSubNormName(x.name) === guideSubNormName(preset.name); })[0];
   if (dup) {
-    appendMessage(guideMessage('<p>「<b>' + guideSubEsc(preset.name) + '</b>」已有有效订阅（' +
+    appendMessage(guideMessage('<p>「<b>' + guideEsc(preset.name) + '</b>」已有有效订阅（' +
       guideSubCycleText(dup.cycle) + '，自动续费' + (dup.autoRenew !== false ? '开启' : '关闭') + '），无需重复添加。</p>'));
     scrollToBottom();
     GUIDE_SUB = null;
@@ -4970,7 +4946,7 @@ async function guideSubAddSubmit() {
       GUIDE_SUB = null;
       if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
       appendMessage(guideMessage(
-        '<p>' + guideSubEsc(preset.name) + ' 添加成功，扣费周期' + guideSubCycleText(cycle) + '，自动续费' + (autoRenew ? '已开启' : '已关闭') + '。</p>' +
+        '<p>' + guideEsc(preset.name) + ' 添加成功，扣费周期' + guideSubCycleText(cycle) + '，自动续费' + (autoRenew ? '已开启' : '已关闭') + '。</p>' +
         '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅管理</button></div>'
       ));
       scrollToBottom();
@@ -4978,7 +4954,7 @@ async function guideSubAddSubmit() {
     }
     if (srvSub && srvSub.error) {
       GUIDE_SUB = null;
-      appendMessage(guideMessage('<p>订阅未开通：' + guideSubEsc(srvSub.error) + '</p>'));
+      appendMessage(guideMessage('<p>订阅未开通：' + guideEsc(srvSub.error) + '</p>'));
       scrollToBottom();
       if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
       return;
@@ -5024,7 +5000,7 @@ async function guideSubAddSubmit() {
   guideConfirmCardDone(boxId, '已添加');
   if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
   appendMessage(guideMessage(
-    '<p>' + guideSubEsc(preset.name) + ' 添加成功，扣费周期' + guideSubCycleText(cycle) + '，自动续费' + (autoRenew ? '已开启' : '已关闭') + '。</p>' +
+    '<p>' + guideEsc(preset.name) + ' 添加成功，扣费周期' + guideSubCycleText(cycle) + '，自动续费' + (autoRenew ? '已开启' : '已关闭') + '。</p>' +
     '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅管理</button></div>'
   ));
   scrollToBottom();
@@ -5070,12 +5046,12 @@ function guideStartSubAutoRenew() {
     return;
   }
   var rows = list.map(function (sub) {
-    return '<div class="report-row"><span>' + guideSubEsc(sub.name) + '・' + guideSubCycleText(sub.cycle) + '</span>' +
+    return '<div class="report-row"><span>' + guideEsc(sub.name) + '・' + guideSubCycleText(sub.cycle) + '</span>' +
       '<b>自动续费：' + (sub.autoRenew !== false ? '开启' : '关闭') + '</b></div>';
   }).join('');
   var historyHtml = history.length ? history.map(function (h) {
-    return '<div class="report-row"><span>' + guideSubEsc(h.name) + '・' + guideSubCycleText(h.cycle) + '・自动续费：' + (h.autoRenew ? '开启' : '关闭') + '</span>' +
-      '<b>已取消・' + guideSubEsc(h.cancelledAt) + '</b></div>';
+    return '<div class="report-row"><span>' + guideEsc(h.name) + '・' + guideSubCycleText(h.cycle) + '・自动续费：' + (h.autoRenew ? '开启' : '关闭') + '</span>' +
+      '<b>已取消・' + guideEsc(h.cancelledAt) + '</b></div>';
   }).join('') : '';
   appendMessage(guideMessage(
     '<p>当前有效订阅如下：</p>' +
@@ -5105,14 +5081,14 @@ async function guideSubManageStep(text) {
 
   if (!s.target) {
     if (s.listShown && !svc) s.listShown = false;
-    var hint = svc ? ('没有找到「' + guideSubEsc(svc.name) + '」的有效订阅。') : '没听懂你想管理哪一项。';
+    var hint = svc ? ('没有找到「' + guideEsc(svc.name) + '」的有效订阅。') : '没听懂你想管理哪一项。';
     var names = guideSubActive().map(function (x) { return x.name; }).join('、') || '暂无订阅';
     guideSayInvalid(guideMessage('<p>' + hint + '</p><p>请告诉我要管理哪一项订阅的自动续费。</p>' +
-      '<p class="guide-tip">当前有效订阅：' + guideSubEsc(names) + '</p>'));
+      '<p class="guide-tip">当前有效订阅：' + guideEsc(names) + '</p>'));
     return true;
   }
   if (s.newAutoRenew === null) {
-    appendMessage(guideMessage('<p>是开启还是关闭「' + guideSubEsc(s.target.name) + '」的自动续费？</p>' +
+    appendMessage(guideMessage('<p>是开启还是关闭「' + guideEsc(s.target.name) + '」的自动续费？</p>' +
       '<div class="guide-chips">' +
       '<button class="guide-chip" onclick="guideSubManageConfirm(true)">开启自动续费</button>' +
       '<button class="guide-chip" onclick="guideSubManageConfirm(false)">关闭自动续费</button>' +
@@ -5134,7 +5110,7 @@ function guideSubManageConfirm(want) {
   appendMessage(guideMessage(
     '<div id="' + s.boxId + '">' +
     '<div class="data-card"><div class="data-card-title">确认修改自动续费</div>' +
-    '<div class="data-row"><span class="data-label">订阅服务</span><span class="data-value">' + guideSubEsc(s.target.name) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">订阅服务</span><span class="data-value">' + guideEsc(s.target.name) + '</span></div>' +
     '<div class="data-row"><span class="data-label">当前自动续费</span><span class="data-value">' + (cur ? '开启' : '关闭') + '</span></div>' +
     '<div class="data-row"><span class="data-label">修改后自动续费</span><span class="data-value">' + (want ? '开启' : '关闭') + '</span></div>' +
     '</div>' +
@@ -5158,7 +5134,7 @@ function guideSubManageSubmit() {
   guideConfirmCardDone(s.boxId, '已修改');
   if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
   GUIDE_SUB = null;
-  appendMessage(guideMessage('<p>' + guideSubEsc(msg) + '</p>' +
+  appendMessage(guideMessage('<p>' + guideEsc(msg) + '</p>' +
     (sub.autoRenew ? '' : '<p class="guide-tip">关闭自动续费后不再扣费，权益可用到本付费周期结束。</p>')));
   scrollToBottom();
 }
@@ -5179,7 +5155,7 @@ function guideStartSubCancel() {
     return;
   }
   var rows = list.map(function (sub) {
-    return '<div class="report-row"><span>' + guideSubEsc(sub.name) + '</span><b>' +
+    return '<div class="report-row"><span>' + guideEsc(sub.name) + '</span><b>' +
       guideSubCycleText(sub.cycle) + '・' + (sub.autoRenew !== false ? '自动续费开启' : '自动续费关闭') + '</b></div>';
   }).join('');
   if (GUIDE_SUB && GUIDE_SUB.mode === 'cancel') GUIDE_SUB.listShown = true;
@@ -5201,17 +5177,17 @@ async function guideSubCancelStep(text) {
   if (!target) {
     // 用户说了与订阅无关的话：每句都要给回应，不能静默
     if (s.listShown && !svc) s.listShown = false;
-    var hint2 = svc ? ('没有找到「' + guideSubEsc(svc.name) + '」的有效订阅。') : '没听懂你想取消哪一项。';
+    var hint2 = svc ? ('没有找到「' + guideEsc(svc.name) + '」的有效订阅。') : '没听懂你想取消哪一项。';
     var names2 = guideSubActive().map(function (x) { return x.name; }).join('、') || '暂无订阅';
     guideSayInvalid(guideMessage('<p>' + hint2 + '</p><p>请选择你想要取消的订阅项目。</p>' +
-      '<p class="guide-tip">当前有效订阅：' + guideSubEsc(names2) + '</p>'));
+      '<p class="guide-tip">当前有效订阅：' + guideEsc(names2) + '</p>'));
     return true;
   }
   s.target = target;
   s.stage = 'confirm';
   appendMessage(guideMessage(
     '<div class="data-card"><div class="data-card-title">确认取消订阅</div>' +
-    '<div class="data-row"><span class="data-label">订阅服务</span><span class="data-value">' + guideSubEsc(target.name) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">订阅服务</span><span class="data-value">' + guideEsc(target.name) + '</span></div>' +
     '<div class="data-row"><span class="data-label">当前扣费周期</span><span class="data-value">' + guideSubCycleText(target.cycle) + '</span></div>' +
     '<div class="data-row"><span class="data-label">自动续费状态</span><span class="data-value">' + (target.autoRenew !== false ? '开启' : '关闭') + '</span></div>' +
     '<div class="data-row"><span class="data-label">操作</span><span class="data-value">取消订阅</span></div>' +
@@ -5239,7 +5215,7 @@ function guideSubCancelSubmit() {
   if (typeof apiSubscriptionCancel === 'function') apiSubscriptionCancel(target.id);
   saveUserData();
   GUIDE_SUB = null;
-  appendMessage(guideMessage('<p>' + guideSubEsc(target.name) + ' 已完成取消操作。</p>' +
+  appendMessage(guideMessage('<p>' + guideEsc(target.name) + ' 已完成取消操作。</p>' +
     '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅总览</button></div>'));
   scrollToBottom();
 }
@@ -5262,7 +5238,7 @@ function guideSubCancelAllStart() {
   var boxId = 'sub-cancel-all-' + Date.now();
   GUIDE_SUB = { mode: 'cancel-all', stage: 'confirm', list: list, boxId: boxId };
   var rows = list.map(function (sub) {
-    return '<div class="report-row"><span>' + guideSubEsc(sub.name) + '</span><b>' +
+    return '<div class="report-row"><span>' + guideEsc(sub.name) + '</span><b>' +
       guideSubCycleText(sub.cycle) + '・' + (sub.autoRenew !== false ? '自动续费开启' : '自动续费关闭') + '</b></div>';
   }).join('');
   appendMessage(guideMessage(
@@ -5442,10 +5418,6 @@ function guideFlowerOrderTotal(o) {
   return { bouquet: bq, cake: ck, total: (bq ? bq.price : 0) + (ck ? ck.price : 0) };
 }
 
-function guideFlowerEsc(v) {
-  return (typeof escapeHtml === 'function') ? escapeHtml(String(v == null ? '' : v)) : String(v == null ? '' : v);
-}
-
 function guideFlowerDateStr(days) {
   var d = new Date();
   d.setDate(d.getDate() + (Number(days) || 0));
@@ -5610,7 +5582,7 @@ function guideStartBirthdayFlower() {
     '<div class="guide-row"><div class="guide-row-title">查看鲜花订单</div><div class="guide-row-example">例如：查看鲜花订单</div></div>' +
     '<div class="guide-row"><div class="guide-row-title">生日提醒</div><div class="guide-row-example">例如：最近谁的生日</div></div>' +
     '</div>' +
-    (nearest ? '<p class="guide-tip">最近：' + guideFlowerEsc(nearest.name) + (nearest.relation ? '（' + guideFlowerEsc(nearest.relation) + '）' : '') +
+    (nearest ? '<p class="guide-tip">最近：' + guideEsc(nearest.name) + (nearest.relation ? '（' + guideEsc(nearest.relation) + '）' : '') +
       ' ' + Number(String(nearest.birthday).split('-')[0]) + ' 月 ' + Number(String(nearest.birthday).split('-')[1]) + ' 日，还有 ' + nearest.days + ' 天</p>' : '') +
     '<p class="guide-tip">可下单的联系人：' + guideFlowerContactsText() + '</p>' +
     '<p class="guide-tip">直接说出你的需求即可（照示例说也行）。</p>'
@@ -5656,8 +5628,8 @@ function guideFlowerDuplicate(recipient, date) {
 // 重复下单时的统一提示
 function guideFlowerWarnDuplicate(order) {
   appendMessage(guideMessage(
-    '<p>「' + guideFlowerEsc(order.recipient) + '」在 ' + guideFlowerDisplayDate(order.date) + ' 已有一束待配送的鲜花（' +
-    guideFlowerEsc(order.bouquet) + (order.cake && order.cake !== '无蛋糕' ? ' + ' + guideFlowerEsc(order.cake) : '') +
+    '<p>「' + guideEsc(order.recipient) + '」在 ' + guideFlowerDisplayDate(order.date) + ' 已有一束待配送的鲜花（' +
+    guideEsc(order.bouquet) + (order.cake && order.cake !== '无蛋糕' ? ' + ' + guideEsc(order.cake) : '') +
     '），同一人同一天不能重复下单。</p>' +
     '<p class="guide-tip">如需更换款式，请先取消原订单再重新下单。</p>' +
     '<div class="guide-chips"><button class="guide-chip" onclick="guideStartFlowerList()">查看鲜花订单</button></div>'
@@ -5670,11 +5642,11 @@ function guideFlowerOrderCard(s) {
   var slot = guideFlowerSlot(o.slot);
   var contacts = guideFlowerContacts();
   var recipientOpts = contacts.map(function (n) {
-    return '<option value="' + guideFlowerEsc(n) + '"' + (n === o.recipient ? ' selected' : '') + '>' + guideFlowerEsc(n) + '</option>';
+    return '<option value="' + guideEsc(n) + '"' + (n === o.recipient ? ' selected' : '') + '>' + guideEsc(n) + '</option>';
   }).join('');
   var bouquetOpts = FLOWER_BOUQUETS.map(function (b) {
-    return '<option value="' + guideFlowerEsc(b.name) + '"' + (b.name === o.bouquet ? ' selected' : '') + '>' +
-      guideFlowerEsc(b.name) + '（¥' + b.price + '）</option>';
+    return '<option value="' + guideEsc(b.name) + '"' + (b.name === o.bouquet ? ' selected' : '') + '>' +
+      guideEsc(b.name) + '（¥' + b.price + '）</option>';
   }).join('');
   var slotOpts = FLOWER_SLOTS.map(function (x) {
     return '<option value="' + x.key + '"' + (x.key === o.slot ? ' selected' : '') + '>' + x.text + '</option>';
@@ -5694,17 +5666,17 @@ function guideFlowerOrderCard(s) {
     '<div class="data-row"><span class="data-label">收花人</span><span class="data-value">' +
       '<select class="flower-input" id="flRecipient">' + recipientOpts + '</select></span></div>' +
     '<div class="data-row"><span class="data-label">联系电话</span><span class="data-value">' +
-      '<input class="flower-input" id="flPhone" value="' + guideFlowerEsc(o.phone) + '" placeholder="收花人手机号"></span></div>' +
+      '<input class="flower-input" id="flPhone" value="' + guideEsc(o.phone) + '" placeholder="收花人手机号"></span></div>' +
     '<div class="data-row"><span class="data-label">收货地址</span><span class="data-value">' +
-      '<input class="flower-input" id="flAddress" value="' + guideFlowerEsc(o.address) + '" placeholder="详细收货地址"></span></div>' +
+      '<input class="flower-input" id="flAddress" value="' + guideEsc(o.address) + '" placeholder="详细收货地址"></span></div>' +
     '<div class="data-row"><span class="data-label">花束款式</span><span class="data-value">' +
       '<select class="flower-input" id="flBouquet" onchange="guideFlowerRefreshTotal()">' + bouquetOpts + '</select></span></div>' +
     '<div class="data-row"><span class="data-label">配送日期</span><span class="data-value">' +
-      '<input class="flower-input" type="date" id="flDate" value="' + guideFlowerEsc(dateVal) + '" min="' + guideFlowerDateStr(0) + '"></span></div>' +
+      '<input class="flower-input" type="date" id="flDate" value="' + guideEsc(dateVal) + '" min="' + guideFlowerDateStr(0) + '"></span></div>' +
     '<div class="data-row"><span class="data-label">配送时段</span><span class="data-value">' +
       '<select class="flower-input" id="flSlot">' + slotOpts + '</select></span></div>' +
     '<div class="data-row"><span class="data-label">贺卡留言</span><span class="data-value">' +
-      '<input class="flower-input" id="flCard" maxlength="30" value="' + guideFlowerEsc(o.card || '') + '" placeholder="选填"></span></div>' +
+      '<input class="flower-input" id="flCard" maxlength="30" value="' + guideEsc(o.card || '') + '" placeholder="选填"></span></div>' +
     '<div class="data-row"><span class="data-label">蛋糕</span><span class="data-value">' +
       '<select class="flower-input" id="flCake" onchange="guideFlowerRefreshTotal()">' + cakeOpts + '</select></span></div>' +
     '<div class="data-row"><span class="data-label">支付方式</span><span class="data-value">' +
@@ -5750,8 +5722,8 @@ function guideFlowerConfirm() {
   if (!s) return;
   // 出确认卡之前再核一次：只能为联系人下单
   if (guideFlowerContacts().indexOf(s.order.recipient) === -1) {
-    appendMessage(guideMessage('<p>收花人必须是联系人，当前「' + guideFlowerEsc(s.order.recipient) + '」不在联系人里，请重新选择收花人。</p>' +
-      '<p class="guide-tip">可选收花人：' + guideFlowerEsc(guideFlowerContactsText()) + '</p>'));
+    appendMessage(guideMessage('<p>收花人必须是联系人，当前「' + guideEsc(s.order.recipient) + '」不在联系人里，请重新选择收花人。</p>' +
+      '<p class="guide-tip">可选收花人：' + guideEsc(guideFlowerContactsText()) + '</p>'));
     scrollToBottom();
     s.order.recipient = '';
     s.stage = 'slots';
@@ -5792,8 +5764,8 @@ async function guideFlowerOrderStep(text) {
     var allowed = guideFlowerContacts();
     if (allowed.indexOf(parsed.recipient) === -1) {
       appendMessage(guideMessage(
-        '<p>「<b>' + guideFlowerEsc(parsed.recipient) + '</b>」不在联系人里，鲜花只能为联系人下单。</p>' +
-        '<p class="guide-tip">可选收花人：' + guideFlowerEsc(guideFlowerContactsText()) + '</p>'
+        '<p>「<b>' + guideEsc(parsed.recipient) + '</b>」不在联系人里，鲜花只能为联系人下单。</p>' +
+        '<p class="guide-tip">可选收花人：' + guideEsc(guideFlowerContactsText()) + '</p>'
       ));
       scrollToBottom();
       return true;
@@ -5847,8 +5819,8 @@ async function guideFlowerSubmit() {
   }
   if (o.card && o.card.length > 30) o.card = o.card.slice(0, 30);
   if (guideFlowerContacts().indexOf(o.recipient) === -1) {
-    appendMessage(guideMessage('<p>收花人必须是联系人，当前「' + guideFlowerEsc(o.recipient) + '」不在联系人里，请重新选择收花人。</p>' +
-      '<p class="guide-tip">可选收花人：' + guideFlowerEsc(guideFlowerContactsText()) + '</p>'));
+    appendMessage(guideMessage('<p>收花人必须是联系人，当前「' + guideEsc(o.recipient) + '」不在联系人里，请重新选择收花人。</p>' +
+      '<p class="guide-tip">可选收花人：' + guideEsc(guideFlowerContactsText()) + '</p>'));
     scrollToBottom();
     s.order.recipient = guideFlowerContacts()[0] || '';
     s.stage = 'confirm';
@@ -5919,7 +5891,7 @@ async function guideFlowerSubmit() {
       return true;
     }
     if (srvFlower && srvFlower.error) {
-      appendMessage(guideMessage('<p>鲜花订单未提交：' + guideFlowerEsc(srvFlower.error) + '</p>'));
+      appendMessage(guideMessage('<p>鲜花订单未提交：' + guideEsc(srvFlower.error) + '</p>'));
       scrollToBottom();
       s.stage = 'confirm';
       guideFlowerConfirm();
@@ -5988,9 +5960,9 @@ function guideStartFlowerList() {
     return arr.map(function (o2) {
       var slot = guideFlowerSlot(o2.slot);
       return '<div class="bank-sched-item">' +
-        '<div class="bank-sched-date" style="background:#F5F8FD;color:#09407F;"><b>' + guideFlowerEsc(o2.status) + '</b><small>' + guideFlowerEsc(guideFlowerDisplayDate(o2.date)) + '</small></div>' +
-        '<div class="bank-sched-main"><b>' + guideFlowerEsc(o2.bouquet) + '｜收件：' + guideFlowerEsc(o2.recipient) + '</b>' +
-        '<small>' + guideFlowerDisplayDate(o2.date) + ' ' + slot.text + ' · ' + guideFlowerEsc(o2.payMethod || '储蓄卡') + '</small></div>' +
+        '<div class="bank-sched-date" style="background:#F5F8FD;color:#09407F;"><b>' + guideEsc(o2.status) + '</b><small>' + guideEsc(guideFlowerDisplayDate(o2.date)) + '</small></div>' +
+        '<div class="bank-sched-main"><b>' + guideEsc(o2.bouquet) + '｜收件：' + guideEsc(o2.recipient) + '</b>' +
+        '<small>' + guideFlowerDisplayDate(o2.date) + ' ' + slot.text + ' · ' + guideEsc(o2.payMethod || '储蓄卡') + '</small></div>' +
         '<div class="bank-sched-side" style="gap:8px;display:flex;">' +
         (o2.status === '待配送'
           ? '<button class="ui-link" onclick="guideFlowerCancelStart(\'' + o2.id + '\')">取消订单</button>'
@@ -6052,7 +6024,7 @@ function guideFlowerDeleteOrder(orderId) {
   var idx = list.indexOf(target);
   if (idx !== -1) list.splice(idx, 1);
   saveUserData();
-  appendMessage(guideMessage('<p>已删除该条鲜花订单记录（' + guideFlowerEsc(target.recipient) + '・' + guideFlowerDisplayDate(target.date) + '）。</p>'));
+  appendMessage(guideMessage('<p>已删除该条鲜花订单记录（' + guideEsc(target.recipient) + '・' + guideFlowerDisplayDate(target.date) + '）。</p>'));
   scrollToBottom();
   guideStartFlowerList();
 }
@@ -6068,8 +6040,8 @@ function guideFlowerModifyStart(orderId) {
   GUIDE_FLOWER = { mode: 'modify', stage: 'modify-slots', order: order, newBouquet: '' };
   currentModule = 'flower';
   var slot = guideFlowerSlot(order.slot);
-  appendMessage(guideMessage('<p>要修改「' + guideFlowerEsc(order.recipient) + '」这笔鲜花订单的什么？例如「改成向日葵花束」。</p>' +
-    '<p class="guide-tip">当前：' + guideFlowerEsc(order.bouquet) + '｜' + guideFlowerDisplayDate(order.date) + ' ' + slot.text +
+  appendMessage(guideMessage('<p>要修改「' + guideEsc(order.recipient) + '」这笔鲜花订单的什么？例如「改成向日葵花束」。</p>' +
+    '<p class="guide-tip">当前：' + guideEsc(order.bouquet) + '｜' + guideFlowerDisplayDate(order.date) + ' ' + slot.text +
     '（配送前 24 小时以上可免费修改）</p>'));
   scrollToBottom();
 }
@@ -6085,11 +6057,11 @@ function guideFlowerModifyConfirm() {
   var diff = Math.round((newPrice - oldPrice) * 100) / 100;
   appendMessage(guideMessage(
     '<div class="data-card"><div class="data-card-title">确认修改订单</div>' +
-    '<div class="data-row"><span class="data-label">原款式</span><span class="data-value">' + guideFlowerEsc(s.order.bouquet) + '</span></div>' +
-    '<div class="data-row"><span class="data-label">新款式</span><span class="data-value">' + guideFlowerEsc(s.newBouquet) + '（¥' + newPrice + '）</span></div>' +
+    '<div class="data-row"><span class="data-label">原款式</span><span class="data-value">' + guideEsc(s.order.bouquet) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">新款式</span><span class="data-value">' + guideEsc(s.newBouquet) + '（¥' + newPrice + '）</span></div>' +
     (s.order.paid === true && diff !== 0 ? '<div class="data-row"><span class="data-label">改单差价</span><span class="data-value ' + (diff > 0 ? 'expense' : 'income') + '">' + (diff > 0 ? '补 ¥' : '退 ¥') + Math.abs(diff) + '</span></div>' : '') +
     '<div class="data-row"><span class="data-label">其余信息</span><span class="data-value">保持不变</span></div>' +
-    '<div class="data-row"><span class="data-label">支付方式</span><span class="data-value">' + guideFlowerEsc(s.order.payMethod || '储蓄卡') + '</span></div>' +
+    '<div class="data-row"><span class="data-label">支付方式</span><span class="data-value">' + guideEsc(s.order.payMethod || '储蓄卡') + '</span></div>' +
     '</div>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideFlowerModifySubmit()">确认修改</button>' +
@@ -6144,7 +6116,7 @@ function guideFlowerModifySubmit() {
     saveUserData();
   }
   GUIDE_FLOWER = null;
-  appendMessage(guideMessage('<p>订单已修改：款式改为「' + guideFlowerEsc(bouquet ? bouquet.name : s.newBouquet) + '」，其余信息保持不变。</p>'));
+  appendMessage(guideMessage('<p>订单已修改：款式改为「' + guideEsc(bouquet ? bouquet.name : s.newBouquet) + '」，其余信息保持不变。</p>'));
   scrollToBottom();
 }
 
@@ -6159,7 +6131,7 @@ function guideFlowerCancelStart(orderId) {
   appendMessage(guideMessage(
     '<div id="' + GUIDE_FLOWER.boxId + '-wrap">' +
     '<div class="data-card"><div class="data-card-title">确认取消这条鲜花订单</div>' +
-    '<div class="data-row"><span class="data-label">收花人</span><span class="data-value">' + guideFlowerEsc(order.recipient) + '</span></div>' +
+    '<div class="data-row"><span class="data-label">收花人</span><span class="data-value">' + guideEsc(order.recipient) + '</span></div>' +
     '<div class="data-row"><span class="data-label">配送时间</span><span class="data-value">' + guideFlowerDisplayDate(order.date) + ' ' + slot.text + '</span></div>' +
     '</div>' +
     (hrs < 24 ? '<p class="guide-tip">距离配送日不足24小时，取消会收取少量服务费 ¥' + FLOWER_CANCEL_FEE + '。</p>' : '<p class="guide-tip">配送前 24 小时以上可免费取消。</p>') +
