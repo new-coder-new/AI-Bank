@@ -265,6 +265,9 @@ function guideSlotsComplete(module: any, text: any) {
 // 业务完成后的衔接：总结一句 → 提示还能继续 → 回到当前模块二级菜单（不弹首页卡）
 function guideModuleWrapUp(module: any, summary: any) {
   try {
+    // 用户在收尾问句弹出前就点了下一步（如「查看订阅总览」）时，跳过这次收尾
+    var muted = (window as any).__GUIDE_WRAPUP_MUTED_UNTIL;
+    if (muted && Date.now() < muted) return;
     var mod = module || (currentModule !== 'chat' ? currentModule : '');
     if (!mod) return;
     guideResetAllSessions();

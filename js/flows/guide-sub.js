@@ -167,6 +167,7 @@ async function guideSubAddSubmit() {
     // 重复检测：已有有效订阅时提示，不再重复添加
     var dup = guideSubActive().filter(function (x) { return guideSubNormName(x.name) === guideSubNormName(preset.name); })[0];
     if (dup) {
+        guideConfirmCardDone(boxId, '已有订阅');
         appendMessage(guideMessage('<p>「<b>' + guideEsc(preset.name) + '</b>」已有有效订阅（' +
             guideSubCycleText(dup.cycle) + '，自动续费' + (dup.autoRenew !== false ? '开启' : '关闭') + '），无需重复添加。</p>'));
         scrollToBottom();
@@ -447,7 +448,13 @@ async function guideSubCancelStep(text) {
     }
     s.target = target;
     s.stage = 'confirm';
-    appendMessage(guideMessage('<div class="data-card"><div class="data-card-title">确认取消订阅</div>' +
+    // 收起上一步「选哪一个订阅」的按钮，避免确认卡旁边留一串可点项
+    if (typeof guideCollapseLatestChips === 'function')
+        guideCollapseLatestChips('已选择：' + target.name);
+    s.boxId = s.boxId || ('sub-cancel-confirm-' + Date.now());
+    var cancelBoxId = s.boxId;
+    appendMessage(guideMessage('<div id="' + cancelBoxId + '">' +
+        '<div class="data-card"><div class="data-card-title">确认取消订阅</div>' +
         '<div class="data-row"><span class="data-label">订阅服务</span><span class="data-value">' + guideEsc(target.name) + '</span></div>' +
         '<div class="data-row"><span class="data-label">当前扣费周期</span><span class="data-value">' + guideSubCycleText(target.cycle) + '</span></div>' +
         '<div class="data-row"><span class="data-label">自动续费状态</span><span class="data-value">' + (target.autoRenew !== false ? '开启' : '关闭') + '</span></div>' +
@@ -456,6 +463,7 @@ async function guideSubCancelStep(text) {
         '<div class="guide-chips">' +
         '<button class="guide-chip" onclick="guideSubCancelSubmit()">确认取消</button>' +
         '<button class="guide-chip" onclick="guideSubCancelOp()">返回</button>' +
+        '</div>' +
         '</div>'));
     scrollToBottom();
     return true;
@@ -465,6 +473,7 @@ function guideSubCancelSubmit() {
     if (!s || s.stage !== 'confirm' || !s.target)
         return;
     var target = s.target;
+    guideConfirmCardDone(s.boxId, '已取消');
     mockData.subscriptions = guideSubActive().filter(function (x) { return x.id !== target.id; });
     guideSubHistoryList().unshift({
         name: target.name,
@@ -477,8 +486,19 @@ function guideSubCancelSubmit() {
     saveUserData();
     GUIDE_SUB = null;
     appendMessage(guideMessage('<p>' + guideEsc(target.name) + ' 已完成取消操作。</p>' +
-        '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅总览</button></div>'));
+        '<div class="guide-chips"><button class="guide-chip" onclick="guideSubOpenOverview()">查看订阅总览</button></div>'));
     scrollToBottom();
+}
+// 卡片上的「查看订阅总览」：先清掉可能还在路上的收尾问句，再回到订阅管理
+function guideSubOpenOverview() {
+    if (typeof window !== 'undefined') {
+        window.__GUIDE_WRAPUP_MUTED_UNTIL = Date.now() + 1500;
+        window.__GUIDE_LAST_TEXT = '订阅管理';
+    }
+    if (typeof GUIDE_WRAPUP !== 'undefined')
+        GUIDE_WRAPUP = null;
+    guideResetAllSessions();
+    guideStartSubManage();
 }
 // ------------------------------ 一键取消所有订阅 ------------------------------
 function guideSubCancelAllStart() {
