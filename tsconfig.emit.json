@@ -3,7 +3,11 @@
     "target": "ES2020",
     "module": "ES2020",
     "moduleResolution": "Bundler",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "rootDir": ".",
     "outDir": ".",
     "noEmitOnError": true,
@@ -12,5 +16,8 @@
     "removeComments": false,
     "declaration": false
   },
-  "files": ["js/core/session.ts"]
+  "files": [
+    "js/core/session.ts",
+    "js/core/api.ts"
+  ]
 }

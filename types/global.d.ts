@@ -180,6 +180,3 @@ declare function runAgentWorkflow(...args: any[]): any;
 declare function guideTimedNextStep(...args: any[]): any;
 
 // 这三个全局在源码里也有声明（var），这里用 var 合并类型
-declare var mockData: any;
-declare var currentModule: string;
-declare var API: any;
