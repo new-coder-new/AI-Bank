@@ -1,0 +1,14 @@
+﻿{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "rootDir": ".",
+    "outDir": ".",
+    "noCheck": true,
+    "skipLibCheck": true,
+    "removeComments": false,
+    "declaration": false
+  },
+  "files": ["js/agent/agent-llm.ts"]
+}

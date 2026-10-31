@@ -180,3 +180,9 @@ declare function runAgentWorkflow(...args: any[]): any;
 declare function guideTimedNextStep(...args: any[]): any;
 
 // 这三个全局在源码里也有声明（var），这里用 var 合并类型
+
+// —— Function Calling 层（js/agent/agent-llm.ts，以 noCheck 转译）——
+declare function agentLLMHandle(text: string): Promise<boolean>;
+declare function agentLLMClearHistory(): void;
+declare function agentLLMApprove(id: string): void;
+declare function agentLLMReject(id: string): void;

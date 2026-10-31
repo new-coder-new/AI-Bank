@@ -37,6 +37,8 @@
     "js/agent/scenario.js",
     "js/agent/planner.js",
     "js/agent/profile.js",
-    "js/agent/insights.js"
+    "js/agent/insights.js",
+    "js/agent/agent-llm.js",
+    "js/agent/agent-llm.ts"
   ]
 }
