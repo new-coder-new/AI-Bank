@@ -8,7 +8,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { buildDB, fmtDate, fmtDateTime, now, loadDB, saveDB, dbFilePath, appendLedger, queryLedger } = require('./db');
+const { buildDB, fmtDate, fmtDateTime, now, loadDB, saveDB, dbFilePath, appendLedger, clearLedger, queryLedger } = require('./db');
 
 // 有 data/db.json 就读回上次的数据，没有才用初始种子
 let DB = loadDB();
@@ -1470,7 +1470,8 @@ const routes = {
     }
     DB = buildDB();
     saveDB(DB);
-    return { ok: true, message: '数据已重置' };
+    clearLedger();
+    return { ok: true, message: '数据已重置为演示数据' };
   }
 };
 

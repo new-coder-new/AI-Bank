@@ -383,6 +383,19 @@ function saveDB(db) {
 }
 
 // 追加资金审计行（与内存 auditLog 并行落一行，便于按时间查询）
+// 清空资金审计流水（演示数据重置时使用）
+function clearLedger() {
+  try {
+    const db = openDb();
+    db.exec('DELETE FROM ledger');
+    db.exec("DELETE FROM sqlite_sequence WHERE name = 'ledger'");
+    return true;
+  } catch (e) {
+    console.warn('[db] 清空 ledger 失败：' + e.message);
+    return false;
+  }
+}
+
 function appendLedger(entry) {
   try {
     const e = entry || {};
@@ -413,5 +426,5 @@ function dbFilePath() { return DB_PATH; }
 
 module.exports = {
   buildDB, fmtDate, fmtDateTime, now, daysAgo, loadDB, saveDB, dbFilePath,
-  appendLedger, queryLedger
+  appendLedger, clearLedger, queryLedger
 };

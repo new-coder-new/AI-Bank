@@ -414,6 +414,18 @@ function apiRefreshUI() {
     catch (e) { }
 }
 /** 触发服务端订阅续费并合并结果（余额、下次扣费日） */
+/** 重置为演示数据：服务端重建种子数据，清掉本地缓存后整页重载 */
+function apiDemoReset() {
+    if (!API.enabled)
+        return Promise.reject(new Error('backend offline'));
+    return apiRequest('POST', '/api/reset').then(function (res) {
+        try {
+            localStorage.removeItem('financeAssistantData_v1');
+        }
+        catch (e) { }
+        return res;
+    });
+}
 function apiSubscriptionRun() {
     if (!API.enabled)
         return Promise.resolve({ ok: false, offline: true });

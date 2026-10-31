@@ -718,3 +718,5 @@ declare function confirmCreateInvestment(...args: any[]): any;
 declare function toggleInvestmentPlan(...args: any[]): any;
 declare function deleteInvestmentPlan(...args: any[]): any;
 declare function executeDueInvestments(...args: any[]): any;
+
+declare function apiDemoReset(...args: any[]): any;

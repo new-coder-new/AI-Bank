@@ -129,10 +129,20 @@ function loadUserData(): boolean {
   return false;
 }
 
+// 重置为演示数据：服务端重建种子库 + 清本地缓存，然后整页重载
 function resetUserData(): void {
-  if (confirm('确定要重置所有数据吗？这将恢复到初始状态，所有操作记录将被清除。')) {
-    localStorage.removeItem(STORAGE_KEY);
+  if (!confirm('将清除当前演示产生的全部数据（转账 / 理财 / 订阅 / 鲜花 / 复核 / 定时任务等），恢复初始演示数据。确定继续？')) return;
+  const done = function (): void {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) { }
     location.reload();
+  };
+  if (typeof apiDemoReset === 'function' && typeof API !== 'undefined' && API.enabled) {
+    apiDemoReset().then(function (res: any) {
+      if (res && res.ok === false) { alert('重置失败：' + (res.error || '服务端返回异常')); return; }
+      done();
+    }).catch(function () { done(); });
+  } else {
+    done();
   }
 }
 
