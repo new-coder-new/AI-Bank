@@ -36,6 +36,7 @@
     "js/agent/decision.js",
     "js/agent/scenario.js",
     "js/agent/planner.js",
-    "js/agent/profile.js"
+    "js/agent/profile.js",
+    "js/agent/insights.js"
   ]
 }

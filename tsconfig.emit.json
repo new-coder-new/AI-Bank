@@ -28,6 +28,7 @@
     "js/agent/decision.ts",
     "js/agent/scenario.ts",
     "js/agent/planner.ts",
-    "js/agent/profile.ts"
+    "js/agent/profile.ts",
+    "js/agent/insights.ts"
   ]
 }
