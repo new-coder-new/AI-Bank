@@ -32,7 +32,9 @@ ok('没有自递归的 $id 助手', selfRecursive.length === 0, selfRecursive.jo
 // ② index.html 引用的脚本必须存在
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const refs = Array.from(html.matchAll(/<script[^>]*src="([^"]+)"/g)).map((m) => m[1]);
-const missing = refs.filter((r) => !fs.existsSync(path.join(ROOT, r)));
+// config.local.js 是本地密钥文件（git 忽略），缺失时由服务端动态注入，不算缺件
+const OPTIONAL_SCRIPTS = new Set(['js/core/config.local.js']);
+const missing = refs.filter((r) => !OPTIONAL_SCRIPTS.has(r) && !fs.existsSync(path.join(ROOT, r)));
 ok('index.html 引用的脚本都存在（' + refs.length + ' 个）', missing.length === 0, missing.join(', '));
 
 // ③ 每个 .ts 源都有对应的 .js 产物
