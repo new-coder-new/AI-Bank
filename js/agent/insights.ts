@@ -1,6 +1,9 @@
 // ==========================================================================
-//  AI Banking Agent · 洞察层（TypeScript 源码）
-//  编译产物：js/agent/insights.js（经典脚本，无 import/export）
+//  洞察与主动发现：财务驾驶舱、跨场景流程（旅行 / 月底 / 目标规划）
+//  源码：js/agent/insights.ts　→　编译：build/js/agent/insights.js（经典脚本，无 import/export）
+//  对外入口：agentShiftDateStr / agentReanchorDates / agentDashboard / agentDiscoveries 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
+// ==========================================================================
 //  今日财务驾驶舱 / AI 主动发现 / 主动事件推送 / 跨场景联动场景库
 // ==========================================================================
 

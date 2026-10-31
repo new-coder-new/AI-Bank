@@ -1,10 +1,8 @@
 // ==========================================================================
-//  经典脚本模块（TypeScript 源码，noCheck 转译）
-//  编译产物：js/core/visualization.js
-//  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
-//        对外符号统一在 types/global.d.ts 声明。
-// ==========================================================================
-
+//  Canvas 可视化：趋势线、资产分布、瀑布图
+//  源码：js/core/visualization.ts　→　编译：build/js/core/visualization.js（经典脚本，无 import/export）
+//  对外入口：vizGetHistory / vizGetAssets / vizCanvas / vizTrendHtml 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
 //  AI Banking Agent · 数据可视化层（Visualization）
 //  纯 Canvas 实现，零依赖。补齐队友版只有"基础饼图/柱图"的短板，

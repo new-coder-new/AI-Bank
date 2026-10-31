@@ -1,6 +1,9 @@
 // ==========================================================================
-//  AI Banking Agent · Function Calling 层（TypeScript 源码）
-//  编译产物：js/agent/agent-llm.js（经典脚本，无 import/export）
+//  Function Calling 层：工具 schema、系统提示词、模型循环与确认卡参数
+//  源码：js/agent/agent-llm.ts　→　编译：build/js/agent/agent-llm.js（经典脚本，无 import/export）
+//  对外入口：agentLLMConfig / agentLLMAvailable / agentLLMShouldAttempt / agentToolApiName 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
+// ==========================================================================
 //  说明：模型返回的 JSON（tool_calls / message）结构自由，本文件以 any 承载；
 //        类型重点放在状态机与确认卡参数上。
 // ==========================================================================

@@ -1,6 +1,9 @@
 // ==========================================================================
-//  AI Banking Agent · 跨场景任务规划器（TypeScript 源码）
-//  编译产物：js/agent/planner.js（经典脚本，无 import/export）
+//  跨场景目标规划：多目标拆解、月度预算建议与里程碑
+//  源码：js/agent/planner.ts　→　编译：build/js/agent/planner.js（经典脚本，无 import/export）
+//  对外入口：agentParseGoals / agentBuildPlan / plannerCardHtml / renderAgentPlanGoals 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
+// ==========================================================================
 //  目标理解 → 任务拆解 → 财务分析 → 建议与里程碑
 // ==========================================================================
 

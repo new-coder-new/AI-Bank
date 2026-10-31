@@ -1,11 +1,10 @@
 // ==========================================================================
-//  引导层（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/guide-transfer.js
-//  说明：该层是「经典脚本 + 全局状态」结构，状态对象（GUIDE_*）随流程变化，
-//        因此采用 noCheck 转译；对外入口在 types/global.d.ts 声明。
+//  转账模块引导：姓名 / 手机号 / 定时 / AA 的槽位与确认
+//  源码：js/flows/guide-transfer.ts　→　编译：build/js/flows/guide-transfer.js（经典脚本，无 import/export）
+//  对外入口：guideTimedAskRepeat / guideTimedRepeatChoose / guideParseSimpleAmount / guideTimedPhraseIntent 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
-// 引导层：转账 / AA / 定时转账（由 guide.js 拆分而来）
+// 引导层：转账 / AA / 定时转账（原 guide 单体拆分模块）
 
 // 「是否重复？」卡片（答错会再弹一次，每次都记为最新一张）
 function guideTimedAskRepeat(prefix: any) {

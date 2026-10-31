@@ -1,6 +1,9 @@
 // ==========================================================================
-//  AI Banking Agent · 金融场景推理层（TypeScript 源码）
-//  编译产物：js/agent/scenario.js（经典脚本，无 import/export）
+//  场景推理：资金安排与场景化建议
+//  源码：js/agent/scenario.ts　→　编译：build/js/agent/scenario.js（经典脚本，无 import/export）
+//  对外入口：agentScenarioHorizon / agentScenarioAmount / agentScenarioRiskPref / agentScenarioPurpose 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
+// ==========================================================================
 //  四要素：金额 / 期限 / 流动性需求 / 风险偏好 → 分层配置建议
 // ==========================================================================
 

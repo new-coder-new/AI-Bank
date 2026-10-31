@@ -1,10 +1,8 @@
 // ==========================================================================
-//  经典脚本模块（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/cardlimit.js
-//  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
-//        对外符号统一在 types/global.d.ts 声明。
-// ==========================================================================
-
+//  额度调整流程：目标额度、调整原因与确认卡
+//  源码：js/flows/cardlimit.ts　→　编译：build/js/flows/cardlimit.js（经典脚本，无 import/export）
+//  对外入口：cardLimitData / cardLimitIsFresh / cardLimitDetailCard / cardLimitAdjustForm 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
 //  AI Banking Agent · 信用卡额度与调额层（Credit Card Limit）
 //  目标：解决 C 组测试暴露的三类问题——

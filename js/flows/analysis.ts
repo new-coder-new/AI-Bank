@@ -1,11 +1,9 @@
 // ==========================================================================
-//  经典脚本模块（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/analysis.js
-//  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
-//        对外符号统一在 types/global.d.ts 声明。
+//  账单分析：本月 / 本年收支结构、支出构成环形图、趋势折线
+//  源码：js/flows/analysis.ts　→　编译：build/js/flows/analysis.js（经典脚本，无 import/export）
+//  对外入口：reportEsc / reportMoney / reportInt / reportColor 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
-// ========== 账单分析 ==========
 function reportEsc(v: any) {
   return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

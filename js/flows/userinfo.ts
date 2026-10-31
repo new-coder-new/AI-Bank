@@ -1,11 +1,9 @@
 // ==========================================================================
-//  经典脚本模块（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/userinfo.js
-//  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
-//        对外符号统一在 types/global.d.ts 声明。
+//  用户信息卡：账户概览、卡片信息、交易记录片段
+//  源码：js/flows/userinfo.ts　→　编译：build/js/flows/userinfo.js（经典脚本，无 import/export）
+//  对外入口：showUserInfo
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
-// ========== 银行用户信息查询（模拟真实用户数据） ==========
 function showUserInfo() {
   const u = mockData.userProfile;
   const html = `

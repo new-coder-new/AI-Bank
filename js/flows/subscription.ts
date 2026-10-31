@@ -1,10 +1,9 @@
 // ==========================================================================
-//  经典脚本模块（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/subscription.js
-//  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
-//        对外符号统一在 types/global.d.ts 声明。
+//  订阅服务函数：清单渲染、周期文本与状态工具
+//  源码：js/flows/subscription.ts　→　编译：build/js/flows/subscription.js（经典脚本，无 import/export）
+//  对外入口：showSubscribeList / cancelSubscribe / showAddSubscribeForm / updateSubPrice 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
 declare function escapeHtml(v: any): string;
 declare function agentSleep(ms: number): Promise<void>;
 declare function registerAgentTool(name: string, def: any): void;

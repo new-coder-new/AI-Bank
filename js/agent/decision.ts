@@ -1,6 +1,9 @@
 // ==========================================================================
-//  AI Banking Agent · 消费决策分析层（TypeScript 源码）
-//  编译产物：js/agent/decision.js（经典脚本，无 import/export）
+//  消费决策分析：是否建议购买 / 分期、期数推荐与风险提示
+//  源码：js/agent/decision.ts　→　编译：build/js/agent/decision.js（经典脚本，无 import/export）
+//  对外入口：decisionIntentClass / agentPurchaseDecision / decisionCardHtml
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
+// ==========================================================================
 //  输出：是否建议购买 / 是否建议分期 / 推荐期数 / 风险提示
 // ==========================================================================
 

@@ -1,10 +1,9 @@
 // ==========================================================================
-//  经典脚本模块（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/chat.js
-//  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
-//        对外符号统一在 types/global.d.ts 声明。
+//  多轮对话与复杂指令解析：意图预处理、快捷指令分派
+//  源码：js/flows/chat.ts　→　编译：build/js/flows/chat.js（经典脚本，无 import/export）
+//  对外入口：addToConversation / addRecentAction / parseComplexCommand / identifyIntent 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
 declare function renderServiceWelcome(): void;
 declare function agentLLMHandle(text: string): Promise<boolean>;
 declare function registerTransferRecord(payee: string, amount: number, channel?: string, phone?: string): void;

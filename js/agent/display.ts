@@ -1,6 +1,9 @@
 // ==========================================================================
-//  AI Banking Agent · 增强展示层（TypeScript 源码）
-//  编译产物：js/agent/display.js（经典脚本，无 import/export）
+//  增强展示：健康评分、负债体检、主动提醒卡片
+//  源码：js/agent/display.ts　→　编译：build/js/agent/display.js（经典脚本，无 import/export）
+//  对外入口：agentHealthCardHtml / renderAgentHealth / agentDebtHealthCardHtml / renderAgentDebtHealth 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
+// ==========================================================================
 //  ① 财务健康评分卡 ② 生命周期分析 ③ 负债健康体检 ④ 主动提醒
 // ==========================================================================
 

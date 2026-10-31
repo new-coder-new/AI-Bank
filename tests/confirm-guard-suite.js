@@ -34,7 +34,7 @@ mockData = {
   }
 };
 
-// 运行环境 stub：guide.js 依赖 config.js 里的全局状态
+// 运行环境 stub：引导层依赖 core/config.js 里的全局状态
 currentModule = 'chat';
 GUIDE_WRAPUP = null;
 GUIDE_FLOWER = null;

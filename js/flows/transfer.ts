@@ -1,10 +1,9 @@
 // ==========================================================================
-//  经典脚本模块（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/transfer.js
-//  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
-//        对外符号统一在 types/global.d.ts 声明。
+//  转账表单与业务：表单卡片、确认卡流程、风险提示
+//  源码：js/flows/transfer.ts　→　编译：build/js/flows/transfer.js（经典脚本，无 import/export）
+//  对外入口：registerTransferRecord / localDateValue / localTimeValue / syncScheduledTimeMin 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
 declare function guideStartTimedTransfer(...args: any[]): any;
 declare function agentTransferTier(amount: number, risk?: any): any;
 declare var AGENT_SESSION: any;
@@ -105,7 +104,7 @@ function showTransferForm(mode: any) {
   scrollToBottom();
 }
 
-// 打开 AA 表单并预填总金额/活动名称（语音 AA 复用，避免只按人数瞎猜参与人）
+// 打开 AA 表单并预填总金额/活动名称（AA 表单复用，避免只按人数瞎猜参与人）
 function openAAForm(prefillTotal: any, prefillName: any) {
   showTransferForm('aa');
   setTimeout(function () {

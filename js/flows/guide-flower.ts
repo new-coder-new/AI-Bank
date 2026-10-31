@@ -1,11 +1,10 @@
 // ==========================================================================
-//  引导层（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/guide-flower.js
-//  说明：该层是「经典脚本 + 全局状态」结构，状态对象（GUIDE_*）随流程变化，
-//        因此采用 noCheck 转译；对外入口在 types/global.d.ts 声明。
+//  鲜花模块引导：订花槽位、订单卡片与订单管理
+//  源码：js/flows/guide-flower.ts　→　编译：build/js/flows/guide-flower.js（经典脚本，无 import/export）
+//  对外入口：guideDaysUntilMonthDay / guideNthSundayNext / guideEnsureBirthdayHold / guideHomeRemindersHtml 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
-// 引导层：生日鲜花（由 guide.js 拆分而来）
+// 引导层：生日鲜花（原 guide 单体拆分模块）
 
 
 // 距离某个「月-日」还有多少天（当天为 0）

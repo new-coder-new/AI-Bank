@@ -23,7 +23,14 @@ cleanup() { rm -f "$PKG"; }
 trap cleanup EXIT
 
 say "1/5 编译 TypeScript 并打包（仓库只保留 .ts，产物在打包前生成）"
-( cd "$ROOT" && npm run build:ts >/dev/null 2>&1 ) || { echo "    TypeScript 编译失败，已中止"; exit 1; }
+BUILD_LOG="/tmp/bank-build-$$.log"
+if ! ( cd "$ROOT" && npm run build:ts ) > "$BUILD_LOG" 2>&1; then
+  echo -e "\033[1;31m    TypeScript 编译失败，已中止。以下是编译器输出：\033[0m"
+  cat "$BUILD_LOG"
+  exit 1
+fi
+: > "$BUILD_LOG"
+echo "    编译产物: $(find "$ROOT/build/js" -name '*.js' | wc -l) 个 js 文件"
 tar -czf "$PKG" -C "$ROOT" \
   --exclude='.git' --exclude='.workbuddy' --exclude='preview' \
   --exclude='data' --exclude='logs' --exclude='node_modules' \

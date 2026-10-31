@@ -1,10 +1,9 @@
 // ==========================================================================
-//  经典脚本模块（TypeScript 源码，noCheck 转译）
-//  编译产物：js/core/config.js
-//  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
-//        对外符号统一在 types/global.d.ts 声明。
+//  全局配置与基础设施：mockData 初始结构、bankFetch、通用工具
+//  源码：js/core/config.ts　→　编译：build/js/core/config.js（经典脚本，无 import/export）
+//  对外入口：bankHasLLMKey / bankFetch / appendMessage / scrollToBottom 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
 // ---------------------------------------------------------------------------
 // 密钥配置：不在代码里硬编码，统一从 js/config.local.js（已 git 忽略）读取，
 // 或由服务端用环境变量（DEEPSEEK_API_KEY / SILICONFLOW_API_KEY）注入同结构对象。

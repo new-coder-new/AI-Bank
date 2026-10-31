@@ -117,7 +117,7 @@ declare function escapeHtml(v: unknown): string;
 declare function saveUserData(): void;
 declare function addTransaction(type: string, amount: number, desc: string, channel?: string, deduct?: boolean): boolean | void;
 
-/** 引导流（js/flows/guide.js 及子模块） */
+/** 引导流（js/flows/guide-*.ts 模块） */
 declare function guideHandleText(text: string): Promise<boolean>;
 declare function guideStartNameTransfer(): void;
 declare function guideOpenService(key: string): void;
@@ -181,13 +181,13 @@ declare function guideTimedNextStep(...args: any[]): any;
 
 // 这三个全局在源码里也有声明（var），这里用 var 合并类型
 
-// —— Function Calling 层（js/agent/agent-llm.ts，以 noCheck 转译）——
+// —— Function Calling 层（js/agent/agent-llm.ts）——
 declare function agentLLMHandle(text: string): Promise<boolean>;
 declare function agentLLMClearHistory(): void;
 declare function agentLLMApprove(id: string): void;
 declare function agentLLMReject(id: string): void;
 
-// —— 金融知识库（js/agent/kb.ts，以 noCheck 转译）——
+// —— 金融知识库（js/agent/kb.ts）——
 declare function agentKBHandle(text: string): Promise<boolean> | boolean;
 declare function agentKBIsKnowledgeQuery(text: string): boolean;
 declare function agentKBQuickAsk(text: string): any;

@@ -1,7 +1,10 @@
 // ==========================================================================
-//  AI Banking Agent · 金融知识库与 RAG 检索（TypeScript 源码）
-//  编译产物：js/agent/kb.js（经典脚本，无 import/export）
-//  说明：词条数据是体量很大的静态字面量，本文件以 noCheck 转译为主，
+//  金融知识库：FAQ 条目、同义词索引与 RAG 检索
+//  源码：js/agent/kb.ts　→　编译：build/js/agent/kb.js（经典脚本，无 import/export）
+//  对外入口：agentKBClassify / agentKBBigrams / agentKBRetrieve / agentKBHeadwordHit 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
+// ==========================================================================
+//  说明：词条数据是体量很大的静态字面量，本文件以类型标注为主，
 //        类型重点保留在对外入口（agentKBHandle / agentKBQuickAsk / agentKBIsKnowledgeQuery）。
 // ==========================================================================
 

@@ -1,6 +1,8 @@
 // ==========================================================================
-//  AI Banking Agent · 冻结资金与联系人服务层（TypeScript 源码）
-//  编译产物：js/agent/agentsvc.js（经典脚本，无 import/export）
+//  服务层：冻结资金明细、联系人查询与新增、用户记忆快照
+//  源码：js/agent/agentsvc.ts　→　编译：build/js/agent/agentsvc.js（经典脚本，无 import/export）
+//  对外入口：frozenDetailData / contactListData / frozenDetailCard / frozenAnswerCard 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
 
 // —— 运行时由其它脚本提供的全局 ——

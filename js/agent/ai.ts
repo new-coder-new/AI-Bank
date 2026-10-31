@@ -1,9 +1,15 @@
+// ==========================================================================
+//  大模型意图分类与模块路由（无 Key 时降级到本地规则）
+//  源码：js/agent/ai.ts　→　编译：build/js/agent/ai.js（经典脚本，无 import/export）
+//  对外入口：callLLMIntentClassification / sendMessage
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
+// ==========================================================================
 declare var isLoading: any;
 declare var DEEPSEEK_API_URL: any;
 declare var DEEPSEEK_API_KEY: any;
 declare var MODEL_NAME: any;
 // ========== 大模型意图分类与模块路由（TypeScript 源码） ==========
-// 编译产物：js/agent/ai.js（经典脚本，无 import/export）
+// 编译产物：build/js/agent/ai.js（经典脚本，无 import/export）
 
 // —— 运行时由其它脚本提供的全局 ——
 declare function bankHasLLMKey(): boolean;

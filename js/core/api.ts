@@ -1,10 +1,9 @@
 // ==========================================================================
-//  API 数据层（TypeScript 源码）
-//  目标：把前端从"读写死 mockData"升级为"读写后端模拟银行核心系统"。
-//  设计：页面启动时异步从后端拉取快照，静默注入 mockData；写操作走服务端权威。
-//  说明：本文件编译产物为 js/core/api.js（经典脚本，无 import/export）。
+//  服务端接口层：会话令牌、验证令牌、快照注入与全部业务 API
+//  源码：js/core/api.ts　→　编译：build/js/core/api.js（经典脚本，无 import/export）
+//  对外入口：bankAuthHeaders / requestFundVerify / apiRequest / apiInit 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
 // —— 运行时由其它脚本/浏览器提供的全局 ——
 declare var mockData: any;
 declare var currentModule: string;

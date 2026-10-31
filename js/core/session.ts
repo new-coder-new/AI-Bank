@@ -1,5 +1,11 @@
+// ==========================================================================
+//  引导层会话状态：GUIDE_* 状态、模块作用域、流程锁与重置
+//  源码：js/core/session.ts　→　编译：build/js/core/session.js（经典脚本，无 import/export）
+//  对外入口：guideAbortPendingPlans / guideResetAllSessions / guideModuleMenuHint / guideModuleLabel 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
+// ==========================================================================
 // 引导层会话状态（TypeScript 源文件）
-// 说明：这是从 guide.js 拆出来的「会话状态 + 公共状态管理」模块。
+// 说明：从原单体引导层拆出的「会话状态 + 公共状态管理」模块。
 // 运行形态仍是经典脚本（无 import/export），由 `npm run build:ts` 编译为 js/core/session.js，
 // 其它脚本通过全局变量/函数直接引用；类型只在本文件内生效。
 

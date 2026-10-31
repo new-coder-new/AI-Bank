@@ -1,10 +1,9 @@
 // ==========================================================================
-//  经典脚本模块（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/wealth.js
-//  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
-//        对外符号统一在 types/global.d.ts 声明。
+//  理财产品页：产品清单、持仓卡片与申购执行
+//  源码：js/flows/wealth.ts　→　编译：build/js/flows/wealth.js（经典脚本，无 import/export）
+//  对外入口：riskProfileTimestamp / riskProfileValid / riskProfileExpired / riskProfileExpireText 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
 declare function guideModuleWrapUp(module: string, summary?: string): void;
 declare function addTransaction(type: string, amount: number, desc: string, channel?: string, deduct?: boolean): boolean | void;
 declare function callAgentTool(name: string, args?: any): any;

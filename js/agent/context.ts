@@ -1,6 +1,9 @@
 // ==========================================================================
-//  AI Banking Agent · 对话上下文与指代消解层（TypeScript 源码）
-//  编译产物：js/agent/context.js（经典脚本，无 import/export）
+//  对话上下文：话题栈、指代消解、跨轮追问
+//  源码：js/agent/context.ts　→　编译：build/js/agent/context.js（经典脚本，无 import/export）
+//  对外入口：agentCtxEnsure / agentCtxPushTopic / agentCtxLastTopic / agentCtxTopicOf 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
+// ==========================================================================
 //
 //  设计要点：
 //  1) 在 AGENT_SESSION 之上叠一层"话题栈"（topic stack），history 记录问答原文，topics 记录聊过什么。

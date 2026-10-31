@@ -1,11 +1,9 @@
 // ==========================================================================
-//  经典脚本模块（TypeScript 源码，noCheck 转译）
-//  编译产物：js/core/ui.js
-//  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
-//        对外符号统一在 types/global.d.ts 声明。
+//  界面基础：深色模式、Toast、功能面板、新手教程
+//  源码：js/core/ui.ts　→　编译：build/js/core/ui.js（经典脚本，无 import/export）
+//  对外入口：toggleDarkMode / initDarkMode / toggleBankBalance / openTxnsPage 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
-// ========== 用户体验优化：深色模式 ==========
 function toggleDarkMode() {
   const body = document.body;
   const isDark = body.classList.toggle('dark-mode');

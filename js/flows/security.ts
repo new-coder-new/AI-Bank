@@ -1,10 +1,9 @@
 // ==========================================================================
-//  经典脚本模块（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/security.js
-//  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
-//        对外符号统一在 types/global.d.ts 声明。
+//  安全验证与用户信息页：密码 / 短信 / 人脸验证、复核审批、联系人
+//  源码：js/flows/security.ts　→　编译：build/js/flows/security.js（经典脚本，无 import/export）
+//  对外入口：$id / showOtpVerification / showFaceVerification / showSecurityVerification 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
 // DOM 取值助手：返回 any，避免在大量弹窗代码里重复写非空断言
 function $id(id: string): any { return document.getElementById(id); }
 
@@ -19,7 +18,7 @@ let fingerprintEnabled = true;
 
 // 显示安全验证弹窗
 
-// 短信验证码弹窗（演示固定 123456）：供非确认卡路径使用（理财 / 鲜花 / 语音）
+// 短信验证码弹窗（演示固定 123456）：供非确认卡路径使用（理财 / 鲜花）
 function showOtpVerification(purpose: any, callback: any) {
   var id = 'otp-verify-' + Date.now();
   var overlay = document.createElement('div');

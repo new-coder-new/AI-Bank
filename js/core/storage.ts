@@ -1,5 +1,5 @@
 // ========== 数据持久化存储（TypeScript 源码） ==========
-// 编译产物：js/core/storage.js（经典脚本，无 import/export）
+// 编译产物：build/js/core/storage.js（经典脚本，无 import/export）
 
 // —— 运行时由其它脚本提供的全局 ——
 declare var mockData: any;

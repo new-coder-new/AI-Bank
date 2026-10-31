@@ -1,6 +1,9 @@
 // ==========================================================================
-//  AI Banking Agent · 金融风险识别层（TypeScript 源码）
-//  编译产物：js/agent/riskdetect.js（经典脚本，无 import/export）
+//  高危金融行为识别：返利、异地、深夜转账等风险特征
+//  源码：js/agent/riskdetect.ts　→　编译：build/js/agent/riskdetect.js（经典脚本，无 import/export）
+//  对外入口：riskDetectCreditToInvest / riskDetectHighLeverage / riskDetectOverDebt / riskDetectAllIn 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
+// ==========================================================================
 //  识别：高杠杆 / 信用资金投资 / 过度负债 / 集中度 / 异常通道 / 资金压力
 //  处置三段式：① 说明危害 ② 拒绝执行 ③ 给替代建议
 // ==========================================================================

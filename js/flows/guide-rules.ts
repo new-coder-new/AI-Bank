@@ -1,10 +1,9 @@
 // ==========================================================================
-//  引导层（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/guide-rules.js
-//  说明：该层是「经典脚本 + 全局状态」结构，状态对象（GUIDE_*）随流程变化，
-//        因此采用 noCheck 转译；对外入口在 types/global.d.ts 声明。
+//  引导层规则识别：服务表、关键词、意图正则（不调模型）
+//  源码：js/flows/guide-rules.ts　→　编译：build/js/flows/guide-rules.js（经典脚本，无 import/export）
+//  对外入口：guideServiceByKey / guideIsReadOnlyQuery / guideIsCardApplyPhrase / guideLooksTimedTransfer 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
 // ==========================================================================
 //  服务向导 · 规则识别层（本地关键词 / 正则 / 菜单解析）
 //

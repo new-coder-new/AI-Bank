@@ -1,11 +1,10 @@
 // ==========================================================================
-//  引导层（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/guide-sub.js
-//  说明：该层是「经典脚本 + 全局状态」结构，状态对象（GUIDE_*）随流程变化，
-//        因此采用 noCheck 转译；对外入口在 types/global.d.ts 声明。
+//  订阅模块引导：我的订阅、添加 / 取消、自动续费管理
+//  源码：js/flows/guide-sub.ts　→　编译：build/js/flows/guide-sub.js（经典脚本，无 import/export）
+//  对外入口：guideSubActive / guideSubNormName / guideSubCycleText / guideSubHistoryList 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
-// 引导层：订阅管理（由 guide.js 拆分而来）
+// 引导层：订阅管理（原 guide 单体拆分模块）
 
 
 function guideSubActive() {

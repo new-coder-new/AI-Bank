@@ -1,7 +1,10 @@
 // ==========================================================================
-//  AI Banking Agent · 工具注册与规则主循环（TypeScript 源码）
-//  编译产物：js/agent/agent.js（经典脚本，无 import/export）
-//  说明：工具定义、args 结构高度动态，本文件走 noCheck 转译；
+//  智能体核心：工具注册表（40+ 工具）、规则主循环、确认卡与执行结果渲染
+//  源码：js/agent/agent.ts　→　编译：build/js/agent/agent.js（经典脚本，无 import/export）
+//  对外入口：agentSleep / agentFmt / agentFmtInt / agentMmdd 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
+// ==========================================================================
+//  说明：工具定义、args 结构高度动态，本文件由 tsc 严格编译；
 //        对外入口（agentHandle / callAgentTool / registerAgentTool 等）在 types/global.d.ts 有声明。
 // ==========================================================================
 

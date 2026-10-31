@@ -1,11 +1,9 @@
 // ==========================================================================
-//  经典脚本模块（TypeScript 源码，noCheck 转译）
-//  编译产物：js/flows/card.js
-//  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
-//        对外符号统一在 types/global.d.ts 声明。
+//  卡片页与分期：卡片详情、账单分期测算
+//  源码：js/flows/card.ts　→　编译：build/js/flows/card.js（经典脚本，无 import/export）
+//  对外入口：showCardLimit / toggleFreeze / showSmartLimit / showInstallmentCalculator 等
+//  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明
 // ==========================================================================
-
-// ========== 卡片管理（中阶：调额+挂失） ==========
 function showCardLimit() {
   // 统一挂失状态：一键式对话走的是 creditCard.isFrozen，页面按钮用的是 cardFrozen
   if (mockData.userProfile.creditCard && typeof mockData.userProfile.creditCard.isFrozen === 'boolean') {
