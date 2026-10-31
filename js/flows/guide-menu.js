@@ -449,6 +449,27 @@ function guideAsk(html) {
 async function guideHandleText(text) {
     if (typeof window !== 'undefined')
         window.__GUIDE_LAST_TEXT = String(text || '');
+    // 我的订阅（最高优先级，只读）：查看我的订阅 / 我的订阅
+    try {
+        var mySubText = String(text || '').trim();
+        if (/(我的订阅|查看我的订阅|我的会员|我订了哪些|已订阅了哪些)/.test(mySubText) &&
+            typeof guideSubShowMine === 'function') {
+            guideSubShowMine();
+            return true;
+        }
+    }
+    catch (e) { /* 我的订阅失败不影响后续流程 */ }
+    // 账单查询（最高优先级，只读）：查询本月账单 / 查账单 / 交易明细 / 查流水
+    try {
+        var billQueryText = String(text || '').trim();
+        if (/(查询本月账单|账单查询|查账单|查流水|交易明细|本月账单|本月交易)/.test(billQueryText) &&
+            !/(分析|统计|趋势|结构|构成|健康|画像)/.test(billQueryText) &&
+            typeof showBillQuery === 'function') {
+            showBillQuery(false);
+            return true;
+        }
+    }
+    catch (e) { /* 查询失败不影响后续流程 */ }
     // 主菜单守卫（硬规则）：主菜单只识别「属于哪个一级模块」，然后打开该模块的二级菜单。
     // 一律不直通、不抽槽位；只有进入模块（currentModule 不是 chat）之后才做槽位抽取。
     // 例外：只读查询（查余额/查额度/交易记录）交回主链路，不算业务办理。
@@ -849,6 +870,13 @@ async function guideHandleText(text) {
     if (guideIsCardListQuery(t)) {
         if (typeof showCardMyCards === 'function') {
             showCardMyCards();
+            return true;
+        }
+    }
+    // 账单查询：「查询本月账单」「查流水」「交易明细」→ 折叠前三笔的账单查询（需在只读放行之前）
+    if (/(查询|查看|看|查)/.test(t) && /(账单|流水|交易明细)/.test(t) && !/(分析|统计|结构|趋势|构成)/.test(t)) {
+        if (typeof showBillQuery === 'function') {
+            showBillQuery(false);
             return true;
         }
     }

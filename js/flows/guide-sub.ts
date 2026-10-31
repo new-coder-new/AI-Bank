@@ -62,6 +62,38 @@ function guideSubShowCatalog() {
   scrollToBottom();
 }
 
+// 我的订阅（只读）：当前有效订阅 + 扣费周期 / 自动续费 / 下次扣款
+function guideSubShowMine() {
+  var list = (typeof guideSubActive === 'function') ? guideSubActive() : [];
+  if (!list.length) {
+    appendMessage(guideMessage(
+      '<p>你目前没有有效订阅。</p>' +
+      '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubAdd()">添加订阅</button>' +
+      '<button class="guide-chip" onclick="guideSubShowCatalog()">可订阅会员</button></div>'
+    ));
+    scrollToBottom();
+    return;
+  }
+  var rows = list.map(function (x: any) {
+    var next = x.chargeDate ? ('下次扣款 ' + String(x.chargeDate).slice(5)) : (x.chargeInDays ? ('下次扣款 ' + x.chargeInDays + ' 天后') : '');
+    return '<div class="report-row"><span>' + guideEsc(x.name) + '・' + guideSubCycleText(x.cycle) +
+      (next ? '・' + guideEsc(next) : '') + '</span>' +
+      '<b>自动续费：' + (x.autoRenew !== false ? '开启' : '关闭') + '</b></div>';
+  }).join('');
+  var total = list.reduce(function (s: any, x: any) { return s + (Number(x.price) || 0); }, 0);
+  appendMessage(guideMessage(
+    '<p>我的订阅（共 ' + list.length + ' 项）</p>' +
+    '<div class="report-panel"><div class="report-panel-title">有效订阅</div>' + rows + '</div>' +
+    '<p class="guide-tip">月度合计约 ¥' + Number(total).toFixed(2) + '；需要取消或调整自动续费可以直接说。</p>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideSubShowCatalog()">可订阅会员</button>' +
+    '<button class="guide-chip" onclick="guideStartSubCancel()">取消订阅</button>' +
+    '<button class="guide-chip" onclick="guideStartSubAutoRenew()">管理自动续费</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
 function guideSubPresetRows() {
   return SUB_PRESETS.map(function (p: any) {
     return '<div class="report-row"><span>' + guideEsc(p.name) + '</span>' +
@@ -280,6 +312,7 @@ function guideStartSubManage() {
   appendMessage(guideMessage(
     '<p>订阅管理包含以下操作：</p>' +
     '<div class="guide-rows">' +
+    '<div class="guide-row"><div class="guide-row-title">我的订阅</div><div class="guide-row-example">例如：查看我的订阅</div></div>' +
     '<div class="guide-row"><div class="guide-row-title">添加订阅</div><div class="guide-row-example">例如：我想要订阅某视频平台VIP年卡</div></div>' +
     '<div class="guide-row"><div class="guide-row-title">取消订阅</div><div class="guide-row-example">例如：取消所有订阅</div></div>' +
     '<div class="guide-row"><div class="guide-row-title">管理自动续费</div><div class="guide-row-example">例如：某云盘超级会员年卡不续费了</div></div>' +
@@ -633,10 +666,15 @@ async function guideSubSession(t: any) {
       guideStartSubAdd();
       return guideSubAddStep(t);
     }
+    // 我的订阅：只读展示当前有效订阅
+    if (/(我的订阅|查看我的订阅|我的会员|我订了哪些|已订阅了哪些|看看我的订阅)/.test(t)) {
+      guideSubShowMine();
+      return true;
+    }
     // 停在「请选择」不算进行中流程，这里只提示怎么选，不输出流程锁文案
     appendMessage(guideMessage(
       '<p>请选择订阅管理里的操作：</p>' +
-      '<p class="guide-tip">添加订阅 / 取消订阅 / 管理自动续费 / 可订阅会员。</p>'
+      '<p class="guide-tip">我的订阅 / 添加订阅 / 取消订阅 / 管理自动续费 / 可订阅会员。</p>'
     ));
     scrollToBottom();
     return true;

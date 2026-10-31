@@ -33,10 +33,11 @@ var GUIDE_SERVICES = [
     ]
   },
   {
-    key: 'bill', label: '账单分析', icon: 'bill',
-    aliases: ['账单'],
-    prompt: '账单分析包含以下操作：',
+    key: 'bill', label: '账单与交易', icon: 'bill',
+    aliases: ['账单', '账单交易', '交易'],
+    prompt: '账单与交易包含以下操作：',
     subs: [
+      { key: 'query', label: '账单查询', example: '查询本月账单', aliases: ['本月账单', '查账单', '交易明细', '流水明细', '查流水'], run: function () { showBillQuery(false); } },
       { key: 'overview', label: '账单分析', example: '分析账单', aliases: ['财务总览', '消费统计', '账单报告', '账单'], run: function () { showBillOverview(/(本年|全年|年度|这一?年的)/.test(String((window as any).__GUIDE_LAST_TEXT || '')) ? 'year' : 'month'); } },
       { key: 'abnormal', label: '异常交易', example: '查看异常交易', run: function () { showAbnormalAlert(); } }
     ]
@@ -228,6 +229,8 @@ function guideIsBillAnalysisIntent(t: any) {
   var s = String(t || '').trim();
   if (!/(账单|消费|收支|花销|流水)/.test(s)) return false;
   if (/^(账单|消费)$/.test(s)) return false;
+  // 「查账单 / 交易明细 / 查流水」属于账单查询，不算账单分析
+  if (/(查询|查一下|查流水|明细|流水)/.test(s) && !/(分析|统计|报告|趋势|结构|构成|健康|画像)/.test(s)) return false;
   return /(分析|看看|看一下|看下|查看|查一下|查询|统计|报告|情况|健康|明细|画像|走势|趋势|结构)/.test(s) ||
     /^(消费统计|账单报告|账单分析|财务总览)$/.test(s);
 }
@@ -284,6 +287,7 @@ var GUIDE_SUB_KEYWORDS: Record<string, any> = {
     aa: ['AA收款', 'AA', '分摊', '收款']
   },
   bill: {
+    query: ['查询本月账单', '账单查询', '本月账单', '查账单', '交易明细', '流水明细', '查流水', '本月交易'],
     overview: ['财务总览', '资产概览', '账单明细', '消费统计', '账单报告', '月报', '报告', '消费汇总', '统计'],
     abnormal: ['异常交易', '异常', '可疑交易']
   },
