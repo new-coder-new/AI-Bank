@@ -219,13 +219,25 @@ function apiTransfer(payee, amount) {
 function apiTransferReverse(payee, amount) {
   return apiPost('/api/transfer/reverse', { payee: payee, amount: amount });
 }
-// 理财申购同步
-function apiWealthBuy(product, amount) {
-  return apiPost('/api/wealth/buy', { product: product, amount: amount });
+// 理财申购（服务端权威）：带幂等键，重复提交只执行一次
+function apiWealthBuy(product, amount, opts) {
+  const o = opts || {};
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  return apiRequest('POST', '/api/wealth/buy', {
+    product: product,
+    amount: amount,
+    idempotencyKey: o.idempotencyKey || ('B' + Date.now() + '-' + Math.random().toString(36).slice(2, 8))
+  });
 }
-// 理财赎回同步
-function apiWealthRedeem(product, amount) {
-  return apiPost('/api/wealth/redeem', { product: product, amount: amount });
+// 理财赎回（服务端权威）：T+1 到账由服务端 pendingRedemptions 决定
+function apiWealthRedeem(product, amount, opts) {
+  const o = opts || {};
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  return apiRequest('POST', '/api/wealth/redeem', {
+    product: product,
+    amount: amount,
+    idempotencyKey: o.idempotencyKey || ('R' + Date.now() + '-' + Math.random().toString(36).slice(2, 8))
+  });
 }
 // 预算设置同步
 function apiBudgetSet(amount, period) {

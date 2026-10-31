@@ -749,13 +749,45 @@ registerAgentTool('wealth.recommend', {
   }
 });
 
+
+// 金额达到服务端验证档（≥¥1,000）且当前没有有效验证令牌时，先完成一次验证
+async function agentEnsureFundVerify(amount, purpose) {
+  try {
+    if (!(Number(amount) >= 1000)) return true;
+    if (typeof API !== 'undefined' && API.verifyToken && API.verifyExp > Date.now()) return true;
+    if (typeof verifyAmountRisk !== 'function') return true;
+    var r = await verifyAmountRisk(Number(amount), purpose || '资金操作', []);
+    return !!(r && r.ok);
+  } catch (e) { return false; }
+}
+
 registerAgentTool('wealth.buy', {
   label: '申购理财产品', risk: 'high',
-  run: function (args) {
+  run: async function (args) {
     var name = args.product, amount = Number(args.amount) || 0;
     var prod = (mockData.products || []).filter(function (p) { return p.name === name; })[0];
     if (!prod) return { ok: false, summary: '未找到产品：' + name };
     if (amount < (prod.minAmount || 0)) return { ok: false, summary: '低于起购金额 ¥' + agentFmtInt(prod.minAmount) };
+
+    // —— 服务端权威：后端在线时先由服务端扣款与增持仓 ——
+    if (typeof API !== 'undefined' && API.live && typeof apiWealthBuy === 'function') {
+      var buyOk = await agentEnsureFundVerify(amount, '申购');
+      if (!buyOk) return { ok: false, summary: '未完成安全验证，申购未执行' };
+      var srvBuy = null;
+      try { srvBuy = await apiWealthBuy(name, amount, { idempotencyKey: args.idempotencyKey }); } catch (e) { srvBuy = null; }
+      if (srvBuy && srvBuy.ok) {
+        mockData.userProfile.debitCard.balance = Number(srvBuy.balance);
+        mockData.userProfile.debitCard.available = Number(srvBuy.available);
+        if (Array.isArray(srvBuy.holdings)) mockData.userProfile.holdings = srvBuy.holdings;
+        saveUserData();
+        return {
+          summary: '已申购 ' + name + ' ¥' + agentFmtInt(amount) + '（' + prod.rateLabel + ' ' + prod.rate + '），当前余额 ¥' + agentFmt(mockData.userProfile.debitCard.balance),
+          data: { name: name, amount: amount, server: true }
+        };
+      }
+      if (srvBuy && srvBuy.error) return { ok: false, summary: '申购未执行：' + srvBuy.error };
+      // 服务端不可用 → 继续本地逻辑
+    }
     // 余额门禁 + 扣款只由 addTransaction 统一完成（以前这里手动减一次、addTransaction 再减一次，会重复扣款）
     var d = mockData.userProfile.debitCard;
     if (d.available < amount) return { ok: false, summary: '可用余额不足：需要 ¥' + agentFmtInt(amount) + '，可用 ¥' + agentFmt(d.available) };
@@ -774,22 +806,40 @@ registerAgentTool('wealth.buy', {
         riskLevel: prod.riskLevel
       });
     }
-    // 累计当日转账额（日累计限额用）
-    if (dailyLimit > 0) {
-      u0.transferDaily.amount = Math.round(((Number(u0.transferDaily.amount) || 0) + amount) * 100) / 100;
-    }
     saveUserData();
-    // 数据真实化：同步后端
-    if (typeof apiWealthBuy === 'function') apiWealthBuy(name, amount);
     return { summary: '已申购 ' + name + ' ¥' + agentFmtInt(amount) + '（' + prod.rateLabel + ' ' + prod.rate + '），当前余额 ¥' + agentFmt(d.balance), data: { name: name, amount: amount } };
   }
 });
 
 registerAgentTool('wealth.redeem', {
   label: '赎回理财产品', risk: 'high',
-  run: function (args) {
+  run: async function (args) {
     var holdings = mockData.userProfile.holdings || [];
     var name = args && args.product;
+    var __amt = (args && args.amount != null) ? Number(args.amount) : 0;
+
+    // —— 服务端权威：后端在线时由服务端做封闭期/余额/令牌校验并生成 T+1 在途记录 ——
+    if (typeof API !== 'undefined' && API.live && typeof apiWealthRedeem === 'function' && name) {
+      var redeemOk = await agentEnsureFundVerify(__amt, '赎回');
+      if (!redeemOk) return { ok: false, summary: '未完成安全验证，赎回未执行' };
+      var srvRedeem = null;
+      try { srvRedeem = await apiWealthRedeem(name, __amt, { idempotencyKey: args.idempotencyKey }); } catch (e) { srvRedeem = null; }
+      if (srvRedeem && srvRedeem.ok) {
+        mockData.userProfile.debitCard.balance = Number(srvRedeem.balance);
+        mockData.userProfile.debitCard.available = Number(srvRedeem.available);
+        if (Array.isArray(srvRedeem.holdings)) mockData.userProfile.holdings = srvRedeem.holdings;
+        if (Array.isArray(srvRedeem.pendingRedemptions)) mockData.userProfile.pendingRedemptions = srvRedeem.pendingRedemptions;
+        saveUserData();
+        return {
+          summary: '已提交「' + name + '」赎回申请，本金 ¥' + agentFmtInt(__amt) + '，预计 ' + (srvRedeem.arriveDate || 'T+1') + ' 到账',
+          data: {
+            name: name, amount: __amt, credited: srvRedeem.credited, profit: srvRedeem.profit,
+            remain: srvRedeem.remain, arriveDate: srvRedeem.arriveDate, server: true
+          }
+        };
+      }
+      if (srvRedeem && srvRedeem.error) return { ok: false, summary: '赎回未执行：' + srvRedeem.error };
+    }
     var h = name ? holdings.filter(function (x) { return x.name === name || x.name.indexOf(name) > -1; })[0] : holdings.filter(function (x) { return x.status === '持有中'; })[0];
     if (!h) return { ok: false, summary: '未找到可赎回的持仓' + (name ? '：' + name : '') };
     // 封闭期校验：90 天/3 年产品未到期不能赎回
