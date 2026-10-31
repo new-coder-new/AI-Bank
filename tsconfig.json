@@ -26,6 +26,7 @@
     "dist",
     "preview",
     "js/core/session.js",
-    "js/core/api.js"
+    "js/core/api.js",
+    "js/core/storage.js"
   ]
 }

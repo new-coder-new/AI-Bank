@@ -18,6 +18,7 @@
   },
   "files": [
     "js/core/session.ts",
-    "js/core/api.ts"
+    "js/core/api.ts",
+    "js/core/storage.ts"
   ]
 }

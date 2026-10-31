@@ -44,8 +44,9 @@ function bankFetch(url, options, timeoutMs) {
 /** @type {string} */
 var currentModule = 'chat';
 let isLoading = false;
-let cardFrozen = false;
-let riskProfile = null;
+var cardFrozen = false;
+/** @type {any} */
+var riskProfile = null;
 
 /** @type {any} */
 var mockData = {
