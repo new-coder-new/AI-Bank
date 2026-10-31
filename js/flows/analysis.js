@@ -78,7 +78,7 @@ function billAnalysisData(period) {
     const totalIncome = isYear ? yearIncome : monthIncome;
     const totalExpense = isYear ? yearExpense : monthExpense;
     // —— 趋势：本月看近 7 日，本年看月度支出 ——
-    let trendTitle = '近 7 日支出趋势';
+    let trendTitle = '支出趋势';
     let trendData = [];
     if (isYear) {
         const months = historyPrev.slice(-6);
@@ -105,7 +105,7 @@ function billAnalysisData(period) {
         if (sum7 <= 0) {
             const recentExpense = txns.filter((t) => t.type === 'expense').slice(0, 7).reverse();
             if (recentExpense.length) {
-                trendTitle = '最近 7 笔支出';
+                trendTitle = '支出趋势';
                 trendData = recentExpense.map((t, i) => {
                     const d = String(t.date || '').slice(5, 10).replace('-', '/');
                     return { label: d || ('第' + (i + 1) + '笔'), value: Number(t.amount) || 0 };
