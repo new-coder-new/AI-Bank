@@ -37,3 +37,6 @@ build/
 # 编译产物：仓库只保留 TS 源码，.js 由 npm run build:ts 生成
 js/**/*.js
 !js/core/config.local.example.js
+
+# 自动演示录制的帧与视频（体积大，不入库）
+preview/demo/
