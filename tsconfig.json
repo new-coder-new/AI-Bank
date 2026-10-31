@@ -72,7 +72,6 @@
     "js/flows/cardlimit.js",
     "js/flows/cardservice.js",
     "js/flows/chat.js",
-    "js/flows/chat.ts",
     "js/flows/flower.js",
     "js/flows/security.js",
     "js/flows/security.ts",

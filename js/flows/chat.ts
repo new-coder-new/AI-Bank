@@ -5,16 +5,25 @@
 //        对外符号统一在 types/global.d.ts 声明。
 // ==========================================================================
 
+declare function renderServiceWelcome(): void;
+declare var GUIDE_HOME_ENTRIES: any;
+declare function agentHandle(text: string): Promise<boolean>;
+declare function agentLLMHandle(text: string): Promise<boolean>;
+declare function registerTransferRecord(payee: string, amount: number, channel?: string, phone?: string): void;
+declare function showBatchTransfer(...args: any[]): any;
+declare function smartBatchTransferParse(text: string): any;
+declare function showTransferForm(): void;
+declare function agentTransferFlow(payee: string, amount: number, rawText?: string, channel?: string, opts?: any): Promise<any>;
 // ========== 智能客服增强：多轮对话 + 复杂指令 ==========
 // 对话上下文（存储最近10轮对话）
-let conversationContext = [];
+let conversationContext: any[] = [];
 // 当前对话状态（用于多轮补全）
-let currentDialogState = null;
+let currentDialogState: any = null;
 // 最近执行的操作记录（用于指代理解）
-let recentActions = [];
+let recentActions: any[] = [];
 
 // 添加对话到上下文
-function addToConversation(role, content, action) {
+function addToConversation(role: any, content: any, action: any) {
   conversationContext.push({
     role,
     content,
@@ -28,7 +37,7 @@ function addToConversation(role, content, action) {
 }
 
 // 添加最近操作记录
-function addRecentAction(type, data) {
+function addRecentAction(type: any, data: any) {
   recentActions.unshift({
     type,
     data,
@@ -40,8 +49,8 @@ function addRecentAction(type, data) {
 }
 
 // 复杂指令拆解
-function parseComplexCommand(text) {
-  const commands = [];
+function parseComplexCommand(text: any) {
+  const commands: any[] = [];
   const lowerText = text.toLowerCase();
   
   // 检测多步骤连接词
@@ -68,16 +77,16 @@ function parseComplexCommand(text) {
   // 检测多笔转账模式："给XX转A，给YY转B" 或 "给XX转A，给YY转B"
   // 按逗号/分号拆分，且每个部分都包含"转"和收款人
   if (parts.length === 1 && /[，,；;]/.test(text)) {
-    const rawParts = text.split(/[，,；;]/).map(p => p.trim()).filter(p => p);
+    const rawParts = text.split(/[，,；;]/).map((p: any) => p.trim()).filter((p: any) => p);
     // 检查是否每个部分都包含转账关键词
-    const allTransfers = rawParts.every(p => /(转|打|汇|付|转账|汇款)/.test(p));
+    const allTransfers = rawParts.every((p: any) => /(转|打|汇|付|转账|汇款)/.test(p));
     if (allTransfers && rawParts.length >= 2) {
       parts = rawParts;
     }
   }
   
   // 对每个部分识别意图
-  parts.forEach(part => {
+  parts.forEach((part: any) => {
     const intent = identifyIntent(part);
     if (intent) {
       commands.push({
@@ -93,7 +102,7 @@ function parseComplexCommand(text) {
 }
 
 // 识别单条指令的意图
-function identifyIntent(text) {
+function identifyIntent(text: any) {
   const lowerText = text.toLowerCase();
   
   // 批量转账（优先于普通转账判断）
@@ -206,13 +215,13 @@ function identifyIntent(text) {
 }
 
 // 提取金额
-function extractAmount(text) {
+function extractAmount(text: any) {
   // 匹配数字+元
   const match = text.match(/(\d+(?:\.\d+)?)\s*(?:元|块|块钱|rmb|¥)?/);
   if (match) return parseFloat(match[1]);
   
   // 匹配中文数字
-  const cnNumbers = { '一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10, '百': 100, '千': 1000, '万': 10000 };
+  const cnNumbers: Record<string, number> = { '一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10, '百': 100, '千': 1000, '万': 10000 };
   const cnMatch = text.match(/([一二两三四五六七八九十百千万]+)\s*(?:元|块)/);
   if (cnMatch) {
     // 简单的中文数字转换（只处理常见的）
@@ -244,7 +253,7 @@ function extractAmount(text) {
 }
 
 // 提取收款人
-function extractPayee(text) {
+function extractPayee(text: any) {
   const contacts = mockData.contacts || [];
   for (const c of contacts) {
     if (text.includes(c.name)) return c.name;
@@ -257,7 +266,7 @@ function extractPayee(text) {
 }
 
 // 提取理财产品
-function extractProduct(text) {
+function extractProduct(text: any) {
   const products = mockData.products || [];
   for (const p of products) {
     if (text.includes(p.name)) return p.name;
@@ -266,8 +275,8 @@ function extractProduct(text) {
 }
 
 // 指代理解
-function resolveReference(text) {
-  const result = {
+function resolveReference(text: any) {
+  const result: any = {
     isReference: false,
     referenceType: null,
     targetAction: null,
@@ -303,7 +312,7 @@ function resolveReference(text) {
   
   // 检测"多少/多少钱/查一下/看看"对最近操作的查询
   if (/(多少|多少钱|查一下|看看|怎么样|成功了吗)/.test(text) && conversationContext.length > 0) {
-    const lastUserMsg = [...conversationContext].reverse().find(m => m.role === 'user');
+    const lastUserMsg = [...conversationContext].reverse().find((m: any) => m.role === 'user');
     if (lastUserMsg && /(转|转账|买|购|支付)/.test(lastUserMsg.content)) {
       result.isReference = true;
       result.referenceType = 'query_recent';
@@ -317,10 +326,10 @@ function resolveReference(text) {
 }
 
 // 执行复杂指令（多步骤）
-async function executeComplexCommands(commands) {
+async function executeComplexCommands(commands: any) {
   if (commands.length === 0) return;
   
-  appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">🤖 <strong>检测到${commands.length}个连续指令，将依次执行：</strong><br>${commands.map((c, i) => `${i+1}. ${c.text}`).join('<br>')}<br><br>⏳ 正在执行第1个指令...</div></div></div>`);
+  appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">🤖 <strong>检测到${commands.length}个连续指令，将依次执行：</strong><br>${commands.map((c: any, i: any) => `${i+1}. ${c.text}`).join('<br>')}<br><br>⏳ 正在执行第1个指令...</div></div></div>`);
   scrollToBottom();
   
   let cancelled = false;
@@ -328,7 +337,7 @@ async function executeComplexCommands(commands) {
     const cmd = commands[i];
     
     // 执行指令，等待返回结果
-    const result = await executeSingleCommand(cmd);
+    const result: any = await executeSingleCommand(cmd);
 
     // 资金操作会先出确认卡：必须等用户确认后再继续下一步，
     // 否则会出现"转账还没确认，后面的查询/申购已经执行"的错序。
@@ -336,7 +345,7 @@ async function executeComplexCommands(commands) {
       appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">⏸️ <strong>第${i+1}个指令需要你确认</strong><br>请先在上方确认卡完成操作；确认后我会继续执行剩余 ${commands.length - i - 1} 个步骤。</div></div></div>`);
       scrollToBottom();
       const ok = await waitForPendingPlan(result.planId);
-      const planRec = (typeof AGENT_PENDING_PLANS !== 'undefined') ? AGENT_PENDING_PLANS[result.planId] : null;
+      const planRec = (typeof AGENT_PENDING_PLANS !== 'undefined') ? (AGENT_PENDING_PLANS as any)[result.planId] : null;
       if (planRec && planRec.status === 'pending_review') {
         appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">⏳ 第${i+1}个指令已提交人工复核，未扣款；后续 ${commands.length - i - 1} 个步骤已暂停，待复核完成后再继续。</div></div></div>`);
         scrollToBottom();
@@ -375,7 +384,7 @@ async function executeComplexCommands(commands) {
 
 // 统一的转账执行入口：引导式对话、旧规则层、复杂指令兜底都必须走这里。
 // 它复用一键式对话的 Agent 风控链路，保证"补全信息后"和"一句话直接转"的执行完全一致。
-async function runUnifiedTransfer(payee, amount, rawText, channel) {
+async function runUnifiedTransfer(payee: any, amount: any, rawText: any, channel: any) {
   const amt = Number(amount) || 0;
   if (!payee || !(amt > 0)) {
     appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">⚠️ <strong>转账信息还不完整</strong><br>请补充收款人和大于 0 的转账金额。</div></div></div>');
@@ -391,12 +400,12 @@ async function runUnifiedTransfer(payee, amount, rawText, channel) {
 }
 
 // 等待 Agent 确认卡被用户处理：确认执行 → true，取消/拒绝/超时 → false
-function waitForPendingPlan(planId, timeoutMs) {
+function waitForPendingPlan(planId: any, timeoutMs?: any) {
   return new Promise(resolve => {
     if (!planId) { resolve(false); return; }
     const start = Date.now();
     const timer = setInterval(() => {
-      const rec = (typeof AGENT_PENDING_PLANS !== 'undefined') ? AGENT_PENDING_PLANS[planId] : null;
+      const rec = (typeof AGENT_PENDING_PLANS !== 'undefined') ? (AGENT_PENDING_PLANS as any)[planId] : null;
       if (!rec) { clearInterval(timer); resolve(false); return; }
       if (rec.status === 'done') { clearInterval(timer); resolve(true); return; }
       if (rec.status === 'rejected' || rec.status === 'cancelled' || rec.status === 'failed' || rec.status === 'pending_review') { clearInterval(timer); resolve(false); return; }
@@ -406,7 +415,7 @@ function waitForPendingPlan(planId, timeoutMs) {
 }
 
 // 执行单条指令
-async function executeSingleCommand(cmd) {
+async function executeSingleCommand(cmd: any) {
   return new Promise(resolve => {
     switch (cmd.intent) {
       case 'batch_transfer':
@@ -415,7 +424,7 @@ async function executeSingleCommand(cmd) {
         if (batchResult.selectedIndexes.length > 0 || batchResult.amount > 0) {
           showBatchTransfer({ selectedIndexes: batchResult.selectedIndexes, amount: batchResult.amount });
           if (batchResult.selectedIndexes.length > 0 && batchResult.amount > 0) {
-            const names = batchResult.selectedIndexes.map(i => mockData.contacts[i]?.name).join('、');
+            const names = batchResult.selectedIndexes.map((i: any) => mockData.contacts[i]?.name).join('、');
             appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">已为你智能识别批量转账：<br>• 收款人：<strong>${names}</strong><br>• 每人金额：<strong>¥${batchResult.amount.toLocaleString()}</strong><br><br>请在下方批量转账界面确认或修改，确认后执行。</div></div></div>`);
             scrollToBottom();
           }
@@ -464,8 +473,8 @@ async function executeSingleCommand(cmd) {
         showUserInfoFromTopbar();
         setTimeout(() => {
           const tabs = document.querySelectorAll('.userinfo-tab');
-          tabs.forEach(t => t.classList.remove('active'));
-          const txnsTab = Array.from(tabs).find(t => t.textContent.includes('交易记录'));
+          tabs.forEach((t: any) => t.classList.remove('active'));
+          const txnsTab = Array.from(tabs).find((t: any) => t.textContent.includes('交易记录'));
           if (txnsTab) {
             txnsTab.classList.add('active');
             currentUserInfoTab = 'txns';
@@ -539,7 +548,7 @@ async function executeSingleCommand(cmd) {
 }
 
 // 处理指代引用
-async function handleReference(ref, text) {
+async function handleReference(ref: any, text: any) {
   if (!ref.isReference || !ref.targetAction) return false;
   
   const action = ref.targetAction;
@@ -549,7 +558,7 @@ async function handleReference(ref, text) {
     case 'query_recent':
       // 查询最近操作的结果
       if (action.type === 'transfer') {
-        const hist = (mockData.userProfile.transferHistory || []).find(t => t.payee === action.data.payee && Number(t.amount) === Number(action.data.amount));
+        const hist = (mockData.userProfile.transferHistory || []).find((t: any) => t.payee === action.data.payee && Number(t.amount) === Number(action.data.amount));
         const status = hist ? hist.status : '已完成';
         const statusText = status === '已撤销' ? '↩️ 已撤销' : (status === '已完成' ? '✅ 已完成' : status);
         appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">📋 <strong>刚才的转账详情：</strong><br>收款人：${escapeHtml(action.data.payee)}<br>金额：¥${Number(action.data.amount).toLocaleString()}<br>状态：${statusText}<br>时间：${new Date(action.timestamp).toLocaleString('zh-CN')}</div></div></div>`);
@@ -567,7 +576,7 @@ async function handleReference(ref, text) {
         const newPayee = ref.correction.newValue;
         
         // 检查新收款人是否存在
-        const newContact = mockData.contacts.find(c => c.name === newPayee);
+        const newContact = mockData.contacts.find((c: any) => c.name === newPayee);
         if (!newContact) {
           appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ 未找到收款人"${newPayee}"，无法修正。请先在联系人中添加。</div></div></div>`);
           return true;
@@ -598,7 +607,7 @@ async function handleReference(ref, text) {
           `;
           document.body.appendChild(confirmPopup);
           
-          document.getElementById(confirmId + '-ok').onclick = async () => {
+          (document.getElementById(confirmId + '-ok') as HTMLElement).onclick = async () => {
             const amount = Number(action.data.amount) || 0;
             // 修正先走金额分级：不能借“修正”绕过 T2/T3/T4
             if (typeof verifyAmountRisk === 'function') {
@@ -609,9 +618,9 @@ async function handleReference(ref, text) {
                 // 先原路退回旧收款人，新转账进入人工复核
                 addTransaction('income', amount, `转账撤销-${oldPayee}（修正收款人）`, '转账修正', true);
                 if (typeof apiTransferReverse === 'function') apiTransferReverse(oldPayee, amount);
-                const origPending = (mockData.userProfile.transferHistory || []).find(t => t.payee === oldPayee && Number(t.amount) === amount && t.status === '已完成');
+                const origPending = (mockData.userProfile.transferHistory || []).find((t: any) => t.payee === oldPayee && Number(t.amount) === amount && t.status === '已完成');
                 if (origPending) { origPending.status = '已撤销'; origPending.revokedAt = new Date().toLocaleString('zh-CN'); }
-                document.getElementById(confirmId).remove();
+                (document.getElementById(confirmId) as HTMLElement).remove();
                 saveUserData();
                 appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">已撤销原转账 ¥${amount.toLocaleString()}（${oldPayee}），新转账已提交人工复核；复核通过后才会转给 ${newPayee}。</div></div></div>`);
                 scrollToBottom();
@@ -619,7 +628,7 @@ async function handleReference(ref, text) {
                 return;
               }
               if (!risk || !risk.ok) {
-                document.getElementById(confirmId).remove();
+                (document.getElementById(confirmId) as HTMLElement).remove();
                 appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">已取消修正，原转账与账户余额保持不变。</div></div></div>`);
                 scrollToBottom();
                 resolve(false);
@@ -629,7 +638,7 @@ async function handleReference(ref, text) {
             // 原转账冲正（加回余额），再做新转账（扣回余额），净额只扣一次
             const reversal = addTransaction('income', amount, `转账撤销-${oldPayee}（修正收款人）`, '转账修正', true);
             if (reversal === false) {
-              document.getElementById(confirmId).remove();
+              (document.getElementById(confirmId) as HTMLElement).remove();
               appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>修正未完成</strong><br>原转账撤销失败，本次未做任何变更。</div></div></div>`);
               scrollToBottom();
               resolve(false);
@@ -637,13 +646,13 @@ async function handleReference(ref, text) {
             }
             if (typeof apiTransferReverse === 'function') apiTransferReverse(oldPayee, amount);
             const history = mockData.userProfile.transferHistory || [];
-            const orig = history.find(t => t.payee === oldPayee && Number(t.amount) === amount && t.status === '已完成');
+            const orig = history.find((t: any) => t.payee === oldPayee && Number(t.amount) === amount && t.status === '已完成');
             if (orig) { orig.status = '已撤销'; orig.revokedAt = new Date().toLocaleString('zh-CN'); }
             const okTx = addTransaction('expense', amount, `转账给${newPayee}（修正自${oldPayee}）`, '智能转账', true);
             if (okTx === false) {
               // 新转账失败则把冲正也退回，保持原状
               addTransaction('expense', amount, `撤销修正冲正-${oldPayee}`, '转账修正', true);
-              document.getElementById(confirmId).remove();
+              (document.getElementById(confirmId) as HTMLElement).remove();
               appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>修正未完成</strong><br>可用余额不足，原转账已恢复。</div></div></div>`);
               scrollToBottom();
               resolve(false);
@@ -652,14 +661,14 @@ async function handleReference(ref, text) {
             if (typeof registerTransferRecord === 'function') registerTransferRecord(newPayee, amount, '转账修正');
             if (typeof apiTransfer === 'function') apiTransfer(newPayee, amount);
             addRecentAction('transfer', { payee: newPayee, amount: amount });
-            document.getElementById(confirmId).remove();
+            (document.getElementById(confirmId) as HTMLElement).remove();
             appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">✅ <strong>已修正收款人</strong><br>原收款人：${oldPayee}（已撤销并退回 ¥${amount.toLocaleString()}）<br>新收款人：${newPayee}<br>金额：¥${amount.toLocaleString()}<br>当前余额：¥${mockData.userProfile.debitCard.balance.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div></div></div>`);
             saveUserData();
             scrollToBottom();
             resolve(true);
           };
-          document.getElementById(confirmId + '-cancel').onclick = () => {
-            document.getElementById(confirmId).remove();
+          (document.getElementById(confirmId + '-cancel') as HTMLElement).onclick = () => {
+            (document.getElementById(confirmId) as HTMLElement).remove();
             appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ 已取消修正，收款人保持为${oldPayee}</div></div></div>`);
             scrollToBottom();
             resolve(true);
@@ -673,7 +682,7 @@ async function handleReference(ref, text) {
 }
 
 // 多轮对话状态管理
-function updateDialogState(intent, slots) {
+function updateDialogState(intent: any, slots: any) {
   if (!currentDialogState || currentDialogState.intent !== intent) {
     currentDialogState = {
       intent,
@@ -683,7 +692,7 @@ function updateDialogState(intent, slots) {
     };
   } else {
     // 合并槽位
-    Object.keys(slots).forEach(key => {
+    Object.keys(slots).forEach((key: any) => {
       if (slots[key] !== null && slots[key] !== undefined) {
         currentDialogState.slots[key] = slots[key];
       }
@@ -725,10 +734,10 @@ function checkAndAskMissingSlots() {
 
 // 增强版消息处理（集成多轮对话、复杂指令、指代理解）
 // 有待确认的执行卡时：确认 → 执行；退出 → 取消；其它 → 提示先完成这一步
-function agentPendingPlanGuard(text) {
+function agentPendingPlanGuard(text: any) {
   if (typeof AGENT_PENDING_PLANS !== 'object' || !AGENT_PENDING_PLANS) return false;
-  var ids = Object.keys(AGENT_PENDING_PLANS).filter(function (k) {
-    return AGENT_PENDING_PLANS[k] && AGENT_PENDING_PLANS[k].status === 'pending';
+  var ids = Object.keys(AGENT_PENDING_PLANS).filter(function (k: any) {
+    return (AGENT_PENDING_PLANS as any)[k] && (AGENT_PENDING_PLANS as any)[k].status === 'pending';
   });
   if (!ids.length) return false;
   // 有卡没处理完：只提醒一句，不做语义识别、不给按钮，强制点卡片上的按钮
@@ -738,7 +747,7 @@ function agentPendingPlanGuard(text) {
   return true;
 }
 
-async function enhancedSendMessage(text) {
+async function enhancedSendMessage(text: any) {
   // 添加到对话上下文
   addToConversation('user', text);
 
@@ -879,14 +888,14 @@ async function enhancedSendMessage(text) {
         const amount = extractAmount(text);
         if (amount) {
           currentDialogState.slots.amount = amount;
-          currentDialogState.missingSlots = currentDialogState.missingSlots.filter(s => s !== 'amount');
+          currentDialogState.missingSlots = currentDialogState.missingSlots.filter((s: any) => s !== 'amount');
         }
       }
       if (currentDialogState.missingSlots.includes('payee')) {
         const payee = extractPayee(text);
         if (payee) {
           currentDialogState.slots.payee = payee;
-          currentDialogState.missingSlots = currentDialogState.missingSlots.filter(s => s !== 'payee');
+          currentDialogState.missingSlots = currentDialogState.missingSlots.filter((s: any) => s !== 'payee');
         }
       }
     }
@@ -916,18 +925,18 @@ async function enhancedSendMessage(text) {
         
         // 批量转账：自动选中收款人并预填金额
         if (intent === '批量转账' || intent === 'batch_transfer') {
-          let selectedIndexes = [];
+          let selectedIndexes: any[] = [];
           let amount = slots?.amount || 0;
           
           // 从 payee_list 或 payee_name 中提取收款人
           const payeeList = slots?.payee_list || [];
           const payeeNameStr = slots?.payee_name || '';
-          const allPayees = payeeList.length > 0 ? payeeList : payeeNameStr.split(/[,，、和]/).map(s => s.trim()).filter(s => s);
+          const allPayees = payeeList.length > 0 ? payeeList : payeeNameStr.split(/[,，、和]/).map((s: any) => s.trim()).filter((s: any) => s);
           
           // 匹配通讯录
           const contacts = mockData.contacts || [];
-          allPayees.forEach(name => {
-            const idx = contacts.findIndex(c => c.name === name || name.includes(c.name) || c.name.includes(name));
+          allPayees.forEach((name: any) => {
+            const idx = contacts.findIndex((c: any) => c.name === name || name.includes(c.name) || c.name.includes(name));
             if (idx > -1 && !selectedIndexes.includes(idx)) {
               selectedIndexes.push(idx);
             }
@@ -942,7 +951,7 @@ async function enhancedSendMessage(text) {
           
           showBatchTransfer({ selectedIndexes, amount });
           if (selectedIndexes.length > 0 && amount > 0) {
-            const names = selectedIndexes.map(i => contacts[i]?.name).join('、');
+            const names = selectedIndexes.map((i: any) => contacts[i]?.name).join('、');
             appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">已为你智能识别批量转账：<br>• 收款人：<strong>${names}</strong><br>• 每人金额：<strong>¥${amount.toLocaleString()}</strong><br><br>请在下方批量转账界面确认或修改，确认后执行。</div></div></div>`);
             scrollToBottom();
           }
@@ -954,7 +963,7 @@ async function enhancedSendMessage(text) {
         if (intent === '复杂多步指令' || intent === 'complex' || (slots?.steps && slots.steps.length > 1)) {
           const steps = slots?.steps || [];
           if (steps.length > 1) {
-            const commands = steps.map((step, i) => ({
+            const commands = steps.map((step: any, i: any) => ({
               text: step.text || `步骤${i+1}`,
               intent: step.intent === '智能转账' ? 'transfer' : (step.intent || 'transfer'),
               slots: step.slots || {},
@@ -976,7 +985,7 @@ async function enhancedSendMessage(text) {
             showBatchTransfer(batchResult);
             if (batchResult.selectedIndexes.length > 0 && batchResult.amount > 0) {
               const contacts = mockData.contacts || [];
-              const names = batchResult.selectedIndexes.map(i => contacts[i]?.name).join('、');
+              const names = batchResult.selectedIndexes.map((i: any) => contacts[i]?.name).join('、');
               appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">已为你智能识别批量转账：<br>• 收款人：<strong>${names}</strong><br>• 每人金额：<strong>¥${batchResult.amount.toLocaleString()}</strong><br><br>请在下方批量转账界面确认或修改，确认后执行。</div></div></div>`);
               scrollToBottom();
             }
@@ -1034,9 +1043,9 @@ async function enhancedSendMessage(text) {
   if (/^(你好|您好|hi|hello|哈喽|哈啰|在吗|谢谢|多谢|再见|拜拜|好久不见)[!！。.~～]*$/i.test(__plain)) {
     // 功能名直接从首页入口读取，保证和按钮一致（转账 / 账单分析 / 卡片管理 / 理财 / 订阅管理 / 生日鲜花）
     var __names = (typeof GUIDE_HOME_ENTRIES !== 'undefined' && GUIDE_HOME_ENTRIES.length)
-      ? GUIDE_HOME_ENTRIES.map(function (e) { return e.label; })
+      ? GUIDE_HOME_ENTRIES.map(function (e: any) { return e.label; })
       : ['转账', '账单分析', '卡片管理', '理财', '订阅管理', '生日鲜花'];
-    var __list = __names.map(function (n) { return '「' + n + '」'; }).join('');
+    var __list = __names.map(function (n: any) { return '「' + n + '」'; }).join('');
     appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
       '<div class="msg-name">智能金融助手</div><div class="msg-bubble">你好，我是 AI Bank 助手。我有以下功能：<br>' + __list + '。</div></div></div>');
     scrollToBottom();
@@ -1049,7 +1058,7 @@ async function enhancedSendMessage(text) {
 }
 
 // 调用AI回复（保留原有的AI对话功能）
-async function callAIResponse(text) {
+async function callAIResponse(text: any) {
   try {
     // 未配置 Key：不发请求，直接给出本地可用提示
     if (!bankHasLLMKey()) {
@@ -1058,7 +1067,7 @@ async function callAIResponse(text) {
       return;
     }
     // 构建包含上下文的prompt
-    const contextMessages = conversationContext.slice(-6).map(m => ({
+    const contextMessages = conversationContext.slice(-6).map((m: any) => ({
       role: m.role === 'user' ? 'user' : 'assistant',
       content: m.content
     }));
