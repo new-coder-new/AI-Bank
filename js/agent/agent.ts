@@ -766,7 +766,7 @@ async function agentEnsureFundVerify(amount, purpose) {
     if (typeof API !== 'undefined' && API.verifyToken && API.verifyExp > Date.now()) return true;
     if (typeof verifyAmountRisk !== 'function') return true;
     var r = await verifyAmountRisk(Number(amount), purpose || '资金操作', []);
-    return !!(r && r.ok);
+    return !!(r && (r as any).ok);
   } catch (e) { return false; }
 }
 

@@ -1370,7 +1370,7 @@ function verifyAmountRisk(amount, purpose, actions) {
         // T4：转人工复核，不执行
         if (tier.needManual) {
           var review = submitManualReview({ amount: amt, purpose: purpose, source: 'UI', actions: Array.isArray(actions) ? actions : [], tier: tier });
-          resolve({ ok: false, tier: tier, pendingReview: true, reviewId: review && review.id });
+          resolve({ ok: false, tier: tier, pendingReview: true, reviewId: (review as any) && (review as any).id });
           return;
         }
         resolve({ ok: true, tier: tier, pendingReview: false });
