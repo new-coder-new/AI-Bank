@@ -200,10 +200,10 @@ function identifyIntent(text: any) {
     };
   }
   
-  // 预算相关
-  if (/(预算|消费|支出|花费)/.test(text)) {
+  // 消费 / 支出类（预算入口已下线，交给账单分析）
+  if (/(消费|支出|花费)/.test(text)) {
     return {
-      intent: 'budget',
+      intent: 'bill_analysis',
       slots: {},
       confidence: 0.8
     };
@@ -525,12 +525,8 @@ async function executeSingleCommand(cmd: any) {
         break;
         
       case 'budget':
-        // 区分设置预算和查看预算
-        if (/设置|设定|改为|改成|调整|修改预算|设为|定个|定一个/.test(cmd.text)) {
-          smartBudgetSet(cmd.text);
-        } else {
-          showBudget();
-        }
+        // 预算模块已下线：统一转到账单分析
+        showBillOverview('month');
         break;
         
       default:
@@ -1070,7 +1066,7 @@ async function callAIResponse(text: any) {
       content: m.content
     }));
     
-    const systemPrompt = `你是一个智能金融助手，支持转账、理财、订阅、信用卡管理、账单分析、预算管理等功能。用户可能会用自然语言提问，你需要理解意图并给出简洁有用的回答。如果用户问你能做什么，列出主要功能。`;
+    const systemPrompt = `你是一个智能金融助手，支持转账、理财、订阅、信用卡管理、账单分析等功能。用户可能会用自然语言提问，你需要理解意图并给出简洁有用的回答。如果用户问你能做什么，列出主要功能。`;
     
     const response = await bankFetch(DEEPSEEK_API_URL, {
       method: 'POST',

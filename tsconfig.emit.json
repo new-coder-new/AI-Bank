@@ -39,7 +39,6 @@
     "js/core/ui.ts",
     "js/core/visualization.ts",
     "js/flows/analysis.ts",
-    "js/flows/budget.ts",
     "js/flows/card.ts",
     "js/flows/cardlimit.ts",
     "js/flows/cardservice.ts",

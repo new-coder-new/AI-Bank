@@ -921,7 +921,7 @@ function quickAction(type: any) {
     case 'abnormal': showAbnormalAlert(); break;
     case 'holdings': guideStartHoldings(); break;
     case 'transferHistory': showTransferHistory(); break;
-    case 'budget': showBudget(); break;
+    case 'budget': showBillOverview('month'); break;
     case 'agent': runAgentWorkflow('帮我转账100元然后查询余额'); break;
     case 'smartLimit': showSmartLimit(); break;
     case 'birthday': guideStartBirthdayFlower(); break;

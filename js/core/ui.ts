@@ -80,7 +80,6 @@ var FUNC_MORE = [
   { key: 'bankTransfer', label: '银行卡转账' },
   { key: 'transferHistory', label: '转账记录' },
   { key: 'batchTransfer', label: '批量转账' },
-  { key: 'budget', label: '预算管理' },
   { key: 'installment', label: '账单分期' },
   { key: 'manualReviews', label: '复核审批' },
   { key: 'security', label: '安全中心' }

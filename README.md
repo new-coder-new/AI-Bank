@@ -86,7 +86,6 @@ Agent 规划 + 风险识别 + 金额分级
 - 理财：风险测评、产品列表、申购、赎回、持仓、基金定投。
 - 信用卡：额度分层查询、调额申请、挂失/解挂、账单分期计算。
 - 订阅：订阅清单、月度均摊、取消订阅、添加订阅、首次扣费。
-- 预算：日/周/月/年预算、预算水位、超支提示。
 - 账单：分类统计、高 DPI 环形图、HTML 分类条、异常交易、财务报告。
 - 用户信息：账户总览、基本信息、交易记录、联系人。
 - 安全：交易密码、短信验证码、指纹模拟、敏感信息遮罩。
@@ -205,7 +204,6 @@ deploy-v3/
 │   ├── card.js                # 信用卡、调额、挂失、账单分期
 │   ├── cardlimit.js           # 额度分层、调额申请工具、额度查询前置处理
 │   ├── subscription.js        # 订阅列表、取消、添加、首次扣费
-│   ├── budget.js              # 多周期预算设置与预算状态
 │   ├── userinfo.js            # 用户信息入口
 │   ├── analysis.js            # 账单分析、饼图/柱图、异常交易、财务报告
 │   ├── ai.js                  # 意图分类、功能询问、sendMessage 入口
@@ -263,7 +261,7 @@ flowchart LR
 
 ```text
 icons → config → api → visualization → storage → security
-→ transfer → wealth → card → subscription → budget → userinfo
+→ transfer → wealth → card → subscription → userinfo
 → analysis → flower → ai → intent
 → agent → profile → decision → riskdetect → planner → display
 → cardlimit → agentsvc → context → kb → scenario → insights
@@ -304,7 +302,7 @@ icons → config → api → visualization → storage → security
   - 借记卡（余额、可用、冻结、今日收支）。
   - 信用卡（申请/审批/生效额度、已用、可用、账单、还款日）。
   - ~~贷款（剩余本金、月供、利率、期限）~~：贷款模块已下线。
-  - 最近交易、持仓、预算、转账记录、生日联系人。
+  - 最近交易、持仓、转账记录、生日联系人。
   - 理财风险测评结果（`riskProfile`，包含等级、名称、描述、测评时间）。
 - 人工复核记录（`manualReviews`，包含金额、业务类型、复核编号、提交时间、状态、绑定执行指令）。
 - AA 收款请求（`aaRequests`，包含活动、总额、参与人员、每人应付、状态）。
@@ -392,7 +390,6 @@ icons → config → api → visualization → storage → security
 - 转账：识别收款人、执行转账。
 - 卡片：额度、额度分层、调额申请、挂失、解挂。
 - 理财：产品、推荐、申购、赎回。
-- 预算：状态、设置、专项预算。
 - ~~借款：可借额度与利率~~：贷款模块已下线。
 - 生活：生日扫描、资金预留、鲜花、蛋糕、提醒、出差计划。
 - 风险/决策/规划/知识：高危识别、购买决策、分期建议、目标规划、知识库检索、场景配置。
@@ -1064,7 +1061,7 @@ AI：您想要添加订阅、取消订阅，还是管理自动续费？
   | 理财 | 产品申购 / 风险评估 / 持仓管理 | `guideStartWealthPurchase` / `startRiskAssessment` / `guideStartHoldings` |
   | 订阅 | 订阅管理 | `guideStartSubManage`（统一入口：添加/取消/续费/会员清单） |
 | 生活 | 生日鲜花 | `guideStartBirthdayFlower`（菜单 + 下单 + 订单） |
-  | 更多 | 银行卡转账 / 转账记录 / 批量转账 / 预算管理 / 账单分期 / 复核审批 / 安全中心 | 银行卡转账为单模式表单；其余为原功能文字入口 |
+  | 更多 | 银行卡转账 / 转账记录 / 批量转账 / 账单分期 / 复核审批 / 安全中心 | 银行卡转账为单模式表单；其余为原功能文字入口 |
 
   转账表单按入口收敛：**智能转账** 只含「按姓名 / 手机号 / 银行卡号」三种收款人识别方式；**定时转账** 与 **AA 收款** 各自独立成页（`showTransferForm('timed' | 'aa')`），不再以页签形式塞进同一张表单。
 
@@ -1325,7 +1322,6 @@ https://ai-banking-agent-335169-11-1386930579.sh.run.tcloudbase.com/
 | `js/flows/card.js` | 卡片、挂失、账单分期 |
 | `js/flows/cardlimit.js` | 额度分层、调额申请、额度查询前置 |
 | `js/flows/subscription.js` | 订阅列表、取消、添加 |
-| `js/flows/budget.js` | 多周期预算 |
 | `js/flows/analysis.js` | 账单分析与图表 |
 | `js/agent/insights.js` | 首页简报、AI 发现、主动推送 |
 | `js/core/ui.js` | 深色模式、Toast、服务面板、教程 |

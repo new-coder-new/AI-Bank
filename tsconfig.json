@@ -54,7 +54,6 @@
     "js/core/visualization.js",
     "js/core/ui.js",
     "js/flows/analysis.js",
-    "js/flows/budget.js",
     "js/flows/card.js",
     "js/flows/cardlimit.js",
     "js/flows/cardservice.js",
