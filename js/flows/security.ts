@@ -6,7 +6,7 @@
 // ==========================================================================
 
 // DOM 取值助手：返回 any，避免在大量弹窗代码里重复写非空断言
-function $id(id: string): any { return $id(id); }
+function $id(id: string): any { return document.getElementById(id); }
 
 // ========== 通用安全验证弹窗 ==========
 // 每个弹窗独立回调/验证码/失败次数：两个验证同时存在时不会互相覆盖

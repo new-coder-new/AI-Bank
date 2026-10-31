@@ -13,6 +13,7 @@ const SUITES = [
   'confirm-guard-suite.js',
   'chip-enum-suite.js',
   'server-suite.js',
+  'source-guard-suite.js',
 ];
 
 const onlyArg = process.argv.find((a) => a.startsWith('--only='));
