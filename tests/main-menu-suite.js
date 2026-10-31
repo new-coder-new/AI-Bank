@@ -22,7 +22,7 @@ mockData = {
     { name: '李四', phone: '139****5678', phoneFull: '13956785678', account: '6225 **** **** 5678' }
   ],
   products: [{ name: '稳健增利90天', riskLevel: 2, minAmount: 1000 }],
-  subscriptions: [{ id: 1, name: '某易云 VIP', price: 25, cycle: '/月', autoRenew: true }],
+  subscriptions: [{ id: 1, name: '某视频平台VIP', price: 25, cycle: '/月', autoRenew: true }],
   userProfile: {
     debitCard: { number: '6222 0236 0201 8888 666', available: 998000, balance: 1000000 },
     creditCards: [{ id: 'CARD-MAIN', cardType: '白金信用卡', tail: '6789', limit: 90000, used: 23650 }],
@@ -89,8 +89,8 @@ const CASES = [
   { text: '把白金卡额度提到8万', module: 'card', desc: '调额不直通' },
   { text: '设个单笔限额2万', module: 'card', desc: '限额不直通' },
   { text: '我的卡丢了', module: 'card', desc: '卡丢了' },
-  { text: '订阅某易云年卡', module: 'sub', desc: '订阅进订阅管理菜单' },
-  { text: '帮我退订某度网盘', module: 'sub', desc: '退订口语进订阅管理' },
+  { text: '订阅某视频平台VIP年卡', module: 'sub', desc: '订阅进订阅管理菜单' },
+  { text: '帮我退订某云盘超级会员', module: 'sub', desc: '退订口语进订阅管理' },
   { text: '给林小雨订一束花', module: 'flower', desc: '订花进生日鲜花菜单' },
   { text: '订个生日蛋糕', module: 'flower', desc: '蛋糕进生日鲜花菜单' }
 ];

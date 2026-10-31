@@ -18,7 +18,7 @@ window.__GUIDE_NO_AI__ = true;
 mockData = {
   contacts: [{ name: '张三', phone: '138****1234', phoneFull: '13812341234', account: '6222 **** **** 1234' }],
   products: [{ name: '稳健增利90天', riskLevel: 2, minAmount: 1000 }],
-  subscriptions: [{ id: 1, name: '某易云 VIP', price: 25, cycle: '/月', autoRenew: true }],
+  subscriptions: [{ id: 1, name: '某视频平台VIP', price: 25, cycle: '/月', autoRenew: true }],
   userProfile: {
     debitCard: { number: '6222 0236 0201 8888 666', available: 998000, balance: 1000000 },
     creditCards: [{ id: 'CARD-MAIN', cardType: '白金信用卡', tail: '6789', limit: 90000, used: 23650 }],
@@ -57,7 +57,7 @@ const flowLabel = () => __g.guideActiveFlowLabel();
 const CASES = [
   // 卡片管理内
   { cur: 'card', text: '挂失尾号6789的卡', expect: (s) => s.mode === 'lost' || /确认挂失/.test(last()) },
-  { cur: 'card', text: '我不想订阅某易云了', expect: () => /当前在.*卡片管理/.test(last()) && !GUIDE_SUB },
+  { cur: 'card', text: '我不想订阅某视频平台VIP了', expect: () => /当前在.*卡片管理/.test(last()) && !GUIDE_SUB },
   { cur: 'card', text: '转账给张三1000元', expect: () => /当前在.*卡片管理/.test(last()) && !GUIDE_TRANSFER },
   { cur: 'card', text: '切换到订阅管理', expect: () => /订阅管理包含以下操作/.test(last()) },
   { cur: 'card', text: '查一下我的余额', expect: () => !/当前在/.test(last()) },
@@ -66,7 +66,7 @@ const CASES = [
   { cur: 'wealth', text: '挂失尾号6789的卡', expect: () => /当前在.*理财/.test(last()) && !GUIDE_CARD_LOST },
   { cur: 'wealth', text: '切换到卡片管理', expect: () => /卡片管理包含以下操作/.test(last()) },
   // 订阅内
-  { cur: 'sub', text: '我想要订阅某易云年卡', expect: () => GUIDE_SUB && GUIDE_SUB.mode === 'add' },
+  { cur: 'sub', text: '我想要订阅某视频平台VIP年卡', expect: () => GUIDE_SUB && GUIDE_SUB.mode === 'add' },
   { cur: 'sub', text: '有哪些理财产品', expect: () => /当前在.*订阅管理/.test(last()) && !GUIDE_WEALTH },
   { cur: 'sub', text: '切换到理财', expect: () => /理财包含以下操作/.test(last()) },
   // 鲜花内（只读）

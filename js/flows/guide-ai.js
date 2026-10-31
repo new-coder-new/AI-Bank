@@ -620,7 +620,7 @@ async function guideSubAIFlag(text) {
 // 一句话里同时抽服务与周期（本地失败时交给模型）
 // 一句话里同时抽服务与周期（本地失败时交给模型）
 async function guideSubAIExtract(text) {
-    return guideAISlots(text, '你是银行 App 的订阅解析器。可订阅服务只有：某易云 VIP、某讯 VIP、某度网盘 VIP。' +
+    return guideAISlots(text, '你是银行 App 的订阅解析器。可订阅服务只有：某视频平台VIP、某阅读APP会员、某云盘超级会员。' +
         '扣费周期只有：按月扣费(/月)、按季扣费(/季)、按年扣费(/年)。' +
         '只输出 JSON：{"service":"服务名或空","cycle":"/月|/季|/年或空"}。', function (o) {
         if (!o)

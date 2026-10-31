@@ -89,12 +89,12 @@ async function cancelSubscribe(id, name) {
 // ========== 高阶版：添加新订阅 ==========
 function showAddSubscribeForm(prefill) {
     const presetSubs = [
-        { id: 'music', name: '某易云VIP', icon: '', prices: { '/月': 25, '/季': 60, '/年': 150 } },
-        { id: 'video', name: '某讯VIP', icon: '', prices: { '/月': 30, '/季': 80, '/年': 200 } },
-        { id: 'cloud', name: '某度网盘VIP', icon: '', prices: { '/月': 40, '/季': 120, '/年': 300 } },
+        { id: 'music', name: '某视频平台VIP', icon: '', prices: { '/月': 25, '/季': 60, '/年': 150 } },
+        { id: 'video', name: '某阅读APP会员', icon: '', prices: { '/月': 30, '/季': 80, '/年': 200 } },
+        { id: 'cloud', name: '某云盘超级会员', icon: '', prices: { '/月': 40, '/季': 120, '/年': 300 } },
     ];
     // 平台映射
-    const platformMap = { '某易云': 'music', '易云': 'music', '音乐': 'music', '某讯': 'video', '讯': 'video', '视频': 'video', '某度': 'cloud', '度': 'cloud', '网盘': 'cloud' };
+    const platformMap = { '某视频平台VIP': 'music', '易云': 'music', '音乐': 'music', '某阅读APP会员': 'video', '讯': 'video', '视频': 'video', '某度': 'cloud', '度': 'cloud', '网盘': 'cloud' };
     // 周期映射
     const periodMap = { '月卡': '/月', '月': '/月', '每月': '/月', '季卡': '/季', '季': '/季', '每季': '/季', '年卡': '/年', '年': '/年', '每年': '/年' };
     let prefillPlatform = '';

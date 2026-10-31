@@ -10,7 +10,7 @@ function guideSubActive() {
         mockData.subscriptions = [];
     return mockData.subscriptions;
 }
-// 订阅名比较统一忽略空格和大小写：「某易云 VIP」与「某易云VIP」视为同一服务
+// 订阅名比较统一忽略空格和大小写：「某视频平台VIP」与「某视频平台VIP」视为同一服务
 function guideSubNormName(n) {
     return String(n == null ? '' : n).replace(/\s+/g, '').toLowerCase();
 }
@@ -271,9 +271,9 @@ function guideStartSubManage() {
     currentModule = 'sub';
     appendMessage(guideMessage('<p>订阅管理包含以下操作：</p>' +
         '<div class="guide-rows">' +
-        '<div class="guide-row"><div class="guide-row-title">添加订阅</div><div class="guide-row-example">例如：我想要订阅某易云年卡</div></div>' +
+        '<div class="guide-row"><div class="guide-row-title">添加订阅</div><div class="guide-row-example">例如：我想要订阅某视频平台VIP年卡</div></div>' +
         '<div class="guide-row"><div class="guide-row-title">取消订阅</div><div class="guide-row-example">例如：取消所有订阅</div></div>' +
-        '<div class="guide-row"><div class="guide-row-title">管理自动续费</div><div class="guide-row-example">例如：某度网盘年卡不续费了</div></div>' +
+        '<div class="guide-row"><div class="guide-row-title">管理自动续费</div><div class="guide-row-example">例如：某云盘超级会员年卡不续费了</div></div>' +
         '<div class="guide-row"><div class="guide-row-title">可订阅会员</div><div class="guide-row-example">例如：能订哪些会员</div></div>' +
         '</div>' +
         '<p class="guide-tip">直接说出你的需求即可（照示例说也行）。</p>'));
@@ -315,7 +315,7 @@ function guideStartSubAutoRenew() {
     appendMessage(guideMessage('<p>当前有效订阅如下：</p>' +
         '<div class="report-panel"><div class="report-panel-title">有效订阅</div>' + rows + '</div>' +
         (historyHtml ? '<div class="report-panel" style="margin-top:10px;"><div class="report-panel-title">历史记录</div>' + historyHtml + '</div>' : '') +
-        '<p>需要取消或开启哪一项的自动续费？例如「关闭某讯 VIP 的自动续费」。</p>'));
+        '<p>需要取消或开启哪一项的自动续费？例如「关闭某阅读APP会员 的自动续费」。</p>'));
     scrollToBottom();
 }
 async function guideSubManageStep(text) {
@@ -578,9 +578,9 @@ async function guideSubSession(t) {
             guideSubCancelAllStart();
             return true;
         }
-        // 自动续费类（「某度网盘不续费了」「关闭某讯的自动续费」）
+        // 自动续费类（「某云盘超级会员不续费了」「关闭某阅读APP会员的自动续费」）
         if (/(自动续费|续费|续订|开启|关闭|关掉|管理)/.test(t)) {
-            // 「关闭某讯 VIP 的自动续费」这类直接说完整的，直接进自动续费流程
+            // 「关闭某阅读APP会员 的自动续费」这类直接说完整的，直接进自动续费流程
             var svcQuick = guideSubFindService(t);
             if (svcQuick) {
                 guideStartSubAutoRenew();
@@ -589,11 +589,11 @@ async function guideSubSession(t) {
             guideSubChoose('renew');
             return true;
         }
-        // 取消订阅：先判取消（「退订某度网盘 / 某易云不要了 / 我不想订阅某易云了」）
+        // 取消订阅：先判取消（「退订某云盘超级会员 / 某视频平台VIP不要了 / 我不想订阅某视频平台VIP了」）
         var cancelWord = /(取消|退订|退掉|退了|终止|不想|不要了|不要|不再|不用|别订|停掉|停止|不订了)/;
         var svcHint = /(订阅|会员|VIP|vip|网盘|音乐|视频|阅读|健身|某)/;
         if (cancelWord.test(t) && (svcHint.test(t) || /取消订阅|退订/.test(t))) {
-            // 点名了具体服务（「我不想订阅某易云了」）→ 直接进取消流程并带入服务
+            // 点名了具体服务（「我不想订阅某视频平台VIP了」）→ 直接进取消流程并带入服务
             var svcCancel = (typeof guideSubFindService === 'function') ? guideSubFindService(t) : null;
             if (svcCancel) {
                 guideStartSubCancel();
@@ -607,7 +607,7 @@ async function guideSubSession(t) {
             guideSubChoose('add');
             return true;
         }
-        // 添加订阅（点名服务）：「订阅某易云年卡 / 开通某讯会员」
+        // 添加订阅（点名服务）：「订阅某视频平台VIP年卡 / 开通某阅读APP会员会员」
         if (/(订阅|开通|订|买)/.test(t) && /(某|VIP|vip|会员|年卡|月卡|季卡|网盘|音乐|视频|阅读|健身)/.test(t)) {
             guideStartSubAdd();
             return guideSubAddStep(t);

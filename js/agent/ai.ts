@@ -70,7 +70,7 @@ async function callLLMIntentClassification(text: string): Promise<LLMIntentResul
 - phone: 手机号
 - product_name: 理财产品名称
 - period: 周期（月卡/季卡/年卡 或 day/week/month/year）
-- platform: 订阅平台（某易云/某讯/某度）
+- platform: 订阅平台（某视频平台VIP/某阅读APP会员/某度）
 - steps: 复杂多步指令的步骤列表（数组，每个元素包含intent和text）
 
 请严格输出JSON格式，不要输出多余解释：

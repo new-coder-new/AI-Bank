@@ -19,8 +19,8 @@ mockData = {
   contacts: [{ name: '张三', phone: '138****1234', phoneFull: '13812341234', account: '6222 **** **** 1234' }],
   products: [{ name: '稳健增利90天', riskLevel: 2, minAmount: 1000 }],
   subscriptions: [
-    { id: 1, name: '某易云 VIP', price: 25, cycle: '/月', autoRenew: true },
-    { id: 2, name: '某度网盘 VIP', price: 40, cycle: '/月', autoRenew: true }
+    { id: 1, name: '某视频平台VIP', price: 25, cycle: '/月', autoRenew: true },
+    { id: 2, name: '某云盘超级会员', price: 40, cycle: '/月', autoRenew: true }
   ],
   userProfile: {
     debitCard: { number: '6222 0236 0201 8888 666', available: 998000, balance: 1000000 },
@@ -54,13 +54,13 @@ const tick = (n) => new Promise((res) => { let i = 0; const go = () => (++i >= (
 const last = () => appended.slice(-1)[0] || '';
 
 const CASES = [
-  { text: '我不想订阅某易云了', expect: (s, l) => s.mode === 'cancel' },
-  { text: '某易云不要了', expect: (s) => s.mode === 'cancel' },
-  { text: '退订某度网盘', expect: (s) => s.mode === 'cancel' },
-  { text: '订阅某易云年卡', expect: (s) => s.mode === 'add' },
-  { text: '开通某讯会员', expect: (s) => s.mode === 'add' },
-  { text: '某度网盘不续费了', expect: (s) => s.mode === 'manage' },
-  { text: '关闭某讯的自动续费', expect: (s) => s.mode === 'manage' },
+  { text: '我不想订阅某视频平台VIP了', expect: (s, l) => s.mode === 'cancel' },
+  { text: '某视频平台VIP不要了', expect: (s) => s.mode === 'cancel' },
+  { text: '退订某云盘超级会员', expect: (s) => s.mode === 'cancel' },
+  { text: '订阅某视频平台VIP年卡', expect: (s) => s.mode === 'add' },
+  { text: '开通某阅读APP会员会员', expect: (s) => s.mode === 'add' },
+  { text: '某云盘超级会员不续费了', expect: (s) => s.mode === 'manage' },
+  { text: '关闭某阅读APP会员的自动续费', expect: (s) => s.mode === 'manage' },
   { text: '取消所有订阅', expect: (s) => s.mode === 'cancel-all' },
   { text: '能订哪些会员', expect: (s, l) => /可订阅的会员服务/.test(l) },
   { text: '随便说点啥', expect: (s, l) => /请选择订阅管理里的操作/.test(l) }

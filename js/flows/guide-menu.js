@@ -243,7 +243,7 @@ function guideHasBusinessEntity(text) {
     }
     if (typeof guideWealthFindProduct === 'function' && guideWealthFindProduct(t))
         return true;
-    if (/(某易云|某讯|某度网盘|某健身|某视频|某阅读|某音乐)/.test(t))
+    if (/(某视频平台VIP|某阅读APP会员|某云盘超级会员|某健身|某视频|某阅读|某音乐)/.test(t))
         return true;
     if (/(白金|金卡|标准金卡|青年卡|旅行卡)/.test(t))
         return true;
@@ -281,7 +281,7 @@ function guideSlotsComplete(module, text) {
     if (module === 'life') {
         if (/(鲜花|花束|蛋糕|花)/.test(t))
             return hasName;
-        return /(某易云|某讯|某度网盘|某健身|某视频|某阅读|某音乐|会员|VIP|年卡|月卡|季卡)/.test(t);
+        return /(某视频平台VIP|某阅读APP会员|某云盘超级会员|某健身|某视频|某阅读|某音乐|会员|VIP|年卡|月卡|季卡)/.test(t);
     }
     // 账单分析类都是只读，直接放行
     return true;
@@ -754,7 +754,7 @@ async function guideHandleText(text) {
         }
         return guideLockedRun(function () { return guideCardLostStep(t); });
     }
-    // 「某度网盘年卡开一下自动续费」→ 直接进管理自动续费并预选服务
+    // 「某云盘超级会员年卡开一下自动续费」→ 直接进管理自动续费并预选服务
     if (guideIsSubRenewManagePhrase(t)) {
         var renewOnSvc = (typeof guideSubFindService === 'function') ? guideSubFindService(t) : null;
         if (renewOnSvc) {
@@ -766,7 +766,7 @@ async function guideHandleText(text) {
             return true; // 清单已问过，等待用户指定服务
         }
     }
-    // 「某度网盘年卡不续费了」→ 关闭自动续费；句中指定了服务就直接出确认卡
+    // 「某云盘超级会员年卡不续费了」→ 关闭自动续费；句中指定了服务就直接出确认卡
     if (guideIsSubRenewOffPhrase(t)) {
         var renewSvc = (typeof guideSubFindService === 'function') ? guideSubFindService(t) : null;
         if (renewSvc) {
@@ -778,7 +778,7 @@ async function guideHandleText(text) {
             return true; // 清单已问过，等待用户指定服务
         }
     }
-    // 「我不想订阅某易云了」→ 直接进取消订阅并预选服务
+    // 「我不想订阅某视频平台VIP了」→ 直接进取消订阅并预选服务
     if (guideIsSubCancelPhrase(t)) {
         var cancelSvc = (typeof guideSubFindService === 'function') ? guideSubFindService(t) : null;
         if (cancelSvc) {
@@ -811,7 +811,7 @@ async function guideHandleText(text) {
             return true;
         }
     }
-    // 「我想要订阅某易云年卡」→ 直接进添加订阅并预填服务/周期
+    // 「我想要订阅某视频平台VIP年卡」→ 直接进添加订阅并预填服务/周期
     if (guideIsSubAddPhrase(t)) {
         var addSvc = (typeof guideSubFindService === 'function') ? guideSubFindService(t) : null;
         var addCycle = (typeof guideSubParseCycle === 'function') ? guideSubParseCycle(t) : null;

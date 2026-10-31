@@ -73,10 +73,10 @@ const cases = [
   { text: '申购稳健增利90天 5000元', module: 'wealth.buy', fields: { product: '稳健增利90天', amount: 5000 } },
   { text: '我要做风险测评', module: 'wealth.risk', fields: {} },
   { text: '我买了哪些产品', module: 'wealth.holding', fields: {} },
-  { text: '我想要订阅某易云年卡', module: 'sub.add', fields: { service: '某易云', cycle: '/年' } },
-  { text: '我不想订阅某易云了', module: 'sub.cancel', fields: { target: '某易云 VIP' } },
-  { text: '某度网盘年卡不续费了', module: 'sub.renew', fields: { target: '某度网盘 VIP', enable: false } },
-  { text: '某讯的自动续费帮我打开', module: 'sub.renew', fields: { target: '某讯 VIP', enable: true } },
+  { text: '我想要订阅某视频平台VIP年卡', module: 'sub.add', fields: { service: '某视频平台VIP', cycle: '/年' } },
+  { text: '我不想订阅某视频平台VIP了', module: 'sub.cancel', fields: { target: '某视频平台VIP' } },
+  { text: '某云盘超级会员年卡不续费了', module: 'sub.renew', fields: { target: '某云盘超级会员', enable: false } },
+  { text: '某阅读APP会员的自动续费帮我打开', module: 'sub.renew', fields: { target: '某阅读APP会员', enable: true } },
   { text: '今天天气怎么样', module: 'none', fields: {} }
 ];
 

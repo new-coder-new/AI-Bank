@@ -25,7 +25,7 @@ mockData = {
     { name: '成长先锋股票基金', riskLevel: 4, minAmount: 1000, rate: 12.35 }
   ],
   subscriptions: [
-    { id: 1, name: '某易云 VIP', price: 25, cycle: '/月', autoRenew: true }
+    { id: 1, name: '某视频平台VIP', price: 25, cycle: '/月', autoRenew: true }
   ],
   userProfile: {
     debitCard: { number: '6222 0236 0201 8888 666', available: 998000, balance: 1000000 },
@@ -66,7 +66,7 @@ const CASES = [
   { name: '理财内要产品清单', setup: () => { __g.guideOpenService('wealth'); currentModule = 'wealth'; }, steps: ['有哪些理财产品'], expect: (l) => /在售理财产品（共 5 支）/.test(l) && /1001/.test(l) },
   { name: '理财内口语：能买什么基金', setup: () => { __g.guideOpenService('wealth'); currentModule = 'wealth'; }, steps: ['能买什么基金'], expect: (l) => /在售理财产品/.test(l) },
   // 订阅内：出清单
-  { name: '订阅内要会员清单', setup: () => { __g.guideStartSubManage(); }, steps: ['能订哪些会员'], expect: (l) => /可订阅的会员服务（共 3 项）/.test(l) && /某易云 VIP/.test(l) && /已订阅/.test(l) },
+  { name: '订阅内要会员清单', setup: () => { __g.guideStartSubManage(); }, steps: ['能订哪些会员'], expect: (l) => /可订阅的会员服务（共 4 项）/.test(l) && /某视频平台VIP/.test(l) && /已订阅/.test(l) },
   { name: '订阅内：有哪些会员', setup: () => { __g.guideStartSubManage(); }, steps: ['有哪些会员可以订阅'], expect: (l) => /可订阅的会员服务/.test(l) },
   // 流程中：拦截
   { name: '理财流程中要清单→拦截', setup: () => { __g.guideOpenService('wealth'); GUIDE_WEALTH = { stage: 'slots', product: null, amount: null }; currentModule = 'wealth'; }, steps: ['有哪些理财产品'], expect: (l) => /正在理财申购流程/.test(l) },

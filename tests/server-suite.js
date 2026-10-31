@@ -99,8 +99,8 @@ async function api(method, p, body, headers) {
       JSON.stringify(flower.json && flower.json.order || flower.json).slice(0, 100));
 
     // ⑨ 订阅重复添加被拒
-    const sub1 = await api('POST', '/api/subscription/add', { name: '某讯 VIP', cycle: '/月', price: 30 }, H);
-    const sub2 = await api('POST', '/api/subscription/add', { name: '某讯 VIP', cycle: '/月', price: 30 }, H);
+    const sub1 = await api('POST', '/api/subscription/add', { name: '某音乐平台会员', cycle: '/月', price: 30 }, H);
+    const sub2 = await api('POST', '/api/subscription/add', { name: '某音乐平台会员', cycle: '/月', price: 30 }, H);
     ok('首次订阅成功、重复订阅被拒', !!(sub1.json && sub1.json.ok) && !!(sub2.json && sub2.json.ok === false));
 
     // ⑩ 复核审批需验证令牌

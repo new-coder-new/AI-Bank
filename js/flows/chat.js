@@ -477,10 +477,10 @@ async function executeSingleCommand(cmd) {
                     // 解析平台和周期
                     let platform = '';
                     let period = '';
-                    if (/某易云|易云|音乐|网易云/.test(cmd.text))
-                        platform = '某易云';
-                    else if (/某讯|讯|视频|腾讯/.test(cmd.text))
-                        platform = '某讯';
+                    if (/某视频平台VIP|易云|音乐|网易云/.test(cmd.text))
+                        platform = '某视频平台VIP';
+                    else if (/某阅读APP会员|讯|视频|腾讯/.test(cmd.text))
+                        platform = '某阅读APP会员';
                     else if (/某度|度|网盘|百度/.test(cmd.text))
                         platform = '某度';
                     if (/年卡|每年|年/.test(cmd.text))
@@ -1085,6 +1085,6 @@ function showWelcomeMessage() {
         greeting = '下午好';
     else
         greeting = '晚上好';
-    appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">👋 <strong>${greeting}，小陈！</strong><br><br>我是你的智能金融助手，可以帮你完成：<br><br>💸 <strong>智能转账</strong> — 给张三转账1000元 / 批量转账<br>💰 <strong>理财操作</strong> — 购买安享三年定期500元 / 基金定投<br>💳 <strong>卡片管理</strong> — 查询额度 / 账单分期 / 挂失<br>🔔 <strong>订阅管理</strong> — 订阅某易云vip年卡<br>🎯 <strong>预算管理</strong> — 设置每月预算3000元<br>📊 <strong>财务报告</strong> — 生成本月财务报告<br><br>💡 你可以直接对我说，也可以点击右下角 <strong>+</strong> 查看全部功能。</div></div></div>`);
+    appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">👋 <strong>${greeting}，小陈！</strong><br><br>我是你的智能金融助手，可以帮你完成：<br><br>💸 <strong>智能转账</strong> — 给张三转账1000元 / 批量转账<br>💰 <strong>理财操作</strong> — 购买安享三年定期500元 / 基金定投<br>💳 <strong>卡片管理</strong> — 查询额度 / 账单分期 / 挂失<br>🔔 <strong>订阅管理</strong> — 订阅某视频平台VIPvip年卡<br>🎯 <strong>预算管理</strong> — 设置每月预算3000元<br>📊 <strong>财务报告</strong> — 生成本月财务报告<br><br>💡 你可以直接对我说，也可以点击右下角 <strong>+</strong> 查看全部功能。</div></div></div>`);
     scrollToBottom();
 }

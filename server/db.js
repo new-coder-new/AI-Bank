@@ -94,11 +94,10 @@ function buildSubscriptions() {
     return fmtDate(x);
   };
   return [
-    { id: 1, icon: '🏋️', name: '某健身APP会员', detail: '连续包月', price: 128, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 3, chargeDate: chargeOn(3), usage: '低' },
-    { id: 2, icon: '🎬', name: '某视频平台VIP', detail: '连续包月', price: 25, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 9, chargeDate: chargeOn(9), usage: '高' },
-    { id: 3, icon: '📚', name: '某阅读APP会员', detail: '连续包月', price: 15, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 7, chargeDate: chargeOn(7), usage: '低' },
-    { id: 4, icon: '☁️', name: '某云盘超级会员', detail: '连续包月', price: 30, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 13, chargeDate: chargeOn(13), usage: '低' },
-    { id: 5, icon: '🎵', name: '某音乐平台会员', detail: '连续包季', price: 45, cycle: '/季', cycleLabel: '连续包季', chargeInDays: 16, chargeDate: chargeOn(16), usage: '中' }
+    { id: 1, icon: '🎬', name: '某视频平台VIP', detail: '连续包月', price: 25, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 9, chargeDate: chargeOn(9), usage: '高', autoRenew: true },
+    { id: 2, icon: '📚', name: '某阅读APP会员', detail: '连续包月', price: 30, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 7, chargeDate: chargeOn(7), usage: '低', autoRenew: true },
+    { id: 3, icon: '☁️', name: '某云盘超级会员', detail: '连续包月', price: 40, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 13, chargeDate: chargeOn(13), usage: '低', autoRenew: true },
+    { id: 4, icon: '🏋️', name: '某健身APP会员', detail: '连续包月', price: 128, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 3, chargeDate: chargeOn(3), usage: '低', autoRenew: true }
   ];
 }
 
@@ -106,6 +105,10 @@ function buildSubscriptions() {
 function buildUserProfile() {
   return {
     name: '小陈',
+    // 已取消订阅的历史记录（供订阅管理页展示）
+    subscriptionHistory: [
+      { name: '某健身APP会员', cycle: '/月', autoRenew: true, status: '已取消', cancelledAt: '2026/10/28 18:34:00' }
+    ],
     gender: '男',
     idCard: '441802199803152817',
     birthday: '1998-03-15',

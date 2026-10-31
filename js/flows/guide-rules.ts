@@ -69,7 +69,7 @@ var GUIDE_SERVICES = [
     aliases: ['生活', '生活服务'],
     prompt: '生活订购包含以下操作：',
     subs: [
-      { key: 'subscribe', label: '订阅管理', example: '订阅某易云年卡', aliases: ['我的订阅'], run: function () { guideStartSubManage(); } },
+      { key: 'subscribe', label: '订阅管理', example: '订阅某视频平台VIP年卡', aliases: ['我的订阅'], run: function () { guideStartSubManage(); } },
       { key: 'birthday', label: '生日鲜花', example: '给林小雨订一束花', aliases: ['鲜花订购', '订花', '买花', '鲜花订单'], run: function () { guideStartBirthdayFlower(); } }
     ]
   }
@@ -140,30 +140,30 @@ var GUIDE_HOME_ENTRIES = [
 ];
 
 
-// 「某度网盘年卡开一下自动续费 / 关闭某讯会员自动续费」→ 直接进管理自动续费
+// 「某云盘超级会员年卡开一下自动续费 / 关闭某阅读APP会员会员自动续费」→ 直接进管理自动续费
 function guideIsSubRenewManagePhrase(t: any) {
   var s = String(t || '').trim();
   if (!s) return false;
   if (!/续费/.test(s)) return false;
   if (!/(开一下|开启|打开|恢复|关一下|关闭|关掉|管理|设置|调整)/.test(s)) return false;
-  return /(会员|vip|VIP|年卡|月卡|季卡|包年|包月|自动续费|某易云|易云|网易云|某讯|腾讯|某度|百度|网盘)/.test(s);
+  return /(会员|vip|VIP|年卡|月卡|季卡|包年|包月|自动续费|某视频平台VIP|易云|网易云|某阅读APP会员|腾讯|某度|百度|网盘)/.test(s);
 }
-// 「某度网盘年卡不续费了」→ 关闭自动续费（订阅管理·管理自动续费）
+// 「某云盘超级会员年卡不续费了」→ 关闭自动续费（订阅管理·管理自动续费）
 
-// 「某度网盘年卡不续费了」→ 关闭自动续费（订阅管理·管理自动续费）
+// 「某云盘超级会员年卡不续费了」→ 关闭自动续费（订阅管理·管理自动续费）
 function guideIsSubRenewOffPhrase(t: any) {
   var s = String(t || '').trim();
   if (!s) return false;
   if (!/续费/.test(s)) return false;
   return /(不续费|不想续费|不要续费|不打算续费|关闭续费|关掉续费|别续费|不用续费|不想再续|不自动续费|不再续费)/.test(s);
 }
-// 「我不想订阅某易云了 / 取消某讯会员」→ 直接进取消订阅并带上服务
+// 「我不想订阅某视频平台VIP了 / 取消某阅读APP会员会员」→ 直接进取消订阅并带上服务
 
-// 「我不想订阅某易云了 / 取消某讯会员」→ 直接进取消订阅并带上服务
+// 「我不想订阅某视频平台VIP了 / 取消某阅读APP会员会员」→ 直接进取消订阅并带上服务
 function guideIsSubCancelPhrase(t: any) {
   var s = String(t || '').trim();
   if (!s) return false;
-  if (!/(订阅|会员|vip|VIP|续费|某易云|易云|网易云|某讯|腾讯|某度|百度|网盘)/.test(s)) return false;
+  if (!/(订阅|会员|vip|VIP|续费|某视频平台VIP|易云|网易云|某阅读APP会员|腾讯|某度|百度|网盘)/.test(s)) return false;
   return /(取消|退订|不订阅|不想订阅|不要订阅|不订了|不想要了|不想续费|不要续费|关闭续费|别订了)/.test(s);
 }
 // 「我想要添加订阅 / 开通个会员」这类没点名服务的说法 → 直接进添加订阅
@@ -176,15 +176,15 @@ function guideIsSubAddPlain(t: any) {
   if (!/订阅/.test(s) && !/(开通|办理|订购).{0,3}会员/.test(s)) return false;
   return /(添加|增加|新增|加个|加一个|开通|办理|订购|订一个|订阅一个|来一个|办个|来个|想要|我想|我要)/.test(s);
 }
-// 「我想要订阅某易云年卡 / 订购某度网盘年卡」→ 直接进添加订阅，并把服务与周期解析出来
+// 「我想要订阅某视频平台VIP年卡 / 订购某云盘超级会员年卡」→ 直接进添加订阅，并把服务与周期解析出来
 
-// 「我想要订阅某易云年卡 / 订购某度网盘年卡」→ 直接进添加订阅，并把服务与周期解析出来
+// 「我想要订阅某视频平台VIP年卡 / 订购某云盘超级会员年卡」→ 直接进添加订阅，并把服务与周期解析出来
 function guideIsSubAddPhrase(t: any) {
   var s = String(t || '').trim();
   if (!s) return false;
   if (/(取消|退订|关闭|停止|解约)/.test(s)) return false;
   if (!/(订阅|订购|开通|添加|买)/.test(s)) return false;
-  return /(会员|vip|VIP|年卡|月卡|季卡|包年|包月|包季|某易云|易云|网易云|某讯|腾讯|某度|百度|网盘)/.test(s);
+  return /(会员|vip|VIP|年卡|月卡|季卡|包年|包月|包季|某视频平台VIP|易云|网易云|某阅读APP会员|腾讯|某度|百度|网盘)/.test(s);
 }
 // 「我买了哪些产品 / 我持有几只基金」→ 看持仓管理，而不是产品推荐
 
@@ -425,9 +425,10 @@ var CARD_LIMIT_REASONS = ['消费需求增加', '收入提升', '信用记录良
 
 
 var SUB_PRESETS = [
-  { id: 'music', name: '某易云 VIP', prices: { '/月': 25, '/季': 60, '/年': 150 } },
-  { id: 'video', name: '某讯 VIP', prices: { '/月': 30, '/季': 80, '/年': 200 } },
-  { id: 'cloud', name: '某度网盘 VIP', prices: { '/月': 40, '/季': 120, '/年': 300 } }
+  { id: 'video', name: '某视频平台VIP', prices: { '/月': 25, '/季': 60, '/年': 150 } },
+  { id: 'reading', name: '某阅读APP会员', prices: { '/月': 30, '/季': 80, '/年': 200 } },
+  { id: 'cloud', name: '某云盘超级会员', prices: { '/月': 40, '/季': 120, '/年': 300 } },
+  { id: 'fitness', name: '某健身APP会员', prices: { '/月': 128, '/季': 300, '/年': 720 } }
 ];
 
 var SUB_CYCLE_TEXT = { '/月': '按月扣费', '/季': '按季扣费', '/年': '按年扣费' };
@@ -444,7 +445,7 @@ function guideSubFindService(text: any) {
   })[0];
   if (preset) return { kind: 'preset', preset: preset, name: preset.name.replace(/\s+/g, '') };
 
-  // ② 现有订阅全名（优先于关键词，避免「某视频平台VIP」被当成「某讯 VIP」）
+  // ② 现有订阅全名（优先于关键词，避免「某视频平台VIP」被当成「某阅读APP会员」）
   var active = guideSubActive().filter(function (s: any) { return t.indexOf(s.name) !== -1; })[0];
   if (active) return { kind: 'active', sub: active, name: active.name };
   var fuzzy = guideSubActive().filter(function (s: any) {
@@ -453,9 +454,9 @@ function guideSubFindService(text: any) {
   })[0];
   if (fuzzy) return { kind: 'active', sub: fuzzy, name: fuzzy.name };
 
-  // ③ 预设服务关键词（易云 / 某讯 / 网盘…）
+  // ③ 预设服务关键词（视频平台 / 阅读 / 云盘 / 健身…）
   if (/易云|网易云|音乐/.test(t)) return { kind: 'preset', preset: SUB_PRESETS[0], name: SUB_PRESETS[0].name };
-  if (/某讯|腾讯|视频/.test(t)) return { kind: 'preset', preset: SUB_PRESETS[1], name: SUB_PRESETS[1].name };
+  if (/某阅读APP会员|腾讯|视频/.test(t)) return { kind: 'preset', preset: SUB_PRESETS[1], name: SUB_PRESETS[1].name };
   if (/某度|百度|网盘/.test(t)) return { kind: 'preset', preset: SUB_PRESETS[2], name: SUB_PRESETS[2].name };
   return null;
 }

@@ -37,7 +37,7 @@ mockData = {
   ],
   subscriptions: [
     { id: 1, name: '某云盘超级会员', price: 20, cycle: '/月', autoRenew: true },
-    { id: 2, name: '某易云 VIP', price: 25, cycle: '/月', autoRenew: true }
+    { id: 2, name: '某视频平台VIP', price: 25, cycle: '/月', autoRenew: true }
   ],
   userProfile: {
     debitCard: { number: '6222 0236 0201 8888 666', available: 998000, balance: 1000000 },
@@ -134,11 +134,11 @@ const cases = [
 
   // ===== 订阅管理 =====
   { mod: '订阅/添加订阅', steps: ['我想要添加订阅'], desc: '进入添加', expect: (s) => s.sub && s.sub.mode === 'add' },
-  { mod: '订阅/添加订阅', steps: ['我想要订阅某易云年卡'], desc: '服务+周期', expect: (s) => s.sub && s.sub.mode === 'add' && s.sub.preset === '某易云 VIP' && s.sub.cycle === '/年' },
-  { mod: '订阅/取消订阅', steps: ['我不想订阅某易云了'], desc: '点名取消', expect: (s) => s.sub && s.sub.mode === 'cancel' && s.sub.target === '某易云 VIP' },
+  { mod: '订阅/添加订阅', steps: ['我想要订阅某视频平台VIP年卡'], desc: '服务+周期', expect: (s) => s.sub && s.sub.mode === 'add' && s.sub.preset === '某视频平台VIP' && s.sub.cycle === '/年' },
+  { mod: '订阅/取消订阅', steps: ['我不想订阅某视频平台VIP了'], desc: '点名取消', expect: (s) => s.sub && s.sub.mode === 'cancel' && s.sub.target === '某视频平台VIP' },
   { mod: '订阅/取消订阅', steps: ['取消订阅'], desc: '未点名→列表', expect: (s) => s.sub && s.sub.mode === 'cancel' },
-  { mod: '订阅/自动续费管理', steps: ['某度网盘年卡不续费了'], desc: '关闭某服务自动续费', expect: (s) => s.sub && s.sub.mode === 'manage' && s.sub.newAutoRenew === false },
-  { mod: '订阅/自动续费管理', steps: ['某度网盘年卡开一下自动续费'], desc: '开启自动续费', expect: (s) => s.sub && s.sub.mode === 'manage' && s.sub.newAutoRenew === true },
+  { mod: '订阅/自动续费管理', steps: ['某云盘超级会员年卡不续费了'], desc: '关闭某服务自动续费', expect: (s) => s.sub && s.sub.mode === 'manage' && s.sub.newAutoRenew === false },
+  { mod: '订阅/自动续费管理', steps: ['某云盘超级会员年卡开一下自动续费'], desc: '开启自动续费', expect: (s) => s.sub && s.sub.mode === 'manage' && s.sub.newAutoRenew === true },
   { mod: '订阅/自动续费管理', steps: ['管理自动续费'], desc: '未点名→列表', expect: (s) => s.sub && s.sub.mode === 'manage' },
 
   // ===== 多轮补全 & 组合说法 =====
@@ -151,7 +151,7 @@ const cases = [
   { mod: '卡片/卡片申请', steps: ['我想办一张钻石卡'], desc: '不支持的卡种要提示可选范围', expect: (s) => !!s.cardApply },
   { mod: '卡片/卡片申请', steps: ['申请一张标准金卡'], desc: '只给卡种', expect: (s) => s.cardApply && s.cardApply.cardType === '标准金卡' },
   { mod: '理财/持仓管理', steps: ['看看我的持仓收益'], desc: '持仓口语', expect: (s) => s.calls.includes('holdings') },
-  { mod: '订阅/添加订阅', steps: ['添加订阅', '某讯 VIP', '按月'], desc: '多轮选择服务与周期', expect: (s) => s.sub && s.sub.mode === 'add' && s.sub.preset === '某讯 VIP' && s.sub.cycle === '/月' },
+  { mod: '订阅/添加订阅', steps: ['添加订阅', '某阅读APP会员', '按月'], desc: '多轮选择服务与周期', expect: (s) => s.sub && s.sub.mode === 'add' && s.sub.preset === '某阅读APP会员' && s.sub.cycle === '/月' },
 
   // ===== 反例：不应误路由 =====
   { mod: '反例', steps: ['今天天气怎么样'], desc: '无关内容不应进入任何业务流', expect: (s) => !s.transfer && !s.aa && !s.wealth && !s.cardApply && !s.cardLimit && !s.txn && !s.lost && !s.sub },

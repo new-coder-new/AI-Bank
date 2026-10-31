@@ -99,14 +99,16 @@ var mockData = {
         dueDate: '2026-09-25',
     },
     subscriptions: [
-        { id: 1, icon: '🏋️', name: '某健身APP会员', detail: '连续包月 · 下次扣款', price: 128, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 3, usage: '低' },
-        { id: 2, icon: '🎬', name: '某视频平台VIP', detail: '连续包月 · 下次扣款', price: 25, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 9, usage: '高' },
-        { id: 3, icon: '📚', name: '某阅读APP会员', detail: '连续包月 · 下次扣款', price: 15, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 7, usage: '低' },
-        { id: 4, icon: '☁️', name: '某云盘超级会员', detail: '连续包月 · 下次扣款', price: 30, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 13, usage: '低' },
-        { id: 5, icon: '🎵', name: '某音乐平台会员', detail: '连续包季 · 下次扣款', price: 45, cycle: '/季', cycleLabel: '连续包季', chargeInDays: 16, usage: '中' }
+        { id: 1, icon: '🎬', name: '某视频平台VIP', detail: '连续包月 · 下次扣款', price: 25, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 9, usage: '高', autoRenew: true },
+        { id: 2, icon: '📚', name: '某阅读APP会员', detail: '连续包月 · 下次扣款', price: 30, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 7, usage: '低', autoRenew: true },
+        { id: 3, icon: '☁️', name: '某云盘超级会员', detail: '连续包月 · 下次扣款', price: 40, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 13, usage: '低', autoRenew: true },
+        { id: 4, icon: '🏋️', name: '某健身APP会员', detail: '连续包月 · 下次扣款', price: 128, cycle: '/月', cycleLabel: '连续包月', chargeInDays: 3, usage: '低', autoRenew: true }
     ],
     userProfile: {
         name: '小陈',
+        subscriptionHistory: [
+            { name: '某健身APP会员', cycle: '/月', autoRenew: true, status: '已取消', cancelledAt: '2026/10/28 18:34:00' }
+        ],
         gender: '男',
         idCard: '441802199803152817',
         birthday: '1998-03-15',

@@ -26,7 +26,7 @@ mockData = {
     { name: '王五', phone: '137****9012', phoneFull: '13790129012', account: '6217 **** **** 9012', bank: '建设银行' }
   ],
   products: [{ id: 'p1', name: '稳健增利90天', risk: 'R2', minAmount: 1000 }],
-  subscriptions: [{ id: 1, name: '某易云 VIP', price: 25, cycle: '/月', autoRenew: true }],
+  subscriptions: [{ id: 1, name: '某视频平台VIP', price: 25, cycle: '/月', autoRenew: true }],
   userProfile: {
     debitCard: { number: '6222 0236 0201 8888 666', available: 998000, balance: 1000000 },
     creditCard: { effectiveLimit: 90000, used: 23650, available: 66350 },
