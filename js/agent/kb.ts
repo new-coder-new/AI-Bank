@@ -1192,7 +1192,7 @@ function agentKBBigrams(title) {
 // 关键修正：同一段查询文本只被「一条最长词」认领，避免
 //   "贷款利率变化会影响什么" 里 "利率" 既算 利率 的关键词、又算 贷款 的关键词，
 //   导致泛化条目靠关键词堆叠反超真正对口的条目。
-function agentKBRetrieve(query, limit) {
+function agentKBRetrieve(query: string, limit?: number): any[] {
   var q = String(query || '').toLowerCase();
   if (!q) return [];
 
@@ -1346,7 +1346,7 @@ function agentKBParseCompare(text) {
 }
 
 // ------------------------------ 4. 回答生成 ------------------------------
-function agentKBPointsHtml(item, tone) {
+function agentKBPointsHtml(item: any, tone?: string): string {
   return (item.points || []).map(function (p) {
     return '<div class="kb-point"><span class="kb-dot" style="background:' + (tone || '#09407F') + ';"></span><span>' + p + '</span></div>';
   }).join('');
@@ -1361,7 +1361,7 @@ function agentKBLiqBadge(item) {
   if (!item.liquidity || item.liquidity === '—') return '';
   return '<span class="kb-badge kb-badge-gray">流动性 ' + item.liquidity + '</span>';
 }
-function agentKBList(title, arr, cls) {
+function agentKBList(title: string, arr: any[], cls?: string): string {
   if (!arr || !arr.length) return '';
   return '<div class="agent-sec-title">' + title + '</div><div class="' + (cls || 'kb-advices') + '">' +
     arr.map(function (x) { return '<div class="' + (cls === 'kb-why-list' ? 'kb-why-item' : 'kb-advice') + '">· ' + x + '</div>'; }).join('') +
@@ -1370,7 +1370,7 @@ function agentKBList(title, arr, cls) {
 
 // 单条知识回答
 // opts: { qtype, why:true|false } —— qtype 决定展示重点
-function agentKBAnswerItem(item, query, opts) {
+function agentKBAnswerItem(item: any, query?: string, opts?: any): any {
   opts = opts || {};
   var qtype = opts.qtype || agentKBClassify(query || '');
 
@@ -1420,7 +1420,7 @@ function agentKBAnswerItem(item, query, opts) {
 }
 
 // 对比两条知识
-function agentKBAnswerCompare(itemA, itemB) {
+function agentKBAnswerCompare(itemA: any, itemB: any): any {
   var dims = [
     { name: '收益特点', get: function (k) { return k.yieldText || '—'; } },
     { name: '风险等级', get: function (k) { return k.risk || '—'; } },
@@ -1490,7 +1490,7 @@ function agentKBPersonalHookCompare(itemA, itemB) {
 }
 
 // 知识卡里的追问按钮
-function agentKBAsk(id) {
+function agentKBAsk(id: string): void {
   var item = FIN_KB_INDEX[id];
   if (!item) return;
   appendMessage('<div class="message user"><div class="msg-avatar user">我</div><div class="msg-content">' +
@@ -1609,7 +1609,7 @@ function agentKBWhyAnswer(item, query) {
   return true;
 }
 
-function agentKBQuickAsk(text) {
+function agentKBQuickAsk(text: string): any {
   appendMessage('<div class="message user"><div class="msg-avatar user">我</div><div class="msg-content">' +
     '<div class="msg-bubble">' + text + '</div></div></div>');
   scrollToBottom();

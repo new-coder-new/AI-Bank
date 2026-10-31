@@ -40,7 +40,6 @@
     "js/agent/insights.js",
     "js/agent/agent-llm.js",
     "js/agent/kb.js",
-    "js/agent/kb.ts",
     "js/agent/agent.js",
     "js/flows/guide-rules.js",
     "js/flows/guide-ai.js",
