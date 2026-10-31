@@ -57,7 +57,6 @@ var currentModule = 'chat';
 /** @type {any} */
 var isLoading = false;
 var cardFrozen = false;
-/** @type {any} */
 var riskProfile = null;
 /** @type {any} */
 var mockData = {
