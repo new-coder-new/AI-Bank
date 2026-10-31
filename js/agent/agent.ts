@@ -23,7 +23,7 @@ function agentFmtInt(n) {
 
 // ------------------------------ 1. 长期记忆与用户画像 ------------------------------
 var AGENT_MEMORY_KEY = 'agent_memory_v2';
-var AGENT_MEMORY = null;
+var AGENT_MEMORY: any = null;
 
 function agentMmdd(offsetDays) {
   var d = new Date();

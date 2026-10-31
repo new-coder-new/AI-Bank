@@ -78,10 +78,10 @@ function guideStartPhoneTransfer() {
 }
 function guideStartTimedTransfer() {
     guideResetAllSessions();
-    GUIDE_TRANSFER = {
+    GUIDE_TRANSFER = ({
         kind: 'timed', payee: null, phone: null, amount: null,
         date: null, time: null, repeat: '不重复', remark: '', stage: 'slots'
-    };
+    });
     currentModule = 'transfer';
     appendMessage(guideMessage('<p>请问收款人、转账金额和执行时间是多少？</p>' +
         '<p class="guide-tip">例如：张三，100，明天下午5点</p>'));

@@ -82,10 +82,10 @@ function guideStartPhoneTransfer() {
 
 function guideStartTimedTransfer() {
   guideResetAllSessions();
-  GUIDE_TRANSFER = {
+  GUIDE_TRANSFER = ({
     kind: 'timed', payee: null, phone: null, amount: null,
     date: null, time: null, repeat: '不重复', remark: '', stage: 'slots'
-  };
+  }) as any;
   currentModule = 'transfer';
   appendMessage(guideMessage(
     '<p>请问收款人、转账金额和执行时间是多少？</p>' +
@@ -329,7 +329,7 @@ function guideTransferStep(text) {
   var transferSvc = guideServiceByKey('transfer');
   var subHit = transferSvc && transferSvc.subs.some(function (x) {
     return x.label === bare || (x.aliases || []).indexOf(bare) !== -1;
-  });
+  }) as any;
   if (subHit) {
     guideFlowLockedNotice();
     return true;

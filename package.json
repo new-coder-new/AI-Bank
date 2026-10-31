@@ -11,7 +11,8 @@
     "preview": "vite preview --port 4173",
     "typecheck": "tsc -p tsconfig.json --noEmit && npm run build:ts",
     "test": "node tests/run-all.js",
-    "build:ts": "tsc -p tsconfig.emit.json && tsc -p tsconfig.emit-loose.json"
+    "build:ts": "tsc -p tsconfig.emit.json && tsc -p tsconfig.emit-loose.json",
+    "typecheck:strict": "tsc -p tsconfig.strict-all.json"
   },
   "engines": {
     "node": ">=18"
