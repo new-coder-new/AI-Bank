@@ -709,7 +709,7 @@ function selectAllContacts() {
 // 更新联系人选择UI
 function updateContactSelectUI() {
   const contacts = mockData.contacts || [];
-  document.getElementById('selectedCount').textContent = batchTransferSelected.length;
+  document.getElementById('selectedCount').textContent = String(batchTransferSelected.length);
   contacts.forEach((_, i) => {
     const item = document.getElementById('contact-item-' + i);
     const checkbox = document.getElementById('contact-checkbox-' + i);

@@ -32,7 +32,7 @@ function agentReanchorDates() {
   var last = localStorage.getItem(AGENT_SHIFT_KEY);
   var lastDate = last ? new Date(last) : new Date(2026, 8, 14);
   var lastStart = new Date(lastDate.getFullYear(), lastDate.getMonth(), lastDate.getDate());
-  var delta = Math.round((todayStart - lastStart) / 86400000);
+  var delta = Math.round((Number(todayStart) - Number(lastStart)) / 86400000);
   if (delta <= 0) return;
   if (delta > 720) delta = 720;
 

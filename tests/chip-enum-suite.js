@@ -3,9 +3,8 @@
 const fs = require('fs');
 
 const path = require('path');
-const RULES_SRC = fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide-rules.js'), 'utf8');
-const AI_SRC = fs.readFileSync(path.join(__dirname, "..", "js", "flows", "guide-ai.js"), "utf8");
-const src = RULES_SRC + '\n' + AI_SRC + '\n' + fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide.js'), 'utf8');
+const loadGuideSource = require('./helpers/load-guide-src');
+const src = loadGuideSource();
 
 const calls = [];
 const logs = [];

@@ -79,6 +79,14 @@ var FUNC_MORE = [
   { key: 'security', label: '安全中心' }
 ];
 
+// 教程步骤数据（原代码引用 tutorialSteps / currentTutorialStep 但未声明）
+var tutorialSteps = [
+  { target: '#func-panel', text: '这里是全部功能入口，点击任意功能即可开始。' },
+  { target: '#chat-input', text: '也可以直接输入需求，例如「给张三转账 1000 元」。' },
+  { target: '#user-chip', text: '点右上角头像可以查看账户、卡片和安全设置。' }
+];
+var currentTutorialStep = 0;
+
 function showTutorial() {
   currentTutorialStep = 0;
   showTutorialStep();

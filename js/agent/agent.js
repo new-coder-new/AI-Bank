@@ -120,7 +120,7 @@ function agentDaysUntil(birthdayStr) {
   var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   var target = new Date(now.getFullYear(), mm - 1, dd);
   if (target < today) target = new Date(now.getFullYear() + 1, mm - 1, dd);
-  return Math.round((target - today) / 86400000);
+  return Math.round((Number(target) - Number(today)) / 86400000);
 }
 
 // 用自然语言指代家人：爱人 / 老婆 / 老公 / 妻子
@@ -300,7 +300,7 @@ function agentUpcomingSubscriptions(withinDays) {
     } else {
       d = new Date(t0.getTime() + 30 * 86400000);
     }
-    return { sub: s, inDays: Math.round((d - t0) / 86400000) };
+    return { sub: s, inDays: Math.round((Number(d) - Number(t0)) / 86400000) };
   }).filter(function (x) { return x.inDays >= 0 && x.inDays <= limit; })
     .sort(function (a, b) { return a.inDays - b.inDays; });
 }
@@ -717,12 +717,13 @@ registerAgentTool('wealth.recommend', {
       { name: '均衡配置', desc: '固收为主 + 少量权益', legs: [['稳健增利90天', 50], ['天天盈货币基金', 30], ['均衡配置混合基金', 20]] }
     ];
 
-    var picked = defs.map(function (pl) {
+    /** @type {any[]} */
+  var picked = defs.map(function (pl) {
       var legs = [];
       pl.legs.forEach(function (pair) {
         var prod = products.filter(function (p) { return p.name === pair[0]; })[0];
         if (!prod) return;
-        var amt = Math.round(amount * pair[1] / 100);
+        var amt = Math.round(Number(amount) * Number(pair[1]) / 100);
         var rateNum = parseFloat(String(prod.rate).replace('%', '')) || 2;
         legs.push({ name: prod.name, amount: amt, rate: prod.rate, rateLabel: prod.rateLabel, riskLevel: prod.riskLevel, estReturn: amt * rateNum / 100 });
       });

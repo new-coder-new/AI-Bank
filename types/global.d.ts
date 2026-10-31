@@ -99,21 +99,10 @@ interface MockData {
 }
 
 /** 前端内存中的账户数据（启动时由 /api/snapshot 注入，localStorage 仅作缓存） */
-declare let mockData: MockData;
 
 /** 当前一级模块 */
-declare let currentModule: 'chat' | 'transfer' | 'bill' | 'card' | 'wealth' | 'sub' | 'flower' | 'userinfo' | string;
 
 /** 客户端 API 层（js/core/api.js） */
-declare const API: {
-  base: string;
-  enabled: boolean;
-  live: boolean;
-  token: string;
-  verifyToken: string;
-  verifyExp: number;
-  pending: unknown[];
-};
 
 declare function apiRequest<T = any>(method: string, path: string, body?: unknown): Promise<T>;
 declare function bankFetch(url: string, options?: RequestInit, timeoutMs?: number): Promise<Response>;
@@ -146,3 +135,51 @@ declare function showOtpVerification(purpose: string, callback: (ok: boolean) =>
 declare function showFaceVerification(purpose: string, callback: (ok: boolean) => void): void;
 declare function requestFundVerify(): Promise<any>;
 declare function verifyAmountRisk(amount: number, purpose: string, actions?: any[]): Promise<{ ok: boolean; tier?: any; pendingReview?: boolean }>;
+
+// —— 运行时动态挂载（window.__BANK_* / __API_* / __AGENT_* 等）——
+interface Window {
+  [key: string]: any;
+}
+
+// DOM 动态属性（现有代码直接用 .value/.disabled/.checked）
+interface Element {
+  value?: string;
+  disabled?: boolean;
+  checked?: boolean;
+  files?: any;
+  dataset?: any;
+  style?: any;
+}
+interface EventTarget {
+  value?: string;
+  checked?: boolean;
+  matches?: (s: string) => boolean;
+}
+
+// —— DOM 动态属性（现有代码直接读 .onclick/.focus/.closest/.getContext）——
+interface Element {
+  onclick?: any;
+  focus?: () => void;
+  closest?: (sel: string) => Element | null;
+  getContext?: (type: string, opts?: any) => any;
+  width?: number;
+  height?: number;
+  min?: string;
+  max?: string;
+  step?: string;
+}
+
+// —— 事件目标 ——
+interface EventTarget {
+  closest?: (sel: string) => Element | null;
+  parentElement?: any;
+}
+
+// —— 跨文件函数（运行时由其它脚本提供）——
+declare function runAgentWorkflow(...args: any[]): any;
+declare function guideTimedNextStep(...args: any[]): any;
+
+// 这三个全局在源码里也有声明（var），这里用 var 合并类型
+declare var mockData: any;
+declare var currentModule: string;
+declare var API: any;

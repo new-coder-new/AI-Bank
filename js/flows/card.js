@@ -157,7 +157,7 @@ function showSmartLimit() {
             <div class="data-card-title">当前额度使用情况</div>
             <div class="data-row"><span class="data-label">信用额度</span><span class="data-value" style="font-weight:700;">¥ ${currentLimit.toLocaleString()}</span></div>
             <div class="data-row"><span class="data-label">已用额度</span><span class="data-value expense">¥ ${used.toLocaleString()}</span></div>
-            <div class="data-row"><span class="data-label">使用率</span><span class="data-value" style="color:${utilization > 80 ? '#ef4444' : utilization > 60 ? '#f59e0b' : '#22c55e'};font-weight:600;">${utilization}%</span></div>
+            <div class="data-row"><span class="data-label">使用率</span><span class="data-value" style="color:${Number(utilization) > 80 ? '#ef4444' : Number(utilization) > 60 ? '#f59e0b' : '#22c55e'};font-weight:600;">${utilization}%</span></div>
           </div>
           <div class="data-card" style="margin-top:12px;background:#f0fdf4;border-color:#bbf7d0;">
             <div class="data-card-title">建议额度</div>

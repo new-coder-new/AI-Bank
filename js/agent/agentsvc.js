@@ -77,7 +77,7 @@ function frozenAnswerCard(mode) {
     head = ' 解冻时间安排';
     for (var i = 0; i < items.length; i++) {
       var it = items[i];
-      var days = Math.max(0, Math.ceil((new Date(String(it.releaseDate).replace(/-/g, '/')) - new Date()) / 86400000));
+      var days = Math.max(0, Math.ceil((Number(new Date(String(it.releaseDate).replace(/-/g, '/'))) - Number(new Date())) / 86400000));
       body += '<div class="data-row"><span class="data-label">' + (it.reason || it.type) +
         '（¥' + agentFmtInt(it.amount) + '）</span><span class="data-value" style="color:#09407F;font-weight:600;">' +
         it.releaseDate + (days === 0 ? '（今天）' : '（还有 ' + days + ' 天）') + '</span></div>';

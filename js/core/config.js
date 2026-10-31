@@ -41,12 +41,14 @@ function bankFetch(url, options, timeoutMs) {
   return fetch(url, opts).finally(function () { if (timer) clearTimeout(timer); });
 }
 
-let currentModule = 'chat';
+/** @type {string} */
+var currentModule = 'chat';
 let isLoading = false;
 let cardFrozen = false;
 let riskProfile = null;
 
-const mockData = {
+/** @type {any} */
+var mockData = {
   contacts: [
     { name: '张三', phone: '138****1234', phoneFull: '13812341234', account: '6222 **** **** 1234', bank: '工商银行' },
     { name: '李四', phone: '139****5678', phoneFull: '13956785678', account: '6225 **** **** 5678', bank: '招商银行' },

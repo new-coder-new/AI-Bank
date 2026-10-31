@@ -2,9 +2,8 @@
 // 用法：node tests/module-scope-suite.js
 const fs = require('fs');
 const path = require('path');
-const RULES = fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide-rules.js'), 'utf8');
-const AI = fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide-ai.js'), 'utf8');
-const src = RULES + '\n' + AI + '\n' + fs.readFileSync(path.join(__dirname, '..', 'js', 'flows', 'guide.js'), 'utf8');
+const loadGuideSource = require('./helpers/load-guide-src');
+const src = loadGuideSource();
 
 global.document = {
   getElementById: () => null,

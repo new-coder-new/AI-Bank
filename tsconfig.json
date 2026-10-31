@@ -5,14 +5,13 @@
     "moduleResolution": "Bundler",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "allowJs": true,
-    "checkJs": false,
+    "checkJs": true,
     "noEmit": true,
     "strict": false,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "isolatedModules": false
+    "resolveJsonModule": true
   },
-  "include": ["types/**/*.d.ts", "js/**/*.js"],
-  "exclude": ["node_modules", "dist", "preview"]
+  "include": ["types/**/*.d.ts", "js/**/*.js", "js/**/*.ts"],
+  "exclude": ["node_modules", "dist", "preview", "js/core/session.js"]
 }

@@ -261,8 +261,11 @@ function renderAgentPlanGoals(text) {
       args: { name: s.label + '专项预算', amount: s.amount, deadline: agentDateStr(p.months * 30) }, amount: 0 });
   });
   if (p.idleSubs.length) {
-    actions.push({ label: '取消 ' + p.idleSubs.length + ' 项低使用订阅，月省 ¥' + agentFmtInt(p.idleSubs.reduce(function (s, x) { return s + x.price; }, 0)), tool: 'subscription.cancel',
-      args: { id: p.idleSubs[0].id } });
+    actions.push(/** @type {any} */ ({
+      label: '取消 ' + p.idleSubs.length + ' 项低使用订阅，月省 ¥' + agentFmtInt(p.idleSubs.reduce(function (s, x) { return s + x.price; }, 0)),
+      tool: 'subscription.cancel',
+      args: { id: p.idleSubs[0].id }
+    }));
   }
   agentRenderFollowUpsExternal(actions);
   return p;
