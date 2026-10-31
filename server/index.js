@@ -520,6 +520,11 @@ function maskCardNumber(num) {
 
 
 
+
+// —— 卡片枚举（服务端校验，前端传值不可信）——
+const SRV_CARD_TYPES = ['白金信用卡', '标准金卡', '旅行信用卡', '青年卡'];
+const SRV_CARD_PURPOSES = ['日常消费', '出行差旅', '教育培训', '大额购物', '其他'];
+
 // —— 服务端价目表（金额以此为准，前端传的 price 仅作参考被忽略）——
 const SRV_FLOWER_BOUQUETS = { '简约玫瑰': 299, '向日葵花束': 168, '混搭小花束': 159, '康乃馨礼盒': 128, '百合礼盒': 199, '郁金香花束': 229 };
 const SRV_FLOWER_CAKES = { '无蛋糕': 0, '6寸水果蛋糕': 168, '8寸奶油蛋糕': 228 };
@@ -1077,6 +1082,145 @@ const routes = {
       status: '待人工复核',
       note: '调额申请已进入复核审批，审批通过后才生效'
     };
+  },
+
+
+  // 信用卡申请：服务端校验 + 建档 + 进复核队列
+  'POST /api/card/apply': async (req) => {
+    const body = await readBody(req);
+    const cardType = String(body.cardType || '').trim();
+    const limit = Math.round((Number(body.limit) || 0) * 100) / 100;
+    const purpose = String(body.purpose || '').trim();
+    if (SRV_CARD_TYPES.indexOf(cardType) === -1) return { ok: false, error: '卡种无效' };
+    if (SRV_CARD_PURPOSES.indexOf(purpose) === -1) return { ok: false, error: '用途无效' };
+    if (!(limit >= 5000 && limit <= 200000)) return { ok: false, error: '期望额度需在 ¥5,000 - ¥200,000 之间' };
+
+    const u = DB.userProfile;
+    u.cardApplications = u.cardApplications || [];
+    const app = { cardType: cardType, limit: limit, purpose: purpose, status: '审核中', appliedAt: fmtDate(now()) };
+    u.cardApplications.push(app);
+
+    u.manualReviews = u.manualReviews || [];
+    const reviewId = 'RV' + Date.now();
+    u.manualReviews.unshift({
+      id: reviewId,
+      purpose: '信用卡申请（' + cardType + '）',
+      amount: limit,
+      status: '待人工复核',
+      submittedAt: fmtDateTime(now()),
+      source: 'Server',
+      actions: [{ tool: 'card.applyCard', args: { cardType: cardType, limit: limit, purpose: purpose } }],
+      note: '审批通过后核发新卡'
+    });
+    auditLog(DB, 'card.apply', { amount: limit, target: cardType, ip: (req.socket && req.socket.remoteAddress) || '', result: 'pending_review' });
+    return { ok: true, application: app, reviewId: reviewId, applications: u.cardApplications };
+  },
+
+  // 信用卡挂失：服务端改卡片状态（幂等）
+  'POST /api/card/lost': async (req) => {
+    const { tail } = await readBody(req);
+    const t = String(tail || '').replace(/\D/g, '').slice(-4);
+    if (t.length !== 4) return { ok: false, error: '请提供 4 位卡片尾号' };
+    const u = DB.userProfile;
+    u.creditCards = u.creditCards || [];
+    const card = u.creditCards.find((c) => String(c.tail) === t);
+    if (!card) return { ok: false, error: '未找到该尾号的卡片' };
+    if (card.status === '已挂失') return { ok: false, error: '该卡片已经是挂失状态' };
+    card.status = '已挂失';
+    card.frozenAt = fmtDateTime(now());
+    if (card.id === 'CARD-MAIN' && u.creditCard) {
+      u.creditCard.isFrozen = true;
+      u.creditCard.status = '已挂失';
+    }
+    auditLog(DB, 'card.lost', { amount: 0, target: '尾号' + t, ip: (req.socket && req.socket.remoteAddress) || '', result: 'ok' });
+    return { ok: true, card: card, cards: u.creditCards };
+  },
+
+  // 复核审批：服务端执行（转账 / 发卡 / 调额），必须带一次性验证令牌
+  'POST /api/review/approve': async (req) => {
+    const { id } = await readBody(req);
+    if (!consumeVerifyToken(req)) return { ok: false, error: '需要安全验证（人工审核）' };
+    const u = DB.userProfile;
+    u.manualReviews = u.manualReviews || [];
+    const review = u.manualReviews.find((r) => r && r.id === String(id));
+    if (!review) return { ok: false, error: '复核记录不存在' };
+    if (review.status !== '待人工复核') return { ok: false, error: '该复核已处理' };
+
+    const actions = Array.isArray(review.actions) ? review.actions : [];
+    if (!actions.length) {
+      review.status = '已通过';
+      review.reviewedAt = fmtDateTime(now());
+      review.note = '审批通过（无绑定执行指令）';
+      return { ok: true, review: review, note: '该申请未绑定可执行指令' };
+    }
+
+    const results = [];
+    let failed = null;
+    for (const a of actions) {
+      try {
+        if (a.tool === 'transfer.execute') {
+          const amt = Math.round((Number(a.args.amount) || 0) * 100) / 100;
+          const d = u.debitCard;
+          if (amt > Number(d.available)) throw new Error('可用余额不足');
+          d.available = Math.round((d.available - amt) * 100) / 100;
+          d.balance = Math.round((d.balance - amt) * 100) / 100;
+          addTxn('expense', amt, '转账给' + (a.args.payee || ''), '人工复核放行');
+          u.transferHistory = u.transferHistory || [];
+          u.transferHistory.unshift({ id: Date.now(), payee: a.args.payee, account: '****', amount: amt, time: fmtDateTime(now()), status: '已完成', channel: '人工复核' });
+          results.push('已转账 ¥' + amt + ' 给 ' + a.args.payee);
+        } else if (a.tool === 'card.applyCard') {
+          const limit = Number(a.args.limit) || 0;
+          const cardType = a.args.cardType || '信用卡';
+          u.creditCards = u.creditCards || [];
+          const tail = String(Math.floor(1000 + Math.random() * 9000));
+          const card = { id: 'CARD-' + Date.now(), cardType: cardType, tail: tail, limit: limit, used: 0, purpose: a.args.purpose || '日常消费', status: '已发卡', issuedAt: fmtDateTime(now()) };
+          u.creditCards.push(card);
+          (u.cardApplications || []).forEach((x) => { if (x.status === '审核中' && x.cardType === cardType && Number(x.limit) === limit) x.status = '已通过'; });
+          results.push('已核发 ' + cardType + '（尾号 ' + tail + '，额度 ¥' + limit + '）');
+        } else if (a.tool === 'card.applyLimit') {
+          const target = Number(a.args.target || a.args.limit) || 0;
+          const c = u.creditCard || {};
+          const used = Number(c.used) || 0;
+          if (target < used) throw new Error('目标额度低于已用额度');
+          c.effectiveLimit = target;
+          c.limit = target;
+          c.approvedLimit = target;
+          c.appliedLimit = target;
+          c.available = Math.max(0, Math.round((target - used) * 100) / 100);
+          c.limitApplyStatus = '已生效';
+          u.creditCard = c;
+          results.push('额度已调整为 ¥' + target);
+        } else {
+          throw new Error('不支持的动作：' + a.tool);
+        }
+      } catch (e) { failed = e.message; break; }
+    }
+
+    if (failed) {
+      review.status = results.length ? '部分执行' : '审批失败';
+      review.note = (results.length ? ('已完成：' + results.join('；') + '；') : '') + '失败：' + failed;
+    } else {
+      review.status = '已通过';
+      review.note = results.join('；');
+    }
+    review.reviewedAt = fmtDateTime(now());
+    auditLog(DB, 'review.approve', { amount: Number(review.amount) || 0, target: review.id, ip: (req.socket && req.socket.remoteAddress) || '', result: review.status });
+    return { ok: true, review: review, results: results, cards: u.creditCards, balance: u.debitCard.balance, available: u.debitCard.available, reviews: u.manualReviews };
+  },
+
+  // 复核驳回
+  'POST /api/review/reject': async (req) => {
+    const { id, reason } = await readBody(req);
+    const u = DB.userProfile;
+    u.manualReviews = u.manualReviews || [];
+    const review = u.manualReviews.find((r) => r && r.id === String(id));
+    if (!review) return { ok: false, error: '复核记录不存在' };
+    if (review.status !== '待人工复核') return { ok: false, error: '该复核已处理' };
+    review.status = '已拒绝';
+    review.reviewedAt = fmtDateTime(now());
+    review.note = String(reason || '管理员已拒绝，账户未扣款');
+    auditLog(DB, 'review.reject', { amount: Number(review.amount) || 0, target: review.id, ip: (req.socket && req.socket.remoteAddress) || '', result: 'rejected' });
+    return { ok: true, review: review, reviews: u.manualReviews };
   },
 
   // 复核通过后生效（提额/降额均支持；降额不得低于已用额度）

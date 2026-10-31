@@ -3187,7 +3187,7 @@ function guideCardApplyConfirm() {
   scrollToBottom();
 }
 
-function guideCardApplySubmit() {
+async function guideCardApplySubmit() {
   var s = GUIDE_CARD_APPLY;
   if (!s || s.stage !== 'confirm') return;
   if (Number(s.limit) < 5000 || Number(s.limit) > 200000) {
@@ -3196,6 +3196,33 @@ function guideCardApplySubmit() {
     s.stage = 'slots';
     s.limit = 0;
     return;
+  }
+
+  // —— 服务端权威：后端在线时由服务端建档并发起复核 ——
+  if (typeof API !== 'undefined' && API.live && typeof apiCardApply === 'function') {
+    var srvApply = null;
+    try { srvApply = await apiCardApply(s.cardType, s.limit, s.purpose); } catch (e) { srvApply = null; }
+    if (srvApply && srvApply.ok) {
+      if (Array.isArray(srvApply.applications)) mockData.userProfile.cardApplications = srvApply.applications;
+      saveUserData();
+      guideConfirmCardDone(s.boxId, '已提交审核');
+      GUIDE_CARD_APPLY = null;
+      if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
+      appendMessage(guideMessage(
+        '<p>信用卡申请已提交，状态为<b>审核中</b>，已进入「复核审批」队列。审批通过后会核发新卡，可在申请记录里查看进度。</p>' +
+        '<div class="guide-chips">' +
+        '<button class="guide-chip" onclick="guideCardApplyRecords()">查看申请记录</button>' +
+        '<button class="guide-chip" onclick="guideStartCardApply()">再申请一张</button>' +
+        '</div>'
+      ));
+      scrollToBottom();
+      return;
+    }
+    if (srvApply && srvApply.error) {
+      appendMessage(guideMessage('<p>申请未提交：' + guideCardApplyEsc(srvApply.error) + '</p>'));
+      scrollToBottom();
+      return;
+    }
   }
 
   var list = (typeof cardApplyList === 'function') ? cardApplyList() : (mockData.userProfile.cardApplications = mockData.userProfile.cardApplications || []);
@@ -4097,8 +4124,35 @@ function guideCardLostSubmit() {
 }
 
 // 验证通过后真正冻结卡片并出结果卡
-function guideCardLostApply(card) {
+async function guideCardLostApply(card) {
   var c = card || {};
+
+  // —— 服务端权威：后端在线时由服务端冻结卡片 ——
+  if (typeof API !== 'undefined' && API.live && typeof apiCardLost === 'function' && c.tail) {
+    var srvLost = null;
+    try { srvLost = await apiCardLost(c.tail); } catch (e) { srvLost = null; }
+    if (srvLost && srvLost.ok) {
+      if (Array.isArray(srvLost.cards)) mockData.userProfile.creditCards = srvLost.cards;
+      if (mockData.userProfile.creditCard) {
+        mockData.userProfile.creditCard.isFrozen = true;
+        mockData.userProfile.creditCard.status = '已挂失';
+      }
+      saveUserData();
+      var boxIdSrv = GUIDE_CARD_LOST && GUIDE_CARD_LOST.confirmBoxId;
+      GUIDE_CARD_LOST = null;
+      if (boxIdSrv && typeof guideCardLostCollapse === 'function') guideCardLostCollapse('信用卡已挂失，新卡将在 3 个工作日内寄出。');
+      appendMessage(guideMessage('<p>信用卡已挂失（尾号 <b>' + guideFlowerEsc(c.tail) + '</b>），新卡将在 3 个工作日内寄出。</p>'));
+      scrollToBottom();
+      if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('card'); }, 400);
+      return;
+    }
+    if (srvLost && srvLost.error) {
+      GUIDE_CARD_LOST = null;
+      appendMessage(guideMessage('<p>挂失未执行：' + guideFlowerEsc(srvLost.error) + '</p>'));
+      scrollToBottom();
+      return;
+    }
+  }
   if (c.status === '已挂失' || (c.id === 'CARD-MAIN' && (cardFrozen || (mockData.userProfile.creditCard && mockData.userProfile.creditCard.isFrozen)))) {
     GUIDE_CARD_LOST = null;
     appendMessage(guideMessage('<p>该卡片已经是挂失状态，无需重复挂失。</p>'));

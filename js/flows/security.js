@@ -1023,6 +1023,36 @@ async function adminApproveReview(id) {
   var record = list.find(function (r) { return r.id === id; });
   if (!record || record.status !== '待人工复核') return;
 
+  // —— 服务端权威：后端在线时由服务端执行审批（发卡/调额/放款）——
+  if (typeof API !== 'undefined' && API.live && typeof apiReviewApprove === 'function' && typeof requestFundVerify === 'function') {
+    await requestFundVerify();
+    var srvReview = null;
+    try { srvReview = await apiReviewApprove(id); } catch (e) { srvReview = null; }
+    if (srvReview && srvReview.ok) {
+      if (Array.isArray(srvReview.reviews)) mockData.userProfile.manualReviews = srvReview.reviews;
+      if (Array.isArray(srvReview.cards)) mockData.userProfile.creditCards = srvReview.cards;
+      if (srvReview.balance != null) mockData.userProfile.debitCard.balance = Number(srvReview.balance);
+      if (srvReview.available != null) mockData.userProfile.debitCard.available = Number(srvReview.available);
+      saveUserData();
+      showAdminReviewPanel();
+      appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">管理员审批</div><div class="msg-bubble">' +
+        '<div class="bank-result-title">已通过</div>' +
+        '<div class="bank-result-note">' + manualReviewEsc((srvReview.results || []).join('；') || '审批已生效') + '</div>' +
+        '</div></div></div>');
+      scrollToBottom();
+      if (typeof renderUserInfoPage === 'function') renderUserInfoPage();
+      return;
+    }
+    if (srvReview && srvReview.error) {
+      appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">管理员审批</div><div class="msg-bubble">' +
+        '<div class="bank-result-title" style="color:#B42318;">审批未执行</div>' +
+        '<div class="bank-result-note">' + manualReviewEsc(srvReview.error) + '</div>' +
+        '</div></div></div>');
+      scrollToBottom();
+      return;
+    }
+  }
+
   var actions = Array.isArray(record.actions) ? record.actions : [];
   var before = Number(mockData.userProfile.debitCard.available) || 0;
 
@@ -1143,10 +1173,26 @@ async function adminApproveReview(id) {
   scrollToBottom();
 }
 
-function adminRejectReview(id) {
+async function adminRejectReview(id) {
   var list = mockData.userProfile.manualReviews || [];
   var record = list.find(function (r) { return r.id === id; });
   if (!record || record.status !== '待人工复核') return;
+  if (typeof API !== 'undefined' && API.live && typeof apiReviewReject === 'function') {
+    var srvRej = null;
+    try { srvRej = await apiReviewReject(id, '管理员已拒绝，账户未扣款'); } catch (e) { srvRej = null; }
+    if (srvRej && srvRej.ok) {
+      if (Array.isArray(srvRej.reviews)) mockData.userProfile.manualReviews = srvRej.reviews;
+      saveUserData();
+      showAdminReviewPanel();
+      appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">管理员审批</div><div class="msg-bubble">' +
+        '<div class="bank-result-title" style="color:#B42318;">已拒绝</div>' +
+        '<div class="bank-result-note">该笔交易未执行，账户未扣款。</div>' +
+        '</div></div></div>');
+      scrollToBottom();
+      if (typeof renderUserInfoPage === 'function') renderUserInfoPage();
+      return;
+    }
+  }
   record.status = '已拒绝';
   record.reviewedAt = new Date().toLocaleString('zh-CN');
   record.note = '管理员已拒绝，账户未扣款';

@@ -255,6 +255,27 @@ function apiSubscriptionAdd(payload) {
   return apiRequest('POST', '/api/subscription/add', payload || {});
 }
 
+// 信用卡申请（服务端建档 + 进复核）
+function apiCardApply(cardType, limit, purpose) {
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  return apiRequest('POST', '/api/card/apply', { cardType: cardType, limit: limit, purpose: purpose });
+}
+// 信用卡挂失（服务端冻结）
+function apiCardLost(tail) {
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  return apiRequest('POST', '/api/card/lost', { tail: tail });
+}
+// 复核审批（服务端执行，需要验证令牌）
+function apiReviewApprove(id) {
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  return apiRequest('POST', '/api/review/approve', { id: id });
+}
+// 复核驳回
+function apiReviewReject(id, reason) {
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  return apiRequest('POST', '/api/review/reject', { id: id, reason: reason || '' });
+}
+
 // 预算设置同步
 function apiBudgetSet(amount, period) {
   return apiPost('/api/budget/set', { amount: amount, period: period || 'month' });
