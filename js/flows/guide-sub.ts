@@ -19,7 +19,7 @@ function guideSubNormName(n: any) {
 }
 
 function guideSubCycleText(cycle: any) {
-  return SUB_CYCLE_TEXT[cycle] || cycle || '';
+  return (SUB_CYCLE_TEXT as any)[cycle] || cycle || '';
 }
 
 function guideSubHistoryList() {

@@ -474,7 +474,7 @@ function guideWealthAIProduct(text: any) {
       var name = o.product ? String(o.product) : '';
       var hit = (mockData.products || []).filter(function (p: any) { return name && (name.indexOf(p.name) !== -1 || p.name.indexOf(name) !== -1); })[0] || null;
       var amt = Number(o.amount);
-      if (!(amt > 0)) amt = null;
+      if (!(amt > 0)) amt = null as any;
       if (!hit && amt === null) return null;
       return { product: hit, amount: amt };
     }
@@ -509,7 +509,7 @@ function guideHoldingFind(text: any) {
   var list = guideHoldingList();
 
   // 先按产品编号匹配（如「赎回1001」「1002 全部」）
-  var byCode = null;
+  var byCode: any = null;
   list.forEach(function (h: any) {
     var code = guideHoldingCode(h);
     if (!code) return;
@@ -534,7 +534,7 @@ function guideHoldingFind(text: any) {
 function guideHoldingAmount(text: any) {
   var t = String(text || '');
   var p = guideHoldingFind(t);
-  if (p && p.name) t = t.replace(p.name, ' ');
+  if (p && (p as any).name) t = t.replace((p as any).name, ' ');
   // 产品编号（1001–1005）不是金额
   t = t.replace(/\b10(0[1-9]|[1-9]\d)\b/g, ' ');
   t = t.replace(/编号|产品号|代码/g, ' ');

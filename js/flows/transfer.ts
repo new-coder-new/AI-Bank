@@ -598,7 +598,7 @@ function smartBatchTransferParse(text: any) {
 function showBatchTransfer(prefill: any) {
   // 先移除之前的批量转账界面，避免ID冲突
   const oldPanel = document.getElementById('batch-transfer-panel');
-  if (oldPanel) oldPanel.closest('.message')?.remove();
+  if (oldPanel) (oldPanel as any).closest('.message')?.remove();
 
   const contacts = mockData.contacts || [];
   // 选中状态按下标保存；对话期间联系人可能被删除导致下标前移。
@@ -821,7 +821,7 @@ function updateBatchSummary() {
 
 function cancelBatchTransfer(btn: any) {
   const panel = document.getElementById('batch-transfer-panel');
-  const msg = panel ? panel.closest('.message') : (btn && btn.closest ? btn.closest('.message') : null);
+  const msg = panel ? (panel as any).closest('.message') : (btn && (btn as any).closest ? (btn as any).closest('.message') : null);
   if (msg) msg.remove();
   batchTransferSelected = [];
   (window as any).__batchContactsSnapshot = null;
@@ -896,7 +896,7 @@ async function confirmBatchTransfer() {
     if (risk && risk.pendingReview) {
       // 已提交人工复核：立即移除面板并清空选中，避免重复提交同一批产生多张复核单
       const panel = document.getElementById('batch-transfer-panel');
-      if (panel) panel.closest('.message')?.remove();
+      if (panel) (panel as any).closest('.message')?.remove();
       batchTransferSelected = [];
       (window as any).__batchContactsSnapshot = null;
       return;
@@ -930,7 +930,7 @@ async function confirmBatchTransfer() {
   
   // 移除批量转账界面，避免ID冲突
   const panel = document.getElementById('batch-transfer-panel');
-  if (panel) panel.closest('.message')?.remove();
+  if (panel) (panel as any).closest('.message')?.remove();
   batchTransferSelected = [];
   (window as any).__batchContactsSnapshot = null;
   
@@ -1056,7 +1056,7 @@ function openScheduledTransferConfirm(task: any, opts: any) {
   scrollToBottom();
   setTimeout(() => {
     const input = document.getElementById(cardId + '-otp');
-    if (input) input.focus();
+    if (input) ((input as any) as HTMLElement).focus?.();
   }, 120);
 }
 

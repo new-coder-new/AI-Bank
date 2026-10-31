@@ -1057,7 +1057,7 @@ function openScheduledTransferConfirm(task, opts) {
     setTimeout(() => {
         const input = document.getElementById(cardId + '-otp');
         if (input)
-            input.focus();
+            input.focus?.();
     }, 120);
 }
 function submitScheduledTransferOtp(btn) {

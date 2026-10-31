@@ -4,6 +4,8 @@
 //  说明：本层为「全局函数 + 动态状态」结构，采用 noCheck 转译；
 //        对外符号统一在 types/global.d.ts 声明。
 // ==========================================================================
+// DOM 取值助手：返回 any，避免在大量弹窗代码里重复写非空断言
+function $id(id) { return $id(id); }
 // ========== 通用安全验证弹窗 ==========
 // 每个弹窗独立回调/验证码/失败次数：两个验证同时存在时不会互相覆盖
 let securityVerifyCallbacks = {};
@@ -31,15 +33,15 @@ function showOtpVerification(purpose, callback) {
             '</div></div>';
     document.body.appendChild(overlay);
     function done(ok) {
-        var el = document.getElementById(id);
+        var el = $id(id);
         if (el)
             el.remove();
         callback(!!ok);
     }
     overlay.querySelector('#' + id + '-ok').onclick = function () {
-        var val = String((document.getElementById(id + '-input') || {}).value || '').trim();
+        var val = String(($id(id + '-input') || {}).value || '').trim();
         if (val !== '123456') {
-            var err = document.getElementById(id + '-err');
+            var err = $id(id + '-err');
             if (err)
                 err.textContent = '验证码不正确，请重新输入';
             return;
@@ -73,14 +75,14 @@ function showFaceVerification(purpose, callback) {
     function done(ok) {
         if (timer)
             clearTimeout(timer);
-        var el = document.getElementById(id);
+        var el = $id(id);
         if (el)
             el.remove();
         callback(!!ok);
     }
     overlay.querySelector('#' + id + '-start').onclick = function () {
-        var st = document.getElementById(id + '-state');
-        var cir = document.getElementById(id + '-circle');
+        var st = $id(id + '-state');
+        var cir = $id(id + '-circle');
         if (st) {
             st.textContent = '识别中，请保持正脸…';
             st.style.color = '#0B4F9C';
@@ -149,11 +151,11 @@ function showSecurityVerification(purpose, callback) {
 }
 // 密码验证
 function pwdScope(popupId, selector) {
-    const popup = document.getElementById(popupId);
+    const popup = $id(popupId);
     return popup ? popup.querySelector(selector) : null;
 }
 function showPasswordVerify(popupId) {
-    const popup = document.getElementById(popupId);
+    const popup = $id(popupId);
     if (!popup)
         return;
     passwordInputs[popupId] = '';
@@ -178,7 +180,7 @@ function showPasswordVerify(popupId) {
 }
 // 输入密码
 function inputPassword(num, popupId) {
-    if (!document.getElementById(popupId))
+    if (!$id(popupId))
         return;
     const value = passwordInputs[popupId] || '';
     if (value.length >= 6)
@@ -189,7 +191,7 @@ function inputPassword(num, popupId) {
         dot.textContent = '•';
     if (passwordInputs[popupId].length === 6) {
         setTimeout(() => {
-            if (!document.getElementById(popupId))
+            if (!$id(popupId))
                 return;
             if (passwordInputs[popupId] === '123456') {
                 if (typeof requestFundVerify === 'function')
@@ -237,11 +239,11 @@ function deletePassword(popupId) {
 }
 // 短信验证
 function smsScope(popupId, selector) {
-    const popup = document.getElementById(popupId);
+    const popup = $id(popupId);
     return popup ? popup.querySelector(selector) : null;
 }
 function showSmsVerify(popupId) {
-    const popup = document.getElementById(popupId);
+    const popup = $id(popupId);
     if (!popup)
         return;
     if (smsTimers[popupId]) {
@@ -270,7 +272,7 @@ function showSmsVerify(popupId) {
 }
 // 处理短信验证码输入
 function handleSmsInput(index, popupId) {
-    const popup = document.getElementById(popupId);
+    const popup = $id(popupId);
     if (!popup)
         return;
     const input = popup.querySelector('#sms-code-' + index);
@@ -286,7 +288,7 @@ function handleSmsInput(index, popupId) {
     }
     if (code.length === 6) {
         setTimeout(() => {
-            if (!document.getElementById(popupId))
+            if (!$id(popupId))
                 return;
             let fresh = '';
             for (let i = 1; i <= 6; i++) {
@@ -347,7 +349,7 @@ function resendSmsCode(popupId) {
 }
 // 指纹验证：演示环境也必须由用户主动点击，不能倒计时自动通过
 function showFingerprintVerify(popupId) {
-    const popup = document.getElementById(popupId);
+    const popup = $id(popupId);
     if (!popup)
         return;
     if (!fingerprintEnabled) {
@@ -369,7 +371,7 @@ function showFingerprintVerify(popupId) {
       <button onclick="closeSecurityVerify('${popupId}', false)" style="flex:1;padding:12px;border:none;background:#f3f4f6;color:#666;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">取消</button>
     </div>
   `;
-    if (!document.getElementById('fingerprint-animation')) {
+    if (!$id('fingerprint-animation')) {
         const style = document.createElement('style');
         style.id = 'fingerprint-animation';
         style.textContent = '@keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }';
@@ -378,7 +380,7 @@ function showFingerprintVerify(popupId) {
 }
 // 关闭安全验证弹窗：按 popupId 取自己的回调，避免两个验证弹窗互相覆盖
 function closeSecurityVerify(popupId, success) {
-    const popup = document.getElementById(popupId);
+    const popup = $id(popupId);
     if (popup)
         popup.remove();
     if (smsTimers[popupId]) {
@@ -493,14 +495,14 @@ function switchCardTab(type, btn) {
     if (btn)
         btn.classList.add('active');
     document.querySelectorAll('.card-tab-content').forEach(c => c.style.display = 'none');
-    const panel = document.getElementById('cardTab-' + type);
+    const panel = $id('cardTab-' + type);
     if (panel)
         panel.style.display = 'block';
 }
 // 切换详情折叠
 function toggleDetail(id) {
-    const el = document.getElementById(id);
-    const arrow = document.getElementById(id + '-arrow');
+    const el = $id(id);
+    const arrow = $id(id + '-arrow');
     if (el.style.display === 'none') {
         el.style.display = 'block';
         if (arrow)
@@ -516,7 +518,7 @@ function renderUserInfoTxns(u) {
     if (!u.recentTxns || u.recentTxns.length === 0) {
         return '<div class="userinfo-empty">暂无交易记录</div>';
     }
-    const dates = u.recentTxns.map(t => t.time.split(' ')[0]).sort();
+    const dates = u.recentTxns.map((t) => t.time.split(' ')[0]).sort();
     const minDate = dates[0];
     const maxDate = dates[dates.length - 1];
     return `
@@ -544,7 +546,7 @@ function renderUserInfoTxns(u) {
         <div id="txnFilterResult" class="ui-sub" style="margin-top:8px;"></div>
       </div>
       <div class="txn-list" id="txnListContainer">
-        ${u.recentTxns.map(t => renderTxnItem(t)).join('')}
+        ${u.recentTxns.map((t) => renderTxnItem(t)).join('')}
       </div>
     </section>
   `;
@@ -561,8 +563,8 @@ function filterTxnsByType(type, btn) {
 }
 // 切换日期筛选面板
 function toggleTxnDateFilter() {
-    const panel = document.getElementById('txnDateFilterPanel');
-    const arrow = document.getElementById('txnDateFilterArrow');
+    const panel = $id('txnDateFilterPanel');
+    const arrow = $id('txnDateFilterArrow');
     if (panel.style.display === 'none') {
         panel.style.display = 'block';
         arrow.style.transform = 'rotate(180deg)';
@@ -575,19 +577,19 @@ function toggleTxnDateFilter() {
 // 应用所有筛选条件
 function applyTxnFilters() {
     const u = mockData.userProfile;
-    const container = document.getElementById('txnListContainer');
+    const container = $id('txnListContainer');
     if (!container)
         return;
     let filtered = u.recentTxns;
     // 类型筛选
     if (currentTxnFilterType !== 'all') {
-        filtered = filtered.filter(t => t.type === currentTxnFilterType);
+        filtered = filtered.filter((t) => t.type === currentTxnFilterType);
     }
     // 日期筛选
-    const startDate = document.getElementById('txnFilterStart')?.value;
-    const endDate = document.getElementById('txnFilterEnd')?.value;
+    const startDate = $id('txnFilterStart')?.value;
+    const endDate = $id('txnFilterEnd')?.value;
     if (startDate && endDate) {
-        filtered = filtered.filter(t => {
+        filtered = filtered.filter((t) => {
             const txnDate = t.time.split(' ')[0];
             return txnDate >= startDate && txnDate <= endDate;
         });
@@ -596,13 +598,13 @@ function applyTxnFilters() {
         container.innerHTML = '<div class="userinfo-empty" style="padding:20px;">该筛选条件下暂无交易记录</div>';
     }
     else {
-        container.innerHTML = filtered.map(t => renderTxnItem(t)).join('');
+        container.innerHTML = filtered.map((t) => renderTxnItem(t)).join('');
     }
     // 更新筛选结果统计
-    const resultDiv = document.getElementById('txnFilterResult');
+    const resultDiv = $id('txnFilterResult');
     if (resultDiv) {
-        const income = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-        const expense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+        const income = filtered.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+        const expense = filtered.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
         resultDiv.textContent = `共${filtered.length}笔 · 收入+¥${income.toLocaleString('zh-CN', { minimumFractionDigits: 2 })} · 支出-¥${expense.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}`;
     }
 }
@@ -755,7 +757,7 @@ function showContactForm(index) {
       </div>
       <div style="display:flex;gap:10px;margin-top:16px;">
         <button class="btn btn-primary" style="flex:1;" onclick="saveContact(${index !== undefined ? index : '-1'}, '${popupId}')"> 保存</button>
-        <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('${popupId}').remove();">取消</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="($id('${popupId}') as HTMLElement).remove();">取消</button>
       </div>
     </div>
   `;
@@ -763,13 +765,13 @@ function showContactForm(index) {
 }
 // 保存联系人
 function saveContact(index, popupId) {
-    const name = document.getElementById('contactName')?.value.trim();
-    const phone = document.getElementById('contactPhone')?.value.trim();
-    const account = document.getElementById('contactAccount')?.value.trim();
-    const bank = document.getElementById('contactBank')?.value.trim();
-    const relation = document.getElementById('contactRelation')?.value;
-    const birthday = document.getElementById('contactBirthday')?.value;
-    const remark = document.getElementById('contactRemark')?.value.trim();
+    const name = $id('contactName')?.value.trim();
+    const phone = $id('contactPhone')?.value.trim();
+    const account = $id('contactAccount')?.value.trim();
+    const bank = $id('contactBank')?.value.trim();
+    const relation = $id('contactRelation')?.value;
+    const birthday = $id('contactBirthday')?.value;
+    const remark = $id('contactRemark')?.value.trim();
     if (!name) {
         alert('请输入姓名');
         return;
@@ -817,7 +819,7 @@ function saveContact(index, popupId) {
     if (!mockData.userProfile.birthdayContacts)
         mockData.userProfile.birthdayContacts = [];
     if (birthday) {
-        const existingIndex = mockData.userProfile.birthdayContacts.findIndex(c => c.name === name);
+        const existingIndex = mockData.userProfile.birthdayContacts.findIndex((c) => c.name === name);
         const birthdayContact = {
             name,
             birthday: birthday.split('-').slice(1).join('-'), // 转换为 MM-DD 格式
@@ -834,14 +836,14 @@ function saveContact(index, popupId) {
     }
     else {
         // 如果没有生日，从生日联系人中移除
-        mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter(c => c.name !== name);
+        mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter((c) => c.name !== name);
     }
     if (typeof syncContactsBirthdays === 'function')
         syncContactsBirthdays();
     saveUserData();
     if (typeof apiSaveContacts === 'function')
         apiSaveContacts(mockData.contacts);
-    document.getElementById(popupId)?.remove();
+    $id(popupId)?.remove();
     renderUserInfoPage();
 }
 // 删除联系人
@@ -855,7 +857,7 @@ function deleteContact(index) {
     mockData.contacts = mockData.contacts.filter(function (x) { return x && x.name !== name; });
     // 同步从鲜花模块的生日联系人中删除
     if (mockData.userProfile.birthdayContacts) {
-        mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter(c => c.name !== name);
+        mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter((c) => c.name !== name);
     }
     saveUserData();
     if (typeof apiDeleteContactByName === 'function')
@@ -883,11 +885,11 @@ function filterTxnsByDate() {
 // 重置日期筛选
 function resetTxnFilter() {
     const u = mockData.userProfile;
-    const dates = u.recentTxns.map(t => t.time.split(' ')[0]).sort();
+    const dates = u.recentTxns.map((t) => t.time.split(' ')[0]).sort();
     const minDate = dates[0];
     const maxDate = dates[dates.length - 1];
-    document.getElementById('txnFilterStart').value = minDate;
-    document.getElementById('txnFilterEnd').value = maxDate;
+    $id('txnFilterStart').value = minDate;
+    $id('txnFilterEnd').value = maxDate;
     applyTxnFilters();
 }
 // 辅助函数：添加交易记录并更新余额
@@ -953,7 +955,7 @@ function quickAction(type) {
             guideFlowLockedNotice();
         return;
     }
-    const welcome = document.getElementById('welcome');
+    const welcome = $id('welcome');
     if (welcome)
         welcome.style.display = 'none';
     switch (type) {
@@ -1118,7 +1120,7 @@ function showManualReviews() {
             '</div>';
     }).join('');
     var empty = '<div class="bank-sched-empty">暂无人工复核申请。<br>大额交易提交后会出现在这里，复核通过前不会扣款。</div>';
-    var old = document.getElementById('manual-review-list-card');
+    var old = $id('manual-review-list-card');
     if (old)
         old.remove();
     appendMessage('<div class="message" id="manual-review-list-card"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
@@ -1406,7 +1408,7 @@ function showAdminReviewPanel() {
                 : '<div class="admin-review-btns admin-review-done">已处理</div>') +
             '</div>';
     }).join('');
-    var old = document.getElementById('admin-review-panel-card');
+    var old = $id('admin-review-panel-card');
     if (old)
         old.remove();
     appendMessage('<div class="message" id="admin-review-panel-card"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
@@ -1533,7 +1535,7 @@ function verifyAmountRisk(amount, purpose, actions) {
 }
 // 新对话：使用应用内确认弹层，避免移动端/部分浏览器把 setTimeout 里的原生 confirm 拦截掉
 function resetChat() {
-    const old = document.getElementById('resetChatDialog');
+    const old = $id('resetChatDialog');
     if (old)
         old.remove();
     const overlay = document.createElement('div');
@@ -1566,7 +1568,7 @@ function resetChat() {
         setTimeout(function () { ok.focus(); }, 30);
 }
 function closeResetChatConfirm() {
-    const el = document.getElementById('resetChatDialog');
+    const el = $id('resetChatDialog');
     if (el)
         el.remove();
 }
@@ -1577,10 +1579,10 @@ function confirmResetChat() {
 // 实际执行重置
 // 对话框里的「清除」：一键清空全部对话并回到主菜单（不再弹确认）
 function clearConversation() {
-    const chatInner = document.getElementById('chatInner');
+    const chatInner = $id('chatInner');
     if (chatInner)
         chatInner.innerHTML = '';
-    const userInfoPage = document.getElementById('userInfoPage');
+    const userInfoPage = $id('userInfoPage');
     if (userInfoPage && userInfoPage.classList.contains('show') && typeof closeUserInfoPage === 'function')
         closeUserInfoPage();
     // 清空对话上下文
@@ -1594,7 +1596,7 @@ function clearConversation() {
         agentSessionReset();
     // 关掉可能开着的浮层（确认框 / 安全验证）
     document.querySelectorAll('[id^="security-verify-"], .bank-dialog-overlay').forEach(function (el) { el.remove(); });
-    const input = document.getElementById('userInput');
+    const input = $id('userInput');
     if (input) {
         input.value = '';
         input.style.height = 'auto';
@@ -1612,10 +1614,10 @@ function clearConversation() {
         showToast('已清除对话，回到主菜单', 1800);
 }
 function performResetChat() {
-    const userInfoPage = document.getElementById('userInfoPage');
+    const userInfoPage = $id('userInfoPage');
     if (userInfoPage && userInfoPage.classList.contains('show'))
         closeUserInfoPage();
-    const chatInner = document.getElementById('chatInner');
+    const chatInner = $id('chatInner');
     if (chatInner) {
         chatInner.innerHTML = '';
     }
@@ -1632,7 +1634,7 @@ function performResetChat() {
     if (typeof agentSessionReset === 'function')
         agentSessionReset();
     // 清空输入框
-    const userInput = document.getElementById('userInput');
+    const userInput = $id('userInput');
     if (userInput)
         userInput.value = '';
     // 重置当前模块为chat

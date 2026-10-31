@@ -184,7 +184,7 @@ function cardLimitApply() {
   cardLimitSubmitReview(target, reason, cur, direction);
   // 提交成功后移除表单，只保留一张结果卡
   var formInput = document.getElementById('cardLimitTarget');
-  var formMessage = formInput ? formInput.closest('.message') : null;
+  var formMessage = formInput ? (formInput as any).closest('.message') : null;
   if (formMessage) formMessage.remove();
   var directionText = target > cur ? '提额' : '降额';
   var html = '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +

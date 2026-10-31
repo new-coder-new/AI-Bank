@@ -451,7 +451,7 @@ function guideAAAIExtract(text: any) {
       if (!o) return null;
       var total = Number(o.total);
       var list = Array.isArray(o.names) ? o.names.filter(function (n: any) { return typeof n === 'string' && n; }) : [];
-      if (!(total > 0)) total = null;
+      if (!(total > 0)) total = null as any;
       if (total === null && !list.length) return null;
       return { total: total, names: list };
     }

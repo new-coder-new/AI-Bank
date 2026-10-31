@@ -561,7 +561,7 @@ function guideCardLimitAIReason(text: any) {
       if (!o) return null;
       var r = CARD_LIMIT_REASONS.indexOf(o.reason) !== -1 ? o.reason : null;
       var l = Number(o.limit);
-      if (!(l > 0)) l = null;
+      if (!(l > 0)) l = null as any;
       if (!r && l === null) return null;
       return { reason: r, limit: l };
     }

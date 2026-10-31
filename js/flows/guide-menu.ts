@@ -632,7 +632,7 @@ async function guideHandleText(text: any) {
       return true;
     }
     if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
-    if (guideServiceByKey('wealth') && guideServiceByKey('wealth').subs.some(function (x: any) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
+    if (guideServiceByKey('wealth') && (guideServiceByKey('wealth') as any).subs.some(function (x: any) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
     return guideLockedRun(function () { return guideWealthStep(t); });
   }
 
@@ -644,7 +644,7 @@ async function guideHandleText(text: any) {
       return true;
     }
     if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
-    if (guideServiceByKey('card') && guideServiceByKey('card').subs.some(function (x: any) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
+    if (guideServiceByKey('card') && (guideServiceByKey('card') as any).subs.some(function (x: any) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
     return guideLockedRun(function () { return guideCardApplyStep(t); });
   }
 
@@ -656,7 +656,7 @@ async function guideHandleText(text: any) {
       return true;
     }
     if (guideResolveService(t)) { guideFlowLockedNotice(); return true; }
-    if (guideServiceByKey('card') && guideServiceByKey('card').subs.some(function (x: any) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
+    if (guideServiceByKey('card') && (guideServiceByKey('card') as any).subs.some(function (x: any) { return x.label === t || (x.aliases || []).indexOf(t) !== -1; })) { guideFlowLockedNotice(); return true; }
     return guideLockedRun(function () { return guideCardLimitStep(t); });
   }
 
@@ -886,7 +886,7 @@ async function guideHandleText(text: any) {
   var fuzzy = guideResolveIntent(t);
   if (fuzzy) {
     if (fuzzy.kind === 'sub') {
-      guidePickSub(fuzzy.service.key, fuzzy.sub.key);
+      guidePickSub((fuzzy.service as any).key, (fuzzy.sub as any).key);
     } else {
       guideOpenService(fuzzy.service.key);
     }
@@ -1014,7 +1014,7 @@ function guidePhoneResolvePayee() {
 
 // 时间段模糊时的追问：只说了「明天下午」就再问「下午几点」
 function guidePeriodQuestion(period: any, date: any) {
-  var label = { '凌晨': '凌晨', '早上': '早上', '上午': '上午', '中午': '中午', '下午': '下午', '晚上': '晚上' }[period] || period;
+  var label = ({ '凌晨': '凌晨', '早上': '早上', '上午': '上午', '中午': '中午', '下午': '下午', '晚上': '晚上' } as Record<string, string>)[period] || period;
   return '<p>请问 ' + (date ? (date + ' ') : '') + label + '几点执行？</p>' +
     '<p class="guide-tip">例如：3点 / 15:00</p>';
 }
@@ -1071,7 +1071,7 @@ function guidePickCardFromText(text: any, cards: any) {
   var idx = t.match(/第?\s*([一二三1-3])\s*张/);
   if (idx) {
     var map = { '一': 0, '二': 1, '三': 2, '1': 0, '2': 1, '3': 2 };
-    var i = map[idx[1]];
+    var i = (map as any)[idx[1]];
     if (cards[i]) return cards[i];
   }
   return null;
@@ -1278,7 +1278,7 @@ async function guideTxnLimitStep(text: any) {
   var mDaily = t.match(/(?:日累计|每日|每天|一天|日限额)[^\d]{0,10}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
   var bare = guideTxnLimitValue(t);
 
-  function guideTxnLimitToVal(m) {
+  function guideTxnLimitToVal(m: any) {
     if (!m) return null;
     var v = parseFloat(m[1]);
     if (m[2]) v *= 10000;

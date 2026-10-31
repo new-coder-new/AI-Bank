@@ -5,19 +5,22 @@
 //        对外符号统一在 types/global.d.ts 声明。
 // ==========================================================================
 
+// DOM 取值助手：返回 any，避免在大量弹窗代码里重复写非空断言
+function $id(id: string): any { return $id(id); }
+
 // ========== 通用安全验证弹窗 ==========
 // 每个弹窗独立回调/验证码/失败次数：两个验证同时存在时不会互相覆盖
-let securityVerifyCallbacks = {};
-let securityVerifyPurposes = {};
-let securityAttempts = {};
-let smsTimers = {};
-let passwordInputs = {};
+let securityVerifyCallbacks: Record<string, any> = {};
+let securityVerifyPurposes: Record<string, any> = {};
+let securityAttempts: Record<string, any> = {};
+let smsTimers: Record<string, any> = {};
+let passwordInputs: Record<string, any> = {};
 let fingerprintEnabled = true;
 
 // 显示安全验证弹窗
 
 // 短信验证码弹窗（演示固定 123456）：供非确认卡路径使用（理财 / 鲜花 / 语音）
-function showOtpVerification(purpose, callback) {
+function showOtpVerification(purpose: any, callback: any) {
   var id = 'otp-verify-' + Date.now();
   var overlay = document.createElement('div');
   overlay.id = id;
@@ -33,26 +36,26 @@ function showOtpVerification(purpose, callback) {
     '<button id="' + id + '-cancel" style="flex:1;height:40px;border:1px solid #E5E7EB;border-radius:10px;background:#fff;color:#374151;cursor:pointer;">取消</button>' +
     '</div></div>';
   document.body.appendChild(overlay);
-  function done(ok) {
-    var el = document.getElementById(id);
+  function done(ok: any) {
+    var el = $id(id);
     if (el) el.remove();
     callback(!!ok);
   }
-  overlay.querySelector('#' + id + '-ok').onclick = function () {
-    var val = String((document.getElementById(id + '-input') || {}).value || '').trim();
+  ((overlay as any).querySelector('#' + id + '-ok') as any).onclick = function () {
+    var val = String(($id(id + '-input') || {}).value || '').trim();
     if (val !== '123456') {
-      var err = document.getElementById(id + '-err');
+      var err = $id(id + '-err');
       if (err) err.textContent = '验证码不正确，请重新输入';
       return;
     }
     if (typeof requestFundVerify === 'function') requestFundVerify();
     done(true);
   };
-  overlay.querySelector('#' + id + '-cancel').onclick = function () { done(false); };
+  ((overlay as any).querySelector('#' + id + '-cancel') as any).onclick = function () { done(false); };
 }
 
 // 人脸确认（演示模拟：点击后 2 秒通过）
-function showFaceVerification(purpose, callback) {
+function showFaceVerification(purpose: any, callback: any) {
   var id = 'face-verify-' + Date.now();
   var overlay = document.createElement('div');
   overlay.id = id;
@@ -70,16 +73,16 @@ function showFaceVerification(purpose, callback) {
     '<button id="' + id + '-cancel" style="flex:1;height:40px;border:1px solid #E5E7EB;border-radius:10px;background:#fff;color:#374151;cursor:pointer;">取消</button>' +
     '</div></div>';
   document.body.appendChild(overlay);
-  var timer = null;
-  function done(ok) {
+  var timer: any = null;
+  function done(ok: any) {
     if (timer) clearTimeout(timer);
-    var el = document.getElementById(id);
+    var el = $id(id);
     if (el) el.remove();
     callback(!!ok);
   }
-  overlay.querySelector('#' + id + '-start').onclick = function () {
-    var st = document.getElementById(id + '-state');
-    var cir = document.getElementById(id + '-circle');
+  (overlay as any).querySelector('#' + id + '-start').onclick = function () {
+    var st = $id(id + '-state');
+    var cir = $id(id + '-circle');
     if (st) { st.textContent = '识别中，请保持正脸…'; st.style.color = '#0B4F9C'; }
     if (cir) { cir.style.borderStyle = 'solid'; cir.style.boxShadow = '0 0 0 6px rgba(11,79,156,.12)'; }
     timer = setTimeout(function () {
@@ -88,10 +91,10 @@ function showFaceVerification(purpose, callback) {
       done(true);
     }, 1800);
   };
-  overlay.querySelector('#' + id + '-cancel').onclick = function () { done(false); };
+  ((overlay as any).querySelector('#' + id + '-cancel') as any).onclick = function () { done(false); };
 }
 
-function showSecurityVerification(purpose, callback) {
+function showSecurityVerification(purpose: any, callback: any) {
   const popupId = 'security-verify-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
   securityVerifyCallbacks[popupId] = callback;
   securityVerifyPurposes[popupId] = String(purpose || '');
@@ -140,12 +143,12 @@ function showSecurityVerification(purpose, callback) {
 }
 
 // 密码验证
-function pwdScope(popupId, selector) {
-  const popup = document.getElementById(popupId);
+function pwdScope(popupId: any, selector: any) {
+  const popup = $id(popupId);
   return popup ? popup.querySelector(selector) : null;
 }
-function showPasswordVerify(popupId) {
-  const popup = document.getElementById(popupId);
+function showPasswordVerify(popupId: any) {
+  const popup = $id(popupId);
   if (!popup) return;
   passwordInputs[popupId] = '';
   popup.querySelector('div > div').innerHTML = `
@@ -169,8 +172,8 @@ function showPasswordVerify(popupId) {
 }
 
 // 输入密码
-function inputPassword(num, popupId) {
-  if (!document.getElementById(popupId)) return;
+function inputPassword(num: any, popupId: any) {
+  if (!$id(popupId)) return;
   const value = passwordInputs[popupId] || '';
   if (value.length >= 6) return;
   passwordInputs[popupId] = value + num;
@@ -178,7 +181,7 @@ function inputPassword(num, popupId) {
   if (dot) dot.textContent = '•';
   if (passwordInputs[popupId].length === 6) {
     setTimeout(() => {
-      if (!document.getElementById(popupId)) return;
+      if (!$id(popupId)) return;
       if (passwordInputs[popupId] === '123456') {
         if (typeof requestFundVerify === 'function') requestFundVerify();
         closeSecurityVerify(popupId, true);
@@ -198,7 +201,7 @@ function inputPassword(num, popupId) {
 }
 
 // 清除密码
-function clearPassword(popupId) {
+function clearPassword(popupId: any) {
   passwordInputs[popupId] = '';
   for (let i = 1; i <= 6; i++) {
     const dot = pwdScope(popupId, '#pwd-dot-' + i);
@@ -209,7 +212,7 @@ function clearPassword(popupId) {
 }
 
 // 删除密码
-function deletePassword(popupId) {
+function deletePassword(popupId: any) {
   const value = passwordInputs[popupId] || '';
   if (!value.length) return;
   const dot = pwdScope(popupId, '#pwd-dot-' + value.length);
@@ -218,12 +221,12 @@ function deletePassword(popupId) {
 }
 
 // 短信验证
-function smsScope(popupId, selector) {
-  const popup = document.getElementById(popupId);
+function smsScope(popupId: any, selector: any) {
+  const popup = $id(popupId);
   return popup ? popup.querySelector(selector) : null;
 }
-function showSmsVerify(popupId) {
-  const popup = document.getElementById(popupId);
+function showSmsVerify(popupId: any) {
+  const popup = $id(popupId);
   if (!popup) return;
   if (smsTimers[popupId]) { clearInterval(smsTimers[popupId]); delete smsTimers[popupId]; }
   popup.querySelector('div > div').innerHTML = `
@@ -247,8 +250,8 @@ function showSmsVerify(popupId) {
 }
 
 // 处理短信验证码输入
-function handleSmsInput(index, popupId) {
-  const popup = document.getElementById(popupId);
+function handleSmsInput(index: any, popupId: any) {
+  const popup = $id(popupId);
   if (!popup) return;
   const input = popup.querySelector('#sms-code-' + index);
   if (input && input.value && index < 6) {
@@ -262,7 +265,7 @@ function handleSmsInput(index, popupId) {
   }
   if (code.length === 6) {
     setTimeout(() => {
-      if (!document.getElementById(popupId)) return;
+      if (!$id(popupId)) return;
       let fresh = '';
       for (let i = 1; i <= 6; i++) {
         const el = popup.querySelector('#sms-code-' + i);
@@ -290,7 +293,7 @@ function handleSmsInput(index, popupId) {
 }
 
 // 短信倒计时：每个弹窗独立计时器，关闭/重发时清理
-function startSmsCountdown(popupId) {
+function startSmsCountdown(popupId: any) {
   if (smsTimers[popupId]) { clearInterval(smsTimers[popupId]); delete smsTimers[popupId]; }
   let count = 60;
   const btn = smsScope(popupId, '#smsResendBtn');
@@ -309,13 +312,13 @@ function startSmsCountdown(popupId) {
 }
 
 // 重新发送短信
-function resendSmsCode(popupId) {
+function resendSmsCode(popupId: any) {
   showSmsVerify(popupId);
 }
 
 // 指纹验证：演示环境也必须由用户主动点击，不能倒计时自动通过
-function showFingerprintVerify(popupId) {
-  const popup = document.getElementById(popupId);
+function showFingerprintVerify(popupId: any) {
+  const popup = $id(popupId);
   if (!popup) return;
   if (!fingerprintEnabled) {
     if (typeof showToast === 'function') showToast('指纹验证已在安全中心关闭', 2200);
@@ -335,7 +338,7 @@ function showFingerprintVerify(popupId) {
       <button onclick="closeSecurityVerify('${popupId}', false)" style="flex:1;padding:12px;border:none;background:#f3f4f6;color:#666;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">取消</button>
     </div>
   `;
-  if (!document.getElementById('fingerprint-animation')) {
+  if (!$id('fingerprint-animation')) {
     const style = document.createElement('style');
     style.id = 'fingerprint-animation';
     style.textContent = '@keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }';
@@ -344,8 +347,8 @@ function showFingerprintVerify(popupId) {
 }
 
 // 关闭安全验证弹窗：按 popupId 取自己的回调，避免两个验证弹窗互相覆盖
-function closeSecurityVerify(popupId, success) {
-  const popup = document.getElementById(popupId);
+function closeSecurityVerify(popupId: any, success: any) {
+  const popup = $id(popupId);
   if (popup) popup.remove();
   if (smsTimers[popupId]) { clearInterval(smsTimers[popupId]); delete smsTimers[popupId]; }
   const cb = securityVerifyCallbacks[popupId];
@@ -356,20 +359,20 @@ function closeSecurityVerify(popupId, success) {
   if (typeof cb === 'function') cb(success);
 }
 
-function maskUserInfoCard(num) {
+function maskUserInfoCard(num: any) {
   const digits = String(num || '').replace(/\D/g, '');
   if (digits.length < 8) return String(num || '');
   return digits.slice(0, 4) + ' **** **** ' + digits.slice(-4);
 }
 
-function renderUserInfoCards(u) {
+function renderUserInfoCards(u: any) {
   const d = u.debitCard;
   const c = u.creditCard || {};
   const creditStatus = c.status || '正常';
   // 信用卡以「卡片管理」使用的 creditCards 为准，保证两处数据一致
   const cardList = (Array.isArray(u.creditCards) ? u.creditCards : []).slice();
-  const totalLimit = cardList.reduce(function (s2, x) { return s2 + (Number(x.limit) || 0); }, 0);
-  const totalUsed = cardList.reduce(function (s2, x) { return s2 + (Number(x.used) || 0); }, 0);
+  const totalLimit = cardList.reduce(function (s2: any, x: any) { return s2 + (Number(x.limit) || 0); }, 0);
+  const totalUsed = cardList.reduce(function (s2: any, x: any) { return s2 + (Number(x.used) || 0); }, 0);
   const totalAvailable = totalLimit - totalUsed;
   return `
     <section class="userinfo-section">
@@ -420,7 +423,7 @@ function renderUserInfoCards(u) {
           <div><span>已用额度</span><b>¥${totalUsed.toLocaleString()}</b></div>
           <div><span>本期账单</span><b>¥${(Number(c.currentBill) || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2})}</b></div>
         </div>
-        ${cardList.length ? cardList.map(function (card, idx) {
+        ${cardList.length ? cardList.map(function (card: any, idx: any) {
           const limit = Number(card.limit) || 0;
           const used = Number(card.used) || 0;
           const avail = limit - used;
@@ -452,18 +455,18 @@ function renderUserInfoCards(u) {
 }
 
 // 切换卡片Tab
-function switchCardTab(type, btn) {
+function switchCardTab(type: any, btn: any) {
   document.querySelectorAll('.card-tab').forEach(t => t.classList.remove('active'));
   if (btn) btn.classList.add('active');
   document.querySelectorAll('.card-tab-content').forEach(c => c.style.display = 'none');
-  const panel = document.getElementById('cardTab-' + type);
+  const panel = $id('cardTab-' + type);
   if (panel) panel.style.display = 'block';
 }
 
 // 切换详情折叠
-function toggleDetail(id) {
-  const el = document.getElementById(id);
-  const arrow = document.getElementById(id + '-arrow');
+function toggleDetail(id: any) {
+  const el = $id(id);
+  const arrow = $id(id + '-arrow');
   if (el.style.display === 'none') {
     el.style.display = 'block';
     if (arrow) arrow.style.transform = 'rotate(180deg)';
@@ -473,11 +476,11 @@ function toggleDetail(id) {
   }
 }
 
-function renderUserInfoTxns(u) {
+function renderUserInfoTxns(u: any) {
   if (!u.recentTxns || u.recentTxns.length === 0) {
     return '<div class="userinfo-empty">暂无交易记录</div>';
   }
-  const dates = u.recentTxns.map(t => t.time.split(' ')[0]).sort();
+  const dates = u.recentTxns.map((t: any) => t.time.split(' ')[0]).sort();
   const minDate = dates[0];
   const maxDate = dates[dates.length - 1];
 
@@ -506,7 +509,7 @@ function renderUserInfoTxns(u) {
         <div id="txnFilterResult" class="ui-sub" style="margin-top:8px;"></div>
       </div>
       <div class="txn-list" id="txnListContainer">
-        ${u.recentTxns.map(t => renderTxnItem(t)).join('')}
+        ${u.recentTxns.map((t: any) => renderTxnItem(t)).join('')}
       </div>
     </section>
   `;
@@ -516,7 +519,7 @@ function renderUserInfoTxns(u) {
 let currentTxnFilterType = 'all';
 
 // 按类型筛选交易记录
-function filterTxnsByType(type, btn) {
+function filterTxnsByType(type: any, btn: any) {
   currentTxnFilterType = type;
   document.querySelectorAll('.txn-filter-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -525,8 +528,8 @@ function filterTxnsByType(type, btn) {
 
 // 切换日期筛选面板
 function toggleTxnDateFilter() {
-  const panel = document.getElementById('txnDateFilterPanel');
-  const arrow = document.getElementById('txnDateFilterArrow');
+  const panel = $id('txnDateFilterPanel');
+  const arrow = $id('txnDateFilterArrow');
   if (panel.style.display === 'none') {
     panel.style.display = 'block';
     arrow.style.transform = 'rotate(180deg)';
@@ -539,21 +542,21 @@ function toggleTxnDateFilter() {
 // 应用所有筛选条件
 function applyTxnFilters() {
   const u = mockData.userProfile;
-  const container = document.getElementById('txnListContainer');
+  const container = $id('txnListContainer');
   if (!container) return;
 
   let filtered = u.recentTxns;
 
   // 类型筛选
   if (currentTxnFilterType !== 'all') {
-    filtered = filtered.filter(t => t.type === currentTxnFilterType);
+    filtered = filtered.filter((t: any) => t.type === currentTxnFilterType);
   }
 
   // 日期筛选
-  const startDate = document.getElementById('txnFilterStart')?.value;
-  const endDate = document.getElementById('txnFilterEnd')?.value;
+  const startDate = $id('txnFilterStart')?.value;
+  const endDate = $id('txnFilterEnd')?.value;
   if (startDate && endDate) {
-    filtered = filtered.filter(t => {
+    filtered = filtered.filter((t: any) => {
       const txnDate = t.time.split(' ')[0];
       return txnDate >= startDate && txnDate <= endDate;
     });
@@ -562,20 +565,20 @@ function applyTxnFilters() {
   if (filtered.length === 0) {
     container.innerHTML = '<div class="userinfo-empty" style="padding:20px;">该筛选条件下暂无交易记录</div>';
   } else {
-    container.innerHTML = filtered.map(t => renderTxnItem(t)).join('');
+    container.innerHTML = filtered.map((t: any) => renderTxnItem(t)).join('');
   }
 
   // 更新筛选结果统计
-  const resultDiv = document.getElementById('txnFilterResult');
+  const resultDiv = $id('txnFilterResult');
   if (resultDiv) {
-    const income = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const income = filtered.filter((t: any) => t.type === 'income').reduce((s: any, t: any) => s + t.amount, 0);
+    const expense = filtered.filter((t: any) => t.type === 'expense').reduce((s: any, t: any) => s + t.amount, 0);
     resultDiv.textContent = `共${filtered.length}笔 · 收入+¥${income.toLocaleString('zh-CN', {minimumFractionDigits: 2})} · 支出-¥${expense.toLocaleString('zh-CN', {minimumFractionDigits: 2})}`;
   }
 }
 
 // 渲染单条交易记录
-function renderTxnItem(t) {
+function renderTxnItem(t: any) {
   return `
     <div class="txn-item">
       <div class="txn-icon ${t.type}">${t.type === 'income' ? '+' : '−'}</div>
@@ -597,10 +600,10 @@ function syncContactsBirthdays() {
   var bc = u.birthdayContacts;
 
   // 生日联系人 → 通讯录：缺人就补一条，已有的补齐关系与生日
-  bc.forEach(function (b) {
+  bc.forEach(function (b: any) {
     if (!b || !b.name) return;
     var full = /^\d{4}-/.test(String(b.birthday || '')) ? b.birthday : ('2026-' + b.birthday);
-    var c = mockData.contacts.filter(function (x) { return x.name === b.name; })[0];
+    var c = mockData.contacts.filter(function (x: any) { return x.name === b.name; })[0];
     if (c) {
       if (!c.relation) c.relation = b.relation || '朋友';
       if (!c.birthday) c.birthday = full;
@@ -614,10 +617,10 @@ function syncContactsBirthdays() {
 
   // 通讯录 → 生日联系人：以通讯录为准（生日/关系），没有就补一条
   // 这样「联系人里改生日」后，今日提醒不会还停留在旧日期
-  mockData.contacts.forEach(function (c) {
+  mockData.contacts.forEach(function (c: any) {
     if (!c || !c.name || !c.birthday) return;
     var md = String(c.birthday).slice(5);
-    var hit = bc.filter(function (b) { return b && b.name === c.name; })[0];
+    var hit = bc.filter(function (b: any) { return b && b.name === c.name; })[0];
     if (hit) {
       hit.birthday = md;
       if (c.relation) hit.relation = c.relation;
@@ -633,7 +636,7 @@ function syncContactsBirthdays() {
   });
   return mockData.contacts;
 }
-function renderUserInfoContacts(u) {
+function renderUserInfoContacts(u: any) {
   const contacts = (typeof syncContactsBirthdays === 'function') ? syncContactsBirthdays() : (mockData.contacts || []);
   return `
     <section class="userinfo-section">
@@ -646,7 +649,7 @@ function renderUserInfoContacts(u) {
       </div>
       ${contacts.length === 0 ? '<div class="userinfo-empty">暂无联系人，点击右上角「添加」开始添加</div>' : ''}
       <div class="ui-contact-list">
-        ${contacts.map((c, i) => `
+        ${contacts.map((c: any, i: any) => `
           <div class="ui-contact-row">
             <div class="ui-contact-avatar">${escapeHtml(String(c.name || '?').charAt(0))}</div>
             <div class="ui-contact-main">
@@ -666,7 +669,7 @@ function renderUserInfoContacts(u) {
 }
 
 // 显示添加/编辑联系人表单
-function showContactForm(index) {
+function showContactForm(index: any) {
   const contacts = mockData.contacts || [];
   const c = index !== undefined ? contacts[index] : {};
   const isEdit = index !== undefined;
@@ -719,7 +722,7 @@ function showContactForm(index) {
       </div>
       <div style="display:flex;gap:10px;margin-top:16px;">
         <button class="btn btn-primary" style="flex:1;" onclick="saveContact(${index !== undefined ? index : '-1'}, '${popupId}')"> 保存</button>
-        <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('${popupId}').remove();">取消</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="($id('${popupId}') as HTMLElement).remove();">取消</button>
       </div>
     </div>
   `;
@@ -727,14 +730,14 @@ function showContactForm(index) {
 }
 
 // 保存联系人
-function saveContact(index, popupId) {
-  const name = document.getElementById('contactName')?.value.trim();
-  const phone = document.getElementById('contactPhone')?.value.trim();
-  const account = document.getElementById('contactAccount')?.value.trim();
-  const bank = document.getElementById('contactBank')?.value.trim();
-  const relation = document.getElementById('contactRelation')?.value;
-  const birthday = document.getElementById('contactBirthday')?.value;
-  const remark = document.getElementById('contactRemark')?.value.trim();
+function saveContact(index: any, popupId: any) {
+  const name = $id('contactName')?.value.trim();
+  const phone = $id('contactPhone')?.value.trim();
+  const account = $id('contactAccount')?.value.trim();
+  const bank = $id('contactBank')?.value.trim();
+  const relation = $id('contactRelation')?.value;
+  const birthday = $id('contactBirthday')?.value;
+  const remark = $id('contactRemark')?.value.trim();
 
   if (!name) { alert('请输入姓名'); return; }
   if (!phone) { alert('请输入手机号'); return; }
@@ -751,7 +754,7 @@ function saveContact(index, popupId) {
   if (index >= 0) {
     // 按「原来的姓名」定位，避免列表顺序变化时改错人
     const oldName = (mockData.contacts[index] && mockData.contacts[index].name) || '';
-    const targetIdx = mockData.contacts.findIndex(function (x) { return x && x.name === oldName; });
+    const targetIdx = mockData.contacts.findIndex(function (x: any) { return x && x.name === oldName; });
     const at = targetIdx >= 0 ? targetIdx : index;
     const prev = mockData.contacts[at] || {};
     // 保留编辑表单里没有的字段（完整手机号、地址等）
@@ -760,7 +763,7 @@ function saveContact(index, popupId) {
     mockData.contacts[at] = merged;
   } else {
     // 新增：同名的直接更新，避免重复插入
-    const dup = mockData.contacts.findIndex(function (x) { return x && x.name === name; });
+    const dup = mockData.contacts.findIndex(function (x: any) { return x && x.name === name; });
     if (dup >= 0) mockData.contacts[dup] = Object.assign({}, mockData.contacts[dup], contact);
     else mockData.contacts.push(contact);
   }
@@ -768,7 +771,7 @@ function saveContact(index, popupId) {
   // 同步到鲜花模块的生日联系人（如果有生日）
   if (!mockData.userProfile.birthdayContacts) mockData.userProfile.birthdayContacts = [];
   if (birthday) {
-    const existingIndex = mockData.userProfile.birthdayContacts.findIndex(c => c.name === name);
+    const existingIndex = mockData.userProfile.birthdayContacts.findIndex((c: any) => c.name === name);
     const birthdayContact = {
       name,
       birthday: birthday.split('-').slice(1).join('-'), // 转换为 MM-DD 格式
@@ -783,26 +786,26 @@ function saveContact(index, popupId) {
     }
   } else {
     // 如果没有生日，从生日联系人中移除
-    mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter(c => c.name !== name);
+    mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter((c: any) => c.name !== name);
   }
 
   if (typeof syncContactsBirthdays === 'function') syncContactsBirthdays();
   saveUserData();
   if (typeof apiSaveContacts === 'function') apiSaveContacts(mockData.contacts);
-  document.getElementById(popupId)?.remove();
+  $id(popupId)?.remove();
   renderUserInfoPage();
 }
 
 // 删除联系人
-function deleteContact(index) {
+function deleteContact(index: any) {
   if (!confirm('确定要删除该联系人吗？')) return;
   const contact = mockData.contacts[index];
   if (!contact) return;
   const name = contact.name;
-  mockData.contacts = mockData.contacts.filter(function (x) { return x && x.name !== name; });
+  mockData.contacts = mockData.contacts.filter(function (x: any) { return x && x.name !== name; });
   // 同步从鲜花模块的生日联系人中删除
   if (mockData.userProfile.birthdayContacts) {
-    mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter(c => c.name !== name);
+    mockData.userProfile.birthdayContacts = mockData.userProfile.birthdayContacts.filter((c: any) => c.name !== name);
   }
   saveUserData();
   if (typeof apiDeleteContactByName === 'function') apiDeleteContactByName(name);
@@ -832,16 +835,16 @@ function filterTxnsByDate() {
 // 重置日期筛选
 function resetTxnFilter() {
   const u = mockData.userProfile;
-  const dates = u.recentTxns.map(t => t.time.split(' ')[0]).sort();
+  const dates = u.recentTxns.map((t: any) => t.time.split(' ')[0]).sort();
   const minDate = dates[0];
   const maxDate = dates[dates.length - 1];
-  document.getElementById('txnFilterStart').value = minDate;
-  document.getElementById('txnFilterEnd').value = maxDate;
+  ($id('txnFilterStart') as HTMLElement).value = minDate;
+  ($id('txnFilterEnd') as HTMLElement).value = maxDate;
   applyTxnFilters();
 }
 
 // 辅助函数：添加交易记录并更新余额
-function addTransaction(type, amount, desc, channel, deductBalance) {
+function addTransaction(type: any, amount: any, desc: any, channel: any, deductBalance: any) {
   if (deductBalance === undefined) deductBalance = true;
   const u = mockData.userProfile;
 
@@ -876,7 +879,7 @@ function addTransaction(type, amount, desc, channel, deductBalance) {
         cat.value = Math.round((Number(cat.value) + amount) * 100) / 100;
       }
     }
-  } catch (e) { }
+  } catch (e: any) { }
   if (deductBalance && amount > 0) {
     if (type === 'income') {
       u.debitCard.balance += amount;
@@ -892,13 +895,13 @@ function addTransaction(type, amount, desc, channel, deductBalance) {
   return true;
 }
 
-function quickAction(type) {
+function quickAction(type: any) {
   // 流程锁：还有没走完的对话流程时，不允许从按钮跳到别的功能
   if (typeof guideActiveFlowLabel === 'function' && guideActiveFlowLabel()) {
     if (typeof guideFlowLockedNotice === 'function') guideFlowLockedNotice();
     return;
   }
-  const welcome = document.getElementById('welcome');
+  const welcome = $id('welcome');
   if (welcome) welcome.style.display = 'none';
   switch(type) {
     case 'chat': break;
@@ -942,15 +945,15 @@ function quickAction(type) {
 
 // 大额资金操作统一验证：金额达到 T2/T3/T4 时复用安全验证弹窗
 // T4（≥ ¥50,000）验证通过后只提交人工复核，不立即扣款。
-function manualReviewEsc(v) {
+function manualReviewEsc(v: any) {
   return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function manualReviewMoney(v) {
+function manualReviewMoney(v: any) {
   return '¥' + (Number(v) || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function submitManualReview(opts) {
+function submitManualReview(opts: any) {
   var o = opts || {};
   var record = {
     id: 'MR' + Date.now() + Math.floor(Math.random() * 1000),
@@ -973,7 +976,7 @@ function submitManualReview(opts) {
   return record;
 }
 
-function manualReviewCardHtml(record) {
+function manualReviewCardHtml(record: any) {
   var r = record || {};
   return '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
@@ -987,8 +990,8 @@ function manualReviewCardHtml(record) {
 
 function showManualReviews() {
   var list = (mockData.userProfile.manualReviews || []).slice();
-  var pending = list.filter(function (r) { return r.status === '待人工复核'; }).length;
-  var rows = list.map(function (r) {
+  var pending = list.filter(function (r: any) { return r.status === '待人工复核'; }).length;
+  var rows = list.map(function (r: any) {
     var isPending = r.status === '待人工复核';
     var statusClass = r.status === '已通过' ? 'approved' : r.status === '已拒绝' ? 'rejected' : r.status === '审批失败' ? 'failed' : 'review';
     return '<div class="bank-sched-item">' +
@@ -998,7 +1001,7 @@ function showManualReviews() {
       '</div>';
   }).join('');
   var empty = '<div class="bank-sched-empty">暂无人工复核申请。<br>大额交易提交后会出现在这里，复核通过前不会扣款。</div>';
-  var old = document.getElementById('manual-review-list-card');
+  var old = $id('manual-review-list-card');
   if (old) old.remove();
   appendMessage('<div class="message" id="manual-review-list-card"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
@@ -1010,31 +1013,31 @@ function showManualReviews() {
   scrollToBottom();
 }
 
-function manualReviewActionAmount(a) {
+function manualReviewActionAmount(a: any) {
   if (!a) return 0;
   var args = a.args || {};
   if (a.tool === 'life.orderFlower' || a.tool === 'life.orderCake') return Number(args.price) || 0;
   return Number(args.amount) || 0;
 }
 
-async function adminApproveReview(id) {
+async function adminApproveReview(id: any) {
   // 人工复核通过会真正执行资金操作：先过一道安全验证（交易密码），
   // 避免用户在界面上自己点「通过」绕过 T4 大额复核。
   if (typeof showSecurityVerification === 'function') {
-    var __ok = await new Promise(function (resolve) {
-      showSecurityVerification('人工复核通过（' + (id || '') + '）', function (ok) { resolve(!!ok); });
+    var __ok = await new Promise(function (resolve: any) {
+      showSecurityVerification('人工复核通过（' + (id || '') + '）', function (ok: any) { resolve(!!ok); });
     });
     if (!__ok) return;
   }
   var list = mockData.userProfile.manualReviews || [];
-  var record = list.find(function (r) { return r.id === id; });
+  var record = list.find(function (r: any) { return r.id === id; });
   if (!record || record.status !== '待人工复核') return;
 
   // —— 服务端权威：后端在线时由服务端执行审批（发卡/调额/放款）——
   if (typeof API !== 'undefined' && API.live && typeof apiReviewApprove === 'function' && typeof requestFundVerify === 'function') {
     await requestFundVerify();
     var srvReview = null;
-    try { srvReview = await apiReviewApprove(id); } catch (e) { srvReview = null; }
+    try { srvReview = await apiReviewApprove(id); } catch (e: any) { srvReview = null; }
     if (srvReview && srvReview.ok) {
       if (Array.isArray(srvReview.reviews)) mockData.userProfile.manualReviews = srvReview.reviews;
       if (Array.isArray(srvReview.cards)) mockData.userProfile.creditCards = srvReview.cards;
@@ -1078,7 +1081,7 @@ async function adminApproveReview(id) {
     return;
   }
 
-  var total = actions.reduce(function (s, a) { return s + manualReviewActionAmount(a); }, 0);
+  var total = actions.reduce(function (s: any, a: any) { return s + manualReviewActionAmount(a); }, 0);
   if (total > before) {
     appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">管理员审批</div><div class="msg-bubble agent-bubble"><div class="bank-result"><div class="bank-result-title" style="color:#B42318;">无法通过</div><div class="bank-result-note">当前可用余额 ¥' + before.toLocaleString('zh-CN', { minimumFractionDigits: 2 }) + '，不足以执行 ¥' + total.toLocaleString('zh-CN', { minimumFractionDigits: 2 }) + '。申请仍保持待审批。</div></div></div></div></div>');
     scrollToBottom();
@@ -1086,7 +1089,7 @@ async function adminApproveReview(id) {
   }
 
   var failed = null;
-  var summaries = [];
+  var summaries: any[] = [];
   for (var i = 0; i < actions.length; i++) {
     var a = actions[i];
     try {
@@ -1100,8 +1103,8 @@ async function adminApproveReview(id) {
       }
       if (!res || res.ok === false) { failed = res || { ok: false, summary: '执行失败' }; break; }
       summaries.push(res.summary || '已完成');
-    } catch (e) {
-      failed = { ok: false, summary: (e && e.message) || '执行失败' };
+    } catch (e: any) {
+      failed = { ok: false, summary: (e && (e as any).message) || '执行失败' };
       break;
     }
   }
@@ -1124,9 +1127,9 @@ async function adminApproveReview(id) {
     return;
   }
 
-  var isCardApply = actions.some(function (a) { return a.tool === 'card.applyCard'; });
+  var isCardApply = actions.some(function (a: any) { return a.tool === 'card.applyCard'; });
   if (isCardApply) {
-    var applyArgs = (actions.filter(function (a) { return a.tool === 'card.applyCard'; })[0] || {}).args || {};
+    var applyArgs = (actions.filter(function (a: any) { return a.tool === 'card.applyCard'; })[0] || {}).args || {};
     record.status = '已通过';
     record.reviewedAt = new Date().toLocaleString('zh-CN');
     record.note = '已通过；' + (summaries.join('；') || '已核发新卡');
@@ -1146,7 +1149,7 @@ async function adminApproveReview(id) {
     return;
   }
 
-  var isCardLimit = actions.some(function (a) { return a.tool === 'card.applyLimit'; });
+  var isCardLimit = actions.some(function (a: any) { return a.tool === 'card.applyLimit'; });
   if (isCardLimit) {
     var card = mockData.userProfile.creditCard;
     record.status = '已通过';
@@ -1180,13 +1183,13 @@ async function adminApproveReview(id) {
   scrollToBottom();
 }
 
-async function adminRejectReview(id) {
+async function adminRejectReview(id: any) {
   var list = mockData.userProfile.manualReviews || [];
-  var record = list.find(function (r) { return r.id === id; });
+  var record = list.find(function (r: any) { return r.id === id; });
   if (!record || record.status !== '待人工复核') return;
   if (typeof API !== 'undefined' && API.live && typeof apiReviewReject === 'function') {
     var srvRej = null;
-    try { srvRej = await apiReviewReject(id, '管理员已拒绝，账户未扣款'); } catch (e) { srvRej = null; }
+    try { srvRej = await apiReviewReject(id, '管理员已拒绝，账户未扣款'); } catch (e: any) { srvRej = null; }
     if (srvRej && srvRej.ok) {
       if (Array.isArray(srvRej.reviews)) mockData.userProfile.manualReviews = srvRej.reviews;
       saveUserData();
@@ -1203,8 +1206,8 @@ async function adminRejectReview(id) {
   record.status = '已拒绝';
   record.reviewedAt = new Date().toLocaleString('zh-CN');
   record.note = '管理员已拒绝，账户未扣款';
-  if (record.actions && record.actions.some(function (a) { return a.tool === 'card.applyCard'; })) {
-    var applyAction = record.actions.filter(function (a) { return a.tool === 'card.applyCard'; })[0] || {};
+  if (record.actions && record.actions.some(function (a: any) { return a.tool === 'card.applyCard'; })) {
+    var applyAction = record.actions.filter(function (a: any) { return a.tool === 'card.applyCard'; })[0] || {};
     if (typeof rejectCardApplication === 'function') rejectCardApplication(applyAction.args || {});
     record.status = '已拒绝';
     record.reviewedAt = new Date().toLocaleString('zh-CN');
@@ -1221,7 +1224,7 @@ async function adminRejectReview(id) {
     return;
   }
 
-  if (record.actions && record.actions.some(function (a) { return a.tool === 'card.applyLimit'; })) {
+  if (record.actions && record.actions.some(function (a: any) { return a.tool === 'card.applyLimit'; })) {
     var card = mockData.userProfile.creditCard;
     card.limitApplyStatus = '已拒绝';
     card.limitApplyRejectedAt = record.reviewedAt;
@@ -1248,15 +1251,15 @@ async function adminRejectReview(id) {
 
 function showAdminReviewPanel() {
   var list = (mockData.userProfile.manualReviews || []).slice();
-  var pending = list.filter(function (r) { return r.status === '待人工复核'; }).length;
+  var pending = list.filter(function (r: any) { return r.status === '待人工复核'; }).length;
   var available = Number(mockData.userProfile.debitCard.available) || 0;
   var creditAvailable = Number((mockData.userProfile.creditCard || {}).available) || 0;
-  list.sort(function (a, b) {
+  list.sort(function (a: any, b: any) {
     var ap = a.status === '待人工复核' ? 0 : 1;
     var bp = b.status === '待人工复核' ? 0 : 1;
     return ap - bp;
   });
-  var rows = list.map(function (r) {
+  var rows = list.map(function (r: any) {
     var isPending = r.status === '待人工复核';
     var statusClass = r.status === '已通过' ? 'approved' : r.status === '已拒绝' ? 'rejected' : r.status === '审批失败' ? 'failed' : 'review';
     return '<div class="admin-review-row">' +
@@ -1270,7 +1273,7 @@ function showAdminReviewPanel() {
         : '<div class="admin-review-btns admin-review-done">已处理</div>') +
       '</div>';
   }).join('');
-  var old = document.getElementById('admin-review-panel-card');
+  var old = $id('admin-review-panel-card');
   if (old) old.remove();
   appendMessage('<div class="message" id="admin-review-panel-card"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">管理员审批</div><div class="msg-bubble agent-bubble">' +
@@ -1285,26 +1288,26 @@ function showAdminReviewPanel() {
 
 
 // 用户信息页·复核审批：集中查看并处理 T4 大额/卡片申请的待复核项
-function userinfoReviewAction(id, approve) {
+function userinfoReviewAction(id: any, approve: any) {
   try {
     if (approve) adminApproveReview(id);
     else adminRejectReview(id);
     setTimeout(function () {
       if (typeof renderUserInfoPage === 'function') renderUserInfoPage();
     }, 80);
-  } catch (e) {
+  } catch (e: any) {
     alert('处理失败：' + e.message);
   }
 }
 
-function renderUserInfoReviews(u) {
+function renderUserInfoReviews(u: any) {
   var list = ((u && u.manualReviews) || []).slice();
-  var pending = list.filter(function (r) { return r.status === '待人工复核'; }).length;
+  var pending = list.filter(function (r: any) { return r.status === '待人工复核'; }).length;
   var available = Number((u && u.debitCard && u.debitCard.available) || 0);
-  list.sort(function (a, b) {
+  list.sort(function (a: any, b: any) {
     return (a.status === '待人工复核' ? 0 : 1) - (b.status === '待人工复核' ? 0 : 1);
   });
-  var rows = list.map(function (r) {
+  var rows = list.map(function (r: any) {
     var isPending = r.status === '待人工复核';
     var color = isPending ? '#B45309' : (/通过/.test(r.status) ? '#15803D' : '#B42318');
     return '<div class="data-card" style="margin-bottom:10px;">' +
@@ -1333,39 +1336,39 @@ function renderUserInfoReviews(u) {
     '</section>';
 }
 
-function verifyAmountRisk(amount, purpose, actions) {
-  return new Promise(function (resolve) {
+function verifyAmountRisk(amount: any, purpose: any, actions: any) {
+  return new Promise(function (resolve: any) {
     var amt = Number(amount) || 0;
     if (!(amt > 0) || typeof agentTransferTier !== 'function') {
       resolve({ ok: true, tier: null, pendingReview: false });
       return;
     }
-    var tier;
+    var tier: any;
     try { tier = agentTransferTier(amt, null); }
-    catch (e) { resolve({ ok: true, tier: null, pendingReview: false }); return; }
+    catch (e: any) { resolve({ ok: true, tier: null, pendingReview: false }); return; }
     if (!tier || tier.rank < 1) { resolve({ ok: true, tier: tier, pendingReview: false }); return; }
 
-    var steps = [];
+    var steps: any[] = [];
     // T1：指纹 / 交易密码
     if (tier.needPassword && typeof showSecurityVerification === 'function') {
-      steps.push(function (next) {
-        showSecurityVerification(purpose + ' ' + manualReviewMoney(amt) + ' · 指纹/密码确认', function (ok) { next(!!ok); });
+      steps.push(function (next: any) {
+        showSecurityVerification(purpose + ' ' + manualReviewMoney(amt) + ' · 指纹/密码确认', function (ok: any) { next(!!ok); });
       });
     }
     // T2+：短信验证码
     if (tier.needOtp && typeof showOtpVerification === 'function') {
-      steps.push(function (next) {
-        showOtpVerification(purpose + ' ' + manualReviewMoney(amt) + ' · 短信验证码', function (ok) { next(!!ok); });
+      steps.push(function (next: any) {
+        showOtpVerification(purpose + ' ' + manualReviewMoney(amt) + ' · 短信验证码', function (ok: any) { next(!!ok); });
       });
     }
     // T3+：人脸确认
     if (tier.needFace && typeof showFaceVerification === 'function') {
-      steps.push(function (next) {
-        showFaceVerification(purpose + ' ' + manualReviewMoney(amt) + ' · 人脸确认', function (ok) { next(!!ok); });
+      steps.push(function (next: any) {
+        showFaceVerification(purpose + ' ' + manualReviewMoney(amt) + ' · 人脸确认', function (ok: any) { next(!!ok); });
       });
     }
 
-    function runSteps(i) {
+    function runSteps(i: any) {
       if (i >= steps.length) {
         // T4：转人工复核，不执行
         if (tier.needManual) {
@@ -1375,7 +1378,7 @@ function verifyAmountRisk(amount, purpose, actions) {
         }
         resolve({ ok: true, tier: tier, pendingReview: false });
       }
-      steps[i](function (ok) {
+      steps[i](function (ok: any) {
         if (!ok) { resolve({ ok: false, tier: tier, pendingReview: false }); return; }
         runSteps(i + 1);
       });
@@ -1387,7 +1390,7 @@ function verifyAmountRisk(amount, purpose, actions) {
 
 // 新对话：使用应用内确认弹层，避免移动端/部分浏览器把 setTimeout 里的原生 confirm 拦截掉
 function resetChat() {
-  const old = document.getElementById('resetChatDialog');
+  const old = $id('resetChatDialog');
   if (old) old.remove();
 
   const overlay = document.createElement('div');
@@ -1410,16 +1413,16 @@ function resetChat() {
       </div>
     </div>
   `;
-  overlay.addEventListener('click', function (e) {
+  overlay.addEventListener('click', function (e: any) {
     if (e.target === overlay) closeResetChatConfirm();
   });
   document.body.appendChild(overlay);
-  const ok = overlay.querySelector('.btn-primary');
+  const ok = (overlay as any).querySelector('.btn-primary');
   if (ok) setTimeout(function () { ok.focus(); }, 30);
 }
 
 function closeResetChatConfirm() {
-  const el = document.getElementById('resetChatDialog');
+  const el = $id('resetChatDialog');
   if (el) el.remove();
 }
 
@@ -1431,9 +1434,9 @@ function confirmResetChat() {
 // 实际执行重置
 // 对话框里的「清除」：一键清空全部对话并回到主菜单（不再弹确认）
 function clearConversation() {
-  const chatInner = document.getElementById('chatInner');
+  const chatInner = $id('chatInner');
   if (chatInner) chatInner.innerHTML = '';
-  const userInfoPage = document.getElementById('userInfoPage');
+  const userInfoPage = $id('userInfoPage');
   if (userInfoPage && userInfoPage.classList.contains('show') && typeof closeUserInfoPage === 'function') closeUserInfoPage();
   // 清空对话上下文
   conversationContext = [];
@@ -1442,11 +1445,11 @@ function clearConversation() {
   if (typeof guideResetAllSessions === 'function') guideResetAllSessions();
   if (typeof agentSessionReset === 'function') agentSessionReset();
   // 关掉可能开着的浮层（确认框 / 安全验证）
-  document.querySelectorAll('[id^="security-verify-"], .bank-dialog-overlay').forEach(function (el) { el.remove(); });
-  const input = document.getElementById('userInput');
+  document.querySelectorAll('[id^="security-verify-"], .bank-dialog-overlay').forEach(function (el: any) { el.remove(); });
+  const input = $id('userInput');
   if (input) { input.value = ''; input.style.height = 'auto'; }
   currentModule = 'chat';
-  document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function (n: any) { n.classList.remove('active'); });
   const chatNav = document.querySelector('.nav-item[onclick*="chat"]');
   if (chatNav) chatNav.classList.add('active');
   // 回到主菜单（服务向导）
@@ -1457,9 +1460,9 @@ function clearConversation() {
 }
 
 function performResetChat() {
-  const userInfoPage = document.getElementById('userInfoPage');
+  const userInfoPage = $id('userInfoPage');
   if (userInfoPage && userInfoPage.classList.contains('show')) closeUserInfoPage();
-  const chatInner = document.getElementById('chatInner');
+  const chatInner = $id('chatInner');
   if (chatInner) {
     chatInner.innerHTML = '';
   }
@@ -1473,7 +1476,7 @@ function performResetChat() {
   // 清空会话级上下文记忆（画像/财务/决策/规划结论）
   if (typeof agentSessionReset === 'function') agentSessionReset();
   // 清空输入框
-  const userInput = document.getElementById('userInput');
+  const userInput = $id('userInput');
   if (userInput) userInput.value = '';
   // 重置当前模块为chat
   currentModule = 'chat';
@@ -1560,7 +1563,7 @@ function showSecurityCenter() {
   scrollToBottom();
 }
 
-function toggleFingerprint(btn) {
+function toggleFingerprint(btn: any) {
   fingerprintEnabled = !fingerprintEnabled;
   if (btn) {
     btn.textContent = fingerprintEnabled ? '已开启' : '开启';

@@ -567,7 +567,7 @@ function guideTimedParseRepeat(text) {
     return null;
 }
 function guideTimedRepeatLabel(repeat) {
-    return ({ '每天': '每日循环执行', '每周': '每周循环执行', '每月': '每月循环执行', '每年': '每年循环执行' })[repeat] || '不重复';
+    return { '每天': '每日循环执行', '每周': '每周循环执行', '每月': '每月循环执行', '每年': '每年循环执行' }[repeat] || '不重复';
 }
 // 把日期 + 时间拼成口语化文案：明天下午5点 / 10月30日上午9点
 function guideTimedWhenText(date, time) {
