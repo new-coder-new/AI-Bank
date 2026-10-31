@@ -33,6 +33,8 @@
     "js/core/intent.ts",
     "js/core/icons.ts",
     "js/flows/flower.ts",
-    "js/flows/userinfo.ts"
+    "js/flows/userinfo.ts",
+    "js/core/config.ts",
+    "js/core/visualization.ts"
   ]
 }

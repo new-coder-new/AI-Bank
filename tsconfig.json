@@ -62,17 +62,13 @@
     "js/core/icons.js",
     "js/core/intent.js",
     "js/core/config.js",
-    "js/core/config.ts",
     "js/core/voice.js",
-    "js/core/voice.ts",
     "js/core/visualization.js",
-    "js/core/visualization.ts",
     "js/core/ui.js",
     "js/core/ui.ts",
     "js/flows/analysis.js",
     "js/flows/analysis.ts",
     "js/flows/budget.js",
-    "js/flows/budget.ts",
     "js/flows/card.js",
     "js/flows/card.ts",
     "js/flows/cardlimit.js",
@@ -90,6 +86,8 @@
     "js/flows/transfer.ts",
     "js/flows/userinfo.js",
     "js/flows/wealth.js",
-    "js/flows/wealth.ts"
+    "js/flows/wealth.ts",
+    "js/core/voice.ts",
+    "js/flows/budget.ts"
   ]
 }

@@ -11,38 +11,38 @@
 // 取不到 Key 时保持空字符串，各调用点自行降级（规则引擎 / 知识库 / 模拟识别）。
 // 模板见 js/config.local.example.js
 // ---------------------------------------------------------------------------
-const BANK_KEYS = (typeof window !== 'undefined' && window.__BANK_KEYS__) || {};
+const BANK_KEYS = (typeof window !== 'undefined' && (window as any).__BANK_KEYS__) || {};
 
 // 浏览器不再持有真实 Key。默认走同源代理 /api/ai/*，由 server/index.js
 // 用环境变量或本机 config.local.js 里的 Key 转发；前端 Key 仅作为旧部署兜底。
 /** @type {any} */
-var DEEPSEEK_API_KEY = BANK_KEYS.deepseekApiKey || '';
+var DEEPSEEK_API_KEY: any = BANK_KEYS.deepseekApiKey || '';
 /** @type {any} */
-var DEEPSEEK_API_URL = (typeof window !== 'undefined' && window.__BANK_AI_PROXY__)
+var DEEPSEEK_API_URL: any = (typeof window !== 'undefined' && (window as any).__BANK_AI_PROXY__)
   ? '/api/ai/chat'
   : 'https://api.deepseek.com/v1/chat/completions';
-// 模型名：服务端会通过 window.__BANK_MODEL__ 下发（如硅基流动的 Qwen 模型）；
+// 模型名：服务端会通过 (window as any).__BANK_MODEL__ 下发（如硅基流动的 Qwen 模型）；
 // 直连模式（无代理）时回退到 DeepSeek。
 /** @type {any} */
-var MODEL_NAME = (typeof window !== 'undefined' && window.__BANK_MODEL__) || 'deepseek-v4-flash';
+var MODEL_NAME: any = (typeof window !== 'undefined' && (window as any).__BANK_MODEL__) || 'deepseek-v4-flash';
 
 // 硅基流动语音识别API
 const SILICONFLOW_API_KEY = BANK_KEYS.siliconflowApiKey || '';
-const SILICONFLOW_API_URL = (typeof window !== 'undefined' && window.__BANK_ASR_PROXY__)
+const SILICONFLOW_API_URL = (typeof window !== 'undefined' && (window as any).__BANK_ASR_PROXY__)
   ? '/api/ai/transcribe'
   : 'https://api.siliconflow.cn/v1/audio/transcriptions';
 const VOICE_MODEL = 'XingChenAGI/XingChenASR-V3.2-Ultra';
 
 // 是否可用：服务端代理开启时即使浏览器没有 Key 也可用
 function bankHasLLMKey() {
-  return !!(typeof window !== 'undefined' && window.__BANK_AI_PROXY__) || !!String(DEEPSEEK_API_KEY || '').trim();
+  return !!(typeof window !== 'undefined' && (window as any).__BANK_AI_PROXY__) || !!String(DEEPSEEK_API_KEY || '').trim();
 }
 function bankHasASRKey() {
-  return !!(typeof window !== 'undefined' && window.__BANK_ASR_PROXY__) || !!String(SILICONFLOW_API_KEY || '').trim();
+  return !!(typeof window !== 'undefined' && (window as any).__BANK_ASR_PROXY__) || !!String(SILICONFLOW_API_KEY || '').trim();
 }
 
 // 带超时的 fetch：网络挂起时不能把 Agent/语音永久锁在“处理中”
-function bankFetch(url, options, timeoutMs) {
+function bankFetch(url: string, options?: any, timeoutMs?: number): Promise<Response> {
   const ms = Number(timeoutMs) || 30000;
   const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
   const timer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (e) { } }, ms) : null;
@@ -52,15 +52,16 @@ function bankFetch(url, options, timeoutMs) {
 }
 
 /** @type {string} */
+/** @type {string} */
 var currentModule = 'chat';
 /** @type {any} */
-var isLoading = false;
+var isLoading: any = false;
 var cardFrozen = false;
 /** @type {any} */
 var riskProfile = null;
 
 /** @type {any} */
-var mockData = {
+var mockData: any = {
   contacts: [
     { name: '张三', phone: '138****1234', phoneFull: '13812341234', account: '6222 **** **** 1234', bank: '工商银行' },
     { name: '李四', phone: '139****5678', phoneFull: '13956785678', account: '6225 **** **** 5678', bank: '招商银行' },
@@ -187,7 +188,7 @@ var mockData = {
 };
 
 // ========== 基础工具函数 ==========
-function appendMessage(html) {
+function appendMessage(html: string): void {
   const chatInner = document.getElementById('chatInner');
   if (!chatInner) return;
   // 同一句追问不重复刷屏：如果这条消息是提问、且和上一条 AI 消息一字不差，就不再追加
@@ -195,8 +196,8 @@ function appendMessage(html) {
     var raw = String(html || '');
     var isAsk = /[？?]/.test(raw) || /麻烦告诉我|请问|请提供|请回复|请选择|请输入/.test(raw);
     // 每轮用户输入的第一条消息允许重复（否则连两次同样的错误提示会被吞掉不出声）
-    var freshTurn = (typeof window !== 'undefined' && window.__DEDUPE_BREAK__);
-    if (freshTurn) window.__DEDUPE_BREAK__ = false;
+    var freshTurn = (typeof window !== 'undefined' && (window as any).__DEDUPE_BREAK__);
+    if (freshTurn) (window as any).__DEDUPE_BREAK__ = false;
     if (isAsk && !freshTurn && location.hash !== '#nodup') {
       var prev = chatInner.querySelectorAll('.message:not(.user) .msg-bubble');
       if (prev.length) {
@@ -211,10 +212,12 @@ function appendMessage(html) {
   } catch (e) { /* 去重失败不影响正常输出 */ }
   const div = document.createElement('div');
   div.innerHTML = html;
-  chatInner.appendChild(div.firstElementChild);
+  var first = div.firstElementChild;
+  if (first) chatInner.appendChild(first);
 }
 function scrollToBottom() {
   const container = document.getElementById('chatContainer');
+  if (!container) return;
   setTimeout(() => { container.scrollTop = container.scrollHeight; }, 50);
 }
 function scrollToTop() {
@@ -222,15 +225,15 @@ function scrollToTop() {
   if (!container) return;
   setTimeout(() => { container.scrollTop = 0; }, 80);
 }
-function escapeHtml(text) {
+function escapeHtml(text: any): string {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
-function escapeAttr(text) {
+function escapeAttr(text: any): string {
   return escapeHtml(String(text == null ? '' : text)).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
-function formatAiText(text) {
+function formatAiText(text: any): string {
   let html = escapeHtml(text);
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\n/g, '<br>');

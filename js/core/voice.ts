@@ -6,12 +6,12 @@
 // ==========================================================================
 
 // ========== 全局语音输入（对话框语音按钮） ==========
-let globalIsRecording = false;
-let globalIsStarting = false;
-let globalAudioChunks = [];
-let globalMediaRecorder = null;
-let globalMediaStream = null;
-let globalRecordingTimer = null;
+let globalIsRecording: any = false;
+let globalIsStarting: any = false;
+let globalAudioChunks: any[] = [];
+let globalMediaRecorder: any = null;
+let globalMediaStream: any = null;
+let globalRecordingTimer: any = null;
 let globalInputBefore = '';
 
 function toggleGlobalVoice() {
@@ -35,15 +35,15 @@ function startGlobalVoiceRecording() {
   }
 
   globalIsStarting = true;
-  globalInputBefore = userInput ? userInput.value : '';
+  globalInputBefore = userInput ? (userInput as HTMLInputElement).value : '';
   navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(stream => {
+    .then((stream: any) => {
       globalIsStarting = false;
       globalIsRecording = true;
       globalMediaStream = stream;
       globalAudioChunks = [];
       globalMediaRecorder = new MediaRecorder(stream);
-      globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) globalAudioChunks.push(e.data); };
+      globalMediaRecorder.ondataavailable = (e: any) => { if (e.data.size > 0) globalAudioChunks.push(e.data); };
       globalMediaRecorder.onstop = () => {
         globalIsRecording = false;
         if (globalRecordingTimer) { clearTimeout(globalRecordingTimer); globalRecordingTimer = null; }

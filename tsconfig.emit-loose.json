@@ -26,12 +26,8 @@
     "js/flows/guide-sub.ts",
     "js/flows/guide-flower.ts",
     "js/flows/guide-card.ts",
-    "js/core/config.ts",
-    "js/core/voice.ts",
-    "js/core/visualization.ts",
     "js/core/ui.ts",
     "js/flows/analysis.ts",
-    "js/flows/budget.ts",
     "js/flows/card.ts",
     "js/flows/cardlimit.ts",
     "js/flows/cardservice.ts",
@@ -39,6 +35,8 @@
     "js/flows/security.ts",
     "js/flows/subscription.ts",
     "js/flows/transfer.ts",
-    "js/flows/wealth.ts"
+    "js/flows/wealth.ts",
+    "js/core/voice.ts",
+    "js/flows/budget.ts"
   ]
 }

@@ -34,13 +34,13 @@ function startGlobalVoiceRecording() {
     globalIsStarting = true;
     globalInputBefore = userInput ? userInput.value : '';
     navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
+        .then((stream) => {
         globalIsStarting = false;
         globalIsRecording = true;
         globalMediaStream = stream;
         globalAudioChunks = [];
         globalMediaRecorder = new MediaRecorder(stream);
-        globalMediaRecorder.ondataavailable = e => { if (e.data.size > 0)
+        globalMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0)
             globalAudioChunks.push(e.data); };
         globalMediaRecorder.onstop = () => {
             globalIsRecording = false;

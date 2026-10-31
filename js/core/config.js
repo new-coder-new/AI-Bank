@@ -1,3 +1,4 @@
+"use strict";
 // ==========================================================================
 //  经典脚本模块（TypeScript 源码，noCheck 转译）
 //  编译产物：js/core/config.js
@@ -19,7 +20,7 @@ var DEEPSEEK_API_KEY = BANK_KEYS.deepseekApiKey || '';
 var DEEPSEEK_API_URL = (typeof window !== 'undefined' && window.__BANK_AI_PROXY__)
     ? '/api/ai/chat'
     : 'https://api.deepseek.com/v1/chat/completions';
-// 模型名：服务端会通过 window.__BANK_MODEL__ 下发（如硅基流动的 Qwen 模型）；
+// 模型名：服务端会通过 (window as any).__BANK_MODEL__ 下发（如硅基流动的 Qwen 模型）；
 // 直连模式（无代理）时回退到 DeepSeek。
 /** @type {any} */
 var MODEL_NAME = (typeof window !== 'undefined' && window.__BANK_MODEL__) || 'deepseek-v4-flash';
@@ -50,6 +51,7 @@ function bankFetch(url, options, timeoutMs) {
     return fetch(url, opts).finally(function () { if (timer)
         clearTimeout(timer); });
 }
+/** @type {string} */
 /** @type {string} */
 var currentModule = 'chat';
 /** @type {any} */
@@ -212,10 +214,14 @@ function appendMessage(html) {
     catch (e) { /* 去重失败不影响正常输出 */ }
     const div = document.createElement('div');
     div.innerHTML = html;
-    chatInner.appendChild(div.firstElementChild);
+    var first = div.firstElementChild;
+    if (first)
+        chatInner.appendChild(first);
 }
 function scrollToBottom() {
     const container = document.getElementById('chatContainer');
+    if (!container)
+        return;
     setTimeout(() => { container.scrollTop = container.scrollHeight; }, 50);
 }
 function scrollToTop() {

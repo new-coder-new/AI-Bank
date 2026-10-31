@@ -16,15 +16,15 @@
 // ==========================================================================
 
 // ------------------------------ 工具 ------------------------------
-function vizGetHistory() {
+function vizGetHistory(): any[] {
   // 优先后端近三月数据
-  if (window.__API_MONTHLY_HISTORY && window.__API_MONTHLY_HISTORY.length) {
-    return window.__API_MONTHLY_HISTORY;
+  if ((window as any).__API_MONTHLY_HISTORY && (window as any).__API_MONTHLY_HISTORY.length) {
+    return (window as any).__API_MONTHLY_HISTORY;
   }
   // 降级：用当前账单造一份近似趋势
   var b = mockData.bills;
-  var income = (b.income || []).reduce(function (s, x) { return s + x.value; }, 0);
-  var expense = (b.expense || []).reduce(function (s, x) { return s + x.value; }, 0);
+  var income = (b.income || []).reduce(function (s: number, x: any) { return s + x.value; }, 0);
+  var expense = (b.expense || []).reduce(function (s: number, x: any) { return s + x.value; }, 0);
   var now = new Date();
   var out = [];
   for (var i = 2; i >= 0; i--) {
@@ -38,10 +38,10 @@ function vizGetHistory() {
   return out;
 }
 
-function vizGetAssets() {
+function vizGetAssets(): any[] {
   var u = mockData.userProfile || {};
   var d = u.debitCard || {};
-  var holdings = (u.holdings || []).reduce(function (s, h) { return s + (h.amount || 0) + (h.profit || 0); }, 0);
+  var holdings = (u.holdings || []).reduce(function (s: number, h: any) { return s + (h.amount || 0) + (h.profit || 0); }, 0);
   return [
     { label: '现金/活期', value: Math.round(d.balance || 0), color: '#22c55e' },
     { label: '理财持仓', value: Math.round(holdings), color: '#0B4F9C' },
@@ -51,19 +51,20 @@ function vizGetAssets() {
   ];
 }
 
-function vizCanvas(id, w, h) {
+function vizCanvas(id: string, w: number, h: number): any {
   var c = document.getElementById(id);
   if (!c) return null;
-  c.width = w; c.height = h;
-  var ctx = c.getContext('2d');
+  const cv = c as HTMLCanvasElement;
+  cv.width = w; cv.height = h;
+  var ctx = cv.getContext('2d');
   return ctx || null;
 }
 
 // ------------------------------ ① 近三月收支趋势图 ------------------------------
-function vizTrendHtml() {
+function vizTrendHtml(): string {
   return '<canvas id="vizTrend" width="320" height="180" style="width:100%;height:180px;border-radius:8px;"></canvas>';
 }
-function vizDrawTrend() {
+function vizDrawTrend(): void {
   var ctx = vizCanvas('vizTrend', 320, 180);
   if (!ctx) return;
   var history = vizGetHistory();
@@ -71,11 +72,11 @@ function vizDrawTrend() {
   var plotW = w - padL - padR, plotH = h - padT - padB;
 
   var max = 0;
-  history.forEach(function (m) { max = Math.max(max, m.income, m.expense); });
+  history.forEach(function (m: any) { max = Math.max(max, m.income, m.expense); });
   max = Math.ceil(max / 5000) * 5000;
 
-  var x = function (i) { return padL + plotW * (history.length === 1 ? 0.5 : i / (history.length - 1)); };
-  var y = function (v) { return padT + plotH * (1 - v / max); };
+  var x = function (i: number) { return padL + plotW * (history.length === 1 ? 0.5 : i / (history.length - 1)); };
+  var y = function (v: number) { return padT + plotH * (1 - v / max); };
 
   // 网格 + Y 轴刻度
   ctx.strokeStyle = '#eef1f5'; ctx.fillStyle = '#9aa4b2'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
@@ -86,19 +87,19 @@ function vizDrawTrend() {
   }
 
   // 折线：收入（绿）/支出（红）
-  function line(vals, color) {
+  function line(vals: number[], color: string) {
     ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
-    vals.forEach(function (v, i) { var px = x(i), py = y(v); i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); });
+    vals.forEach(function (v: number, i: number) { var px = x(i), py = y(v); i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); });
     ctx.stroke();
     ctx.fillStyle = color;
-    vals.forEach(function (v, i) { var px = x(i), py = y(v); ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill(); });
+    vals.forEach(function (v: number, i: number) { var px = x(i), py = y(v); ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill(); });
   }
-  line(history.map(function (m) { return m.income; }), '#22c55e');
-  line(history.map(function (m) { return m.expense; }), '#ef4444');
+  line(history.map(function (m: any) { return m.income; }), '#22c55e');
+  line(history.map(function (m: any) { return m.expense; }), '#ef4444');
 
   // X 轴标签
   ctx.fillStyle = '#6b7280'; ctx.textAlign = 'center';
-  history.forEach(function (m, i) {
+  history.forEach(function (m: any, i: number) {
     ctx.fillText(m.month.replace(/年/, '/').replace(/月/, ''), x(i), h - padB + 16);
   });
 
@@ -109,10 +110,10 @@ function vizDrawTrend() {
 }
 
 // ------------------------------ ② 资产结构环形图 ------------------------------
-function vizAssetsHtml() {
+function vizAssetsHtml(): string {
   return '<canvas id="vizAssets" width="200" height="200" style="width:200px;height:200px;margin:0 auto;display:block;"></canvas>';
 }
-function vizDrawAssets() {
+function vizDrawAssets(): void {
   var ctx = vizCanvas('vizAssets', 200, 200);
   if (!ctx) return;
   var data = vizGetAssets();
@@ -157,22 +158,22 @@ function vizDrawWaterfall() {
   var ctx = vizCanvas('vizWaterfall', 320, 200);
   if (!ctx) return;
   var b = mockData.bills || {};
-  var income = (b.income || []).reduce(function (s, x) { return s + x.value; }, 0);
-  var expenses = (b.expense || []).slice().sort(function (a, b) { return b.value - a.value; });
+  var income = (b.income || []).reduce(function (s: number, x: any) { return s + x.value; }, 0);
+  var expenses = (b.expense || []).slice().sort(function (a: any, b: any) { return b.value - a.value; });
 
   // 瀑布项：收入起点 → 各支出累减 → 结余
   var items = [{ label: '收入', value: income, color: '#22c55e' }];
   var running = income;
-  expenses.forEach(function (e) { items.push({ label: e.label, value: -e.value, color: '#ef4444' }); running -= e.value; });
+  expenses.forEach(function (e: any) { items.push({ label: e.label, value: -e.value, color: '#ef4444' }); running -= e.value; });
   items.push({ label: '结余', value: running, color: running >= 0 ? '#3b82f6' : '#ef4444' });
 
   var w = 320, h = 200, padL = 46, padR = 10, padT = 14, padB = 44;
   var plotW = w - padL - padR, plotH = h - padT - padB;
   var maxAbs = Math.max(income, Math.abs(Math.min(0, running)));
-  expenses.forEach(function (e) { maxAbs = Math.max(maxAbs, e.value); });
+  expenses.forEach(function (e: any) { maxAbs = Math.max(maxAbs, e.value); });
   maxAbs = Math.ceil(maxAbs / 5000) * 5000;
   var zeroY = padT + plotH * (maxAbs / (maxAbs * 2)); // 零线：收入在上、支出在下
-  var y = function (v) { return zeroY - (v / (maxAbs * 2)) * plotH; };
+  var y = function (v: number) { return zeroY - (v / (maxAbs * 2)) * plotH; };
 
   var bw = plotW / items.length * 0.6;
   var cum = 0;
@@ -202,7 +203,7 @@ function vizDrawWaterfall() {
 
 // ------------------------------ 渲染入口 ------------------------------
 // 渲染一张可视化卡片（供驾驶舱/账单分析/健康评分复用）
-function renderVizCard(title, chartHtml, afterDraw) {
+function renderVizCard(title: string, chartHtml: string, afterDraw?: any): string {
   var html = '<div class="agent-viz-card" style="margin:10px 0;">' +
     '<div class="agent-viz-title" style="font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:8px;">' + title + '</div>' +
     chartHtml +
@@ -211,7 +212,7 @@ function renderVizCard(title, chartHtml, afterDraw) {
 }
 
 // 一键渲染"财务全景可视化"（三图 + 图例）
-function renderFinanceVisualization() {
+function renderFinanceVisualization(): void {
   var html =
     renderVizCard('近三月收支趋势', vizTrendHtml(), vizDrawTrend) +
     renderVizCard('资产结构', '<div style="text-align:center;">' + vizAssetsHtml() + vizAssetsLegendHtml() + '</div>', vizDrawAssets) +

@@ -1,3 +1,4 @@
+"use strict";
 // ==========================================================================
 //  经典脚本模块（TypeScript 源码，noCheck 转译）
 //  编译产物：js/core/visualization.js
@@ -51,9 +52,10 @@ function vizCanvas(id, w, h) {
     var c = document.getElementById(id);
     if (!c)
         return null;
-    c.width = w;
-    c.height = h;
-    var ctx = c.getContext('2d');
+    const cv = c;
+    cv.width = w;
+    cv.height = h;
+    var ctx = cv.getContext('2d');
     return ctx || null;
 }
 // ------------------------------ ① 近三月收支趋势图 ------------------------------

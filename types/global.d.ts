@@ -489,10 +489,6 @@ declare function guideCardLostCancel(...args: any[]): any;
 
 // —— 其余经典脚本模块（noCheck 转译）的全局符号 ——
 declare function bankIcon(...args: any[]): any;
-declare var BANK_KEYS: any;
-declare var SILICONFLOW_API_KEY: any;
-declare var SILICONFLOW_API_URL: any;
-declare var VOICE_MODEL: any;
 declare function bankHasLLMKey(...args: any[]): any;
 declare function bankHasASRKey(...args: any[]): any;
 declare function scrollToTop(...args: any[]): any;
@@ -551,8 +547,6 @@ declare function drawBillTrendChart(...args: any[]): any;
 declare function drawReportDonut(...args: any[]): any;
 declare function detectAbnormalTxns(...args: any[]): any;
 declare function showAbnormalAlert(...args: any[]): any;
-declare var PERIOD_LABELS: any;
-declare var PERIOD_ORDER: any;
 declare function calcPeriodUsed(...args: any[]): any;
 declare function smartBudgetSet(...args: any[]): any;
 declare function showBudget(...args: any[]): any;
