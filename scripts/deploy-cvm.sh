@@ -22,12 +22,13 @@ say() { printf '\n\033[1;34m==> %s\033[0m\n' "$1"; }
 cleanup() { rm -f "$PKG"; }
 trap cleanup EXIT
 
-say "1/5 打包代码（排除 .git / data / 本地密钥 / 预览图）"
+say "1/5 编译 TypeScript 并打包（仓库只保留 .ts，产物在打包前生成）"
+( cd "$ROOT" && npm run build:ts >/dev/null 2>&1 ) || { echo "    TypeScript 编译失败，已中止"; exit 1; }
 tar -czf "$PKG" -C "$ROOT" \
   --exclude='.git' --exclude='.workbuddy' --exclude='preview' \
   --exclude='data' --exclude='logs' --exclude='node_modules' \
   --exclude='*.log' --exclude='config.local.js' \
-  index.html css js server package.json Dockerfile
+  index.html css js server package.json Dockerfile tsconfig.emit.json types
 echo "    包大小: $(du -h "$PKG" | cut -f1)"
 
 say "2/5 上传"

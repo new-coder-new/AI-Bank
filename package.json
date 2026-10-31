@@ -12,7 +12,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.strict-all.json && npm run build:ts",
     "test": "node tests/run-all.js",
     "build:ts": "tsc -p tsconfig.emit.json",
-    "typecheck:strict": "tsc -p tsconfig.strict-all.json"
+    "typecheck:strict": "tsc -p tsconfig.strict-all.json",
+    "prestart": "npm run build:ts",
+    "predev": "npm run build:ts",
+    "pretest": "npm run build:ts"
   },
   "engines": {
     "node": ">=18"

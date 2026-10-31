@@ -1,11 +1,18 @@
-# 智能金融助手 · CloudBase CloudRun 容器部署
-# 零依赖 Node.js 服务：同一进程同时托管前端静态资源与银行核心 API
+# 智银管家 · CloudBase CloudRun 容器部署
+# 源码只保留 TypeScript；镜像内先跑 npm run build:ts 生成 js 产物，再启动零依赖 Node 服务
 FROM node:20-alpine
 
 WORKDIR /app
 
-# 复制整个项目（含 server/、css/、js/、index.html）
+# 先装依赖（仅 typescript 等构建期依赖），利用分层缓存
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+# 复制项目源码（含 .ts 源码、tsconfig、server/、css/、index.html）
 COPY . /app
+
+# 编译 TypeScript → js（runtime 加载的是这些产物）
+RUN npm run build:ts
 
 # 服务监听 PORT（由 CloudRun 注入，默认 8080），绑定 0.0.0.0
 ENV PORT=8080
