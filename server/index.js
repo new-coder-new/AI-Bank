@@ -519,6 +519,17 @@ function maskCardNumber(num) {
 }
 
 
+
+// —— 服务端价目表（金额以此为准，前端传的 price 仅作参考被忽略）——
+const SRV_FLOWER_BOUQUETS = { '简约玫瑰': 299, '向日葵花束': 168, '混搭小花束': 159, '康乃馨礼盒': 128, '百合礼盒': 199, '郁金香花束': 229 };
+const SRV_FLOWER_CAKES = { '无蛋糕': 0, '6寸水果蛋糕': 168, '8寸奶油蛋糕': 228 };
+const SRV_SUB_PRESETS = {
+  '某易云 VIP': { '/月': 25, '/季': 60, '/年': 150 },
+  '某讯 VIP': { '/月': 30, '/季': 80, '/年': 200 },
+  '某度网盘 VIP': { '/月': 40, '/季': 120, '/年': 300 }
+};
+function srvSubNormName(s) { return String(s || '').replace(/\s/g, ''); }
+
 // —— 服务端风控判定（前端只负责展示，不再自己判档）——
 function srvAssessRisk(payee, amount) {
   const reasons = [];
@@ -859,6 +870,127 @@ const routes = {
       pendingRedemptions: DB.userProfile.pendingRedemptions,
       holdings: DB.userProfile.holdings
     };
+  },
+
+
+  // 鲜花下单（服务端扣款为权威：储蓄卡扣余额 / 信用卡占额度；同一人同一天禁止重复下单）
+  'POST /api/flower/order': async (req) => {
+    const body = await readBody(req);
+    const u = DB.userProfile;
+    const o = {
+      recipient: String(body.recipient || '').trim(),
+      phone: String(body.phone || '').trim(),
+      address: String(body.address || '').trim(),
+      bouquet: String(body.bouquet || '').trim(),
+      cake: String(body.cake || '无蛋糕'),
+      date: String(body.date || '').trim(),
+      slot: String(body.slot || '').trim(),
+      card: String(body.card || '').slice(0, 30),
+      payMethod: body.payMethod === '信用卡' ? '信用卡' : '储蓄卡',
+      price: Math.round((Number(body.price) || 0) * 100) / 100,
+      cakePrice: Math.round((Number(body.cakePrice) || 0) * 100) / 100,
+      bouquetPrice: Math.round((Number(body.bouquetPrice) || 0) * 100) / 100
+    };
+    // 金额以服务端价目表为准（不信任前端传入的 price）
+    const bqPrice = SRV_FLOWER_BOUQUETS[o.bouquet];
+    const cakePrice = SRV_FLOWER_CAKES[o.cake] != null ? SRV_FLOWER_CAKES[o.cake] : null;
+    if (bqPrice == null) return { ok: false, error: '花束款式无效' };
+    if (cakePrice == null) return { ok: false, error: '蛋糕选项无效' };
+    o.bouquetPrice = bqPrice;
+    o.cakePrice = cakePrice;
+    o.price = Math.round((bqPrice + cakePrice) * 100) / 100;
+    if (!o.recipient || !o.date || !(o.price > 0)) return { ok: false, error: '缺少收花人/日期或金额无效' };
+    const contact = (DB.contacts || []).some((c) => c.name === o.recipient);
+    if (!contact) return { ok: false, error: '收花人必须是联系人' };
+
+    u.flowerOrders = u.flowerOrders || [];
+    const dup = u.flowerOrders.some((x) => x && x.status === '待配送' && x.recipient === o.recipient && x.date === o.date);
+    if (dup) return { ok: false, error: '同一人同一天已有待配送订单，不能重复下单' };
+
+    const d = u.debitCard;
+    const c = u.creditCard || {};
+    if (o.payMethod === '储蓄卡') {
+      if (o.price > Number(d.available)) return { ok: false, error: '储蓄卡可用余额不足' };
+      d.available = Math.round((Number(d.available) - o.price) * 100) / 100;
+      d.balance = Math.round((Number(d.balance) - o.price) * 100) / 100;
+      addTxn('expense', o.price, '鲜花订单-' + o.recipient + '(' + o.bouquet + ')', '鲜花订购');
+    } else {
+      if (o.price > Number(c.available)) return { ok: false, error: '信用卡可用额度不足' };
+      c.available = Math.round((Number(c.available) - o.price) * 100) / 100;
+      c.used = Math.round(((Number(c.used) || 0) + o.price) * 100) / 100;
+      c.currentBill = Math.round(((Number(c.currentBill) || 0) + o.price) * 100) / 100;
+      c.minPayment = Math.round(c.currentBill * 10) / 100;
+    }
+
+    const order = Object.assign({}, o, {
+      id: 'F' + Date.now(),
+      paid: true,
+      paidAmount: o.price,
+      status: '待配送',
+      createdAt: fmtDateTime(now())
+    });
+    u.flowerOrders.unshift(order);
+    auditLog(DB, 'flower.order', { amount: o.price, target: o.recipient, ip: (req.socket && req.socket.remoteAddress) || '', result: 'ok' });
+    return { ok: true, order: order, orders: u.flowerOrders, balance: d.balance, available: d.available };
+  },
+
+  // 取消鲜花订单（待配送可取消，原路退款/释放额度）
+  'POST /api/flower/cancel': async (req) => {
+    const { id } = await readBody(req);
+    const u = DB.userProfile;
+    u.flowerOrders = u.flowerOrders || [];
+    const order = u.flowerOrders.find((x) => x && x.id === String(id));
+    if (!order) return { ok: false, error: '订单不存在' };
+    if (order.status !== '待配送') return { ok: false, error: '该订单当前状态不可取消' };
+    const amount = Number(order.paidAmount || order.price) || 0;
+    const d = u.debitCard;
+    const c = u.creditCard || {};
+    if (order.payMethod === '信用卡') {
+      c.available = Math.round((Number(c.available) + amount) * 100) / 100;
+      c.used = Math.max(0, Math.round(((Number(c.used) || 0) - amount) * 100) / 100);
+      c.currentBill = Math.max(0, Math.round(((Number(c.currentBill) || 0) - amount) * 100) / 100);
+    } else {
+      d.available = Math.round((Number(d.available) + amount) * 100) / 100;
+      d.balance = Math.round((Number(d.balance) + amount) * 100) / 100;
+      addTxn('income', amount, '鲜花订单退款-' + order.recipient, '鲜花订购');
+    }
+    order.status = '已取消';
+    order.cancelledAt = fmtDateTime(now());
+    auditLog(DB, 'flower.cancel', { amount: amount, target: order.recipient, ip: (req.socket && req.socket.remoteAddress) || '', result: 'ok' });
+    return { ok: true, orders: u.flowerOrders, balance: d.balance, available: d.available };
+  },
+
+  // 订阅添加（服务端扣首期费用为权威）
+  'POST /api/subscription/add': async (req) => {
+    const body = await readBody(req);
+    const name = String(body.name || '').trim();
+    const cycle = String(body.cycle || '/月').trim();
+    let price = Math.round((Number(body.price) || 0) * 100) / 100;
+    const autoRenew = body.autoRenew !== false;
+    if (!name) return { ok: false, error: '缺少服务名' };
+    let presetPrices = null;
+    Object.keys(SRV_SUB_PRESETS).forEach(function (k) {
+      if (srvSubNormName(k) === srvSubNormName(name)) presetPrices = SRV_SUB_PRESETS[k];
+    });
+    if (presetPrices) {
+      const official = presetPrices[cycle];
+      if (official == null) return { ok: false, error: '扣费周期无效' };
+      price = official;   // 以服务端价目表为准
+    } else if (!(price > 0) || price > 10000) {
+      return { ok: false, error: '价格无效' };
+    }
+    DB.subscriptions = DB.subscriptions || [];
+    const dupSub = DB.subscriptions.some((x) => x && String(x.name || '').replace(/\s/g, '') === name.replace(/\s/g, ''));
+    if (dupSub) return { ok: false, error: '已有有效订阅，无需重复添加' };
+    const d = DB.userProfile.debitCard;
+    if (price > Number(d.available)) return { ok: false, error: '可用余额不足，订阅未开通' };
+    d.available = Math.round((Number(d.available) - price) * 100) / 100;
+    d.balance = Math.round((Number(d.balance) - price) * 100) / 100;
+    addTxn('expense', price, '订阅- ' + name + '（' + cycle + '）', '订阅管理');
+    const sub = { id: Date.now(), name: name, cycle: cycle, price: price, autoRenew: autoRenew, createdAt: fmtDateTime(now()) };
+    DB.subscriptions.push(sub);
+    auditLog(DB, 'subscription.add', { amount: price, target: name, ip: (req.socket && req.socket.remoteAddress) || '', result: 'ok' });
+    return { ok: true, subscription: sub, subscriptions: DB.subscriptions, balance: d.balance, available: d.available };
   },
 
   // 预算设置

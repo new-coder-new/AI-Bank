@@ -239,6 +239,22 @@ function apiWealthRedeem(product, amount, opts) {
     idempotencyKey: o.idempotencyKey || ('R' + Date.now() + '-' + Math.random().toString(36).slice(2, 8))
   });
 }
+// 鲜花下单（服务端权威）
+function apiFlowerOrder(payload) {
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  return apiRequest('POST', '/api/flower/order', payload || {});
+}
+// 取消鲜花订单（服务端原路退款）
+function apiFlowerCancel(id) {
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  return apiRequest('POST', '/api/flower/cancel', { id: id });
+}
+// 订阅添加（服务端扣首期）
+function apiSubscriptionAdd(payload) {
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  return apiRequest('POST', '/api/subscription/add', payload || {});
+}
+
 // 预算设置同步
 function apiBudgetSet(amount, period) {
   return apiPost('/api/budget/set', { amount: amount, period: period || 'month' });

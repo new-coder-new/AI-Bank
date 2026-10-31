@@ -4900,6 +4900,38 @@ async function guideSubAddSubmit() {
     }
   }
   var cycleText = cycle === '/月' ? '包月' : cycle === '/季' ? '包季' : '包年';
+
+  // —— 服务端权威：后端在线时由服务端扣首期并落订阅 ——
+  if (typeof API !== 'undefined' && API.live && typeof apiSubscriptionAdd === 'function') {
+    var srvSub = null;
+    try {
+      srvSub = await apiSubscriptionAdd({ name: preset.name, cycle: cycle, price: price, autoRenew: autoRenew });
+    } catch (e) { srvSub = null; }
+    if (srvSub && srvSub.ok) {
+      if (Array.isArray(srvSub.subscriptions)) mockData.subscriptions = srvSub.subscriptions;
+      mockData.userProfile.debitCard.balance = Number(srvSub.balance);
+      mockData.userProfile.debitCard.available = Number(srvSub.available);
+      saveUserData();
+      guideConfirmCardDone(boxId, '已添加');
+      GUIDE_SUB = null;
+      if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
+      appendMessage(guideMessage(
+        '<p>' + guideSubEsc(preset.name) + ' 添加成功，扣费周期' + guideSubCycleText(cycle) + '，自动续费' + (autoRenew ? '已开启' : '已关闭') + '。</p>' +
+        '<div class="guide-chips"><button class="guide-chip" onclick="guideStartSubManage()">查看订阅管理</button></div>'
+      ));
+      scrollToBottom();
+      return;
+    }
+    if (srvSub && srvSub.error) {
+      GUIDE_SUB = null;
+      appendMessage(guideMessage('<p>订阅未开通：' + guideSubEsc(srvSub.error) + '</p>'));
+      scrollToBottom();
+      if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
+      return;
+    }
+    // 服务端不可用 → 本地逻辑
+  }
+
   var okTx = (typeof addTransaction === 'function')
     ? addTransaction('expense', price, '订阅扣费-' + preset.name + '(' + cycleText + ')', '订阅扣费', true)
     : true;
@@ -5805,6 +5837,41 @@ async function guideFlowerSubmit() {
       '<button class="guide-chip" onclick="guideFlowerCancelOp()">取消</button></div>'));
     scrollToBottom();
     return true;
+  }
+
+  // —— 服务端权威：后端在线时由服务端扣款并落订单 ——
+  if (typeof API !== 'undefined' && API.live && typeof apiFlowerOrder === 'function') {
+    var srvFlower = null;
+    try {
+      srvFlower = await apiFlowerOrder({
+        recipient: o.recipient, phone: o.phone, address: o.address, bouquet: o.bouquet,
+        cake: o.cake || '无蛋糕', date: o.date, slot: o.slot, card: o.card || '',
+        payMethod: payMethod, price: price,
+        cakePrice: tot.cake ? tot.cake.price : 0,
+        bouquetPrice: bouquet ? bouquet.price : 0
+      });
+    } catch (e) { srvFlower = null; }
+    if (srvFlower && srvFlower.ok) {
+      mockData.userProfile.debitCard.balance = Number(srvFlower.balance);
+      mockData.userProfile.debitCard.available = Number(srvFlower.available);
+      if (Array.isArray(srvFlower.orders)) mockData.userProfile.flowerOrders = srvFlower.orders;
+      guideConfirmCardDone(s.boxId, '已提交');
+      GUIDE_FLOWER = null;
+      saveUserData();
+      var cakeNote2 = (tot.cake && tot.cake.price) ? ('（含' + tot.cake.name + ' ¥' + tot.cake.price + '）') : '';
+      appendMessage(guideMessage('<p>鲜花订单提交成功，已从' + payMethod + '支付 ¥' + price + cakeNote2 + '，将在配送日按时派送。</p>' +
+        '<div class="guide-chips"><button class="guide-chip" onclick="guideStartFlowerList()">查看鲜花订单</button></div>'));
+      scrollToBottom();
+      return true;
+    }
+    if (srvFlower && srvFlower.error) {
+      appendMessage(guideMessage('<p>鲜花订单未提交：' + guideFlowerEsc(srvFlower.error) + '</p>'));
+      scrollToBottom();
+      s.stage = 'confirm';
+      guideFlowerConfirm();
+      return true;
+    }
+    // 服务端不可用 → 走本地逻辑
   }
 
   // 下单即支付：储蓄卡走统一扣款门禁，信用卡占用额度并计入本期账单
