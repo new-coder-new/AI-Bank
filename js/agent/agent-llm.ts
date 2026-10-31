@@ -56,7 +56,7 @@ function agentToolApiName(name: string): string { return String(name).replace(/\
 function agentToolOrigName(apiName: string): string { return String(apiName).replace(/__/g, '.'); }
 
 // 每个工具的参数规格（供模型理解如何传参）。required 写在参数对象内部。
-var AGENT_TOOL_SPECS = {
+var AGENT_TOOL_SPECS: Record<string, any> = {
   'account.balance': { group: '账户', desc: '查询借记卡可用余额、冻结金额与资产总览', params: {} },
   'account.frozenDetail': { group: '账户', desc: '查询冻结金额明细：每笔冻结的类型、原因、金额、冻结时间与预计解冻日期。当用户问"冻结金额明细/为什么被冻结/什么时候解冻/解冻后可用余额"时调用', params: {} },
   'contact.list': { group: '转账', desc: '查询转账联系人列表（姓名、开户行、卡号）', params: {} },
@@ -111,15 +111,15 @@ var AGENT_TOOL_SPECS = {
 };
 
 function agentBuildToolSchemas(): any[] {
-  var out = [];
-  Object.keys(AGENT_TOOL_REGISTRY).forEach(function (name) {
-    var tool = AGENT_TOOL_REGISTRY[name] || {};
+  var out: any[] = [];
+  Object.keys(AGENT_TOOL_REGISTRY).forEach(function (name: any) {
+    var tool: any = (AGENT_TOOL_REGISTRY as any)[name] || {};
     var spec = AGENT_TOOL_SPECS[name] || { group: '通用', desc: '', params: {} };
-    var props = {}, required = [];
-    Object.keys(spec.params || {}).forEach(function (key) {
+    var props: Record<string, any> = {}, required: any[] = [];
+    Object.keys(spec.params || {}).forEach(function (key: any) {
       var raw = spec.params[key] || {};
       var clean = {};
-      Object.keys(raw).forEach(function (k) { if (k !== 'required') clean[k] = raw[k]; });
+      Object.keys(raw).forEach(function (k: any) { if (k !== 'required') (clean as any)[k] = (raw as any)[k]; });
       props[key] = clean;
       if (raw.required) required.push(key);
     });
@@ -135,16 +135,16 @@ function agentBuildToolSchemas(): any[] {
   return out;
 }
 
-var AGENT_TOOL_RISK_LABEL = { low: '只读查询', medium: '账户变更', high: '资金操作' };
+var AGENT_TOOL_RISK_LABEL: Record<string, string> = { low: '只读查询', medium: '账户变更', high: '资金操作' };
 
 // ------------------------------ 2. 系统提示词（含用户记忆） ------------------------------
 function agentSystemPrompt(): string {
   var m = AGENT_MEMORY || {};
   var p = m.profile || {};
-  var family = (m.family || []).map(function (f) {
+  var family = (m.family || []).map(function (f: any) {
     return f.relation + ' ' + f.name + '（生日 ' + f.birthday + '，还有 ' + agentDaysUntil(f.birthday) + ' 天，常用花材 ' + (f.favoriteFlower || '未记录') + '）';
   }).join('；') || '无';
-  var goals = (m.goals || []).map(function (g) {
+  var goals = (m.goals || []).map(function (g: any) {
     return g.name + ' 已存 ¥' + agentFmtInt(g.saved) + ' / ¥' + agentFmtInt(g.target) + '（截止 ' + g.deadline + '）';
   }).join('；') || '无';
   var debit = (mockData.userProfile && mockData.userProfile.debitCard) ? mockData.userProfile.debitCard : {};
@@ -236,7 +236,7 @@ function agentSystemPrompt(): string {
 }
 
 // ------------------------------ 3. 多轮上下文 ------------------------------
-var AGENT_LLM_HISTORY = [];
+var AGENT_LLM_HISTORY: any[] = [];
 
 function agentLLMPushHistory(userText: string, assistantText?: string): void {
   AGENT_LLM_HISTORY.push({ role: 'user', content: userText });
@@ -275,14 +275,14 @@ async function agentLLMCall(messages: any, tools?: any, opts?: any): Promise<any
       body: JSON.stringify(body)
     });
   } catch (netErr) {
-    throw new Error('网络不可达：' + ((netErr && netErr.message) ? netErr.message : String(netErr)));
+    throw new Error('网络不可达：' + ((netErr as any) && (netErr as any).message ? (netErr as any).message : String(netErr)));
   }
 
   var data = null;
   try { data = await resp.json(); } catch (e) { data = null; }
 
   if (!resp.ok) {
-    var apiMsg = (data && data.error && data.error.message) ? data.error.message : ('HTTP ' + resp.status);
+    var apiMsg = ((data as any) && (data as any).error && (data as any).error.message) ? data.error.message : ('HTTP ' + resp.status);
     // 模型不支持 tools 时，降级为纯对话并记住（下次不再带 tools）
     if (useTools && /tool|function|unsupported|not support|invalid/i.test(apiMsg)) {
       AGENT_LLM_TOOLS_OK = false;
@@ -424,7 +424,7 @@ function agentParseToolArgs(raw: any): any {
 }
 
 function agentToolActionLabel(action: any): string {
-  var esc = function (v) { return (typeof escapeHtml === 'function') ? escapeHtml(String(v)) : String(v); };
+  var esc = function (v: any) { return (typeof escapeHtml === 'function') ? escapeHtml(String(v)) : String(v); };
   var label = (action.tool && action.tool.label) || action.name;
   var ar = action.args || {};
   var parts = [];
@@ -435,7 +435,7 @@ function agentToolActionLabel(action: any): string {
   if (ar.flower) parts.push(esc(ar.flower));
   if (ar.city) parts.push(esc(ar.city));
   if (ar.deliverDate) parts.push(esc(ar.deliverDate) + ' 送达');
-  if (ar.period) parts.push(esc({ day: '每日', week: '每周', month: '每月', year: '每年' }[ar.period] || ar.period));
+  if (ar.period) parts.push(esc(({ day: '每日', week: '每周', month: '每月', year: '每年' } as Record<string, string>)[ar.period] || ar.period));
   if (ar.amount !== undefined && ar.amount !== null && ar.amount !== '') parts.push('¥' + agentFmt(ar.amount));
   return esc(label) + (parts.length ? '：' + parts.join(' · ') : '');
 }
@@ -463,16 +463,16 @@ function agentRenderAgentReply(content: string): void {
 
 function agentLLMRenderConfirm(state: any): void {
   var batch = state.needsConfirm || [];
-  var total = batch.reduce(function (s, a) { return s + agentActionAmount(a); }, 0);
-  var hasHigh = batch.some(function (a) { return (a.tool && a.tool.risk) === 'high'; });
-  var rows = batch.map(function (a, i) {
+  var total = batch.reduce(function (s: any, a: any) { return s + agentActionAmount(a); }, 0);
+  var hasHigh = batch.some(function (a: any) { return (a.tool && a.tool.risk) === 'high'; });
+  var rows = batch.map(function (a: any, i: any) {
     return '<div class="agent-confirm-row" id="' + state.id + '-a' + i + '">' +
       '<span class="agent-confirm-idx">' + (i + 1) + '</span>' +
       '<span class="agent-confirm-text">' + agentToolActionLabel(a) + '</span>' +
       '<span class="agent-confirm-tag">待确认</span></div>';
   }).join('');
 
-  var riskHtml = batch.map(function (a) {
+  var riskHtml = batch.map(function (a: any) {
     var risk = (a.tool && a.tool.risk) || 'medium';
     return '<span class="agent-confirm-risk ' + risk + '">' + (AGENT_TOOL_RISK_LABEL[risk] || '需确认') + '</span>';
   }).join('');
@@ -483,12 +483,12 @@ function agentLLMRenderConfirm(state: any): void {
   // 注意：不能用 tool.risk（transfer.execute 恒为 'high'，那是"需确认"标记，不是可疑度），
   // 必须用 agentAssessTransferRisk 的"可疑度"结果来抬档，否则一笔 ¥100 转账也会被要求验证码。
   var tier = null, tierBadge = null, tierHtml = '', verifyHtml = '';
-  var transferActs = batch.filter(function (a) { return a.name === 'transfer.execute'; });
-  var debitActs = batch.filter(function (a) {
+  var transferActs = batch.filter(function (a: any) { return a.name === 'transfer.execute'; });
+  var debitActs = batch.filter(function (a: any) {
     return ['transfer.execute', 'wealth.buy', 'life.orderFlower', 'life.orderCake'].indexOf(a.name) > -1;
   });
   if (debitActs.length && typeof agentTransferTier === 'function') {
-    var tierAmount = debitActs.reduce(function (s, a) { return s + agentActionAmount(a); }, 0);
+    var tierAmount = debitActs.reduce(function (s: any, a: any) { return s + agentActionAmount(a); }, 0);
     var tierRisk = null;
     if (transferActs.length && typeof agentAssessTransferRisk === 'function') {
       var firstArgs = transferActs[0].args || {};
@@ -514,7 +514,7 @@ function agentLLMRenderConfirm(state: any): void {
   // —— 余额门禁：涉及转账时，交易前先算可用余额，不足则不出「确认执行」，改出超支方案 ——
   var shortage = null;
   if (transferActs.length && typeof agentCheckBalance === 'function') {
-    var check = agentCheckBalance(transferActs.map(function (a) { return { amount: Number(a.args && a.args.amount) || 0 }; }));
+    var check = agentCheckBalance(transferActs.map(function (a: any) { return { amount: Number(a.args && a.args.amount) || 0 }; }));
     if (!check.enough) shortage = check;
   }
   state.shortage = shortage;
@@ -545,8 +545,8 @@ function agentLLMRenderConfirm(state: any): void {
 }
 
 function agentLLMRenderNextSteps(state: any): void {
-  var names = (state.executed || []).map(function (x) { return x.name; });
-  function has(re) { return names.some(function (n) { return re.test(n); }); }
+  var names = (state.executed || []).map(function (x: any) { return x.name; });
+  function has(re: RegExp) { return names.some(function (n: any) { return re.test(n); }); }
   var pool = [];
   if (has(/^bill\./)) pool.push('帮我优化一下订阅');
   if (has(/^bill\.|^account\.transactions/)) pool.push('帮我核查异常交易');
@@ -557,7 +557,7 @@ function agentLLMRenderNextSteps(state: any): void {
   if (has(/^life\./)) pool.push('帮我看下本月还有什么要注意的');
   pool.push('帮我看看这个月还有什么要注意的');
 
-  var picked = [];
+  var picked: any[] = [];
   pool.forEach(function (t) { if (picked.indexOf(t) === -1) picked.push(t); });
   picked = picked.slice(0, 3);
 
@@ -575,7 +575,7 @@ function agentLLMRenderNextSteps(state: any): void {
 }
 
 // ------------------------------ 7. Agent 主循环 ------------------------------
-var AGENT_LLM_PENDING = {};
+var AGENT_LLM_PENDING: Record<string, any> = {};
 var AGENT_LLM_SEQ = 0;
 var AGENT_LLM_LAST = null;   // 最近一次 Agent 请求状态，便于调试与「继续执行」
 
@@ -598,7 +598,7 @@ function agentMemoryLine(): string {
   var m = AGENT_MEMORY || {};
   var p = m.profile || {};
   var fam = (m.family || []).length;
-  var highRiskDay = (m.family || []).map(function (f) { return agentDaysUntil(f.birthday); }).sort(function (a, b) { return a - b; })[0];
+  var highRiskDay = (m.family || []).map(function (f: any) { return agentDaysUntil(f.birthday); }).sort(function (a: any, b: any) { return a - b; })[0];
   var parts = [fam + ' 位家庭成员已建档', p.riskLevel || '未评估', '月均支出 ¥' + agentFmtInt(p.monthlyAvgExpense)];
   if (typeof highRiskDay === 'number' && highRiskDay <= 15) parts.push('最近生日 ' + highRiskDay + ' 天后');
   return parts.join(' · ');
@@ -639,7 +639,7 @@ async function agentLLMHandle(text: string): Promise<boolean> {
       scrollToBottom();
       if (typeof agentRememberRiskBlock === 'function') agentRememberRiskBlock(preDet);
       if (typeof showToast === 'function') showToast('已识别到高风险行为，未执行', 2600);
-      addToConversation('assistant', '已拦截高危行为：' + preDet.top.title, null);
+      addToConversation('assistant', '已拦截高危行为：' + (preDet.top as any).title, null);
       AGENT_LLM_BUSY = false;
       return true;
     }
@@ -689,11 +689,11 @@ async function agentLLMHandle(text: string): Promise<boolean> {
 
 // 模型没给出正文（截断或只产出推理内容）时，用真实工具结果拼一段兜底结论，避免出现空白回复
 function agentLLMFallbackAnswer(state: any): string {
-  var done = (state.executed || []).filter(function (x) { return x.ok && x.summary; });
+  var done = (state.executed || []).filter(function (x: any) { return x.ok && x.summary; });
   if (!done.length) {
     return '我已经读取了你的账户数据。你想让我重点看哪一块？例如本月支出结构、异常交易、订阅扣费或理财配置。';
   }
-  var lines = done.slice(0, 4).map(function (x) { return '· ' + (x.label || x.name) + '：' + x.summary; });
+  var lines = done.slice(0, 4).map(function (x: any) { return '· ' + (x.label || x.name) + '：' + x.summary; });
   return '根据实际查询到的数据：\n' + lines.join('\n') + '\n\n需要我针对其中某一项继续安排吗？';
 }
 
@@ -722,7 +722,7 @@ async function agentLLMRunLoop(state: any): Promise<any> {
       }
       var lf = await agentTraceStep(trace, '正在汇总结论与建议……', { wait: 320 });
       agentTraceSettle(trace, lf, '已生成执行结果');
-      agentTraceComplete(trace, state.executed.length ? ('本轮共完成 ' + state.executed.filter(function (x) { return x.ok; }).length + ' 项操作，均可随时撤销或修改。') : '');
+      agentTraceComplete(trace, state.executed.length ? ('本轮共完成 ' + state.executed.filter(function (x: any) { return x.ok; }).length + ' 项操作，均可随时撤销或修改。') : '');
       var content = (msg && msg.content) ? String(msg.content).trim() : '';
       if (!content) content = agentLLMFallbackAnswer(state);   // 截断/仅推理时不留空白回复
       agentRenderAgentReply(content);
@@ -753,7 +753,7 @@ async function agentLLMRunLoop(state: any): Promise<any> {
       // —— 风险闸门：账户变更/资金操作 → 暂停，等用户确认 ——
       var risk = tool.risk || 'low';
       if (risk !== 'low') {
-        state.needsConfirm = calls.slice(i).map(function (c2) {
+        state.needsConfirm = calls.slice(i).map(function (c2: any) {
           var n2 = agentToolOrigName((c2.function && c2.function.name) || '');
           return { id: c2.id, name: n2, tool: getAgentTool(n2), args: agentParseToolArgs(c2.function && c2.function.arguments) };
         });
@@ -822,7 +822,7 @@ async function agentLLMApprove(id: string): Promise<void> {
 
   // —— T2 密码确认：金额达到 ¥500–4,999 时先完成一次安全验证 ——
   if (state.tier && state.tier.key === 'T2' && typeof showSecurityVerification === 'function') {
-    var t2Total = batch.reduce(function (s, a) { return s + agentActionAmount(a); }, 0);
+    var t2Total = batch.reduce(function (s: any, a: any) { return s + agentActionAmount(a); }, 0);
     var t2ok = await new Promise(function (resolve) {
       showSecurityVerification('密码确认（¥' + agentFmt(t2Total) + '）', function (ok) { resolve(!!ok); });
     });
@@ -836,12 +836,12 @@ async function agentLLMApprove(id: string): Promise<void> {
     var got = input ? String(input.value || '').trim() : '';
     if (!got) {
       if (errEl) errEl.textContent = '请输入验证码后再继续';
-      if (input) input.focus();
+      if (input) ((input as any) as HTMLInputElement).focus?.();
       return;
     }
     if (got !== AGENT_DEMO_OTP) {
       if (errEl) errEl.textContent = '验证码不正确，请重新输入（本次未执行任何操作）';
-      if (input) { input.value = ''; input.focus(); }
+      if (input) { (input as HTMLInputElement).value = ''; ((input as any) as HTMLInputElement).focus?.(); }
       if (typeof showToast === 'function') showToast('验证失败，操作未执行', 2200);
       return;
     }
@@ -851,13 +851,13 @@ async function agentLLMApprove(id: string): Promise<void> {
 
   // —— T4：验证通过后只提交人工复核，不执行任何扣款 ——
   if (state.tier && state.tier.needManual) {
-    var t4Amount = batch.reduce(function (s, a) { return s + agentActionAmount(a); }, 0);
+    var t4Amount = batch.reduce(function (s: any, a: any) { return s + agentActionAmount(a); }, 0);
     submitManualReview({
       amount: t4Amount,
       purpose: batch.length > 1 ? 'Agent 大额交易（' + batch.length + ' 项）' : (batch[0] ? agentToolActionLabel(batch[0]) : 'Agent 大额交易'),
       source: 'Agent',
-      items: batch.map(function (a) { return agentToolActionLabel(a); }),
-      actions: batch.map(function (a) { return { tool: a.name, args: a.args || {} }; }),
+      items: batch.map(function (a: any) { return agentToolActionLabel(a); }),
+      actions: batch.map(function (a: any) { return { tool: a.name, args: a.args || {} }; }),
       tier: state.tier
     });
     rec.status = 'pending_review';
@@ -866,7 +866,7 @@ async function agentLLMApprove(id: string): Promise<void> {
       var reviewActions = reviewCard.querySelector('.agent-confirm-actions');
       if (reviewActions) reviewActions.innerHTML = '<div class="agent-reject-card" style="margin-top:0;">已提交人工复核，本次未扣款。复核通过后才会执行。</div>';
     }
-    batch.forEach(function (a, i) {
+    batch.forEach(function (a: any, i: any) {
       var row = document.getElementById(id + '-a' + i);
       if (!row) return;
       var tag = row.querySelector('.agent-confirm-tag');
@@ -878,9 +878,9 @@ async function agentLLMApprove(id: string): Promise<void> {
   }
 
   // —— 余额门禁：执行前最后校验，不足则中止并转超支方案 ——
-  var transferActs = batch.filter(function (a) { return a.name === 'transfer.execute'; });
+  var transferActs = batch.filter(function (a: any) { return a.name === 'transfer.execute'; });
   if (transferActs.length && typeof agentCheckBalance === 'function') {
-    var check = agentCheckBalance(transferActs.map(function (a) { return { amount: Number(a.args && a.args.amount) || 0 }; }));
+    var check = agentCheckBalance(transferActs.map(function (a: any) { return { amount: Number(a.args && a.args.amount) || 0 }; }));
     if (!check.enough) {
       if (typeof showToast === 'function') showToast('余额不足，操作已中止', 2600);
       var sp = transferActs[0].args && transferActs[0].args.payee;
@@ -942,9 +942,9 @@ async function agentLLMApprove(id: string): Promise<void> {
     rec.status = 'done';
   } catch (e) {
     console.warn('[agent-llm] 确认后执行失败：', e);
-    agentTraceNote(state.trace, '执行后汇总失败：' + ((e && e.message) || '未知错误'), 'fail');
+    agentTraceNote(state.trace, '执行后汇总失败：' + ((e && (e as any).message) || '未知错误'), 'fail');
     agentTraceComplete(state.trace);
-    var okCount = state.executed.filter(function (x) { return x.ok; }).length;
+    var okCount = state.executed.filter(function (x: any) { return x.ok; }).length;
     agentRenderAgentReply('已完成 ' + okCount + ' 项操作，但后续汇总时连接模型失败。你可以在「我的数据」里核对最新变动。');
   }
   AGENT_LLM_BUSY = false;
@@ -962,7 +962,7 @@ async function agentLLMReject(id: string): Promise<void> {
     var actionsWrap = card.querySelector('.agent-confirm-actions');
     if (actionsWrap) actionsWrap.innerHTML = '<div class="agent-reject-card" style="margin-top:0;">已取消，本次未执行任何操作。</div>';
   }
-  batch.forEach(function (a, i) {
+  batch.forEach(function (a: any, i: any) {
     var row = document.getElementById(id + '-a' + i);
     if (row) {
       var tag = row.querySelector('.agent-confirm-tag');
