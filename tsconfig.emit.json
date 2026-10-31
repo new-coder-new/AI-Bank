@@ -23,6 +23,8 @@
     "js/agent/agentsvc.ts",
     "js/agent/context.ts",
     "js/agent/ai.ts",
-    "js/agent/display.ts"
+    "js/agent/display.ts",
+    "js/agent/riskdetect.ts",
+    "js/agent/decision.ts"
   ]
 }
