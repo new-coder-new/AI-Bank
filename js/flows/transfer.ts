@@ -1037,16 +1037,17 @@ function openScheduledTransferConfirm(task: any, opts: any) {
               <div><span>重复方式</span><b>${schedEsc(t.repeat)}</b></div>
               <div><span>备注</span><b>${schedEsc(t.remark || '无')}</b></div>
             </div>
-            <div class="bank-confirm-note">创建后<b>不会立即扣款</b>。到期时系统会自动从储蓄卡转出；执行前你可以在「定时转账」中取消。</div>
             ${shortWarn}
-            <div class="bank-otp-label">短信验证码</div>
-            <div class="bank-otp-row">
-              <input class="bank-otp-input" id="${cardId}-otp" type="text" inputmode="numeric" maxlength="6" placeholder="请输入 6 位验证码" autocomplete="one-time-code">
-              <button class="btn btn-primary" onclick="submitScheduledTransferOtp(this)">${o.okLabel || '验证并创建'}</button>
+            <div class="agent-verify-box">
+              <div class="agent-verify-title">请输入短信验证码</div>
+              <div class="agent-verify-hint">验证码已发送至尾号 **** 的手机（演示验证码：${SCHEDULED_DEMO_OTP}）</div>
+              <input class="bank-otp-input agent-verify-input" id="${cardId}-otp" type="text" inputmode="numeric" maxlength="6" placeholder="请输入 6 位验证码" autocomplete="one-time-code">
+              <div class="bank-otp-error agent-verify-err" id="${cardId}-err"></div>
             </div>
-            <div class="bank-otp-hint">验证码已发送至 138****6688（演示验证码：${SCHEDULED_DEMO_OTP}）</div>
-            <div class="bank-otp-error" id="${cardId}-err"></div>
-            <button class="bank-text-btn" onclick="cancelScheduledDraft(this)">取消，不创建任务</button>
+            <div class="agent-confirm-actions">
+              <button class="btn btn-primary btn-sm" onclick="submitScheduledTransferOtp(this)">${o.okLabel || '验证并执行'}</button>
+              <button class="btn btn-secondary btn-sm" onclick="cancelScheduledDraft(this)">暂不执行</button>
+            </div>
           </div>
         </div>
       </div>
