@@ -1,4 +1,3 @@
-"use strict";
 // 引导层会话状态（TypeScript 源文件）
 // 说明：这是从 guide.js 拆出来的「会话状态 + 公共状态管理」模块。
 // 运行形态仍是经典脚本（无 import/export），由 `npm run build:ts` 编译为 js/core/session.js，

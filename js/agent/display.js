@@ -1,4 +1,3 @@
-"use strict";
 // ==========================================================================
 //  AI Banking Agent · 增强展示层（TypeScript 源码）
 //  编译产物：js/agent/display.js（经典脚本，无 import/export）

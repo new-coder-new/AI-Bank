@@ -1,4 +1,3 @@
-"use strict";
 // ==========================================================================
 //  AI Banking Agent · 洞察层（TypeScript 源码）
 //  编译产物：js/agent/insights.js（经典脚本，无 import/export）

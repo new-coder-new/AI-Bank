@@ -1,4 +1,3 @@
-"use strict";
 // ==========================================================================
 //  AI Banking Agent · 用户画像分析层（TypeScript 源码）
 //  编译产物：js/agent/profile.js（经典脚本，无 import/export）

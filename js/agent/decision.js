@@ -1,4 +1,3 @@
-"use strict";
 // ==========================================================================
 //  AI Banking Agent · 消费决策分析层（TypeScript 源码）
 //  编译产物：js/agent/decision.js（经典脚本，无 import/export）

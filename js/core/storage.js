@@ -1,4 +1,3 @@
-"use strict";
 // ========== 数据持久化存储（TypeScript 源码） ==========
 // 编译产物：js/core/storage.js（经典脚本，无 import/export）
 const STORAGE_KEY = 'financeAssistantData_v1';

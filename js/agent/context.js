@@ -1,4 +1,3 @@
-"use strict";
 // ==========================================================================
 //  AI Banking Agent · 对话上下文与指代消解层（TypeScript 源码）
 //  编译产物：js/agent/context.js（经典脚本，无 import/export）

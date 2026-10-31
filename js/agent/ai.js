@@ -1,4 +1,3 @@
-"use strict";
 /** 调用大模型识别用户意图（未配置 Key 时返回 null，由调用方降级到本地规则） */
 async function callLLMIntentClassification(text) {
     const intentDefinitions = `

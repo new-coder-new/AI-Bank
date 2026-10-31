@@ -1,4 +1,3 @@
-"use strict";
 // ==========================================================================
 //  AI Banking Agent · 金融风险识别层（TypeScript 源码）
 //  编译产物：js/agent/riskdetect.js（经典脚本，无 import/export）

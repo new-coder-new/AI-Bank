@@ -1,4 +1,3 @@
-"use strict";
 // ==========================================================================
 //  AI Banking Agent · 跨场景任务规划器（TypeScript 源码）
 //  编译产物：js/agent/planner.js（经典脚本，无 import/export）

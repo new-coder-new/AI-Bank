@@ -1,4 +1,3 @@
-"use strict";
 // ==========================================================================
 //  AI Banking Agent · 冻结资金与联系人服务层（TypeScript 源码）
 //  编译产物：js/agent/agentsvc.js（经典脚本，无 import/export）
