@@ -601,6 +601,64 @@ function runDueScheduledTransfersServer() {
 setTimeout(() => { try { runDueScheduledTransfersServer(); } catch (e) { console.warn('[sched] 启动巡检失败：' + e.message); } }, 3000);
 setInterval(() => { try { runDueScheduledTransfersServer(); } catch (e) { /* 忽略 */ } }, 30000).unref();
 
+
+// —— 订阅自动续费：服务端巡检、到期扣费、失败留痕 ——
+function srvSubNextDate(fromDate, cycle) {
+  const d = new Date(String(fromDate || '').slice(0, 10) + 'T09:00:00');
+  if (isNaN(d.getTime())) return null;
+  if (cycle === '/月') d.setMonth(d.getMonth() + 1);
+  else if (cycle === '/季') d.setMonth(d.getMonth() + 3);
+  else if (cycle === '/年') d.setFullYear(d.getFullYear() + 1);
+  else return null;
+  return fmtDate(d);
+}
+
+function runDueSubscriptionRenewals() {
+  const subs = Array.isArray(DB.subscriptions) ? DB.subscriptions : [];
+  if (!subs.length) return [];
+  const u = DB.userProfile;
+  const d = u.debitCard;
+  const today = fmtDate(now());
+  const renewed = [];
+
+  subs.forEach((s) => {
+    if (!s || s.autoRenew === false) return;
+    if (!s.chargeDate) {
+      // 老数据补一个下次扣费日
+      s.chargeDate = srvSubNextDate(s.createdAt || today, s.cycle) || srvSubNextDate(today, s.cycle);
+      if (!s.chargeDate) return;
+    }
+    if (String(s.chargeDate) > today) return;
+
+    const price = Math.round((Number(s.price) || 0) * 100) / 100;
+    if (!(price > 0)) return;
+
+    if (price > Number(d.available)) {
+      s.lastRenewError = '可用余额不足，续费失败';
+      s.lastRenewAt = fmtDateTime(now());
+      s.chargeDate = srvSubNextDate(today, s.cycle) || s.chargeDate;   // 推进一期，避免每分钟重试
+      auditLog(DB, 'subscription.renew_fail', { amount: price, target: String(s.name || ''), ip: 'server', result: 'insufficient' });
+      return;
+    }
+
+    d.available = Math.round((Number(d.available) - price) * 100) / 100;
+    d.balance = Math.round((Number(d.balance) - price) * 100) / 100;
+    addTxn('expense', price, '订阅续费-' + s.name + '(' + s.cycle + ')', '订阅续费');
+    s.lastRenewAt = fmtDateTime(now());
+    s.lastRenewAmount = price;
+    delete s.lastRenewError;
+    s.chargeDate = srvSubNextDate(today, s.cycle) || s.chargeDate;
+    renewed.push({ id: s.id, name: s.name, price: price, next: s.chargeDate });
+    auditLog(DB, 'subscription.renew', { amount: price, target: String(s.name || ''), ip: 'server', result: 'ok' });
+  });
+
+  if (renewed.length) saveDB(DB);
+  return renewed;
+}
+
+setInterval(() => { try { runDueSubscriptionRenewals(); } catch (e) { /* 忽略 */ } }, 60000).unref();
+setTimeout(() => { try { runDueSubscriptionRenewals(); } catch (e) { } }, 5000);
+
 // —— 服务端价目表（金额以此为准，前端传的 price 仅作参考被忽略）——
 const SRV_FLOWER_BOUQUETS = { '简约玫瑰': 299, '向日葵花束': 168, '混搭小花束': 159, '康乃馨礼盒': 128, '百合礼盒': 199, '郁金香花束': 229 };
 const SRV_FLOWER_CAKES = { '无蛋糕': 0, '6寸水果蛋糕': 168, '8寸奶油蛋糕': 228 };
@@ -689,6 +747,10 @@ const routes = {
   // 健康检查
 
   // 立即执行一次到期定时转账（返回执行条数）
+
+  // 立即执行一次订阅续费巡检
+  'GET /api/subscription/run': () => ({ ok: true, renewed: runDueSubscriptionRenewals() }),
+
   'GET /api/scheduled/run': () => ({ ok: true, executed: runDueScheduledTransfersServer() }),
 
   'GET /api/health': () => { settlePendingRedemptions(DB); return { ok: true, service: 'bank-core', time: fmtDateTime(now()), version: DB.version }; },
@@ -1072,7 +1134,9 @@ const routes = {
     d.available = Math.round((Number(d.available) - price) * 100) / 100;
     d.balance = Math.round((Number(d.balance) - price) * 100) / 100;
     addTxn('expense', price, '订阅- ' + name + '（' + cycle + '）', '订阅管理');
-    const sub = { id: Date.now(), name: name, cycle: cycle, price: price, autoRenew: autoRenew, createdAt: fmtDateTime(now()) };
+    const __today = fmtDate(now());
+    const __next = srvSubNextDate(__today, cycle) || __today;
+    const sub = { id: Date.now(), name: name, cycle: cycle, price: price, autoRenew: autoRenew, createdAt: fmtDateTime(now()), chargeDate: __next };
     DB.subscriptions.push(sub);
     auditLog(DB, 'subscription.add', { amount: price, target: name, ip: (req.socket && req.socket.remoteAddress) || '', result: 'ok' });
     return { ok: true, subscription: sub, subscriptions: DB.subscriptions, balance: d.balance, available: d.available };

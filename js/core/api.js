@@ -388,6 +388,36 @@ function apiRefreshUI() {
 
 
 // 触发服务端执行到期定时转账，并把执行结果合并回本地
+// 触发服务端订阅续费并合并结果（余额、下次扣费日）
+function apiSubscriptionRun() {
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  return apiRequest('GET', '/api/subscription/run').then(function (res) {
+    if (!res || !res.renewed || !res.renewed.length) return res || { ok: true };
+    return apiRequest('GET', '/api/snapshot').then(function (snap) {
+      if (snap && Array.isArray(snap.subscriptions)) {
+        var byId = {};
+        snap.subscriptions.forEach(function (s) { if (s && s.id != null) byId[s.id] = s; });
+        (mockData.subscriptions || []).forEach(function (s) {
+          var srv = s && byId[s.id];
+          if (!srv) return;
+          if (srv.chargeDate) s.chargeDate = srv.chargeDate;
+          if (srv.lastRenewAt) s.lastRenewAt = srv.lastRenewAt;
+          if (srv.lastRenewAmount) s.lastRenewAmount = srv.lastRenewAmount;
+          if (srv.lastRenewError) s.lastRenewError = srv.lastRenewError;
+          s.chargeDate = srv.chargeDate || s.chargeDate;
+        });
+      }
+      if (snap && snap.userProfile && snap.userProfile.debitCard && mockData.userProfile) {
+        mockData.userProfile.debitCard.available = Number(snap.userProfile.debitCard.available);
+        mockData.userProfile.debitCard.balance = Number(snap.userProfile.debitCard.balance);
+      }
+      if (typeof saveUserData === 'function') saveUserData();
+      if (typeof apiRefreshUI === 'function') apiRefreshUI();
+      return res;
+    });
+  }).catch(function () { return { ok: false }; });
+}
+
 function apiScheduledRun() {
   if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
   return apiRequest('GET', '/api/scheduled/run').then(function (res) {
@@ -409,6 +439,10 @@ function apiScheduledRun() {
     });
   }).catch(function () { return { ok: false }; });
 }
+
+// 订阅续费：启动触发一次，之后每分钟巡检（服务端为准）
+setTimeout(function () { if (typeof apiSubscriptionRun === 'function') apiSubscriptionRun(); }, 600);
+setInterval(function () { if (typeof apiSubscriptionRun === 'function') apiSubscriptionRun(); }, 60000);
 
 // 页面启动时自动初始化（放在 config.js 之后加载，此时 mockData 已就绪）
 apiInit();
