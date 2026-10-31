@@ -80,7 +80,6 @@
     "js/flows/transfer.js",
     "js/flows/transfer.ts",
     "js/flows/userinfo.js",
-    "js/flows/wealth.js",
-    "js/flows/wealth.ts"
+    "js/flows/wealth.js"
   ]
 }

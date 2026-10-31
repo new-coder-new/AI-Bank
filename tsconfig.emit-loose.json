@@ -29,7 +29,6 @@
     "js/core/ui.ts",
     "js/flows/chat.ts",
     "js/flows/security.ts",
-    "js/flows/transfer.ts",
-    "js/flows/wealth.ts"
+    "js/flows/transfer.ts"
   ]
 }

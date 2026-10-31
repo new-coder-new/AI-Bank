@@ -5,11 +5,17 @@
 //        对外符号统一在 types/global.d.ts 声明。
 // ==========================================================================
 
+declare function addTransaction(type: string, amount: number, desc: string, channel?: string, deduct?: boolean): boolean | void;
+declare function callAgentTool(name: string, args?: any): any;
+declare function verifyAmountRisk(amount: number, purpose: string, actions?: any[]): Promise<any>;
+declare function showSecurityVerification(purpose: string, cb: (ok: boolean) => void): void;
+declare function guideWealthShowRecommendations(...args: any[]): any;
+declare function guideWealthStep(text: string): any;
 // ========== 理财操作（中阶：风险测评+推荐+申赎） ==========
 // 风险测评有效期：1 年（到期需重新测评才能推荐/购买）
 var RISK_PROFILE_VALID_MS = 365 * 24 * 60 * 60 * 1000;
 
-function riskProfileTimestamp(profile) {
+function riskProfileTimestamp(profile: any) {
   if (!profile) return 0;
   if (profile.assessedAtTs) return Number(profile.assessedAtTs) || 0;
   if (profile.assessedAt) {
@@ -20,18 +26,18 @@ function riskProfileTimestamp(profile) {
 }
 
 // 有效：有测评结果，且测评时间在 1 年内（老数据没时间戳时按有效处理，避免误判）
-function riskProfileValid(profile) {
+function riskProfileValid(profile: any) {
   if (!profile || !profile.level) return false;
   var ts = riskProfileTimestamp(profile);
   if (!ts) return true;
   return (Date.now() - ts) < RISK_PROFILE_VALID_MS;
 }
 
-function riskProfileExpired(profile) {
+function riskProfileExpired(profile: any) {
   return !!profile && !!profile.level && !riskProfileValid(profile);
 }
 
-function riskProfileExpireText(profile) {
+function riskProfileExpireText(profile: any) {
   var ts = riskProfileTimestamp(profile);
   if (!ts) return '';
   var d = new Date(ts + RISK_PROFILE_VALID_MS);
@@ -43,7 +49,7 @@ function showProductList() {
   if (!riskProfile && mockData.userProfile && mockData.userProfile.riskProfile) {
     riskProfile = mockData.userProfile.riskProfile;
   }
-  let productsHtml = mockData.products.map(p => {
+  let productsHtml = mockData.products.map((p: any) => {
     const isRecommended = riskProfile && p.riskLevel <= riskProfile.level;
     return `
     <div class="product-item ${isRecommended ? 'recommended' : ''}">
@@ -99,8 +105,8 @@ function showProductList() {
 }
 
 // 点击申购按钮：弹出金额输入框
-function buyProduct(name, minAmount) {
-  const product = mockData.products.find(p => p.name === name);
+function buyProduct(name: any, minAmount: any) {
+  const product = mockData.products.find((p: any) => p.name === name);
   const popupId = 'buy-amount-popup-' + Date.now();
   const popup = document.createElement('div');
   popup.id = popupId;
@@ -119,17 +125,17 @@ function buyProduct(name, minAmount) {
         <label style="display:block;font-size:13px;color:#666;margin-bottom:6px;font-weight:600;">申购金额（元）</label>
         <input type="number" id="buyAmountInput" value="${minAmount}" min="${minAmount}" step="100" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:10px;font-size:18px;font-weight:700;text-align:center;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#0B4F9C'" onblur="this.style.borderColor='#e5e7eb'">
         <div style="display:flex;gap:8px;margin-top:8px;">
-          <button style="flex:1;padding:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;font-size:12px;cursor:pointer;" onclick="document.getElementById('buyAmountInput').value=${minAmount}">起购</button>
-          <button style="flex:1;padding:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;font-size:12px;cursor:pointer;" onclick="document.getElementById('buyAmountInput').value=${minAmount * 2}">双倍</button>
-          <button style="flex:1;padding:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;font-size:12px;cursor:pointer;" onclick="document.getElementById('buyAmountInput').value=${minAmount * 5}">5倍</button>
-          <button style="flex:1;padding:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;font-size:12px;cursor:pointer;" onclick="document.getElementById('buyAmountInput').value=${minAmount * 10}">10倍</button>
+          <button style="flex:1;padding:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;font-size:12px;cursor:pointer;" onclick="(document.getElementById('buyAmountInput') as HTMLInputElement).value=${minAmount}">起购</button>
+          <button style="flex:1;padding:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;font-size:12px;cursor:pointer;" onclick="(document.getElementById('buyAmountInput') as HTMLInputElement).value=${minAmount * 2}">双倍</button>
+          <button style="flex:1;padding:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;font-size:12px;cursor:pointer;" onclick="(document.getElementById('buyAmountInput') as HTMLInputElement).value=${minAmount * 5}">5倍</button>
+          <button style="flex:1;padding:6px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:6px;font-size:12px;cursor:pointer;" onclick="(document.getElementById('buyAmountInput') as HTMLInputElement).value=${minAmount * 10}">10倍</button>
         </div>
       </div>
       <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-bottom:16px;">
         <div style="font-size:11px;color:#92400e;">理财有风险，投资需谨慎。确认后将从可用余额扣款，T+1工作日确认份额。</div>
       </div>
       <div style="display:flex;gap:10px;">
-        <button class="btn btn-primary" style="flex:1;" onclick="executeBuyProduct('${name}', parseFloat(document.getElementById('buyAmountInput').value) || ${minAmount});document.getElementById('${popupId}').remove();">确认申购</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="executeBuyProduct('${name}', parseFloat((document.getElementById('buyAmountInput') as HTMLInputElement).value) || ${minAmount});document.getElementById('${popupId}').remove();">确认申购</button>
         <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('${popupId}').remove();">取消</button>
       </div>
     </div>
@@ -139,8 +145,8 @@ function buyProduct(name, minAmount) {
 
 // 执行实际的理财申购
 // 与一键式对话共用 wealth.buy 工具：同一套余额门禁、扣款、持仓写入与后端同步。
-async function executeBuyProduct(name, amount) {
-  const product = mockData.products.find(p => p.name === name);
+async function executeBuyProduct(name: any, amount: any) {
+  const product = mockData.products.find((p: any) => p.name === name);
   if (!product) {
     appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ 未找到该理财产品。</div></div></div>');
     scrollToBottom();
@@ -185,7 +191,7 @@ async function executeBuyProduct(name, amount) {
   try {
     res = await callAgentTool('wealth.buy', { product: name, amount: buyAmount });
   } catch (e) {
-    res = { ok: false, summary: (e && e.message) || '申购失败' };
+    res = { ok: false, summary: (e && (e as any).message) || '申购失败' };
   }
   if (res.ok === false) {
     appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>申购未完成</strong><br>${escapeHtml(res.summary || '可用余额不足或产品状态异常')}<br><br>账户未发生扣款。</div></div></div>`);
@@ -209,7 +215,7 @@ async function executeBuyProduct(name, amount) {
 }
 
 // 智能购买解析：自动识别产品名称和金额，弹出确认框
-function smartBuyParse(text) {
+function smartBuyParse(text: any) {
   const products = mockData.products || [];
   let matchedProduct = null;
   let amount = 0;
@@ -223,11 +229,11 @@ function smartBuyParse(text) {
   }
   // 模糊匹配关键词
   if (!matchedProduct) {
-    if (/安享|定期|三年|3年/.test(text)) matchedProduct = products.find(p => /安享/.test(p.name));
-    else if (/稳健|债券|固收/.test(text)) matchedProduct = products.find(p => /稳健/.test(p.name));
-    else if (/成长|股票|混合/.test(text)) matchedProduct = products.find(p => /成长/.test(p.name));
-    else if (/货币|活期|现金/.test(text)) matchedProduct = products.find(p => /货币/.test(p.name));
-    else if (/黄金|贵金属/.test(text)) matchedProduct = products.find(p => /黄金/.test(p.name));
+    if (/安享|定期|三年|3年/.test(text)) matchedProduct = products.find((p: any) => /安享/.test(p.name));
+    else if (/稳健|债券|固收/.test(text)) matchedProduct = products.find((p: any) => /稳健/.test(p.name));
+    else if (/成长|股票|混合/.test(text)) matchedProduct = products.find((p: any) => /成长/.test(p.name));
+    else if (/货币|活期|现金/.test(text)) matchedProduct = products.find((p: any) => /货币/.test(p.name));
+    else if (/黄金|贵金属/.test(text)) matchedProduct = products.find((p: any) => /黄金/.test(p.name));
   }
 
   // 匹配金额
@@ -249,7 +255,7 @@ function smartBuyParse(text) {
   return { product: matchedProduct, amount };
 }
 
-function showSmartBuyConfirm(product, amount, text) {
+function showSmartBuyConfirm(product: any, amount: any, text: any) {
   const buyAmount = amount >= (product.minAmount || 0) ? amount : (product.minAmount || 0);
   const confirmDiv = document.createElement('div');
   confirmDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
@@ -288,9 +294,9 @@ const riskQuestions = [
   { q: '面对投资亏损，你的反应是？', options: [{ text: '非常焦虑，立即赎回', score: 1 }, { text: '有些担心，会减少投资', score: 2 }, { text: '理性看待，继续持有', score: 3 }, { text: '视为机会，加仓买入', score: 4 }] },
 ];
 let riskCurrentQ = 0;
-let riskScores = [];
+let riskScores: any[] = [];
 
-function startRiskAssessment(skipConfirm) {
+function startRiskAssessment(skipConfirm: any) {
   // 支持重新测评：已有结果时先提示，避免误覆盖（对话流程里 skipConfirm=true 直接开始）
   if (!riskProfile && mockData.userProfile && mockData.userProfile.riskProfile) {
     riskProfile = mockData.userProfile.riskProfile;
@@ -329,7 +335,7 @@ function showRiskQuestion() {
   scrollToBottom();
 }
 
-function selectRiskOption(index, score) {
+function selectRiskOption(index: any, score: any) {
   riskScores.push(score);
   riskCurrentQ++;
   if (riskCurrentQ < riskQuestions.length) {
@@ -340,7 +346,7 @@ function selectRiskOption(index, score) {
 }
 
 function showRiskResult() {
-  const total = riskScores.reduce((a, b) => a + b, 0);
+  const total = riskScores.reduce((a: any, b: any) => a + b, 0);
   const avg = total / riskScores.length;
   let level, name, desc, color;
   if (avg <= 1.5) { level = 1; name = '保守型'; desc = '追求本金安全，适合低风险产品如货币基金、定期存款'; color = '#22c55e'; }
@@ -396,16 +402,16 @@ function showRiskResult() {
 // ========== 高阶版：持仓管理与收益分析 ==========
 function showHoldings() {
   const holdings = mockData.userProfile.holdings || [];
-  const totalAmount = holdings.reduce((s, h) => s + h.amount, 0);
-  const totalProfit = holdings.reduce((s, h) => s + h.profit, 0);
+  const totalAmount = holdings.reduce((s: any, h: any) => s + h.amount, 0);
+  const totalProfit = holdings.reduce((s: any, h: any) => s + h.profit, 0);
   const totalProfitRate = totalAmount > 0 ? (totalProfit / totalAmount * 100).toFixed(2) : '0.00';
 
-  const rows = holdings.map((h) => {
+  const rows = holdings.map((h: any) => {
     const up = Number(h.profitRate) >= 0;
     const color = up ? '#16a34a' : '#dc2626';
     const rateText = (h.profitRate == null) ? (h.status || '持有中') : ((up ? '+' : '') + h.profitRate + '%');
     // 编号与「在售产品」一致：按产品列表顺序从 1001 起
-    const prod = (mockData.products || []).filter(function (p) { return p.name === h.name; })[0];
+    const prod = (mockData.products || []).filter(function (p: any) { return p.name === h.name; })[0];
     const idx = prod ? (mockData.products || []).indexOf(prod) : -1;
     const code = idx >= 0 ? String(1001 + idx) : '';
     const level = prod ? (Number(prod.riskLevel) || 1) : null;
@@ -446,7 +452,7 @@ function showHoldings() {
 }
 
 // 点击单条持仓展开/收起详情
-function toggleHoldingDetail(id) {
+function toggleHoldingDetail(id: any) {
   var el = document.getElementById(id);
   if (!el) return;
   el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none';
@@ -457,7 +463,7 @@ function initInvestmentPlans() {
   if (!mockData.investmentPlans) {
     // 用户从未创建过计划时，不能自动生成一个 active 计划并扣款；
     // 只放一条暂停状态的演示计划，用户主动启用后才会执行。
-    if (window.__LOCAL_PLANS_LOADED) {
+    if ((window as any).__LOCAL_PLANS_LOADED) {
       mockData.investmentPlans = [];
     } else {
       mockData.investmentPlans = [
@@ -482,7 +488,7 @@ function showInvestmentPlans() {
             <span style="font-size:13px;color:#666;">共 ${plans.length} 个定投计划</span>
             <button class="btn btn-primary btn-sm" onclick="showCreateInvestmentPlan()">新建定投</button>
           </div>
-          ${plans.length === 0 ? '<div style="text-align:center;padding:30px;color:#999;font-size:13px;">暂无定投计划，点击上方"新建定投"开始</div>' : plans.map(p => `
+          ${plans.length === 0 ? '<div style="text-align:center;padding:30px;color:#999;font-size:13px;">暂无定投计划，点击上方"新建定投"开始</div>' : plans.map((p: any) => `
             <div style="background:#f9fafb;border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid #e5e7eb;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <div style="font-weight:600;font-size:14px;">${p.productName}</div>
@@ -513,10 +519,10 @@ function showInvestmentPlans() {
 
 // 显示创建定投计划表单
 function showCreateInvestmentPlan() {
-  const products = mockData.products.filter(p => p.type === 'fund' || p.name.includes('混合') || p.name.includes('股票') || p.name.includes('指数'));
+  const products = mockData.products.filter((p: any) => p.type === 'fund' || p.name.includes('混合') || p.name.includes('股票') || p.name.includes('指数'));
   const productOptions = products.length > 0 
-    ? products.map(p => `<option value="${p.name}">${p.name}（${p.rate}）</option>`).join('')
-    : mockData.products.map(p => `<option value="${p.name}">${p.name}（${p.rate}）</option>`).join('');
+    ? products.map((p: any) => `<option value="${p.name}">${p.name}（${p.rate}）</option>`).join('')
+    : mockData.products.map((p: any) => `<option value="${p.name}">${p.name}（${p.rate}）</option>`).join('');
   
   const popupId = 'create-investment-' + Date.now();
   const popup = document.createElement('div');
@@ -547,7 +553,7 @@ function showCreateInvestmentPlan() {
         <div>
           <label style="display:block;font-size:13px;color:#666;margin-bottom:4px;font-weight:600;">扣款日</label>
           <select id="investDay" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;box-sizing:border-box;">
-            ${Array.from({length: 28}, (_, i) => `<option value="${i+1}" ${i+1 === 15 ? 'selected' : ''}>每月${i+1}日</option>`).join('')}
+            ${Array.from({length: 28}, (_: any, i: any) => `<option value="${i+1}" ${i+1 === 15 ? 'selected' : ''}>每月${i+1}日</option>`).join('')}
           </select>
         </div>
       </div>
@@ -562,21 +568,22 @@ function showCreateInvestmentPlan() {
 
 // 更新扣款日选项
 function updateInvestDayOptions() {
-  const cycle = document.getElementById('investCycle').value;
+  const cycle = (document.getElementById('investCycle') as HTMLInputElement).value;
   const daySelect = document.getElementById('investDay');
+  if (!daySelect) return;
   if (cycle === 'weekly') {
-    daySelect.innerHTML = ['周一','周二','周三','周四','周五'].map((d, i) => `<option value="${i+1}">${d}</option>`).join('');
+    daySelect.innerHTML = ['周一','周二','周三','周四','周五'].map((d: any, i: any) => `<option value="${i+1}">${d}</option>`).join('');
   } else {
-    daySelect.innerHTML = Array.from({length: 28}, (_, i) => `<option value="${i+1}" ${i+1 === 15 ? 'selected' : ''}>每月${i+1}日</option>`).join('');
+    daySelect.innerHTML = Array.from({length: 28}, (_: any, i: any) => `<option value="${i+1}" ${i+1 === 15 ? 'selected' : ''}>每月${i+1}日</option>`).join('');
   }
 }
 
 // 确认创建定投计划
-async function confirmCreateInvestment(popupId) {
-  const productName = document.getElementById('investProduct').value;
-  const amount = parseFloat(document.getElementById('investAmount').value);
-  const cycle = document.getElementById('investCycle').value;
-  const day = parseInt(document.getElementById('investDay').value);
+async function confirmCreateInvestment(popupId: any) {
+  const productName = (document.getElementById('investProduct') as HTMLInputElement).value;
+  const amount = parseFloat((document.getElementById('investAmount') as HTMLInputElement).value);
+  const cycle = (document.getElementById('investCycle') as HTMLInputElement).value;
+  const day = parseInt((document.getElementById('investDay') as HTMLInputElement).value);
   
   if (!amount || amount < 100) { alert('定投金额最低100元'); return; }
 
@@ -612,9 +619,9 @@ async function confirmCreateInvestment(popupId) {
 }
 
 // 暂停/恢复定投计划
-function toggleInvestmentPlan(id) {
+function toggleInvestmentPlan(id: any) {
   initInvestmentPlans();
-  const plan = mockData.investmentPlans.find(p => p.id === id);
+  const plan = mockData.investmentPlans.find((p: any) => p.id === id);
   if (!plan) return;
   plan.status = plan.status === 'active' ? 'paused' : 'active';
   saveUserData();
@@ -622,10 +629,10 @@ function toggleInvestmentPlan(id) {
 }
 
 // 删除定投计划
-function deleteInvestmentPlan(id) {
+function deleteInvestmentPlan(id: any) {
   if (!confirm('确定要删除这个定投计划吗？')) return;
   initInvestmentPlans();
-  mockData.investmentPlans = mockData.investmentPlans.filter(p => p.id !== id);
+  mockData.investmentPlans = mockData.investmentPlans.filter((p: any) => p.id !== id);
   saveUserData();
   showInvestmentPlans();
 }
@@ -640,7 +647,7 @@ function executeDueInvestments() {
   // 本地日期，避免 UTC+8 凌晨算成前一天
   const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
 
-  mockData.investmentPlans.forEach(plan => {
+  mockData.investmentPlans.forEach((plan: any) => {
     if (plan.status !== 'active') return;
     const shouldExecute = plan.cycle === 'monthly' ? plan.day === today : plan.day === dayOfWeek;
     if (shouldExecute && plan.lastExecuted !== todayStr) {
@@ -651,10 +658,10 @@ function executeDueInvestments() {
       plan.totalShares += plan.amount * 0.98;
       plan.lastExecuted = todayStr;
       // 定投扣款必须生成/增加对应持仓，否则钱从账户消失但资产端没有份额
-      const prod = (mockData.products || []).find(p => p.name === plan.productName);
+      const prod = (mockData.products || []).find((p: any) => p.name === plan.productName);
       if (prod) {
         if (!mockData.userProfile.holdings) mockData.userProfile.holdings = [];
-        let h = mockData.userProfile.holdings.find(x => x.name === prod.name);
+        let h = mockData.userProfile.holdings.find((x: any) => x.name === prod.name);
         if (h) { h.amount += plan.amount; h.cost += plan.amount; }
         else {
           mockData.userProfile.holdings.push({

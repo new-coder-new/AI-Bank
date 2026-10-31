@@ -42,6 +42,7 @@
     "js/flows/cardservice.ts",
     "js/flows/card.ts",
     "js/flows/analysis.ts",
-    "js/flows/cardlimit.ts"
+    "js/flows/cardlimit.ts",
+    "js/flows/wealth.ts"
   ]
 }
