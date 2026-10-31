@@ -548,7 +548,6 @@ declare function saveBudgetSetting(...args: any[]): any;
 declare function showCardLimit(...args: any[]): any;
 declare function toggleFreeze(...args: any[]): any;
 declare function showSmartLimit(...args: any[]): any;
-declare var installmentRates: any;
 declare function showInstallmentCalculator(...args: any[]): any;
 declare function selectInstallPeriod(...args: any[]): any;
 declare function updateInstallmentPreview(...args: any[]): any;

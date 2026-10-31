@@ -1,3 +1,4 @@
+"use strict";
 // ==========================================================================
 //  经典脚本模块（TypeScript 源码，noCheck 转译）
 //  编译产物：js/flows/analysis.js
@@ -46,13 +47,13 @@ function showBillOverview() {
     const monthLabel = now.getFullYear() + '年' + (now.getMonth() + 1) + '月';
     const txns = u.recentTxns || [];
     // —— 收支 ——
-    const totalIncome = txns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const totalExpense = txns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const totalIncome = txns.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const totalExpense = txns.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
     const netFlow = totalIncome - totalExpense;
     const savingsRate = totalIncome > 0 ? (netFlow / totalIncome) * 100 : 0;
     // —— 支出分类 ——
     const expenseMap = {};
-    txns.filter(t => t.type === 'expense').forEach(t => {
+    txns.filter((t) => t.type === 'expense').forEach((t) => {
         expenseMap[t.channel] = (expenseMap[t.channel] || 0) + t.amount;
     });
     const expenseList = Object.entries(expenseMap)
@@ -65,7 +66,7 @@ function showBillOverview() {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-        const value = txns.filter(t => t.type === 'expense' && String(t.date || '').slice(0, 10) === key)
+        const value = txns.filter((t) => t.type === 'expense' && String(t.date || '').slice(0, 10) === key)
             .reduce((s, t) => s + t.amount, 0);
         days.push({ label: (d.getMonth() + 1) + '/' + d.getDate(), value: value });
     }
@@ -74,7 +75,7 @@ function showBillOverview() {
     let trendData = days;
     const sum7 = days.reduce((s, d) => s + d.value, 0);
     if (sum7 <= 0) {
-        const recentExpense = txns.filter(t => t.type === 'expense').slice(0, 7).reverse();
+        const recentExpense = txns.filter((t) => t.type === 'expense').slice(0, 7).reverse();
         if (recentExpense.length) {
             trendTitle = '最近 7 笔支出';
             trendData = recentExpense.map((t, i) => {
@@ -158,11 +159,14 @@ function drawBillTrendChart(opts) {
     var w = Math.max(220, Math.round(boxW));
     var h = Math.round(o.height || 150);
     var dpr = window.devicePixelRatio || 1;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
+    const __cv1 = canvas;
+    __cv1.width = w * dpr;
+    __cv1.height = h * dpr;
     canvas.style.width = w + 'px';
     canvas.style.height = h + 'px';
     var ctx = canvas.getContext('2d');
+    if (!ctx)
+        return;
     if (!ctx)
         return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -252,6 +256,8 @@ function drawReportDonut(opts) {
     const ctx = canvas.getContext('2d');
     if (!ctx)
         return;
+    if (!ctx)
+        return;
     const rawData = Array.isArray(o.data) ? o.data : (window.billExpenseData || mockData.bills.expense);
     const data = rawData.map((d, i) => ({ ...d, color: d.color || reportColor(i) }));
     const total = data.reduce((s, d) => s + d.value, 0);
@@ -259,8 +265,9 @@ function drawReportDonut(opts) {
     const centerVal = (o.centerValue != null) ? Number(o.centerValue) : total;
     const size = Number(o.size) || 180;
     const dpr = Math.max(1, window.devicePixelRatio || 1);
-    canvas.width = Math.round(size * dpr);
-    canvas.height = Math.round(size * dpr);
+    const __cv2 = canvas;
+    __cv2.width = Math.round(size * dpr);
+    __cv2.height = Math.round(size * dpr);
     canvas.style.width = size + 'px';
     canvas.style.height = size + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -279,7 +286,7 @@ function drawReportDonut(opts) {
     }
     else {
         let startAngle = -Math.PI / 2;
-        data.forEach(d => {
+        data.forEach((d) => {
             const sliceAngle = (d.value / total) * Math.PI * 2;
             ctx.beginPath();
             ctx.moveTo(cx, cy);
@@ -307,7 +314,7 @@ function drawReportDonut(opts) {
     ctx.fillText(o.centerLabel || '总支出', cx, cy + 18);
     const legend = document.getElementById(o.legendId || 'pieLegend');
     if (legend) {
-        legend.innerHTML = data.slice(0, 6).map(d => {
+        legend.innerHTML = data.slice(0, 6).map((d) => {
             const pct = total > 0 ? (d.value / total * 100).toFixed(1) : '0.0';
             const val = (o.legendFormat === 'money') ? reportMoney(d.value) : pct + '%';
             return '<div class="report-legend-item"><span class="report-dot" style="background:' + d.color + ';"></span><span>' +
@@ -319,7 +326,7 @@ function drawReportDonut(opts) {
 function detectAbnormalTxns() {
     const txns = mockData.userProfile.recentTxns;
     const abnormal = [];
-    txns.forEach(t => {
+    txns.forEach((t) => {
         if (t.abnormal) {
             abnormal.push(t);
         }
@@ -350,7 +357,7 @@ function showAbnormalAlert() {
         <div class="msg-bubble">
           <div class="data-card">
             <div class="data-card-title">异常交易明细</div>
-            ${abnormal.map(t => `
+            ${abnormal.map((t) => `
               <div class="data-row abnormal-row">
                 <span class="data-label" style="flex:1;">
                   <div style="font-size:12px;color:#333;font-weight:500;">${t.desc}<span class="abnormal-tag">${t.abnormalReason}</span></div>

@@ -1,3 +1,4 @@
+"use strict";
 // ==========================================================================
 //  经典脚本模块（TypeScript 源码，noCheck 转译）
 //  编译产物：js/flows/cardlimit.js
@@ -170,8 +171,8 @@ function cardLimitCancel() {
 }
 // 提交调额申请：支持提额/降额，写入复核队列，审批通过后才改生效额度。
 function cardLimitApply() {
-    var target = parseInt(document.getElementById('cardLimitTarget')?.value, 10) || 0;
-    var reason = document.getElementById('cardLimitReason')?.value || '未填写';
+    var target = parseInt((document.getElementById('cardLimitTarget')?.value) || '0', 10) || 0;
+    var reason = (document.getElementById('cardLimitReason')?.value) || '未填写';
     var data = cardLimitData();
     var cur = data.effectiveLimit;
     var used = Number(data.used) || 0;
@@ -411,7 +412,8 @@ function agentCardLimitPrehandler(text) {
         var cur = cardLimitData().effectiveLimit;
         var targetMatch = t.match(/[调提降][至到为\s]*(\d+(?:\.\d+)?)/) || t.match(/(\d+(?:\.\d+)?)\s*(?:元|块|万)/);
         var target = targetMatch ? parseFloat(targetMatch[1]) : 0;
-        if (/万/.test(t.match(/\d+(?:\.\d+)?\s*万?/) ? t.match(/\d+(?:\.\d+)?\s*万?/)[0] : '')) {
+        var __m = t.match(/\d+(?:\.\d+)?\s*万?/);
+        if (/万/.test(__m && __m[0] ? __m[0] : '')) {
             target = target * 10000;
         }
         var html = '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +

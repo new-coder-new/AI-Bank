@@ -55,7 +55,7 @@ function cardLimitDetailCard() {
   var c = cardLimitData();
   var fresh = cardLimitIsFresh();
 
-  function valCls(v) {
+  function valCls(v: any): string {
     return (v == null || v === '') ? 'color:#9ca3af;' : 'color:#1a1a1a;font-weight:700;';
   }
 
@@ -100,11 +100,11 @@ function cardLimitDetailCard() {
 
 // ------------------------------ 2. 调额申请流程（C3） ------------------------------
 // 目标额度由用户指定，系统只做「申请 → 确认 → 审批 → 生效」状态流转，不直接改额度。
-function cardLimitAdjustForm(currentLimit, presetTarget) {
+function cardLimitAdjustForm(currentLimit: any, presetTarget: any) {
   var pre = Number(presetTarget) || Number(currentLimit) || cardLimitData().effectiveLimit;
   var minLimit = cardLimitMinimum();
   // 旧表单的固定 id 会让 getElementById 读到旧值，先清掉再开新表单
-  document.querySelectorAll('.card-limit-form').forEach(function (el) { var m = el.closest('.message'); if (m) m.remove(); });
+  document.querySelectorAll('.card-limit-form').forEach(function (el: any) { var m = el.closest('.message'); if (m) m.remove(); });
   var html = '<div class="message card-limit-form"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手 · 调额申请</div>' +
     '<div class="msg-bubble agent-bubble">' +
@@ -138,7 +138,7 @@ function updateCardLimitHint() {
   var input = document.getElementById('cardLimitTarget');
   var hint = document.getElementById('cardLimitHint');
   if (!input || !hint) return;
-  var target = parseInt(input.value, 10) || 0;
+  var target = parseInt((input as HTMLInputElement).value, 10) || 0;
   var cur = cardLimitData().effectiveLimit;
   var used = Number(cardLimitData().used) || 0;
   var min = cardLimitMinimum();
@@ -147,10 +147,10 @@ function updateCardLimitHint() {
   // 目标额度与当前额度一致：不显示任何文字，直接禁用提交按钮
   if (target === cur) {
     hint.textContent = '';
-    if (btn) { btn.disabled = true; btn.style.opacity = '0.45'; btn.style.cursor = 'not-allowed'; }
+    if (btn) { (btn as HTMLButtonElement).disabled = true; btn.style.opacity = '0.45'; btn.style.cursor = 'not-allowed'; }
     return;
   }
-  if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
+  if (btn) { (btn as HTMLButtonElement).disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
 
   if (!(target > 0)) { hint.textContent = '请输入目标额度'; return; }
   if (target < min) { hint.textContent = '最低可调至 ¥' + agentFmtInt(min); return; }
@@ -159,14 +159,14 @@ function updateCardLimitHint() {
 
 function cardLimitCancel() {
   // 取消必须移除表单和提交按钮，否则旧表单仍可提交
-  document.querySelectorAll('.card-limit-form').forEach(function (el) { var m = el.closest('.message'); if (m) m.remove(); });
+  document.querySelectorAll('.card-limit-form').forEach(function (el: any) { var m = el.closest('.message'); if (m) m.remove(); });
   agentReply('已取消调额申请，当前生效额度保持不变。');
 }
 
 // 提交调额申请：支持提额/降额，写入复核队列，审批通过后才改生效额度。
 function cardLimitApply() {
-  var target = parseInt(document.getElementById('cardLimitTarget')?.value, 10) || 0;
-  var reason = document.getElementById('cardLimitReason')?.value || '未填写';
+  var target = parseInt(((document.getElementById('cardLimitTarget') as HTMLInputElement)?.value) || '0', 10) || 0;
+  var reason = ((document.getElementById('cardLimitReason') as HTMLInputElement)?.value) || '未填写';
   var data = cardLimitData();
   var cur = data.effectiveLimit;
   var used = Number(data.used) || 0;
@@ -208,12 +208,12 @@ function cardLimitApply() {
 
 // 写入复核队列（提额/降额共用）
 // 多卡场景：按选中的卡提交复核（主卡沿用原逻辑，其它卡自带卡标识）
-function cardLimitSubmitReviewFor(card, target, reason, current, direction) {
+function cardLimitSubmitReviewFor(card: any, target: any, reason: any, current: any, direction: any) {
   if (!card || card.id === 'CARD-MAIN') {
     return cardLimitSubmitReview(target, reason, current, direction);
   }
   var cards = (mockData.userProfile && mockData.userProfile.creditCards) || [];
-  var c = cards.filter(function (x) { return x.id === card.id; })[0];
+  var c = cards.filter(function (x: any) { return x.id === card.id; })[0];
   if (!c) return null;
   c.appliedLimit = target;
   c.limitApplyStatus = '待人工复核';
@@ -235,7 +235,7 @@ function cardLimitSubmitReviewFor(card, target, reason, current, direction) {
     silent: true
   });
 }
-function cardLimitSubmitReview(target, reason, current, direction) {
+function cardLimitSubmitReview(target: any, reason: any, current: any, direction: any) {
   var c = mockData.userProfile.creditCard;
   var used = Number(c.used) || 0;
   c.appliedLimit = target;
@@ -260,14 +260,14 @@ function cardLimitSubmitReview(target, reason, current, direction) {
 }
 
 // 复核通过后真正生效（由复核审批调用，不直接暴露给 LLM）
-function applyCardLimitAdjustment(args) {
+function applyCardLimitAdjustment(args: any) {
   var a = args || {};
   var target = Number(a.target) || 0;
 
   // 多卡：带 cardId 时更新对应的那张卡
   if (a.cardId && a.cardId !== 'CARD-MAIN') {
     var list = (mockData.userProfile && mockData.userProfile.creditCards) || [];
-    var targetCard = list.filter(function (x) { return x.id === a.cardId; })[0];
+    var targetCard = list.filter(function (x: any) { return x.id === a.cardId; })[0];
     if (!targetCard) return { ok: false, summary: '未找到该信用卡' };
     var usedOther = Number(targetCard.used) || 0;
     if (target <= 0) return { ok: false, summary: '目标额度无效' };
@@ -319,7 +319,7 @@ function applyCardLimitAdjustment(args) {
 // ------------------------------ 3. 纯数学计算（C6） ------------------------------
 // 识别「假设总额度 X，已用 Y，可用多少」这类纯算术，本地计算并列出公式，
 // 明确说明是基于用户提供的假设值，不触发敏感验证。
-function cardLimitMathTry(text) {
+function cardLimitMathTry(text: any) {
   var t = String(text || '');
   // 必须同时满足：含「假设/如果/若」等假设词 + 含「额度」 + 出现至少两个数字
   var hasHypo = /(假设|如果|假如|若|比如|举例)/.test(t);
@@ -331,7 +331,7 @@ function cardLimitMathTry(text) {
   var total = null, used = null;
   var mTotal = t.match(/(?:总额度|信用额度|授信额度|额度为|额度是)[^\d]{0,6}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
   var mUsed = t.match(/(?:已用|用了|已使用|已消费|已欠)[^\d]{0,6}(\d+(?:\.\d+)?)\s*(万|w|W)?/);
-  function toVal(m) {
+  function toVal(m: any): any {
     if (!m) return null;
     var v = parseFloat(m[1]);
     if (m[2]) v *= 10000;
@@ -359,7 +359,7 @@ function cardLimitMathTry(text) {
   };
 }
 
-function cardLimitMathCard(calc) {
+function cardLimitMathCard(calc: any) {
   return '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手 · 额度计算</div>' +
     '<div class="msg-bubble agent-bubble">' +
@@ -380,7 +380,7 @@ function cardLimitMathCard(calc) {
 //   b) 明确额度查询（区分申请/审批/生效）
 //   c) 调额意图
 // 返回 true 表示已处理。
-function agentCardLimitPrehandler(text) {
+function agentCardLimitPrehandler(text: any) {
   var t = String(text || '');
 
   // a) 纯数学计算：优先级最高，防止被当成敏感查询拦截
@@ -398,7 +398,8 @@ function agentCardLimitPrehandler(text) {
     var cur = cardLimitData().effectiveLimit;
     var targetMatch = t.match(/[调提降][至到为\s]*(\d+(?:\.\d+)?)/) || t.match(/(\d+(?:\.\d+)?)\s*(?:元|块|万)/);
     var target = targetMatch ? parseFloat(targetMatch[1]) : 0;
-    if (/万/.test(t.match(/\d+(?:\.\d+)?\s*万?/) ? t.match(/\d+(?:\.\d+)?\s*万?/)[0] : '')) {
+    var __m = t.match(/\d+(?:\.\d+)?\s*万?/);
+  if (/万/.test(__m && __m[0] ? __m[0] : '')) {
       target = target * 10000;
     }
 
@@ -442,7 +443,7 @@ registerAgentTool('card.limitDetail', {
   run: function () {
     var c = cardLimitData();
     var fresh = cardLimitIsFresh();
-    function part(v) { return (v == null || v === '') ? '暂无数据' : '¥' + agentFmtInt(v); }
+    function part(v: any): string { return (v == null || v === '') ? '暂无数据' : '¥' + agentFmtInt(v); }
     return {
       summary: '申请额度 ' + part(c.appliedLimit) +
         '；审批额度 ' + part(c.approvedLimit) +
@@ -458,7 +459,7 @@ registerAgentTool('card.limitDetail', {
 // card.adjustLimit：调额申请（medium 风险，会触发确认卡）
 registerAgentTool('card.adjustLimit', {
   label: '申请调整信用卡额度', risk: 'medium',
-  run: function (args) {
+  run: function (args: any) {
     var target = Number(args && args.target) || Number(args && args.amount) || 0;
     var cur = cardLimitData().effectiveLimit;
     var used = Number(cardLimitData().used) || 0;
@@ -477,7 +478,7 @@ registerAgentTool('card.adjustLimit', {
     return {
       summary: '调额申请已提交复核：当前生效额度 ¥' + agentFmtInt(cur) + ' → 目标额度 ¥' + agentFmtInt(target) +
         '（' + (direction === 'up' ? '提额' : '降额') + '）。复核通过后额度才会生效。',
-      data: { current: cur, target: target, direction: direction, status: '待人工复核', reviewId: review && review.id }
+      data: { current: cur, target: target, direction: direction, status: '待人工复核', reviewId: (review as any) && (review as any).id }
     };
   }
 });

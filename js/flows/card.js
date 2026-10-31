@@ -1,3 +1,4 @@
+"use strict";
 // ==========================================================================
 //  经典脚本模块（TypeScript 源码，noCheck 转译）
 //  编译产物：js/flows/card.js
@@ -146,7 +147,7 @@ function showSmartLimit() {
     const used = u.creditCard.used;
     const utilization = (used / currentLimit * 100).toFixed(1);
     // 基于消费行为计算推荐额度
-    const monthlyExpense = u.recentTxns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const monthlyExpense = u.recentTxns.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
     const recommendedLimit = Math.round(Math.max(currentLimit * 1.2, monthlyExpense * 3) / 1000) * 1000;
     const increaseAmount = recommendedLimit - currentLimit;
     const html = `
@@ -201,7 +202,7 @@ function showInstallmentCalculator() {
         return;
     }
     // 聊天记录只增不减，旧表单的固定 id（installAmount 等）会让 getElementById 读到旧值
-    document.querySelectorAll('.installment-calc').forEach(el => el.closest('.message')?.remove());
+    document.querySelectorAll('.installment-calc').forEach((el) => el.closest('.message')?.remove());
     const html = `
     <div class="message installment-calc">
       <div class="msg-avatar ai">🤖</div>
@@ -256,7 +257,7 @@ function showInstallmentCalculator() {
 // 选择分期期数
 function selectInstallPeriod(period, btn) {
     window.currentInstallPeriod = period;
-    document.querySelectorAll('.install-period-btn').forEach(b => {
+    document.querySelectorAll('.install-period-btn').forEach((b) => {
         b.style.borderColor = '#e5e7eb';
         b.style.background = '#fff';
         b.style.color = '#374151';
@@ -268,7 +269,7 @@ function selectInstallPeriod(period, btn) {
 }
 // 更新分期预览
 function updateInstallmentPreview() {
-    const amount = parseFloat(document.getElementById('installAmount')?.value) || 0;
+    const amount = parseFloat((document.getElementById('installAmount')?.value) || '0') || 0;
     const period = window.currentInstallPeriod || 12;
     const rate = installmentRates[period] || 0.006;
     const totalFee = amount * rate * period;

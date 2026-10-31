@@ -39,6 +39,9 @@
     "js/flows/budget.ts",
     "js/core/voice.ts",
     "js/flows/subscription.ts",
-    "js/flows/cardservice.ts"
+    "js/flows/cardservice.ts",
+    "js/flows/card.ts",
+    "js/flows/analysis.ts",
+    "js/flows/cardlimit.ts"
   ]
 }

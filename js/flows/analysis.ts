@@ -6,26 +6,26 @@
 // ==========================================================================
 
 // ========== 账单分析 ==========
-function reportEsc(v) {
+function reportEsc(v: any) {
   return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function reportMoney(v) {
+function reportMoney(v: any) {
   const n = Number(v) || 0;
   return (n < 0 ? '-' : '') + '¥' + Math.abs(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function reportInt(v) {
+function reportInt(v: any) {
   return '¥' + Math.round(Number(v) || 0).toLocaleString('zh-CN');
 }
 
-function reportColor(i) {
+function reportColor(i: any) {
   const colors = ['#0B4F9C', '#2F80ED', '#56CCF2', '#6FCF97', '#F2C94C', '#9B51E0', '#94A3B8', '#C08A2E'];
   return colors[i % colors.length];
 }
 
 // 账单分析底部的一行 AI 建议：按本月收支与支出结构给一句可执行建议
-function billAnalysisAdvice(totalIncome, totalExpense, expenseList) {
+function billAnalysisAdvice(totalIncome: any, totalExpense: any, expenseList: any) {
   const net = totalIncome - totalExpense;
   const rate = totalIncome > 0 ? net / totalIncome * 100 : 0;
   const top = (expenseList || [])[0];
@@ -53,20 +53,20 @@ function showBillOverview() {
   const txns = u.recentTxns || [];
 
   // —— 收支 ——
-  const totalIncome = txns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const totalExpense = txns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const totalIncome = txns.filter((t: any) => t.type === 'income').reduce((s: any, t: any) => s + t.amount, 0);
+  const totalExpense = txns.filter((t: any) => t.type === 'expense').reduce((s: any, t: any) => s + t.amount, 0);
   const netFlow = totalIncome - totalExpense;
   const savingsRate = totalIncome > 0 ? (netFlow / totalIncome) * 100 : 0;
 
   // —— 支出分类 ——
-  const expenseMap = {};
-  txns.filter(t => t.type === 'expense').forEach(t => {
+  const expenseMap: Record<string, number> = {};
+  txns.filter((t: any) => t.type === 'expense').forEach((t: any) => {
     expenseMap[t.channel] = (expenseMap[t.channel] || 0) + t.amount;
   });
   const expenseList = Object.entries(expenseMap)
     .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value);
-  window.billExpenseData = expenseList;
+    .sort((a: any, b: any) => b.value - a.value);
+  (window as any).billExpenseData = expenseList;
 
   // —— 近 7 日支出趋势 ——
   const days = [];
@@ -74,30 +74,30 @@ function showBillOverview() {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const value = txns.filter(t => t.type === 'expense' && String(t.date || '').slice(0, 10) === key)
-      .reduce((s, t) => s + t.amount, 0);
+    const value = txns.filter((t: any) => t.type === 'expense' && String(t.date || '').slice(0, 10) === key)
+      .reduce((s: any, t: any) => s + t.amount, 0);
     days.push({ label: (d.getMonth() + 1) + '/' + d.getDate(), value: value });
   }
   // 近 7 日没有支出时，退化为「最近 7 笔支出」，避免图表全空
   let trendTitle = '近 7 日支出趋势';
   let trendData = days;
-  const sum7 = days.reduce((s, d) => s + d.value, 0);
+  const sum7 = days.reduce((s: any, d: any) => s + d.value, 0);
   if (sum7 <= 0) {
-    const recentExpense = txns.filter(t => t.type === 'expense').slice(0, 7).reverse();
+    const recentExpense = txns.filter((t: any) => t.type === 'expense').slice(0, 7).reverse();
     if (recentExpense.length) {
       trendTitle = '最近 7 笔支出';
-      trendData = recentExpense.map((t, i) => {
+      trendData = recentExpense.map((t: any, i: any) => {
       const d = String(t.date || '').slice(5, 10).replace('-', '/');
       return { label: d || ('第' + (i + 1) + '笔'), value: Number(t.amount) || 0 };
     });
     }
   }
-  window.billTrendData = trendData;
+  (window as any).billTrendData = trendData;
 
   // —— 资产（两列，移动端不挤） ——
   const cash = Number(u.debitCard && u.debitCard.balance) || 0;
   const frozen = Number(u.debitCard && u.debitCard.frozen) || 0;
-  const holdingsTotal = (u.holdings || []).reduce((s, h) => s + (Number(h.amount) || 0), 0);
+  const holdingsTotal = (u.holdings || []).reduce((s: any, h: any) => s + (Number(h.amount) || 0), 0);
   const totalAssets = Math.max(0, cash - frozen) + holdingsTotal;
 
   const advice = billAnalysisAdvice(totalIncome, totalExpense, expenseList);
@@ -159,22 +159,24 @@ function showBillOverview() {
 
 // 兼容旧入口名
 // 最近支出曲线：平滑折线 + 渐变填充 + 数据点（canvas 自适应宽度）
-function drawBillTrendChart(opts) {
+function drawBillTrendChart(opts: any) {
   var o = opts || {};
   var canvas = document.getElementById(o.canvasId);
   if (!canvas || !canvas.parentElement) return;
-  var data = (o.data || []).filter(function (d) { return isFinite(Number(d.value)); });
+  var data = (o.data || []).filter(function (d: any) { return isFinite(Number(d.value)); });
   if (!data.length) return;
 
   var boxW = canvas.parentElement.getBoundingClientRect().width || 320;
   var w = Math.max(220, Math.round(boxW));
   var h = Math.round(o.height || 150);
-  var dpr = window.devicePixelRatio || 1;
-  canvas.width = w * dpr;
-  canvas.height = h * dpr;
+  var dpr = (window as any).devicePixelRatio || 1;
+  const __cv1 = canvas as HTMLCanvasElement;
+  __cv1.width = w * dpr;
+  __cv1.height = h * dpr;
   canvas.style.width = w + 'px';
   canvas.style.height = h + 'px';
-  var ctx = canvas.getContext('2d');
+  var ctx = (canvas as HTMLCanvasElement).getContext('2d') as any;
+  if (!ctx) return;
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
@@ -182,8 +184,8 @@ function drawBillTrendChart(opts) {
   var padL = 10, padR = 10, padT = 20, padB = 24;
   var innerW = w - padL - padR;
   var innerH = h - padT - padB;
-  var max = Math.max.apply(null, data.map(function (d) { return Number(d.value) || 0; }).concat([1]));
-  var pts = data.map(function (d, i) {
+  var max = Math.max.apply(null, data.map(function (d: any) { return Number(d.value) || 0; }).concat([1]));
+  var pts = data.map(function (d: any, i: any) {
     var v = Number(d.value) || 0;
     return {
       x: data.length === 1 ? padL + innerW / 2 : padL + (innerW * i) / (data.length - 1),
@@ -236,7 +238,7 @@ function drawBillTrendChart(opts) {
 
   // 数据点 + 数值 + 横轴标签
   var font = '10px system-ui, -apple-system, "PingFang SC", sans-serif';
-  pts.forEach(function (p) {
+  pts.forEach(function (p: any) {
     ctx.beginPath();
     ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2);
     ctx.fillStyle = '#fff';
@@ -263,21 +265,23 @@ function drawBillTrendChart(opts) {
   });
 }
 // 通用环形图绘制：支出构成 / 收入构成共用（canvasId、legendId、data、centerLabel 可配）
-function drawReportDonut(opts) {
+function drawReportDonut(opts: any) {
   const o = opts || {};
   const canvas = document.getElementById(o.canvasId || 'pieChart');
   if (!canvas) return;
-  const ctx = canvas.getContext('2d');
+  const ctx = (canvas as HTMLCanvasElement).getContext('2d') as any;
   if (!ctx) return;
-  const rawData = Array.isArray(o.data) ? o.data : (window.billExpenseData || mockData.bills.expense);
-  const data = rawData.map((d, i) => ({ ...d, color: d.color || reportColor(i) }));
-  const total = data.reduce((s, d) => s + d.value, 0);
+  if (!ctx) return;
+  const rawData = Array.isArray(o.data) ? o.data : ((window as any).billExpenseData || mockData.bills.expense);
+  const data = rawData.map((d: any, i: any) => ({ ...d, color: d.color || reportColor(i) }));
+  const total = data.reduce((s: any, d: any) => s + d.value, 0);
   // 环心金额：默认取各部分合计，也可由调用方显式指定（如「本月收入」口径）
   const centerVal = (o.centerValue != null) ? Number(o.centerValue) : total;
   const size = Number(o.size) || 180;
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
-  canvas.width = Math.round(size * dpr);
-  canvas.height = Math.round(size * dpr);
+  const dpr = Math.max(1, (window as any).devicePixelRatio || 1);
+  const __cv2 = canvas as HTMLCanvasElement;
+  __cv2.width = Math.round(size * dpr);
+  __cv2.height = Math.round(size * dpr);
   canvas.style.width = size + 'px';
   canvas.style.height = size + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -296,7 +300,7 @@ function drawReportDonut(opts) {
     ctx.stroke();
   } else {
     let startAngle = -Math.PI / 2;
-    data.forEach(d => {
+    data.forEach((d: any) => {
       const sliceAngle = (d.value / total) * Math.PI * 2;
       ctx.beginPath();
       ctx.moveTo(cx, cy);
@@ -326,7 +330,7 @@ function drawReportDonut(opts) {
 
   const legend = document.getElementById(o.legendId || 'pieLegend');
   if (legend) {
-    legend.innerHTML = data.slice(0, 6).map(d => {
+    legend.innerHTML = data.slice(0, 6).map((d: any) => {
       const pct = total > 0 ? (d.value / total * 100).toFixed(1) : '0.0';
       const val = (o.legendFormat === 'money') ? reportMoney(d.value) : pct + '%';
       return '<div class="report-legend-item"><span class="report-dot" style="background:' + d.color + ';"></span><span>' +
@@ -338,8 +342,8 @@ function drawReportDonut(opts) {
 // ========== 异常交易识别与预警 ==========
 function detectAbnormalTxns() {
   const txns = mockData.userProfile.recentTxns;
-  const abnormal = [];
-  txns.forEach(t => {
+  const abnormal: any[] = [];
+  txns.forEach((t: any) => {
     if (t.abnormal) {
       abnormal.push(t);
     } else {
@@ -370,7 +374,7 @@ function showAbnormalAlert() {
         <div class="msg-bubble">
           <div class="data-card">
             <div class="data-card-title">异常交易明细</div>
-            ${abnormal.map(t => `
+            ${abnormal.map((t: any) => `
               <div class="data-row abnormal-row">
                 <span class="data-label" style="flex:1;">
                   <div style="font-size:12px;color:#333;font-weight:500;">${t.desc}<span class="abnormal-tag">${t.abnormalReason}</span></div>

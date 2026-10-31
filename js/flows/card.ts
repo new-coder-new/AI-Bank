@@ -35,8 +35,8 @@ function showCardLimit() {
   // 申请通过后核发的新卡：主卡之外逐张渲染，保证「卡片」页能看到信用卡增加
   const allCards = (typeof cardServiceCards === 'function') ? cardServiceCards() : [];
   const extraCards = allCards.slice(1);
-  const totalCredit = allCards.reduce(function (s, c) { return s + (Number(c.limit) || 0); }, 0);
-  const extraHtml = extraCards.map(function (c) {
+  const totalCredit = allCards.reduce(function (s: any, c: any) { return s + (Number(c.limit) || 0); }, 0);
+  const extraHtml = extraCards.map(function (c: any) {
     const lim = Number(c.limit) || 0;
     return `
           <div class="card-visual" style="margin-top:12px;position:relative;">
@@ -104,7 +104,7 @@ async function toggleFreeze() {
     try {
       res = await callAgentTool(willFreeze ? 'card.freeze' : 'card.unfreeze', { reason: '用户操作' });
     } catch (e) {
-      res = { ok: false, summary: (e && e.message) || '操作失败' };
+      res = { ok: false, summary: (e && (e as any).message) || '操作失败' };
     }
     if (res.ok === false) {
       appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>操作未完成</strong><br>${escapeHtml(res.summary || '请稍后再试')}</div></div></div>`);
@@ -150,7 +150,7 @@ function showSmartLimit() {
   const used = u.creditCard.used;
   const utilization = (used / currentLimit * 100).toFixed(1);
   // 基于消费行为计算推荐额度
-  const monthlyExpense = u.recentTxns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const monthlyExpense = u.recentTxns.filter((t: any) => t.type === 'expense').reduce((s: any, t: any) => s + t.amount, 0);
   const recommendedLimit = Math.round(Math.max(currentLimit * 1.2, monthlyExpense * 3) / 1000) * 1000;
   const increaseAmount = recommendedLimit - currentLimit;
   const html = `
@@ -187,7 +187,7 @@ function showSmartLimit() {
 
 // ========== 功能增强：账单分期 ==========
 // 分期费率表（每期费率）
-const installmentRates = {
+const installmentRates: Record<number, number> = {
   3: 0.008,
   6: 0.007,
   9: 0.0065,
@@ -207,7 +207,7 @@ function showInstallmentCalculator() {
     return;
   }
   // 聊天记录只增不减，旧表单的固定 id（installAmount 等）会让 getElementById 读到旧值
-  document.querySelectorAll('.installment-calc').forEach(el => el.closest('.message')?.remove());
+  document.querySelectorAll('.installment-calc').forEach((el: any) => el.closest('.message')?.remove());
   
   const html = `
     <div class="message installment-calc">
@@ -227,9 +227,9 @@ function showInstallmentCalculator() {
           <div style="margin-bottom:16px;">
             <label style="display:block;font-size:13px;color:#666;margin-bottom:6px;font-weight:600;">选择分期期数</label>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;" id="installPeriodOptions">
-              ${[3,6,9,12,18,24].map((p, i) => `
+              ${[3,6,9,12,18,24].map((p: any, i: any) => `
                 <button onclick="selectInstallPeriod(${p}, this)" class="install-period-btn" style="padding:10px;border:1px solid ${i === 3 ? '#0B4F9C' : '#e5e7eb'};border-radius:8px;background:${i === 3 ? '#F2F6FC' : '#fff'};color:${i === 3 ? '#0B4F9C' : '#374151'};cursor:pointer;font-size:13px;font-weight:600;">
-                  ${p}期<br><span style="font-size:10px;font-weight:400;">费率${(installmentRates[p]*100).toFixed(2)}%</span>
+                  ${p}期<br><span style="font-size:10px;font-weight:400;">费率${((installmentRates as any)[p]*100).toFixed(2)}%</span>
                 </button>
               `).join('')}
             </div>
@@ -256,15 +256,15 @@ function showInstallmentCalculator() {
   `;
   appendMessage(html);
   scrollToBottom();
-  window.currentInstallPeriod = 12;
+  (window as any).currentInstallPeriod = 12;
   // 根据实际账单金额动态计算初始预览
   setTimeout(() => updateInstallmentPreview(), 50);
 }
 
 // 选择分期期数
-function selectInstallPeriod(period, btn) {
-  window.currentInstallPeriod = period;
-  document.querySelectorAll('.install-period-btn').forEach(b => {
+function selectInstallPeriod(period: any, btn: any) {
+  (window as any).currentInstallPeriod = period;
+  document.querySelectorAll('.install-period-btn').forEach((b: any) => {
     b.style.borderColor = '#e5e7eb';
     b.style.background = '#fff';
     b.style.color = '#374151';
@@ -277,9 +277,9 @@ function selectInstallPeriod(period, btn) {
 
 // 更新分期预览
 function updateInstallmentPreview() {
-  const amount = parseFloat(document.getElementById('installAmount')?.value) || 0;
-  const period = window.currentInstallPeriod || 12;
-  const rate = installmentRates[period] || 0.006;
+  const amount = parseFloat(((document.getElementById('installAmount') as HTMLInputElement)?.value) || '0') || 0;
+  const period = (window as any).currentInstallPeriod || 12;
+  const rate = (installmentRates as any)[period] || 0.006;
   
   const totalFee = amount * rate * period;
   const monthlyPayment = (amount + totalFee) / period;
@@ -299,13 +299,13 @@ function updateInstallmentPreview() {
 }
 
 // 确认账单分期
-function confirmInstallment(btn) {
+function confirmInstallment(btn: any) {
   const form = btn && btn.closest ? btn.closest('.installment-calc') : document.querySelector('.installment-calc');
   if (!form) return;
   if (form.dataset.confirmed === '1') return;
   const amount = parseFloat(form.querySelector('#installAmount')?.value) || 0;
-  const period = window.currentInstallPeriod || 12;
-  const rate = installmentRates[period] || 0.006;
+  const period = (window as any).currentInstallPeriod || 12;
+  const rate = (installmentRates as any)[period] || 0.006;
   const c = mockData.userProfile.creditCard;
   const billAmount = Number(c.currentBill) || 0;
 
