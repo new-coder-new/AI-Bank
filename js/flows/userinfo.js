@@ -1,3 +1,4 @@
+"use strict";
 // ==========================================================================
 //  经典脚本模块（TypeScript 源码，noCheck 转译）
 //  编译产物：js/flows/userinfo.js
@@ -53,7 +54,7 @@ function showUserInfo() {
             return '<div class="data-row"><span class="data-label">信用卡</span><span class="data-value">暂无</span></div>';
         const totalLimit = cards.reduce((s, x) => s + (Number(x.limit) || 0), 0);
         const totalUsed = cards.reduce((s, x) => s + (Number(x.used) || 0), 0);
-        return cards.map(card => {
+        return cards.map((card) => {
             const limit = Number(card.limit) || 0;
             const used = Number(card.used) || 0;
             return '<div class="data-row"><span class="data-label">' + card.cardType + '（尾号 ' + card.tail + '）</span>' +
@@ -68,7 +69,7 @@ function showUserInfo() {
           <!-- 复核审批 -->
           ${(() => {
         const list = (u.manualReviews || []);
-        const pending = list.filter(r => r.status === '待人工复核').length;
+        const pending = list.filter((r) => r.status === '待人工复核').length;
         return '<div class="data-card">' +
             '<div class="data-card-title">🛡️ 复核审批</div>' +
             '<div class="data-row"><span class="data-label">待审批</span><span class="data-value" style="color:#B45309;font-weight:600;">' + pending + ' 笔</span></div>' +
@@ -84,7 +85,7 @@ function showUserInfo() {
 <!-- 最近交易记录 -->
           <div class="data-card">
             <div class="data-card-title">📋 最近交易记录（近10笔）</div>
-            ${u.recentTxns.map(t => `
+            ${u.recentTxns.map((t) => `
               <div class="data-row">
                 <span class="data-label" style="flex:1;">
                   <div style="font-size:12px;color:#333;font-weight:500;">${t.desc}</div>

@@ -29,6 +29,10 @@
     "js/agent/scenario.ts",
     "js/agent/planner.ts",
     "js/agent/profile.ts",
-    "js/agent/insights.ts"
+    "js/agent/insights.ts",
+    "js/core/intent.ts",
+    "js/core/icons.ts",
+    "js/flows/flower.ts",
+    "js/flows/userinfo.ts"
   ]
 }

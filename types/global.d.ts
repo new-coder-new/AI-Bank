@@ -488,7 +488,6 @@ declare function guideCardLostCollapse(...args: any[]): any;
 declare function guideCardLostCancel(...args: any[]): any;
 
 // —— 其余经典脚本模块（noCheck 转译）的全局符号 ——
-declare var BANK_ICONS: any;
 declare function bankIcon(...args: any[]): any;
 declare var BANK_KEYS: any;
 declare var SILICONFLOW_API_KEY: any;

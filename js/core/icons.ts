@@ -9,7 +9,7 @@
 //  UI 图标层：统一线性图标，避免界面里堆满彩色 emoji
 //  用法：bankIcon('transfer', 20) -> 返回可直接插入 innerHTML 的 SVG 字符串
 // ==========================================================================
-var BANK_ICONS = {
+var BANK_ICONS: Record<string, string> = {
   chat: '<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z"/>',
   transfer: '<path d="M7 17 17 7"/><path d="M8 7h9v9"/>',
   receive: '<path d="M17 7 7 17"/><path d="M16 17H7V8"/>',
@@ -48,7 +48,7 @@ var BANK_ICONS = {
   more: '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>'
 };
 
-function bankIcon(name, size) {
+function bankIcon(name: string, size?: number): string {
   var path = BANK_ICONS[name] || BANK_ICONS.grid;
   var s = size || 20;
   return '<svg class="bank-svg" viewBox="0 0 24 24" width="' + s + '" height="' + s + '"' +
