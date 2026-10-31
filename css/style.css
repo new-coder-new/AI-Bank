@@ -1351,3 +1351,58 @@
 .agent-face-state{ font-size:12px; color:#94A3B8; margin-left:8px; }
 .agent-confirm-actions .btn-primary{ border-radius:8px; }
 .agent-confirm-actions .btn-secondary{ border-radius:8px; }
+
+/* —— 账单分析（本月/本年）：紧凑布局，H5 一屏可读 —— */
+.bill-analysis-card .report-head{ align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: nowrap; }
+.report-head .report-title{ font-size: 16px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bill-tabs{ padding: 2px; gap: 2px; }
+.bill-tab{ padding: 4px 10px; font-size: 11.5px; }
+.report-summary > div{ padding: 9px 12px; }
+.report-summary span{ font-size: 10.5px; }
+.report-summary b{ margin-top: 3px; font-size: 16px; }
+.report-page .report-panel{ padding: 10px 12px; margin-top: 8px !important; border-radius: 10px; }
+.report-panel-title{ margin-bottom: 8px; font-size: 12px; }
+.bill-donut-wrap{ gap: 10px; }
+.bill-legend-right{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 10px; }
+.bill-legend-right .report-legend-item{ font-size: 10px; gap: 4px; }
+.bill-legend-right .report-legend-item span:nth-child(2){ overflow: visible; text-overflow: clip; white-space: normal; word-break: break-all; }
+.bill-legend-right .report-legend-item b{ font-size: 10px; }
+.bill-trend{ line-height: 0; }
+.bill-trend canvas{ max-width: 100%; }
+.report-ai-line{ margin-top: 8px; padding-top: 8px; font-size: 11px; }
+@media (max-width: 560px){
+  .report-head .report-title{ font-size: 15px; }
+  .bill-tab{ padding: 4px 8px; font-size: 11px; }
+  .report-summary b{ font-size: 15px; }
+  .report-page .report-panel{ padding: 9px 10px; }
+  .bill-donut-wrap{ gap: 8px; }
+  .bill-legend-right{ grid-template-columns: 1fr 1fr; gap: 3px 6px; }
+  .bill-legend-right .report-legend-item{ font-size: 9.5px; }
+}
+
+/* 账单分析：窄屏防溢出 + 图例回落到饼图下方 */
+.report-page{ max-width: 100%; min-width: 0; }
+.report-page .report-head{ min-width: 0; }
+.report-head .report-title{ min-width: 0; }
+.report-summary, .report-panel{ min-width: 0; }
+.bill-trend canvas{ width: 100% !important; height: auto !important; }
+@media (max-width: 560px){
+  .bill-donut-wrap{ flex-wrap: wrap; gap: 6px 10px; }
+  .bill-donut-wrap .report-donut{ width: 100%; }
+  .bill-legend-right{ width: 100%; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+  .bill-legend-right .report-legend-item{ font-size: 9.5px; }
+  .report-head{ gap: 6px; }
+  .report-head .report-title{ font-size: 14.5px; }
+  .bill-tab{ padding: 3px 8px; font-size: 10.5px; }
+  .report-summary b{ font-size: 14.5px; }
+  .report-page .report-panel{ padding: 8px 10px; }
+  .report-panel-title{ margin-bottom: 6px; font-size: 11.5px; }
+}
+
+/* 账单分析图例：两列紧凑，百分比跟在文字右侧而非拉到行尾 */
+.bill-legend-right{ max-width: 420px; column-gap: 18px; row-gap: 4px; }
+.bill-legend-right .report-legend-item{ gap: 6px; }
+.bill-legend-right .report-legend-item b{ margin-left: auto; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px){
+  .bill-legend-right{ max-width: none; column-gap: 10px; }
+}

@@ -130,8 +130,7 @@ function billAnalysisData(period: any) {
 
   return {
     period: isYear ? 'year' : 'month',
-    setTitle: isYear ? (now.getFullYear() + '年 · 收支结构 / 支出构成 / 月度趋势')
-      : ((now.getFullYear() + '年' + (now.getMonth() + 1) + '月') + ' · 收支结构 / 支出构成 / 近 7 日趋势'),
+    setTitle: now.getFullYear() + (isYear ? '' : ('-' + String(now.getMonth() + 1).padStart(2, '0'))) + ' 账单分析',
     totalIncome: totalIncome,
     totalExpense: totalExpense,
     expenseList: expenseList,
@@ -153,10 +152,7 @@ function billAnalysisCardHtml(period: any) {
     '<button class="bill-tab' + (d.period === key ? ' active' : '') + '" onclick="switchBillPeriod(\'' + key + '\')">' + label + '</button>';
   return '' +
     '<div class="report-head">' +
-      '<div>' +
-        '<div class="report-title">账单分析</div>' +
-        '<div class="report-sub">' + reportEsc(d.setTitle) + '</div>' +
-      '</div>' +
+      '<div class="report-title">' + reportEsc(d.setTitle) + '</div>' +
       '<div class="bill-tabs">' + tab('month', '本月') + tab('year', '本年') + '</div>' +
     '</div>' +
     '<div class="report-summary cols-2">' +
@@ -188,8 +184,8 @@ function billAnalysisCardHtml(period: any) {
 // 画两张图（切 tab 后需要重画）
 function billAnalysisDraw() {
   const d = billAnalysisData(billAnalysisPeriod);
-  drawReportDonut({ canvasId: 'billPieChart', legendId: 'billPieLegend', data: d.expenseList, centerLabel: d.period === 'year' ? '年支出' : '总支出', size: 200 });
-  drawBillTrendChart({ canvasId: 'billTrendChart', data: d.trendData });
+  drawReportDonut({ canvasId: 'billPieChart', legendId: 'billPieLegend', data: d.expenseList, centerLabel: d.period === 'year' ? '年支出' : '总支出', size: 150 });
+  drawBillTrendChart({ canvasId: 'billTrendChart', data: d.trendData, height: 78 });
 }
 
 // 切 tab：只更新卡片内部，不新增消息
@@ -231,7 +227,7 @@ function drawBillTrendChart(opts: any) {
 
   var boxW = canvas.parentElement.getBoundingClientRect().width || 320;
   var w = Math.max(220, Math.round(boxW));
-  var h = Math.round(o.height || 150);
+  var h = Math.round(o.height || 78);
   var dpr = (window as any).devicePixelRatio || 1;
   const __cv1 = canvas as HTMLCanvasElement;
   __cv1.width = w * dpr;
@@ -244,7 +240,7 @@ function drawBillTrendChart(opts: any) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
 
-  var padL = 10, padR = 10, padT = 20, padB = 24;
+  var padL = 8, padR = 8, padT = 14, padB = 18;
   var innerW = w - padL - padR;
   var innerH = h - padT - padB;
   var max = Math.max.apply(null, data.map(function (d: any) { return Number(d.value) || 0; }).concat([1]));
@@ -261,8 +257,8 @@ function drawBillTrendChart(opts: any) {
   // 网格线
   ctx.strokeStyle = 'rgba(148,163,184,0.25)';
   ctx.lineWidth = 1;
-  for (var g = 0; g <= 2; g++) {
-    var gy = padT + (innerH * g) / 2;
+  for (var g = 1; g <= 1; g++) {
+    var gy = padT + innerH * g;
     ctx.beginPath();
     ctx.moveTo(padL, gy);
     ctx.lineTo(w - padR, gy);
@@ -300,10 +296,10 @@ function drawBillTrendChart(opts: any) {
   ctx.stroke();
 
   // 数据点 + 数值 + 横轴标签
-  var font = '10px system-ui, -apple-system, "PingFang SC", sans-serif';
+  var font = '9px system-ui, -apple-system, "PingFang SC", sans-serif';
   pts.forEach(function (p: any) {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 2.6, 0, Math.PI * 2);
     ctx.fillStyle = '#fff';
     ctx.fill();
     ctx.strokeStyle = '#0B4F9C';
@@ -319,12 +315,12 @@ function drawBillTrendChart(opts: any) {
       ctx.fillStyle = '#0F172A';
       ctx.font = '600 ' + font;
       ctx.textAlign = align;
-      ctx.fillText(String(Math.round(p.v)), tx, Math.max(11, p.y - 8));
+      ctx.fillText(String(Math.round(p.v)), tx, Math.max(9, p.y - 6));
     }
     ctx.fillStyle = '#94A3B8';
     ctx.font = font;
     ctx.textAlign = align;
-    ctx.fillText(p.label, tx, h - 7);
+    ctx.fillText(p.label, tx, h - 5);
   });
 }
 // 通用环形图绘制：支出构成 / 收入构成共用（canvasId、legendId、data、centerLabel 可配）
