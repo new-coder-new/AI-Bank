@@ -164,6 +164,10 @@ function guideSubAddRenewChoice(yes: any) {
   var s = GUIDE_SUB;
   if (!s || s.mode !== 'add') return;
   s.autoRenew = yes;
+  // 收起「是否开启自动续费？」的是/否按钮
+  if (!guideCollapseCardNote('是否开启自动续费', '已选择：' + (yes ? '开启' : '关闭'))) {
+    guideCollapseLatestChips('已选择：' + (yes ? '开启' : '关闭'));
+  }
   guideSubAddConfirm();
 }
 
@@ -215,6 +219,7 @@ async function guideSubAddSubmit() {
     var risk = await verifyAmountRisk(price, '订阅首次扣费');
     if (risk && risk.pendingReview) return;
     if (!risk || !risk.ok) {
+      guideConfirmCardDone(boxId, '已取消');
       appendMessage(guideMessage('<p>已取消订阅，账户未发生扣款。</p>'));
   if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
       scrollToBottom();
@@ -246,6 +251,7 @@ async function guideSubAddSubmit() {
     }
     if (srvSub && srvSub.error) {
       GUIDE_SUB = null;
+      guideConfirmCardDone(boxId, '未开通');
       appendMessage(guideMessage('<p>订阅未开通：' + guideEsc(srvSub.error) + '</p>'));
       scrollToBottom();
       if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('sub'); }, 400);
@@ -258,6 +264,7 @@ async function guideSubAddSubmit() {
     ? addTransaction('expense', price, '订阅扣费-' + preset.name + '(' + cycleText + ')', '订阅扣费', true)
     : true;
   if (okTx === false) {
+    guideConfirmCardDone(boxId, '未开通');
     appendMessage(guideMessage('<p>❌ 订阅未开通：可用余额不足，首次扣费失败。</p>'));
     scrollToBottom();
     return;

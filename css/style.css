@@ -1340,3 +1340,16 @@
 .bill-tab:hover{ color: var(--bank-text, #0f172a); }
 .bill-tab.active{ background: #fff; color: var(--bank-primary, #0b4f9c); box-shadow: 0 1px 2px rgba(15,23,42,.12); }
 @media (max-width: 560px){ .bill-tabs{ margin-top: 8px; } .report-head{ flex-wrap: wrap; } }
+
+/* —— 安全验证统一风格：确认卡内联验证与安全验证弹窗共用一套视觉 —— */
+.agent-verify-box{ background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px 16px; margin-top:12px; }
+.agent-verify-title{ font-size:14px; font-weight:700; color:#1a1a1a; margin-bottom:6px; line-height:1.5; }
+.agent-verify-hint{ font-size:12px; color:#999; line-height:1.6; margin-bottom:10px; }
+.agent-verify-input{ width:100%; box-sizing:border-box; padding:12px 14px; border:1px solid #e5e7eb; border-radius:10px; font-size:15px; letter-spacing:3px; font-family:inherit; outline:none; background:#fff; transition:border-color .18s ease, box-shadow .18s ease; }
+.agent-verify-input:focus{ border-color:#0B4F9C; box-shadow:0 0 0 3px rgba(11,79,156,.12); }
+.agent-verify-input::placeholder{ letter-spacing:0; color:#b6bfcc; }
+.agent-face-btn{ height:36px; padding:0 16px; border:none; border-radius:8px; background:linear-gradient(135deg,#0B4F9C,#1F6FD0); color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
+.agent-face-btn:hover{ filter:brightness(1.05); }
+.agent-face-state{ font-size:12px; color:#94A3B8; margin-left:8px; }
+.agent-confirm-actions .btn-primary{ border-radius:8px; }
+.agent-confirm-actions .btn-secondary{ border-radius:8px; }
