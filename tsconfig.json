@@ -33,6 +33,8 @@
     "js/agent/ai.js",
     "js/agent/display.js",
     "js/agent/riskdetect.js",
-    "js/agent/decision.js"
+    "js/agent/decision.js",
+    "js/agent/scenario.js",
+    "js/agent/planner.js"
   ]
 }

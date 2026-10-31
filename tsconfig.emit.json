@@ -25,6 +25,8 @@
     "js/agent/ai.ts",
     "js/agent/display.ts",
     "js/agent/riskdetect.ts",
-    "js/agent/decision.ts"
+    "js/agent/decision.ts",
+    "js/agent/scenario.ts",
+    "js/agent/planner.ts"
   ]
 }
