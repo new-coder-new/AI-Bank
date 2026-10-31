@@ -843,7 +843,6 @@ function guideHoldingSubConfirm() {
     s.stage = 'subConfirm';
     appendMessage(guideMessage('<p>确认对【<b>' + guideEsc(s.product.name) + '</b>】追加申购 <b>' + guidePlainMoney(s.amount) + '</b> 元，默认从活期主账户（尾号' +
         guideHoldingAccountTail() + '）扣款，请确认</p>' +
-        (s.riskOverride ? '<p class="guide-tip">⚠️ 该产品风险等级高于你的风险承受能力，已按你的确认继续。</p>' : '') +
         '<div class="guide-chips">' +
         '<button class="guide-chip" onclick="guideHoldingSubSubmit()">确认申购</button>' +
         '<button class="guide-chip" onclick="guideHoldingCancel()">取消</button>' +
@@ -857,6 +856,10 @@ function guideHoldingSubSubmitAsRisk() {
         return;
     s.riskOverride = true;
     s.stage = 'subSlots';
+    // 折叠风险提醒卡里的按钮，避免确认卡上方残留可点选项
+    if (!guideCollapseCardNote('是否追加申购', '已确认继续追加。')) {
+        guideCollapseLatestChips('已确认继续追加。');
+    }
     guideHoldingSubConfirm();
 }
 async function guideHoldingSubSubmit() {
@@ -900,10 +903,12 @@ async function guideHoldingSubSubmit() {
     var res = await callAgentTool('wealth.buy', { product: name, amount: amount });
     if (res && res.ok !== false) {
         appendMessage(guideMessage('<p>追加申购提交成功。</p>'));
+        scrollToBottom();
+        if (typeof guideModuleWrapUp === 'function')
+            setTimeout(function () { guideModuleWrapUp('wealth'); }, 400);
+        return;
     }
-    else {
-        appendMessage(guideMessage('<p>追加申购失败：' + guideEsc((res && res.summary) || '业务执行异常') + '</p>'));
-    }
+    appendMessage(guideMessage('<p>追加申购失败：' + guideEsc((res && res.summary) || '业务执行异常') + '</p>'));
     scrollToBottom();
 }
 // 赎回确认卡（先查封闭期与持有金额）
@@ -958,6 +963,10 @@ async function guideHoldingRedeemSubmit() {
     if (res && res.ok !== false) {
         var arriveText = (res && res.data && res.data.arriveDate) ? res.data.arriveDate : 'T+1';
         appendMessage(guideMessage('<p>赎回申请已提交，资金预计 <b>' + guideEsc(arriveText) + '</b> 到账活期主账户（尾号' + guideHoldingAccountTail() + '）。</p>'));
+        scrollToBottom();
+        if (typeof guideModuleWrapUp === 'function')
+            setTimeout(function () { guideModuleWrapUp('wealth'); }, 400);
+        return;
     }
     else {
         appendMessage(guideMessage('<p>赎回失败：' + guideEsc((res && res.summary) || '业务执行异常') + '</p>'));
@@ -1003,6 +1012,8 @@ async function guideHoldingRedeemAllSubmit() {
         (done.length ? '<p class="guide-tip">已受理：' + guideEsc(done.join('、')) + '</p>' : '') +
         (closed.length ? '<p class="guide-tip">封闭期未赎回：' + guideEsc(closed.join('、')) + '</p>' : '')));
     scrollToBottom();
+    if (typeof guideModuleWrapUp === 'function')
+        setTimeout(function () { guideModuleWrapUp('wealth'); }, 400);
 }
 function guideHoldingModify() {
     var s = GUIDE_HOLDING;

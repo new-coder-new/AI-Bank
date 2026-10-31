@@ -206,6 +206,8 @@ async function executeBuyProduct(name, amount) {
     <p style="margin-top:8px;font-size:12px;color:#999;">已自动加入持仓，可在「持仓管理」中查看收益。</p>
   </div></div></div>`);
     scrollToBottom();
+    if (typeof guideModuleWrapUp === 'function')
+        setTimeout(function () { guideModuleWrapUp('wealth'); }, 400);
 }
 // 智能购买解析：自动识别产品名称和金额，弹出确认框
 function smartBuyParse(text) {

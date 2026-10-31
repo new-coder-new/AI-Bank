@@ -5,6 +5,7 @@
 //        对外符号统一在 types/global.d.ts 声明。
 // ==========================================================================
 
+declare function guideModuleWrapUp(module: string, summary?: string): void;
 declare function addTransaction(type: string, amount: number, desc: string, channel?: string, deduct?: boolean): boolean | void;
 declare function callAgentTool(name: string, args?: any): any;
 declare function verifyAmountRisk(amount: number, purpose: string, actions?: any[]): Promise<any>;
@@ -212,6 +213,7 @@ async function executeBuyProduct(name: any, amount: any) {
     <p style="margin-top:8px;font-size:12px;color:#999;">已自动加入持仓，可在「持仓管理」中查看收益。</p>
   </div></div></div>`);
   scrollToBottom();
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('wealth'); }, 400);
 }
 
 // 智能购买解析：自动识别产品名称和金额，弹出确认框
