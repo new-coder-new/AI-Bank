@@ -11,13 +11,13 @@
 // ==========================================================================
 
 // ------------------------------ 0. 基础工具 ------------------------------
-function agentSleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function agentSleep(ms: any) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-function agentFmt(n, digits) {
+function agentFmt(n: any, digits: any) {
   var d = (typeof digits === 'number') ? digits : 2;
   return Number(n || 0).toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d });
 }
-function agentFmtInt(n) {
+function agentFmtInt(n: any) {
   return Math.round(Number(n || 0)).toLocaleString('zh-CN');
 }
 
@@ -25,12 +25,12 @@ function agentFmtInt(n) {
 var AGENT_MEMORY_KEY = 'agent_memory_v2';
 var AGENT_MEMORY: any = null;
 
-function agentMmdd(offsetDays) {
+function agentMmdd(offsetDays: any) {
   var d = new Date();
   d.setDate(d.getDate() + offsetDays);
   return String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
-function agentDateStr(offsetDays) {
+function agentDateStr(offsetDays: any) {
   var d = new Date();
   d.setDate(d.getDate() + offsetDays);
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -100,13 +100,13 @@ function initAgentMemory() {
     saveAgentMemory();
   }
   // 家人生日始终相对"今天"重算，保证演示数据常新
-  (AGENT_MEMORY.family || []).forEach(function (f) {
+  (AGENT_MEMORY.family || []).forEach(function (f: any) {
     if (typeof f.birthdayOffset === 'number') f.birthday = agentMmdd(f.birthdayOffset);
   });
   // 把画像里的家人并入既有生日联系人数据，让旧模块也能用
   if (!mockData.userProfile.birthdayContacts) mockData.userProfile.birthdayContacts = [];
-  AGENT_MEMORY.family.forEach(function (f) {
-    if (!mockData.userProfile.birthdayContacts.some(function (c) { return c.name === f.name; })) {
+  AGENT_MEMORY.family.forEach(function (f: any) {
+    if (!mockData.userProfile.birthdayContacts.some(function (c: any) { return c.name === f.name; })) {
       mockData.userProfile.birthdayContacts.push({
         name: f.name, birthday: f.birthday, relation: f.relation,
         flower: f.favoriteFlower || '向日葵', price: 168
@@ -118,7 +118,7 @@ function initAgentMemory() {
   return AGENT_MEMORY;
 }
 
-function agentDaysUntil(birthdayStr) {
+function agentDaysUntil(birthdayStr: any) {
   if (!birthdayStr) return 999;
   var p = String(birthdayStr).split('-');
   var mm = Number(p[0]), dd = Number(p[1]);
@@ -131,7 +131,7 @@ function agentDaysUntil(birthdayStr) {
 }
 
 // 用自然语言指代家人：爱人 / 老婆 / 老公 / 妻子
-function agentResolvePerson(text) {
+function agentResolvePerson(text: any) {
   if (!AGENT_MEMORY) return null;
   var map = [
     { re: /爱人|老婆|妻子|太太|夫人|老公|丈夫/, rel: '爱人' },
@@ -140,11 +140,11 @@ function agentResolvePerson(text) {
   ];
   for (var i = 0; i < map.length; i++) {
     if (map[i].re.test(text)) {
-      var found = AGENT_MEMORY.family.filter(function (f) { return f.relation === map[i].rel; })[0];
+      var found = AGENT_MEMORY.family.filter(function (f: any) { return f.relation === map[i].rel; })[0];
       if (found) return found;
     }
   }
-  var direct = AGENT_MEMORY.family.filter(function (f) { return text.indexOf(f.name) > -1; })[0];
+  var direct = AGENT_MEMORY.family.filter(function (f: any) { return text.indexOf(f.name) > -1; })[0];
   return direct || null;
 }
 
@@ -173,7 +173,7 @@ function agentSessionReset() {
   };
 }
 
-function agentSessionPush(bucket, item) {
+function agentSessionPush(bucket: any, item: any) {
   var list = AGENT_SESSION[bucket];
   if (!list || !item) return;
   // 去重：同 key 只保留最新
@@ -187,17 +187,17 @@ function agentSessionPush(bucket, item) {
 }
 
 // 记住一条查证事实，如 { key:'balance', text:'可用余额 ¥998,000.00' }
-function agentSessionFact(key, text) {
+function agentSessionFact(key: any, text: any) {
   if (!text) return;
   agentSessionPush('facts', { key: key, text: text });
 }
 // 记住一条分析结论，如 { key:'health', text:'本月结余 ¥3,478，储蓄率 22%' }
-function agentSessionAnalysis(key, text, extra) {
+function agentSessionAnalysis(key: any, text: any, extra: any) {
   if (!text) return;
   agentSessionPush('analyses', Object.assign({ key: key, text: text }, extra || {}));
 }
 // 记住用户需求，如 { key:'goal', text:'想在一年内存 10 万元' }
-function agentSessionDemand(key, text) {
+function agentSessionDemand(key: any, text: any) {
   if (!text) return;
   agentSessionPush('demands', { key: key, text: text });
 }
@@ -227,17 +227,17 @@ function agentSessionSnapshot() {
 }
 
 // 生成注入提示词的"本会话已掌握的信息"文本块
-function agentSessionContextText(maxItems) {
+function agentSessionContextText(maxItems: any) {
   var n = maxItems || 5;
-  var parts = [];
+  var parts: any[] = [];
   if (AGENT_SESSION.facts.length) {
-    parts.push('已查证事实：' + AGENT_SESSION.facts.slice(0, n).map(function (x) { return x.text; }).join('；'));
+    parts.push('已查证事实：' + AGENT_SESSION.facts.slice(0, n).map(function (x: any) { return x.text; }).join('；'));
   }
   if (AGENT_SESSION.analyses.length) {
-    parts.push('已得出分析：' + AGENT_SESSION.analyses.slice(0, n).map(function (x) { return x.text; }).join('；'));
+    parts.push('已得出分析：' + AGENT_SESSION.analyses.slice(0, n).map(function (x: any) { return x.text; }).join('；'));
   }
   if (AGENT_SESSION.demands.length) {
-    parts.push('用户已表达需求：' + AGENT_SESSION.demands.slice(0, n).map(function (x) { return x.text; }).join('；'));
+    parts.push('用户已表达需求：' + AGENT_SESSION.demands.slice(0, n).map(function (x: any) { return x.text; }).join('；'));
   }
   if (!parts.length) return '';
   return parts.join('\n');
@@ -247,15 +247,15 @@ function agentSessionContextText(maxItems) {
 // ------------------------------ 2. 数据快照 ------------------------------
 function agentMonthSummary() {
   var b = mockData.bills || { income: [], expense: [] };
-  var income = (b.income || []).reduce(function (s, x) { return s + (x.value || 0); }, 0);
-  var expense = (b.expense || []).reduce(function (s, x) { return s + (x.value || 0); }, 0);
+  var income = (b.income || []).reduce(function (s: any, x: any) { return s + (x.value || 0); }, 0);
+  var expense = (b.expense || []).reduce(function (s: any, x: any) { return s + (x.value || 0); }, 0);
   return { income: income, expense: expense, balance: income - expense, categories: b.expense || [], label: agentMonthLabel() };
 }
 
 function agentTotalAssets() {
   var u = mockData.userProfile || {};
   var d = u.debitCard || {};
-  var holdings = (u.holdings || []).reduce(function (s, h) { return s + (h.amount || 0) + (h.profit || 0); }, 0);
+  var holdings = (u.holdings || []).reduce(function (s: any, h: any) { return s + (h.amount || 0) + (h.profit || 0); }, 0);
   // 数据真实化：定期/基金/房产从后端资产结构读取（后端为唯一数据源），
   // 后端不可用时降级为演示默认值，保证离线也能跑。
   var fixed = 100000, fund = 45511, property = 600000;
@@ -276,27 +276,27 @@ function agentTotalAssets() {
 
 function agentCategoryStats() {
   var list = (mockData.bills && mockData.bills.expense) ? mockData.bills.expense.slice() : [];
-  return list.sort(function (a, b) { return b.value - a.value; });
+  return list.sort(function (a: any, b: any) { return b.value - a.value; });
 }
 
 // 归因时排除刚性支出（房租水电等不随消费习惯波动）
-function agentGrowthCategories(n) {
+function agentGrowthCategories(n: any) {
   var fixed = ['房租水电', '房贷', '生活缴费', '保险'];
-  var cats = agentCategoryStats().filter(function (c) { return fixed.indexOf(c.label) === -1; });
+  var cats = agentCategoryStats().filter(function (c: any) { return fixed.indexOf(c.label) === -1; });
   return cats.slice(0, n || 2);
 }
 
 function agentAbnormalTxns() {
   var txns = (mockData.userProfile && mockData.userProfile.recentTxns) ? mockData.userProfile.recentTxns : [];
-  return txns.filter(function (t) { return t.abnormal; });
+  return txns.filter(function (t: any) { return t.abnormal; });
 }
 
-function agentUpcomingSubscriptions(withinDays) {
+function agentUpcomingSubscriptions(withinDays: any) {
   var limit = withinDays || 7;
   var subs = mockData.subscriptions || [];
   var now = new Date();
   var t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return subs.map(function (s) {
+  return subs.map(function (s: any) {
     var d;
     if (s.chargeDate) {
       var p = String(s.chargeDate).split('-').map(Number);
@@ -308,8 +308,8 @@ function agentUpcomingSubscriptions(withinDays) {
       d = new Date(t0.getTime() + 30 * 86400000);
     }
     return { sub: s, inDays: Math.round((Number(d) - Number(t0)) / 86400000) };
-  }).filter(function (x) { return x.inDays >= 0 && x.inDays <= limit; })
-    .sort(function (a, b) { return a.inDays - b.inDays; });
+  }).filter(function (x: any) { return x.inDays >= 0 && x.inDays <= limit; })
+    .sort(function (a: any, b: any) { return a.inDays - b.inDays; });
 }
 
 function agentBudgetStatus() {
@@ -330,7 +330,7 @@ function agentBudgetStatus() {
   };
 }
 
-function agentBudgetSummaryText(s) {
+function agentBudgetSummaryText(s: any) {
   if (s.overspent) {
     return '月度预算 ¥' + agentFmtInt(s.monthLimit) + '，已用 ¥' + agentFmtInt(s.used) +
       '，已超出 ¥' + agentFmtInt(Math.abs(s.remain)) + '（本月还剩 ' + s.daysLeft + ' 天）';
@@ -352,12 +352,12 @@ function agentTravelBudget() {
 }
 
 // ------------------------------ 3. 工具注册表 ------------------------------
-var AGENT_TOOL_REGISTRY = {};
+var AGENT_TOOL_REGISTRY: Record<string, any> = {};
 
-function registerAgentTool(name, def) {
+function registerAgentTool(name: any, def: any) {
   AGENT_TOOL_REGISTRY[name] = Object.assign({ name: name, risk: 'low' }, def);
 }
-function getAgentTool(name) { return AGENT_TOOL_REGISTRY[name]; }
+function getAgentTool(name: any) { return AGENT_TOOL_REGISTRY[name]; }
 
 // 把工具结果落进会话记忆：只记住"能改变判断"的关键事实，避免上下文被噪音塞满
 var AGENT_TOOL_MEMORY_HINT = {
@@ -370,13 +370,13 @@ var AGENT_TOOL_MEMORY_HINT = {
   'account.profile': 'profile'
 };
 
-function agentRememberToolResult(name, res) {
+function agentRememberToolResult(name: any, res: any) {
   if (!res || res.ok === false || !res.summary) return;
-  var key = AGENT_TOOL_MEMORY_HINT[name];
+  var key = (AGENT_TOOL_MEMORY_HINT as any)[name];
   if (key) agentSessionFact(key, res.summary);
 }
 
-async function callAgentTool(name, args) {
+async function callAgentTool(name: any, args: any) {
   var tool = getAgentTool(name);
   if (!tool) return { ok: false, tool: name, summary: '未找到工具：' + name };
   try {
@@ -385,7 +385,7 @@ async function callAgentTool(name, args) {
     if (typeof agentRememberToolResult === 'function') agentRememberToolResult(name, res);
     return res;
   } catch (e) {
-    return { ok: false, tool: name, summary: '执行失败：' + ((e && e.message) ? e.message : String(e)) };
+    return { ok: false, tool: name, summary: '执行失败：' + ((e && (e as any).message) ? (e as any).message : String(e)) };
   }
 }
 
@@ -414,10 +414,10 @@ registerAgentTool('account.profile', {
 
 registerAgentTool('account.transactions', {
   label: '查询交易明细', risk: 'low',
-  run: function (args) {
+  run: function (args: any) {
     var list = (mockData.userProfile.recentTxns || []);
     var type = args && args.type;
-    if (type) list = list.filter(function (t) { return t.type === type; });
+    if (type) list = list.filter(function (t: any) { return t.type === type; });
     return { summary: '命中 ' + list.length + ' 笔交易记录', data: list.slice(0, 10) };
   }
 });
@@ -471,7 +471,7 @@ registerAgentTool('bill.categoryStats', {
   label: '消费分类统计', risk: 'low',
   run: function () {
     var cats = agentCategoryStats();
-    var top = cats.slice(0, 3).map(function (c) { return c.label + ' ¥' + agentFmtInt(c.value); }).join('、');
+    var top = cats.slice(0, 3).map(function (c: any) { return c.label + ' ¥' + agentFmtInt(c.value); }).join('、');
     return { summary: '支出前三：' + top, data: cats };
   }
 });
@@ -481,9 +481,9 @@ registerAgentTool('bill.detectAbnormal', {
   run: function () {
     var a = agentAbnormalTxns();
     if (!a.length) return { summary: '未发现异常交易', data: [] };
-    var reasons = a.map(function (t) { return t.abnormalReason; }).filter(function (v, i, arr) { return arr.indexOf(v) === i; });
+    var reasons = a.map(function (t: any) { return t.abnormalReason; }).filter(function (v: any, i: any, arr: any) { return arr.indexOf(v) === i; });
     return {
-      summary: '发现 ' + a.length + ' 笔可疑交易，涉及金额 ¥' + agentFmtInt(a.reduce(function (s, t) { return s + t.amount; }, 0)) + '（' + reasons.join('、') + '）',
+      summary: '发现 ' + a.length + ' 笔可疑交易，涉及金额 ¥' + agentFmtInt(a.reduce(function (s: any, t: any) { return s + t.amount; }, 0)) + '（' + reasons.join('、') + '）',
       data: a
     };
   }
@@ -495,7 +495,7 @@ registerAgentTool('bill.trend', {
     var cur = agentMonthSummary().expense;
     var base = (AGENT_MEMORY && AGENT_MEMORY.profile.monthlyAvgExpense) || 7000;
     var pct = base > 0 ? Math.round((cur - base) / base * 100) : 0;
-    var top2 = agentGrowthCategories(2).map(function (c) { return c.label; }).join('和');
+    var top2 = agentGrowthCategories(2).map(function (c: any) { return c.label; }).join('和');
     var dir = pct >= 0 ? '↑' : '↓';
     return {
       summary: '本月支出较近 3 个月均值 ' + dir + Math.abs(pct) + '%，主要增加于' + top2,
@@ -509,7 +509,7 @@ registerAgentTool('subscription.list', {
   label: '读取订阅清单', risk: 'low',
   run: function () {
     var subs = mockData.subscriptions || [];
-    var total = subs.reduce(function (s, x) { return s + (x.price || 0); }, 0);
+    var total = subs.reduce(function (s: any, x: any) { return s + (x.price || 0); }, 0);
     return { summary: '在订 ' + subs.length + ' 项，月均支出约 ¥' + agentFmtInt(total), data: subs };
   }
 });
@@ -518,8 +518,8 @@ registerAgentTool('subscription.scan', {
   label: '扫描扣费与使用率', risk: 'low',
   run: function () {
     var up = agentUpcomingSubscriptions(7);
-    var idle = (mockData.subscriptions || []).filter(function (s) { return s.usage === '低'; });
-    var parts = [];
+    var idle = (mockData.subscriptions || []).filter(function (s: any) { return s.usage === '低'; });
+    var parts: any[] = [];
     if (up.length) parts.push(up[0].sub.name + ' ' + up[0].inDays + ' 天后扣费 ¥' + agentFmtInt(up[0].sub.price));
     if (idle.length) parts.push('其中 ' + idle.length + ' 项近 3 个月使用频率较低');
     return {
@@ -531,12 +531,12 @@ registerAgentTool('subscription.scan', {
 
 registerAgentTool('subscription.cancel', {
   label: '取消订阅', risk: 'medium',
-  run: function (args) {
+  run: function (args: any) {
     var subs = mockData.subscriptions || [];
     var idx = -1;
-    if (args && args.id != null) idx = subs.findIndex(function (s) { return s.id === args.id; });
+    if (args && args.id != null) idx = subs.findIndex(function (s: any) { return s.id === args.id; });
     if (idx < 0 && args && args.name) {
-      idx = subs.findIndex(function (s) { return s.name.indexOf(args.name) > -1 || args.name.indexOf(s.name) > -1; });
+      idx = subs.findIndex(function (s: any) { return s.name.indexOf(args.name) > -1 || args.name.indexOf(s.name) > -1; });
     }
     if (idx > -1) {
       var removed = subs.splice(idx, 1)[0];
@@ -551,10 +551,10 @@ registerAgentTool('subscription.cancel', {
 // —— 转账类（含风控）——
 registerAgentTool('transfer.resolvePayee', {
   label: '识别收款人账户', risk: 'low',
-  run: function (args) {
+  run: function (args: any) {
     var name = (args && args.payee) || '';
     var contacts = mockData.contacts || [];
-    var c = contacts.filter(function (x) { return x.name === name; })[0];
+    var c = contacts.filter(function (x: any) { return x.name === name; })[0];
     if (c) return { summary: '已匹配联系人 ' + name + '（' + c.bank + ' ' + c.account + '）', data: c, matched: true };
     return { summary: '收款人「' + name + '」不在通讯录中，将按新联系人处理', data: null, matched: false };
   }
@@ -562,7 +562,7 @@ registerAgentTool('transfer.resolvePayee', {
 
 registerAgentTool('transfer.execute', {
   label: '执行转账', risk: 'high',
-  run: async function (args) {
+  run: async function (args: any) {
     var payee = String(args.payee || '').trim();
     var amount = Number(args.amount) || 0;
     if (!Number.isFinite(amount) || amount <= 0) return { ok: false, summary: '转账金额无效，未执行任何操作' };
@@ -571,8 +571,8 @@ registerAgentTool('transfer.execute', {
     // 手机号/银行卡/批量/定时等渠道有各自的身份核验路径。
     var ch = args.channel || '智能转账';
     var nameChannels = { '网银转账': 1, '智能转账': 1, '姓名转账': 1 };
-    if (nameChannels[ch]) {
-      var known = (mockData.contacts || []).some(function (c) { return c.name === payee; });
+    if ((nameChannels as any)[ch]) {
+      var known = (mockData.contacts || []).some(function (c: any) { return c.name === payee; });
       if (!known) return { ok: false, summary: '收款人「' + payee + '」不在通讯录，姓名转账已拒绝' };
     }
 
@@ -674,7 +674,7 @@ registerAgentTool('card.overview', {
 
 registerAgentTool('card.freeze', {
   label: '挂失信用卡', risk: 'high',
-  run: function (args) {
+  run: function (args: any) {
     var c = mockData.userProfile.creditCard;
     if (c.isFrozen) return { summary: '信用卡已处于挂失状态，无需重复操作', data: c };
     c.isFrozen = true;
@@ -711,7 +711,7 @@ registerAgentTool('wealth.list', {
 
 registerAgentTool('wealth.recommend', {
   label: '生成目标化配置方案', risk: 'low',
-  run: function (args) {
+  run: function (args: any) {
     var amount = Number(args.amount) || 0;
     var horizon = args.horizon || 12;
     var riskPref = args.riskPref || '稳健';
@@ -726,17 +726,17 @@ registerAgentTool('wealth.recommend', {
 
     /** @type {any[]} */
     /** @type {any[]} */
-    var picked = defs.map(function (pl) {
-      var legs = [];
-      pl.legs.forEach(function (pair) {
-        var prod = products.filter(function (p) { return p.name === pair[0]; })[0];
+    var picked = defs.map(function (pl: any) {
+      var legs: any[] = [];
+      pl.legs.forEach(function (pair: any) {
+        var prod = products.filter(function (p: any) { return p.name === pair[0]; })[0];
         if (!prod) return;
         var amt = Math.round(Number(amount) * Number(pair[1]) / 100);
         var rateNum = parseFloat(String(prod.rate).replace('%', '')) || 2;
         legs.push({ name: prod.name, amount: amt, rate: prod.rate, rateLabel: prod.rateLabel, riskLevel: prod.riskLevel, estReturn: amt * rateNum / 100 });
       });
-      var est = legs.reduce(function (s, l) { return s + l.estReturn; }, 0);
-      var maxLevel = legs.reduce(function (m, l) { return Math.max(m, l.riskLevel || 0); }, 0);
+      var est = legs.reduce(function (s: any, l: any) { return s + l.estReturn; }, 0);
+      var maxLevel = legs.reduce(function (m: any, l: any) { return Math.max(m, l.riskLevel || 0); }, 0);
       return {
         name: pl.name, desc: pl.desc, legs: legs, estReturn: est,
         estRate: amount > 0 ? (est / amount * 100) : 0,
@@ -745,9 +745,9 @@ registerAgentTool('wealth.recommend', {
       };
     });
 
-    var eligible = picked.filter(function (p) { return p.withinPreference; });
+    var eligible = picked.filter(function (p: any) { return p.withinPreference; });
     if (!eligible.length) eligible = picked;
-    eligible.sort(function (a, b) { return b.estRate - a.estRate; });
+    eligible.sort(function (a: any, b: any) { return b.estRate - a.estRate; });
     var best = eligible[0];
     picked.forEach(function (p: any) { p.recommended = (p.name === best.name); });
 
@@ -760,7 +760,7 @@ registerAgentTool('wealth.recommend', {
 
 
 // 金额达到服务端验证档（≥¥1,000）且当前没有有效验证令牌时，先完成一次验证
-async function agentEnsureFundVerify(amount, purpose) {
+async function agentEnsureFundVerify(amount: any, purpose: any) {
   try {
     if (!(Number(amount) >= 1000)) return true;
     if (typeof API !== 'undefined' && API.verifyToken && API.verifyExp > Date.now()) return true;
@@ -772,9 +772,9 @@ async function agentEnsureFundVerify(amount, purpose) {
 
 registerAgentTool('wealth.buy', {
   label: '申购理财产品', risk: 'high',
-  run: async function (args) {
+  run: async function (args: any) {
     var name = args.product, amount = Number(args.amount) || 0;
-    var prod = (mockData.products || []).filter(function (p) { return p.name === name; })[0];
+    var prod = (mockData.products || []).filter(function (p: any) { return p.name === name; })[0];
     if (!prod) return { ok: false, summary: '未找到产品：' + name };
     if (amount < (prod.minAmount || 0)) return { ok: false, summary: '低于起购金额 ¥' + agentFmtInt(prod.minAmount) };
 
@@ -803,7 +803,7 @@ registerAgentTool('wealth.buy', {
     var recorded = addTransaction('expense', amount, '申购' + name, '理财账户', true);
     if (recorded === false) return { ok: false, summary: '扣款未成功（可用余额不足），未生成持仓' };
     if (!mockData.userProfile.holdings) mockData.userProfile.holdings = [];
-    var exist = mockData.userProfile.holdings.filter(function (h) { return h.name === name; })[0];
+    var exist = mockData.userProfile.holdings.filter(function (h: any) { return h.name === name; })[0];
     if (exist) {
       exist.amount += amount;
       exist.cost += amount;
@@ -822,7 +822,7 @@ registerAgentTool('wealth.buy', {
 
 registerAgentTool('wealth.redeem', {
   label: '赎回理财产品', risk: 'high',
-  run: async function (args) {
+  run: async function (args: any) {
     var holdings = mockData.userProfile.holdings || [];
     var name = args && args.product;
     var __amt = (args && args.amount != null) ? Number(args.amount) : 0;
@@ -849,10 +849,10 @@ registerAgentTool('wealth.redeem', {
       }
       if (srvRedeem && srvRedeem.error) return { ok: false, summary: '赎回未执行：' + srvRedeem.error };
     }
-    var h = name ? holdings.filter(function (x) { return x.name === name || x.name.indexOf(name) > -1; })[0] : holdings.filter(function (x) { return x.status === '持有中'; })[0];
+    var h = name ? holdings.filter(function (x: any) { return x.name === name || x.name.indexOf(name) > -1; })[0] : holdings.filter(function (x: any) { return x.status === '持有中'; })[0];
     if (!h) return { ok: false, summary: '未找到可赎回的持仓' + (name ? '：' + name : '') };
     // 封闭期校验：90 天/3 年产品未到期不能赎回
-    var prodDef = (mockData.products || []).filter(function (p) { return p.name === h.name; })[0] || {};
+    var prodDef = (mockData.products || []).filter(function (p: any) { return p.name === h.name; })[0] || {};
     var closedDays = Number(prodDef.closedDays) || 0;
     if (closedDays > 0 && h.buyDate) {
       var buyTs = new Date(String(h.buyDate) + 'T00:00:00').getTime();
@@ -873,7 +873,7 @@ registerAgentTool('wealth.redeem', {
     h.profitRate = h.cost > 0 ? Math.round((h.profit / h.cost) * 10000) / 100 : 0;
     if (h.amount <= 0) {
       h.status = '已赎回';
-      mockData.userProfile.holdings = holdings.filter(function (x) { return x !== h; });
+      mockData.userProfile.holdings = holdings.filter(function (x: any) { return x !== h; });
     }
     // 开放式基金赎回按 T+1 到账：先记「到账中」，到期由 releasePendingRedemptions() 入账
     var credited = Math.round((amount + profitPart) * 100) / 100;
@@ -912,7 +912,7 @@ registerAgentTool('budget.status', {
 
 registerAgentTool('budget.set', {
   label: '设置预算', risk: 'medium',
-  run: function (args) {
+  run: function (args: any) {
     var amount = Number(args.amount) || 0;
     var period = args.period || 'month';
     var u = mockData.userProfile;
@@ -921,14 +921,14 @@ registerAgentTool('budget.set', {
     saveUserData();
     // 数据真实化：同步后端
     if (typeof apiBudgetSet === 'function') apiBudgetSet(amount, period);
-    var label = { day: '每日', week: '每周', month: '每月', year: '每年' }[period] || '每月';
+    var label = ({ day: '每日', week: '每周', month: '每月', year: '每年' } as Record<string, string>)[period] || '每月';
     return { summary: '已设置' + label + '预算 ¥' + agentFmtInt(amount), data: { amount: amount, period: period } };
   }
 });
 
 registerAgentTool('budget.createFund', {
   label: '创建专项预算账户', risk: 'medium',
-  run: function (args) {
+  run: function (args: any) {
     var u = mockData.userProfile;
     var amount = Number(args.amount) || 0;
     if (!(amount > 0)) return { ok: false, summary: '专项预算金额无效' };
@@ -962,12 +962,12 @@ registerAgentTool('budget.createFund', {
 // —— 生活场景 / 跨场景联动 ——
 registerAgentTool('life.scanBirthdays', {
   label: '扫描联系人生日', risk: 'low',
-  run: function (args) {
+  run: function (args: any) {
     var within = (args && args.withinDays) || 15;
     var family = (AGENT_MEMORY && AGENT_MEMORY.family) ? AGENT_MEMORY.family : [];
-    var hits = family.map(function (f) {
+    var hits = family.map(function (f: any) {
       return { person: f, days: agentDaysUntil(f.birthday) };
-    }).filter(function (x) { return x.days <= within; }).sort(function (a, b) { return a.days - b.days; });
+    }).filter(function (x: any) { return x.days <= within; }).sort(function (a: any, b: any) { return a.days - b.days; });
     if (!hits.length) return { summary: within + ' 天内没有生日', data: [] };
     var h = hits[0];
     return {
@@ -979,7 +979,7 @@ registerAgentTool('life.scanBirthdays', {
 
 registerAgentTool('life.reserveDeposit', {
   label: '锁定活期资金', risk: 'medium',
-  run: function (args) {
+  run: function (args: any) {
     var amount = Number(args.amount) || 0;
     if (!(amount > 0)) return { ok: false, summary: '锁定金额无效' };
     var u = mockData.userProfile;
@@ -1020,7 +1020,7 @@ function releasePendingRedemptions() {
     var today = new Date();
     var todayStr = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + ('0' + today.getDate()).slice(-2);
     var settled = 0;
-    u.pendingRedemptions.forEach(function (r) {
+    u.pendingRedemptions.forEach(function (r: any) {
       if (!r || r.status !== '到账中') return;
       if (!r.arriveDate || String(r.arriveDate) > todayStr) return;
       var credited = Number(r.credited) || 0;
@@ -1046,7 +1046,7 @@ function releaseLockedFunds() {
   var today = agentDateStr(0);
   var d = u.debitCard || {};
   var changed = false;
-  function release(item, dateKey) {
+  function release(item: any, dateKey: any) {
     if (!item || item.frozen !== true || item.status === '已解冻') return;
     var date = item[dateKey];
     if (!date || String(date) > today) return;
@@ -1057,13 +1057,13 @@ function releaseLockedFunds() {
     item.status = '已解冻';
     item.releasedAt = new Date().toLocaleString('zh-CN');
     if (Array.isArray(d.frozenItems) && item.freezeId) {
-      var fi = d.frozenItems.filter(function (x) { return x.id === item.freezeId; })[0];
+      var fi = d.frozenItems.filter(function (x: any) { return x.id === item.freezeId; })[0];
       if (fi) { fi.status = '已解冻'; fi.releasedAt = item.releasedAt; }
     }
     changed = true;
   }
-  (u.lockedFunds || []).forEach(function (f) { release(f, 'releaseDate'); });
-  (u.funds || []).forEach(function (f) { release(f, 'deadline'); });
+  (u.lockedFunds || []).forEach(function (f: any) { release(f, 'releaseDate'); });
+  (u.funds || []).forEach(function (f: any) { release(f, 'deadline'); });
   if (changed) {
     saveUserData();
     if (typeof showToast === 'function') showToast('有预留/专项资金到期，已自动解冻', 2600);
@@ -1072,7 +1072,7 @@ function releaseLockedFunds() {
 
 registerAgentTool('life.orderFlower', {
   label: '预订鲜花', risk: 'medium',
-  run: function (args) {
+  run: function (args: any) {
     // 0/负数/非数字一律回落到标准价，避免“免费送”或负金额抵档位
     var price = Number(args.price);
     if (!Number.isFinite(price) || price <= 0) price = 168;
@@ -1108,7 +1108,7 @@ registerAgentTool('life.orderFlower', {
 
 registerAgentTool('life.orderCake', {
   label: '预订蛋糕', risk: 'medium',
-  run: function (args) {
+  run: function (args: any) {
     var price = Number(args.price);
     if (!Number.isFinite(price) || price <= 0) price = 238;
     if (price > 100000) return { ok: false, summary: '蛋糕金额异常，未执行' };
@@ -1121,7 +1121,7 @@ registerAgentTool('life.orderCake', {
 
 registerAgentTool('life.setReminder', {
   label: '设置提醒与祝福', risk: 'low',
-  run: function (args) {
+  run: function (args: any) {
     var u = mockData.userProfile;
     if (!u.reminders) u.reminders = [];
     u.reminders.push({ title: args.title || '生日提醒', date: args.date || agentDateStr(3) });
@@ -1133,7 +1133,7 @@ registerAgentTool('life.setReminder', {
 
 registerAgentTool('life.travelPlan', {
   label: '生成出差财务计划', risk: 'low',
-  run: function (args) {
+  run: function (args: any) {
     var city = args.city || '上海';
     var budget = Number(args.budget) || 5000;
     var days = Number(args.days) || 4;
@@ -1144,7 +1144,7 @@ registerAgentTool('life.travelPlan', {
       { name: '机动备用金', amount: budget - Math.round(budget * 0.28) - Math.round(budget * 0.42) - Math.round(budget * 0.22) }
     ];
     return {
-      summary: '已按 ' + city + ' ' + days + ' 天行程拆解 ¥' + agentFmtInt(budget) + ' 预算：' + legs.map(function (l) { return l.name + ' ¥' + agentFmtInt(l.amount); }).join('，'),
+      summary: '已按 ' + city + ' ' + days + ' 天行程拆解 ¥' + agentFmtInt(budget) + ' 预算：' + legs.map(function (l: any) { return l.name + ' ¥' + agentFmtInt(l.amount); }).join('，'),
       data: { city: city, budget: budget, days: days, legs: legs }
     };
   }
@@ -1153,13 +1153,13 @@ registerAgentTool('life.travelPlan', {
 // ------------------------------ 4. 主动风险干预引擎 ------------------------------
 // ---- 余额门禁（交易前第一道防线）----
 // 传入本次全部支出动作，校验可用余额是否足够。不足时返回缺口，由调用方渲染「超支方案卡」。
-function agentCheckBalance(actions) {
+function agentCheckBalance(actions: any) {
   var list = Array.isArray(actions) ? actions : [actions || {}];
-  var need = list.reduce(function (s, a) { return s + (Number(a && a.amount) || 0); }, 0);
+  var need = list.reduce(function (s: any, a: any) { return s + (Number(a && a.amount) || 0); }, 0);
   var u = mockData.userProfile || {};
   var card = u.debitCard || {};
   var avail = Number(card.available) || 0;
-  var locked = (u.lockedFunds || []).reduce(function (s, f) { return s + (Number(f.amount) || 0); }, 0);
+  var locked = (u.lockedFunds || []).reduce(function (s: any, f: any) { return s + (Number(f.amount) || 0); }, 0);
 
   return {
     need: need,
@@ -1173,14 +1173,14 @@ function agentCheckBalance(actions) {
   };
 }
 
-function agentAssessTransferRisk(payee, amount) {
-  var reasons = [];
+function agentAssessTransferRisk(payee: any, amount: any) {
+  var reasons: any[] = [];
   var score = 0;
   var contacts = mockData.contacts || [];
-  var known = contacts.some(function (c) { return c.name === payee; });
+  var known = contacts.some(function (c: any) { return c.name === payee; });
   var history = (mockData.userProfile && mockData.userProfile.transferHistory) ? mockData.userProfile.transferHistory : [];
-  var paidBefore = history.some(function (t) { return t.payee === payee; });
-  var avg = history.length ? history.reduce(function (s, t) { return s + t.amount; }, 0) / history.length : 0;
+  var paidBefore = history.some(function (t: any) { return t.payee === payee; });
+  var avg = history.length ? history.reduce(function (s: any, t: any) { return s + t.amount; }, 0) / history.length : 0;
   var ratio = avg > 0 ? amount / avg : 0;
 
   if (!known) { score += 40; reasons.push({ label: '收款人为新联系人', detail: '「' + payee + '」不在常用联系人中' }); }
@@ -1219,7 +1219,7 @@ function agentAssessTransferRisk(payee, amount) {
   };
 }
 
-function agentRiskBadge(level) {
+function agentRiskBadge(level: any) {
   if (level === 'high') return { text: '高风险', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' };
   if (level === 'medium') return { text: '中风险', color: '#b45309', bg: '#fffbeb', border: '#fde68a' };
   return { text: '低风险', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' };
@@ -1227,7 +1227,7 @@ function agentRiskBadge(level) {
 
 // ---- 转账金额分级确认 ----
 // 档位定义：金额决定「下限档」，可疑度决定「附加档」，最终取更严者，确保两者都不漏。
-var AGENT_TRANSFER_TIERS = {
+var AGENT_TRANSFER_TIERS: Record<string, any> = {
   // 任何档位都必须先点确认卡；验证方式按档位递进
   T1: { rank: 1, name: '指纹/密码确认', needConfirm: true, needPassword: true, needOtp: false, needFace: false, needManual: false },
   T2: { rank: 2, name: '短信验证码', needConfirm: true, needPassword: false, needOtp: true, needFace: false, needManual: false },
@@ -1238,7 +1238,7 @@ var AGENT_TRANSFER_TIERS = {
 // 演示环境固定验证码，真实场景应由短信/OTP 下发
 var AGENT_DEMO_OTP = '123456';
 
-function agentAmountTier(amount) {
+function agentAmountTier(amount: any) {
   var a = Number(amount) || 0;
   if (a >= 100000) return 'T4';
   if (a >= 10000) return 'T3';
@@ -1247,7 +1247,7 @@ function agentAmountTier(amount) {
 }
 
 // 可疑度 → 最低档位：高风险至少 T3，中风险至少 T2
-function agentRiskTier(risk) {
+function agentRiskTier(risk: any) {
   if (!risk) return 'T1';
   if (risk.level === 'high') return 'T3';
   if (risk.level === 'medium') return 'T2';
@@ -1255,10 +1255,10 @@ function agentRiskTier(risk) {
 }
 
 // 最终档位 = max(金额档, 可疑度档)
-function agentTransferTier(amount, risk) {
+function agentTransferTier(amount: any, risk: any) {
   var byAmount = agentAmountTier(amount);
   var byRisk = agentRiskTier(risk);
-  var key = AGENT_TRANSFER_TIERS[byAmount].rank >= AGENT_TRANSFER_TIERS[byRisk].rank ? byAmount : byRisk;
+  var key = (AGENT_TRANSFER_TIERS as any)[byAmount].rank >= (AGENT_TRANSFER_TIERS as any)[byRisk].rank ? byAmount : byRisk;
   var tier = AGENT_TRANSFER_TIERS[key];
   return {
     key: key,
@@ -1277,7 +1277,7 @@ function agentTransferTier(amount, risk) {
   };
 }
 
-function agentTierBadge(tier) {
+function agentTierBadge(tier: any) {
   if (tier.rank >= 4) return { text: '短信+人脸+人工复核', color: '#991b1b', bg: '#fee2e2', border: '#fecaca' };
   if (tier.rank === 3) return { text: '短信+人脸确认', color: '#c2410c', bg: '#fff7ed', border: '#fed7aa' };
   if (tier.rank === 2) return { text: '短信验证码', color: '#b45309', bg: '#fffbeb', border: '#fde68a' };
@@ -1286,11 +1286,11 @@ function agentTierBadge(tier) {
 
 // ------------------------------ 5. 计划执行器 + 可视化 ------------------------------
 // 转账完成卡：金额 / 收款方 / 余额 + 一句说明（确认即完成，无额外按钮、不用绿色底）
-function agentTransferDoneCardHtml(amount, payee, balance) {
-  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x); };
+function agentTransferDoneCardHtml(amount: any, payee: any, balance: any) {
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x: any) { return String(x); };
   var amt = agentFmt(amount);
   var bal = agentFmt(balance);
-  function row(label, value) {
+  function row(label: any, value: any) {
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;border-bottom:1px solid #f1f3f6;">' +
       '<span style="color:#6b7280;">' + label + '</span>' +
       '<b style="color:#111827;font-weight:600;">' + value + '</b></div>';
@@ -1304,7 +1304,7 @@ function agentTransferDoneCardHtml(amount, payee, balance) {
     '</div>';
 }
 // 只保留一句「正在为你处理…」，执行步骤（逻辑链）不再展示给用户
-function agentPlanShell(id, plan) {
+function agentPlanShell(id: any, plan: any) {
   return '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
     '<div class="agent-plan-head" id="' + id + '-head"><span class="agent-plan-dot"></span>' + plan.title + '</div>' +
@@ -1322,13 +1322,13 @@ function agentSetStep(id: any, i: any, state?: any, desc?: any, note?: any) {
   if (descEl && desc) descEl.textContent = desc;
 }
 
-async function runAgentPlan(plan) {
+async function runAgentPlan(plan: any) {
   var id = 'agentplan-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
   appendMessage(agentPlanShell(id, plan));
   scrollToBottom();
   await agentSleep(120);
 
-  var results = [];
+  var results: any[] = [];
   for (var i = 0; i < plan.steps.length; i++) {
     var step = plan.steps[i];
     agentSetStep(id, i, 'running');
@@ -1351,37 +1351,37 @@ async function runAgentPlan(plan) {
   return { id: id, results: results };
 }
 
-function agentPlanActionAmount(a) {
+function agentPlanActionAmount(a: any) {
   if (Number(a && a.amount)) return Number(a.amount);
   var ar = (a && a.args) || {};
   if (a && (a.tool === 'life.orderFlower' || a.tool === 'life.orderCake')) return Number(ar.price) || 0;
   return Number(ar.amount) || 0;
 }
 
-function agentRenderPlanConfirm(id, plan, results) {
+function agentRenderPlanConfirm(id: any, plan: any, results: any) {
   var footer = document.getElementById(id + '-footer');
   if (!footer) return;
   // 只剩确认卡：处理中的状态行隐藏掉，避免用户看到内部流程
   var head = document.getElementById(id + '-head');
   if (head) head.style.display = 'none';
   var actions = plan.confirm.actions || [];
-  var actionRows = actions.map(function (a, i) {
+  var actionRows = actions.map(function (a: any, i: any) {
     return '<div class="agent-confirm-row" id="' + id + '-a' + i + '">' +
       '<span class="agent-confirm-idx">' + (i + 1) + '</span>' +
       '<span class="agent-confirm-text">' + ((typeof escapeHtml === 'function') ? escapeHtml(a.label) : a.label) + '</span>' +
       '<span class="agent-confirm-tag">待确认</span>' +
       '</div>';
   }).join('');
-  var total = actions.reduce(function (s, a) { return s + agentPlanActionAmount(a); }, 0);
+  var total = actions.reduce(function (s: any, a: any) { return s + agentPlanActionAmount(a); }, 0);
 
   // 扣款类动作统一按金额分级；不再只对转账生效
-  var debitActions = actions.filter(function (a) {
+  var debitActions = actions.filter(function (a: any) {
     return ['transfer.execute', 'wealth.buy', 'life.orderFlower', 'life.orderCake'].indexOf(a.tool) > -1;
   });
-  var transferAction = actions.filter(function (a) { return a.tool === 'transfer.execute'; })[0];
+  var transferAction = actions.filter(function (a: any) { return a.tool === 'transfer.execute'; })[0];
   var tier = null, tierBadge = null;
   if (debitActions.length) {
-    var tierAmount = debitActions.reduce(function (s, a) { return s + agentPlanActionAmount(a); }, 0);
+    var tierAmount = debitActions.reduce(function (s: any, a: any) { return s + agentPlanActionAmount(a); }, 0);
     var riskOfAction = (transferAction && transferAction.risk) || (plan.confirm.risk) || null;
     tier = agentTransferTier(tierAmount, riskOfAction);
     tierBadge = agentTierBadge(tier);
@@ -1432,13 +1432,13 @@ function agentRenderPlanConfirm(id, plan, results) {
   scrollToBottom();
 }
 
-var AGENT_PENDING_PLANS = {};
+var AGENT_PENDING_PLANS: Record<string, any> = {};
 
 
 // 确认卡上的「开始人脸确认」按钮
-function agentStartFaceVerify(id) {
+function agentStartFaceVerify(id: any) {
   if (typeof showFaceVerification !== 'function') return;
-  showFaceVerification('人脸确认', function (ok) {
+  showFaceVerification('人脸确认', function (ok: any) {
     window.__AGENT_FACE_OK = window.__AGENT_FACE_OK || {};
     window.__AGENT_FACE_OK[id] = !!ok;
     var el = document.getElementById(id + '-face-state');
@@ -1446,16 +1446,16 @@ function agentStartFaceVerify(id) {
   });
 }
 
-async function agentApprovePlan(id) {
+async function agentApprovePlan(id: any) {
   var rec = AGENT_PENDING_PLANS[id];
   if (!rec || rec.status !== 'pending') return;
 
   // —— T1：指纹 / 交易密码确认 ——
   if (rec.tier && rec.tier.needPassword && typeof showSecurityVerification === 'function') {
     var __amt = (rec.plan && rec.plan.confirm && rec.plan.confirm.actions)
-      ? rec.plan.confirm.actions.reduce(function (s, a) { return s + agentPlanActionAmount(a); }, 0) : 0;
+      ? rec.plan.confirm.actions.reduce(function (s: any, a: any) { return s + agentPlanActionAmount(a); }, 0) : 0;
     var t1ok = await new Promise(function (resolve) {
-      showSecurityVerification('指纹/密码确认（' + agentFmt(__amt) + '）', function (ok) { resolve(!!ok); });
+      showSecurityVerification('指纹/密码确认（' + agentFmt(__amt) + '）', function (ok: any) { resolve(!!ok); });
     });
     if (!t1ok) {
       var errT1 = document.getElementById(id + '-otp-err');
@@ -1471,12 +1471,12 @@ async function agentApprovePlan(id) {
     var got = input ? String(input.value || '').trim() : '';
     if (!got) {
       if (errEl) errEl.textContent = '请输入验证码后再继续';
-      if (input) input.focus();
+      if (input) ((input as any) as HTMLInputElement).focus?.();
       return;
     }
     if (got !== AGENT_DEMO_OTP) {
       if (errEl) errEl.textContent = '验证码不正确，请重新输入（本次未执行任何操作）';
-      if (input) { input.value = ''; input.focus(); }
+      if (input) { (input as HTMLInputElement).value = ''; ((input as any) as HTMLInputElement).focus?.(); }
       if (typeof showToast === 'function') showToast('验证失败，转账未执行', 2200);
       return;
     }
@@ -1491,7 +1491,7 @@ async function agentApprovePlan(id) {
     if (!(window.__AGENT_FACE_OK && window.__AGENT_FACE_OK[id])) {
       if (typeof showFaceVerification === 'function') {
         var faceOk = await new Promise(function (resolve) {
-          showFaceVerification('人脸确认（' + agentFmt(rec.tier.rank >= 4 ? 100000 : 10000) + ' 以上交易）', function (ok) { resolve(!!ok); });
+          showFaceVerification('人脸确认（' + agentFmt(rec.tier.rank >= 4 ? 100000 : 10000) + ' 以上交易）', function (ok: any) { resolve(!!ok); });
         });
         window.__AGENT_FACE_OK = window.__AGENT_FACE_OK || {};
         window.__AGENT_FACE_OK[id] = !!faceOk;
@@ -1508,17 +1508,17 @@ async function agentApprovePlan(id) {
   // —— T4：验证通过后只提交人工复核，不执行任何扣款 ——
   if (rec.tier && rec.tier.needManual) {
     var planActions = (rec.plan.confirm && rec.plan.confirm.actions) || [];
-    var reviewTotal = planActions.reduce(function (s, a) { return s + agentPlanActionAmount(a); }, 0);
+    var reviewTotal = planActions.reduce(function (s: any, a: any) { return s + agentPlanActionAmount(a); }, 0);
     submitManualReview({
       amount: reviewTotal,
       purpose: rec.plan.subtitle || rec.plan.title || '大额交易',
       source: 'Agent',
-      items: planActions.map(function (a) { return a.label; }),
-      actions: planActions.map(function (a) { return { tool: a.tool, args: a.args || {} }; }),
+      items: planActions.map(function (a: any) { return a.label; }),
+      actions: planActions.map(function (a: any) { return { tool: a.tool, args: a.args || {} }; }),
       tier: rec.tier
     });
     rec.status = 'pending_review';
-    var t4Amount = planActions.reduce(function (s, a) { return s + agentPlanActionAmount(a); }, 0);
+    var t4Amount = planActions.reduce(function (s: any, a: any) { return s + agentPlanActionAmount(a); }, 0);
     var reviewFooter = document.getElementById(id + '-footer');
     if (reviewFooter) {
       reviewFooter.innerHTML = '<div class="agent-result-card">' +
@@ -1527,7 +1527,7 @@ async function agentApprovePlan(id) {
         '<div class="agent-result-foot"><button class="ui-link" onclick="showManualReviews()">查看复核</button></div>' +
         '</div>';
     }
-    planActions.forEach(function (a, i) {
+    planActions.forEach(function (a: any, i: any) {
       var row = document.getElementById(id + '-a' + i);
       if (!row) return;
       var tag = row.querySelector('.agent-confirm-tag');
@@ -1555,7 +1555,7 @@ async function agentApprovePlan(id) {
   var footer = document.getElementById(id + '-footer');
   if (footer) footer.innerHTML = '<div class="agent-confirm-card agent-confirm-running">正在执行 ' + actions.length + ' 项操作…</div>';
 
-  var logs = [];
+  var logs: any[] = [];
   for (var i = 0; i < actions.length; i++) {
     var a = actions[i];
     var row = document.getElementById(id + '-a' + i);
@@ -1577,12 +1577,12 @@ async function agentApprovePlan(id) {
   AGENT_MEMORY.notes.unshift({ at: new Date().toISOString(), text: '已执行：' + plan.title });
   saveAgentMemory();
 
-  var failedLogs = logs.filter(function (l) { return !l.ok; }).length;
-  var totalAmount = (plan.confirm.actions || []).reduce(function (s, a) { return s + agentPlanActionAmount(a); }, 0);
+  var failedLogs = logs.filter(function (l: any) { return !l.ok; }).length;
+  var totalAmount = (plan.confirm.actions || []).reduce(function (s: any, a: any) { return s + agentPlanActionAmount(a); }, 0);
   var resultClass = failedLogs ? 'failed' : 'success';
   var resultBadge = failedLogs ? '部分失败' : '已完成';
   var footer2 = document.getElementById(id + '-footer');
-  var isTransferPlan = (plan.confirm.actions || []).some(function (a) { return a.tool === 'transfer.execute'; });
+  var isTransferPlan = (plan.confirm.actions || []).some(function (a: any) { return a.tool === 'transfer.execute'; });
   if (footer2 && isTransferPlan && !failedLogs) {
     var doneAct = (plan.confirm.actions || [])[0] || {};
     var donePayee = (doneAct.args && doneAct.args.payee) || '';
@@ -1594,7 +1594,7 @@ async function agentApprovePlan(id) {
   } else if (footer2) {
     footer2.innerHTML = '<div class="agent-result-card">' +
       '<div class="agent-result-title">' + (plan.confirm.doneTitle || '已按方案执行完成') + '</div>' +
-      logs.map(function (l) {
+      logs.map(function (l: any) {
         return '<div class="agent-result-row"><span class="agent-result-name">' + l.label + '</span><span class="agent-result-state ' + (l.ok ? 'ok' : 'bad') + '">' + (l.ok ? '已完成' : '失败') + '</span></div>' +
           (l.summary ? '<div class="agent-result-desc">' + l.summary + '</div>' : '');
       }).join('') +
@@ -1608,7 +1608,7 @@ async function agentApprovePlan(id) {
 }
 
 // 暂不执行 = 直接取消：不记档案、不留待续方案
-function agentRejectPlan(id) {
+function agentRejectPlan(id: any) {
   var rec = AGENT_PENDING_PLANS[id];
   if (!rec) return;
   rec.status = 'cancelled';
@@ -1630,7 +1630,7 @@ function agentRejectPlan(id) {
 
 // ------------------------------ 6. Agent 主入口 ------------------------------
 // 返回 true 表示本层已处理，false 表示交回原有流程
-async function agentHandle(text) {
+async function agentHandle(text: any) {
   if (!AGENT_MEMORY) initAgentMemory();
 
   // 6.0-pre0 信用卡额度/调额/纯数学计算：确定性前置（兜底，正常情况下 chat.js 已先接管）
@@ -1678,7 +1678,7 @@ async function agentHandle(text) {
       appendMessage(agentRiskBlockCardHtml(det));
       scrollToBottom();
       if (typeof agentRememberRiskBlock === 'function') agentRememberRiskBlock(det);
-      addToConversation('assistant', '已拦截高危行为：' + det.top.title, null);
+      addToConversation('assistant', '已拦截高危行为：' + (det.top as any).title, null);
       return true;
     }
   }
@@ -1744,7 +1744,7 @@ async function agentHandle(text) {
       renderAgentProfile();
       if (typeof agentCtxPushTopic === 'function') {
         var pp = agentBuildProfile();
-        agentCtxPushTopic('profile', '客户标签：' + pp.tags.map(function (x) { return x.name; }).join('、'));
+        agentCtxPushTopic('profile', '客户标签：' + pp.tags.map(function (x: any) { return x.name; }).join('、'));
       }
     }
     return true;
@@ -1781,7 +1781,7 @@ async function agentHandle(text) {
 }
 
 // 是否在问"消费结构/花销构成"（且不是在问某笔具体购买决策）
-function agentIsSpendingQuery(text) {
+function agentIsSpendingQuery(text: any) {
   var t = String(text || '');
   var asksSpending = /(消费|花销|花钱|支出|开销|花费)/.test(t);
   var asksStructure = /(哪一类|哪个类别|什么类别|最高|最多|占比|结构|构成|分布|排行|排名|统计|分析|情况|看看|看看我)/.test(t);
@@ -1793,14 +1793,14 @@ function agentIsSpendingQuery(text) {
 }
 
 // 消费结构分析（规则层），产出后注册 spending 话题
-function agentSpendingAnalysis(text) {
+function agentSpendingAnalysis(text: any) {
   var cats = agentCategoryStats();
   if (!cats.length) return false;
   var month = agentMonthSummary();
-  var total = month.expense || cats.reduce(function (s, c) { return s + (c.value || 0); }, 0);
+  var total = month.expense || cats.reduce(function (s: any, c: any) { return s + (c.value || 0); }, 0);
   var top = cats[0];
 
-  var rows = cats.slice(0, 6).map(function (c, i) {
+  var rows = cats.slice(0, 6).map(function (c: any, i: any) {
     var pct = total > 0 ? Math.round(c.value / total * 100) : 0;
     return '<div class="ctx-cat-row"><span class="ctx-cat-name">' + (i === 0 ? '🏆 ' : '') + c.label + '</span>' +
       '<span class="ctx-cat-bar"><i style="width:' + Math.min(100, pct) + '%;background:' + (i === 0 ? '#b45309' : '#09407F') + ';"></i></span>' +
@@ -1824,7 +1824,7 @@ function agentSpendingAnalysis(text) {
   agentCtxPushTopic('spending', top.label + '占比最高（' + (total > 0 ? Math.round(top.value / total * 100) : 0) + '%），月支出 ¥' + agentFmtInt(total), {
     extra: { total: total, topLabel: top.label }
   });
-  agentSessionAnalysis('spending', '消费结构：' + cats.slice(0, 3).map(function (c) {
+  agentSessionAnalysis('spending', '消费结构：' + cats.slice(0, 3).map(function (c: any) {
     return c.label + ' ' + (total > 0 ? Math.round(c.value / total * 100) : 0) + '%';
   }).join('、'));
   AGENT_SESSION.lastFocus = '消费结构';
@@ -1833,14 +1833,14 @@ function agentSpendingAnalysis(text) {
 }
 
 // 是否为"咨询风险"而非"真的要做"——用户只是问风险知识时不应被拦截卡打断
-function agentIsRiskQuery(text) {
+function agentIsRiskQuery(text: any) {
   return /(风险|危不危险|有什么风险|合规吗|可以吗|合法吗|允许吗|建议吗|该不该|要不要|是否合适|有没有问题)/.test(text)
     && !/(我要|我想|帮我|给我|直接|现在就|立刻|马上)/.test(text);
 }
 
 // 目标型语句（储蓄/长期规划）不是"一笔支出"，不能触发资金压力类拦截。
 // 例如「我想一年存10万元，同时准备旅游和购买电脑」里的 10 万是目标，不是本次扣款。
-function agentIsGoalStatement(text) {
+function agentIsGoalStatement(text: any) {
   var t = String(text || '');
   var goalWord = /(存|攒|储蓄|积累|规划|计划|目标|准备|打算)/.test(t);
   var horizon = /(一年|1年|两年|2年|半年|12个月|24个月|6个月|每月|月度|长期|未来)/.test(t);
@@ -1852,7 +1852,7 @@ function agentIsGoalStatement(text) {
 // 咨询型问句：问的是"这笔钱该怎么安排/配置"（资产配置咨询），
 // 而不是"我现在要花掉这笔钱"。这类句子里的金额是**待配置资金**，不是**支出**，
 // 若先跑资金压力检测，会被误判成"一笔 5 万支出"并被风险拦截。
-function agentIsConsultativeQuery(text) {
+function agentIsConsultativeQuery(text: any) {
   var t = String(text || '');
   if (!t) return false;
   // 有"闲钱/闲置/结余/这笔钱"等"待配置资金"信号
@@ -1866,7 +1866,7 @@ function agentIsConsultativeQuery(text) {
 }
 
 // 复杂目标：含"同时/并且/还有"等并列，或同时出现储蓄目标与消费目标
-function agentIsComplexGoal(text) {
+function agentIsComplexGoal(text: any) {
   var t = String(text || '');
   var hasSave = /(存|攒|储蓄|积累)[^，,。;；]{0,6}(\d+(?:\.\d+)?)\s*(万|w|W|元|块)/.test(t);
   var hasSpend = /(旅游|旅行|度假|电脑|笔记本|手机|装修|买车|购车|婚礼|留学|学费|教育)/.test(t);
@@ -1876,7 +1876,7 @@ function agentIsComplexGoal(text) {
 }
 
 // 消费决策：问"买X，建议分期吗 / 该不该买 / 划算吗"
-function agentIsPurchaseDecision(text) {
+function agentIsPurchaseDecision(text: any) {
   var t = String(text || '');
   var hasAmount = /\d/.test(t);
   var purchase = /(买|购|入手|换|要|想买|想换|下单|购入)/.test(t);
@@ -1886,7 +1886,7 @@ function agentIsPurchaseDecision(text) {
 }
 
 // 用户画像 / 财务体检请求
-function agentIsProfileRequest(text) {
+function agentIsProfileRequest(text: any) {
   var t = String(text || '');
   if (/(健康|体检|评分|打分|财务分)/.test(t) && !/(课程|体检套餐|体检中心|医院|公司体检)/.test(t)) return true;
   // 负债/月供风险体检：问负债压力/月供占比/债务健康时，也走只读体检分析
@@ -1894,7 +1894,7 @@ function agentIsProfileRequest(text) {
   return /(用户画像|客户画像|我的画像|分析我|了解我|我是哪类|什么类型.*客户|我的标签|适合我的.*服务|推荐.*适合我|根据我的情况|参考我)/.test(t);
 }
 
-function agentParseTransfer(text) {
+function agentParseTransfer(text: any) {
   var contacts = mockData.contacts || [];
   var payee = null;
   for (var i = 0; i < contacts.length; i++) {
@@ -1919,7 +1919,7 @@ function agentParseTransfer(text) {
 
 
 // 服务端返回的档位 → 前端确认卡用的结构（判定权在服务端）
-function agentTierFromServer(t) {
+function agentTierFromServer(t: any) {
   if (!t) return null;
   return {
     key: t.key,
@@ -1938,17 +1938,17 @@ function agentTierFromServer(t) {
   };
 }
 
-async function agentTransferFlow(payee, amount, rawText, channel, opts) {
+async function agentTransferFlow(payee: any, amount: any, rawText: any, channel: any, opts: any) {
   var ch = channel || '智能转账';
   var o = opts || {};
 
   // 姓名转账只允许转给通讯录里的联系人；手机号转账、银行卡转账不走这条限制
-  var NAME_CHANNELS = { '网银转账': 1, '智能转账': 1, '姓名转账': 1 };
+  var NAME_CHANNELS: Record<string, number> = { '网银转账': 1, '智能转账': 1, '姓名转账': 1 };
   if (NAME_CHANNELS[ch]) {
     var contacts = mockData.contacts || [];
-    var known = contacts.some(function (c) { return c.name === payee; });
+    var known = contacts.some(function (c: any) { return c.name === payee; });
     if (!known) {
-      var names = contacts.map(function (c) { return c.name; }).join('、');
+      var names = contacts.map(function (c: any) { return c.name; }).join('、');
       appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
         '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
         '<div class="agent-result-card">' +
@@ -1979,7 +1979,7 @@ async function agentTransferFlow(payee, amount, rawText, channel, opts) {
       if (prep && prep.ok) {
         // 服务端 reasons 是字符串数组，前端风险卡需要 {label, detail}
         if (prep.risk) {
-          var __reasons = (prep.risk.reasons || []).map(function (r) {
+          var __reasons = (prep.risk.reasons || []).map(function (r: any) {
             return (typeof r === 'string') ? { label: r, detail: '' } : r;
           });
           risk = Object.assign({}, prep.risk, { reasons: __reasons });
@@ -2065,16 +2065,16 @@ async function agentTransferFlow(payee, amount, rawText, channel, opts) {
   return { handled: true, executed: false, tier: tier, pending: true, planId: planRun && planRun.id };
 }
 
-function agentRiskStep(payee, amount) {
+function agentRiskStep(payee: any, amount: any) {
   var r = agentAssessTransferRisk(payee, amount);
   if (!r.reasons.length) return { summary: '未命中风险规则' };
-  return { summary: '命中 ' + r.reasons.length + ' 条风险规则：' + r.reasons.map(function (x) { return x.label; }).join('；'), data: r };
+  return { summary: '命中 ' + r.reasons.length + ' 条风险规则：' + r.reasons.map(function (x: any) { return x.label; }).join('；'), data: r };
 }
 
-function agentRiskCardHtml(payee, amount, risk, tier) {
+function agentRiskCardHtml(payee: any, amount: any, risk: any, tier: any) {
   var badge = agentRiskBadge(risk.level);
-  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x) { return String(x); };
-  var reasons = (risk.reasons || []).map(function (r) { return r.label; });
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function (x: any) { return String(x); };
+  var reasons = (risk.reasons || []).map(function (r: any) { return r.label; });
 
   // 风险一句话：新联系人 + 首次交易合并成「首次向该联系人转账」
   var riskText = '未命中风险规则';
@@ -2087,7 +2087,7 @@ function agentRiskCardHtml(payee, amount, risk, tier) {
   if (tier && tier.needManual) tipText = '需提交人工复核，通过后才会执行';
   else if ((tier && tier.needVerify) || risk.needVerify) tipText = '请输入短信验证码完成二次验证';
 
-  function line(label, value) {
+  function line(label: any, value: any) {
     return '<div style="font-size:13px;color:#374151;line-height:1.9;">' + label +
       '：<b style="font-weight:600;color:#111827;">' + value + '</b></div>';
   }
@@ -2108,7 +2108,7 @@ function agentRiskCardHtml(payee, amount, risk, tier) {
 }
 // ---- 超支方案卡：余额不足时给出可执行的选择，而不是只报错 ----
 // 排序原则：优先「不借钱」方案（改金额 / 分批），贷款类放在后面，除非用户主动要。
-function agentShortageCardHtml(check, payee) {
+function agentShortageCardHtml(check: any, payee: any) {
   var cap = agentFmt(check.capAmount);
   var safeName = String(payee || '').replace(/[\\'"<>&]/g, '');
   return '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
@@ -2127,7 +2127,7 @@ function agentShortageCardHtml(check, payee) {
 // 记录上一次资金不足的上下文，供「调整金额」等后续追问使用
 var AGENT_SHORTAGE_CTX = null;
 
-function agentReply(text) {
+function agentReply(text: any) {
   appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手</div><div class="msg-bubble">' + text + '</div></div></div>');
   scrollToBottom();
@@ -2148,7 +2148,7 @@ function renderAgentMemoryBox() {
   var box = document.getElementById('agentMemoryBox');
   if (!box || !AGENT_MEMORY) return;
   var m = AGENT_MEMORY;
-  var familyChips = m.family.map(function (f) {
+  var familyChips = m.family.map(function (f: any) {
     return '<span class="agent-chip">' + f.relation + ' · ' + f.name + '</span>';
   }).join('');
   var lastNote = m.notes[0] ? m.notes[0].text : '暂无';

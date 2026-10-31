@@ -26,7 +26,7 @@
 // ==========================================================================
 
 // 意图路由表：模块 key → 进入该模块的处理函数（供 guideAIRouteIntent 命中后调用）
-var GUIDE_INTENT_MODULES = {
+var GUIDE_INTENT_MODULES = ({
   'transfer.name': function (t) { GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
   'transfer.phone': function (t) { GUIDE_TRANSFER = { kind: 'phone', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
   'transfer.timed': function (t) { GUIDE_TRANSFER = { kind: 'timed', payee: null, phone: null, amount: null, remark: '', stage: 'slots', date: null, time: null, repeat: '不重复' }; guideTransferStep(t); },
@@ -68,10 +68,10 @@ var GUIDE_INTENT_MODULES = {
     guideStartSubAutoRenew();
     if (typeof guideSubFindService === 'function' && guideSubFindService(t)) guideSubManageStep(t);
   }
-};
+}) as any;
 
 
-async function guideAIRouteIntent(text) {
+async function guideAIRouteIntent(text: any) {
   if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return false;
 
   var t0 = String(text || '');
@@ -155,7 +155,7 @@ function guideAIFirstEnabled() {
 // 这些说法交给规则（菜单名 / 返回 / 数字补充 / 闲聊），不必花模型额度
 
 // 这些说法交给规则（菜单名 / 返回 / 数字补充 / 闲聊），不必花模型额度
-function guideAIFirstSkipped(t) {
+function guideAIFirstSkipped(t: any) {
   var s = String(t || '').trim();
   if (!s) return true;
   if (/^(返回|返回菜单|服务菜单|主菜单|菜单|首页|服务列表|取消|退出|算了)$/.test(s)) return true;
@@ -163,8 +163,8 @@ function guideAIFirstSkipped(t) {
   if (/^(你好|您好|hi|hello|在吗|谢谢|多谢|再见|拜拜)[!！。.~～]*$/i.test(s)) return true;
   if (typeof guideResolveService === 'function' && guideResolveService(s)) return true;
   // 子功能名（如「姓名转账」「卡片挂失」）走规则菜单
-  var svc = GUIDE_SERVICES.filter(function (x) {
-    return x.subs.some(function (sub) {
+  var svc = GUIDE_SERVICES.filter(function (x: any) {
+    return x.subs.some(function (sub: any) {
       return sub.label === s || (sub.aliases || []).indexOf(s) !== -1;
     });
   })[0];
@@ -175,7 +175,7 @@ function guideAIFirstSkipped(t) {
 // 去掉「AI 理解」等标签后再输出，并避免连续重复同一句追问
 
 // 模型识别（规则失配后的补充路径）：本地规则没认出来时，让模型在固定清单里选一个
-async function guideAIIntent(text) {
+async function guideAIIntent(text: any) {
   var loadingId = 'guide-intent-' + Date.now();
   appendMessage('<div class="message" id="' + loadingId + '"><div class="msg-avatar ai">🤖</div>' +
     '<div class="msg-content"><div class="msg-name">AI Bank 助手</div>' +
@@ -191,7 +191,7 @@ async function guideAIIntent(text) {
     var svc = guideServiceByKey(pick.service);
     if (svc) {
       if (pick.sub) {
-        var sub = svc.subs.filter(function (x) { return x.key === pick.sub; })[0];
+        var sub = svc.subs.filter(function (x: any) { return x.key === pick.sub; })[0];
         if (sub) { guidePickSub(svc.key, sub.key); return; }
       }
       guideOpenService(svc.key);
@@ -206,12 +206,12 @@ async function guideAIIntent(text) {
 }
 
 
-async function guideAIIntentExtract(text) {
+async function guideAIIntentExtract(text: any) {
   if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return null;
   if (typeof DEEPSEEK_API_URL === 'undefined' || !DEEPSEEK_API_URL) return null;
 
-  var catalog = GUIDE_SERVICES.map(function (s) {
-    return s.key + '=' + s.label + '（子功能：' + s.subs.map(function (x) { return x.key + '=' + x.label; }).join('、') + '）';
+  var catalog = GUIDE_SERVICES.map(function (s: any) {
+    return s.key + '=' + s.label + '（子功能：' + s.subs.map(function (x: any) { return x.key + '=' + x.label; }).join('、') + '）';
   }).join('\n');
 
   var payload = {
@@ -246,7 +246,7 @@ async function guideAIIntentExtract(text) {
 // ------------------------------ 模型槽位抽取（正则抽不全时补位） ------------------------------
 // 本地正则只能认「张三 100」这类规整输入；遇到「帮我转一百块给张三」「就打给老王吧，两百」
 // 这类说法，交给模型抽槽位；无 Key / 请求失败时降级为示例引导，不阻塞对话。
-async function guideTransferAIExtract(text, session) {
+async function guideTransferAIExtract(text: any, session: any) {
   if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey()) return null;
   if (typeof DEEPSEEK_API_URL === 'undefined' || !DEEPSEEK_API_URL) return null;
   var known = '已知收款人=' + (session.payee || '未知') + '；已知手机号=' + (session.phone || '未知') + '；已知金额=' + (session.amount || '未知');
@@ -282,7 +282,7 @@ async function guideTransferAIExtract(text, session) {
 }
 
 
-async function guideTransferAIFallback(text) {
+async function guideTransferAIFallback(text: any) {
   var s = GUIDE_TRANSFER || (GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' });
   var loadingId = 'guide-ai-' + Date.now();
   appendMessage('<div class="message" id="' + loadingId + '"><div class="msg-avatar ai">🤖</div>' +
@@ -358,7 +358,7 @@ async function guideTransferAIFallback(text) {
 
 // 通用 LLM JSON 调用：无 Key / 失败时返回 null，调用方降级处理
 // 说明：按钮点击一律传固定枚举，不经过这里；只有「用户打字」且本地规则认不出时才调用模型。
-async function guideLLMJson(system, user) {
+async function guideLLMJson(system: any, user: any) {
   // 兜底开关：按钮驱动的路径可临时置为 true，杜绝任何模型调用
   if (typeof window !== 'undefined' && window.__GUIDE_NO_AI__) return null;
   if (typeof window !== 'undefined') {
@@ -403,7 +403,7 @@ async function guideLLMJson(system, user) {
 // 通用 AI 槽位识别：凡是「用户没有固定回答」的输入，本地规则认不出时统一交给模型。
 // 无 Key / 请求失败时一律返回 null，调用方回落到本地追问，不阻塞对话。
 // ——————————————————————————————————————————————
-async function guideAISlots(text, system, parse) {
+async function guideAISlots(text: any, system: any, parse: any) {
   var loadId = (typeof guideTypingBubble === 'function') ? guideTypingBubble() : null;
   var obj = null;
   try { obj = await guideLLMJson(system, text); } catch (e) { obj = null; }
@@ -416,7 +416,7 @@ async function guideAISlots(text, system, parse) {
 // 定时转账：日期 / 时间 / 重复方式（支持「下周三」「月底」等自由说法）
 
 // 定时转账：日期 / 时间 / 重复方式（支持「下周三」「月底」等自由说法）
-function guideTimedAIExtract(text) {
+function guideTimedAIExtract(text: any) {
   var today = guideOffsetDate(0);
   return guideAISlots(
     text,
@@ -440,8 +440,8 @@ function guideTimedAIExtract(text) {
 // AA 收款：垫付总额与参与人名单
 
 // AA 收款：垫付总额与参与人名单
-function guideAAAIExtract(text) {
-  var names = (mockData.contacts || []).map(function (c) { return c.name; }).join('、');
+function guideAAAIExtract(text: any) {
+  var names = (mockData.contacts || []).map(function (c: any) { return c.name; }).join('、');
   return guideAISlots(
     text,
     '你是银行 App 的信息抽取器。用户在发起 AA 收款，需要「垫付总金额」和「除自己之外要收款的参与人名单」。' +
@@ -450,7 +450,7 @@ function guideAAAIExtract(text) {
     function (o) {
       if (!o) return null;
       var total = Number(o.total);
-      var list = Array.isArray(o.names) ? o.names.filter(function (n) { return typeof n === 'string' && n; }) : [];
+      var list = Array.isArray(o.names) ? o.names.filter(function (n: any) { return typeof n === 'string' && n; }) : [];
       if (!(total > 0)) total = null;
       if (total === null && !list.length) return null;
       return { total: total, names: list };
@@ -461,8 +461,8 @@ function guideAAAIExtract(text) {
 // AA 收款：回答「还有其他参与人吗？」——判断是否结束 + 补充名单
 
 // AA 收款：回答「还有其他参与人吗？」——判断是否结束 + 补充名单
-function guideAAAIHasMore(text) {
-  var names = (mockData.contacts || []).map(function (c) { return c.name; }).join('、');
+function guideAAAIHasMore(text: any) {
+  var names = (mockData.contacts || []).map(function (c: any) { return c.name; }).join('、');
   return guideAISlots(
     text,
     '你是银行 App 的意图解析器。系统在问「还有其他参与人吗？」，用户可能回答「没有了」「就这些人」「再加个李四」。' +
@@ -470,7 +470,7 @@ function guideAAAIHasMore(text) {
     '表示结束时 more 返回 false；无法判断时 more 返回 null。',
     function (o) {
       if (!o) return null;
-      var list = Array.isArray(o.names) ? o.names.filter(function (n) { return typeof n === 'string' && n; }) : [];
+      var list = Array.isArray(o.names) ? o.names.filter(function (n: any) { return typeof n === 'string' && n; }) : [];
       var more = (o.more === true) ? true : (o.more === false ? false : null);
       if (more === null && !list.length) return null;
       return { more: more, names: list };
@@ -481,7 +481,7 @@ function guideAAAIHasMore(text) {
 // 信用卡申请：卡种与主要用途
 
 // 信用卡申请：卡种与主要用途
-function guideCardApplyAIType(text) {
+function guideCardApplyAIType(text: any) {
   return guideAISlots(
     text,
     '你是银行 App 的信用卡申请解析器。卡种只能是 白金信用卡/标准金卡/旅行信用卡/青年卡；' +
@@ -489,8 +489,8 @@ function guideCardApplyAIType(text) {
     '只输出 JSON：{"cardType":"或空","purpose":"或空"}。',
     function (o) {
       if (!o) return null;
-      var t = CARD_APPLY_TYPES.filter(function (n) { return o.cardType && String(o.cardType).indexOf(n) !== -1; })[0] || null;
-      var p = CARD_APPLY_PURPOSES.filter(function (n) { return o.purpose && String(o.purpose).indexOf(n) !== -1; })[0] || null;
+      var t = CARD_APPLY_TYPES.filter(function (n: any) { return o.cardType && String(o.cardType).indexOf(n) !== -1; })[0] || null;
+      var p = CARD_APPLY_PURPOSES.filter(function (n: any) { return o.purpose && String(o.purpose).indexOf(n) !== -1; })[0] || null;
       if (!t && !p) return null;
       return { cardType: t, purpose: p };
     }
@@ -500,7 +500,7 @@ function guideCardApplyAIType(text) {
 // 额度调整：调整原因 + 目标额度
 
 // AI 理解「允许 / 禁止」：返回 'allow' | 'block' | null
-async function guideTxnLimitAIFlag(text, which) {
+async function guideTxnLimitAIFlag(text: any, which: any) {
   var obj = await guideLLMJson(
     '你是银行 App 的选项解析器。用户在回答「是否允许' + (which === 'night' ? '夜间交易' : '境外交易') + '」，' +
     '只能输出 JSON：{"allow": true|false|null}。表示同意的说法（是/可以/行/当然/没问题/允许）→ true；' +
@@ -516,7 +516,7 @@ async function guideTxnLimitAIFlag(text, which) {
 // AI 提取两项限额（支持中文数字）：返回 { single, daily } 或 null
 
 // AI 提取两项限额（支持中文数字）：返回 { single, daily } 或 null
-async function guideTxnLimitAILimits(text) {
+async function guideTxnLimitAILimits(text: any) {
   var obj = await guideLLMJson(
     '你是银行 App 的限额解析器。用户正在设置信用卡的「单笔限额」(single) 与「每日限额」(daily)。' +
     '请输出 JSON：{"single":数字或null,"daily":数字或null,"keepSingle":true/false,"keepDaily":true/false}。' +
@@ -540,7 +540,7 @@ async function guideTxnLimitAILimits(text) {
 
 
 // 模型槽位抽取：本地同义词没命中时，让模型判断是「追加申购 / 指定赎回 / 全部赎回」并抽产品与金额
-async function guideHoldingAIIntent(text) {
+async function guideHoldingAIIntent(text: any) {
   var loadId = (typeof guideTypingBubble === 'function') ? guideTypingBubble() : null;
   var obj = null;
   try {
@@ -563,7 +563,7 @@ async function guideHoldingAIIntent(text) {
   };
 }
 
-async function guideSubAIFlag(text) {
+async function guideSubAIFlag(text: any) {
   var got = await guideAISlots(
     text,
     '你是银行 App 的选项解析器。系统在问「是否开启自动续费」，用户可能回答是/否/开启/关闭/算了。' +
@@ -579,7 +579,7 @@ async function guideSubAIFlag(text) {
 // 一句话里同时抽服务与周期（本地失败时交给模型）
 
 // 一句话里同时抽服务与周期（本地失败时交给模型）
-async function guideSubAIExtract(text) {
+async function guideSubAIExtract(text: any) {
   return guideAISlots(
     text,
     '你是银行 App 的订阅解析器。可订阅服务只有：某易云 VIP、某讯 VIP、某度网盘 VIP。' +
@@ -588,7 +588,7 @@ async function guideSubAIExtract(text) {
     function (o) {
       if (!o) return null;
       var svc = o.service ? String(o.service) : '';
-      var preset = SUB_PRESETS.filter(function (p) {
+      var preset = SUB_PRESETS.filter(function (p: any) {
         var key = p.name.replace(' VIP', '');
         return svc && (svc.indexOf(key) !== -1 || key.indexOf(svc.replace(/VIP/i, '').trim()) !== -1);
       })[0] || null;

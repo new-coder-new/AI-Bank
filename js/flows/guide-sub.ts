@@ -14,11 +14,11 @@ function guideSubActive() {
 }
 
 // 订阅名比较统一忽略空格和大小写：「某易云 VIP」与「某易云VIP」视为同一服务
-function guideSubNormName(n) {
+function guideSubNormName(n: any) {
   return String(n == null ? '' : n).replace(/\s+/g, '').toLowerCase();
 }
 
-function guideSubCycleText(cycle) {
+function guideSubCycleText(cycle: any) {
   return SUB_CYCLE_TEXT[cycle] || cycle || '';
 }
 
@@ -28,7 +28,7 @@ function guideSubHistoryList() {
   return u.subscriptionHistory;
 }
 
-function guideSubParseCycle(text) {
+function guideSubParseCycle(text: any) {
   var t = String(text || '');
   if (/按年|每年|年卡|包年|一年|\/年/.test(t)) return '/年';
   if (/按季|每季|季卡|包季|三个月|季度|\/季/.test(t)) return '/季';
@@ -37,7 +37,7 @@ function guideSubParseCycle(text) {
 }
 
 // 「是 / 否」→ 开启 / 关闭；本地认不出再问模型
-function guideSubYesNo(text) {
+function guideSubYesNo(text: any) {
   var t = String(text || '').trim().replace(/[。.!！?？,，\s]/g, '');
   if (!t) return null;
   if (/(不开启|不要|不用|不需要|关闭|否|不|别)/.test(t)) return false;
@@ -48,10 +48,10 @@ function guideSubYesNo(text) {
 // 订阅清单（只读）：展示全部可订阅会员 + 已订阅标记
 function guideSubShowCatalog() {
   var active = (typeof guideSubActive === 'function') ? guideSubActive() : [];
-  var activeNames = active.map(function (x) { return String(x.name || ''); });
-  var rows = SUB_PRESETS.map(function (p) {
+  var activeNames = active.map(function (x: any) { return String(x.name || ''); });
+  var rows = SUB_PRESETS.map(function (p: any) {
     var key = String(p.name).replace(' VIP', '').replace('VIP', '');
-    var mine = activeNames.some(function (n) { return n.indexOf(key) !== -1; });
+    var mine = activeNames.some(function (n: any) { return n.indexOf(key) !== -1; });
     return '<div class="report-row"><span>' + guideEsc(p.name) + (mine ? '（已订阅）' : '') + '</span>' +
       '<b>月 ¥' + p.prices['/月'] + ' / 季 ¥' + p.prices['/季'] + ' / 年 ¥' + p.prices['/年'] + '</b></div>';
   }).join('');
@@ -63,7 +63,7 @@ function guideSubShowCatalog() {
 }
 
 function guideSubPresetRows() {
-  return SUB_PRESETS.map(function (p) {
+  return SUB_PRESETS.map(function (p: any) {
     return '<div class="report-row"><span>' + guideEsc(p.name) + '</span>' +
       '<b>月 ¥' + p.prices['/月'] + ' / 季 ¥' + p.prices['/季'] + ' / 年 ¥' + p.prices['/年'] + '</b></div>';
   }).join('');
@@ -83,7 +83,7 @@ function guideStartSubAdd() {
   scrollToBottom();
 }
 
-async function guideSubAddStep(text) {
+async function guideSubAddStep(text: any) {
   var t = String(text || '').trim();
   var s = GUIDE_SUB;
   var svc = guideSubFindService(t);
@@ -133,7 +133,7 @@ async function guideSubAddStep(text) {
   return true;
 }
 
-function guideSubAddRenewChoice(yes) {
+function guideSubAddRenewChoice(yes: any) {
   var s = GUIDE_SUB;
   if (!s || s.mode !== 'add') return;
   s.autoRenew = yes;
@@ -173,7 +173,7 @@ async function guideSubAddSubmit() {
   var boxId = s.boxId;
 
   // 重复检测：已有有效订阅时提示，不再重复添加
-  var dup = guideSubActive().filter(function (x) { return guideSubNormName(x.name) === guideSubNormName(preset.name); })[0];
+  var dup = guideSubActive().filter(function (x: any) { return guideSubNormName(x.name) === guideSubNormName(preset.name); })[0];
   if (dup) {
     appendMessage(guideMessage('<p>「<b>' + guideEsc(preset.name) + '</b>」已有有效订阅（' +
       guideSubCycleText(dup.cycle) + '，自动续费' + (dup.autoRenew !== false ? '开启' : '关闭') + '），无需重复添加。</p>'));
@@ -242,7 +242,7 @@ async function guideSubAddSubmit() {
   // 用本地日期，避免 UTC+8 凌晨 toISOString() 少一天
   var nextDateStr = guideDateStr(nextDate);
   var chargeInDays = Math.max(1, Math.ceil((nextDate.getTime() - Date.now()) / 86400000));
-  var ids = guideSubActive().map(function (x) { return Number(x.id) || 0; });
+  var ids = guideSubActive().map(function (x: any) { return Number(x.id) || 0; });
   ids.push(0);
   var newId = Math.max.apply(null, ids) + 1;
 
@@ -290,7 +290,7 @@ function guideStartSubManage() {
 }
 
 // 三个分支：添加（先展示可订阅产品）/ 取消（先展示现有订阅）/ 自动续费（先展示现有订阅）
-function guideSubChoose(kind) {
+function guideSubChoose(kind: any) {
   if (kind === 'add') { guideStartSubAdd(); return; }
   if (kind === 'cancel') { guideStartSubCancel(); return; }
   guideStartSubAutoRenew();
@@ -309,11 +309,11 @@ function guideStartSubAutoRenew() {
     scrollToBottom();
     return;
   }
-  var rows = list.map(function (sub) {
+  var rows = list.map(function (sub: any) {
     return '<div class="report-row"><span>' + guideEsc(sub.name) + '・' + guideSubCycleText(sub.cycle) + '</span>' +
       '<b>自动续费：' + (sub.autoRenew !== false ? '开启' : '关闭') + '</b></div>';
   }).join('');
-  var historyHtml = history.length ? history.map(function (h) {
+  var historyHtml = history.length ? history.map(function (h: any) {
     return '<div class="report-row"><span>' + guideEsc(h.name) + '・' + guideSubCycleText(h.cycle) + '・自动续费：' + (h.autoRenew ? '开启' : '关闭') + '</span>' +
       '<b>已取消・' + guideEsc(h.cancelledAt) + '</b></div>';
   }).join('') : '';
@@ -325,7 +325,7 @@ function guideStartSubAutoRenew() {
   ));
   scrollToBottom();
 }
-async function guideSubManageStep(text) {
+async function guideSubManageStep(text: any) {
   var t = String(text || '').trim();
   var s = GUIDE_SUB;
   var svc = guideSubFindService(t);
@@ -339,14 +339,14 @@ async function guideSubManageStep(text) {
   }
 
   var target = svc && svc.kind === 'active' ? svc.sub : null;
-  if (!target && svc) target = guideSubActive().filter(function (x) { return guideSubNormName(x.name) === guideSubNormName(svc.name); })[0] || null;
+  if (!target && svc) target = guideSubActive().filter(function (x: any) { return guideSubNormName(x.name) === guideSubNormName(svc.name); })[0] || null;
   if (target) s.target = target;
   if (want !== null) s.newAutoRenew = want;
 
   if (!s.target) {
     if (s.listShown && !svc) s.listShown = false;
     var hint = svc ? ('没有找到「' + guideEsc(svc.name) + '」的有效订阅。') : '没听懂你想管理哪一项。';
-    var names = guideSubActive().map(function (x) { return x.name; }).join('、') || '暂无订阅';
+    var names = guideSubActive().map(function (x: any) { return x.name; }).join('、') || '暂无订阅';
     guideSayInvalid(guideMessage('<p>' + hint + '</p><p>请告诉我要管理哪一项订阅的自动续费。</p>' +
       '<p class="guide-tip">当前有效订阅：' + guideEsc(names) + '</p>'));
     return true;
@@ -364,7 +364,7 @@ async function guideSubManageStep(text) {
   return true;
 }
 
-function guideSubManageConfirm(want) {
+function guideSubManageConfirm(want: any) {
   var s = GUIDE_SUB;
   if (!s || !s.target) return;
   s.newAutoRenew = want;
@@ -390,7 +390,7 @@ function guideSubManageConfirm(want) {
 function guideSubManageSubmit() {
   var s = GUIDE_SUB;
   if (!s || s.stage !== 'confirm' || !s.target) return;
-  var sub = guideSubActive().filter(function (x) { return x.id === s.target.id; })[0] || s.target;
+  var sub = guideSubActive().filter(function (x: any) { return x.id === s.target.id; })[0] || s.target;
   sub.autoRenew = s.newAutoRenew === true;
   sub.detail = String(sub.detail || '').replace(/自动续费|到期取消/, sub.autoRenew ? '自动续费' : '到期取消');
   saveUserData();
@@ -418,7 +418,7 @@ function guideStartSubCancel() {
     scrollToBottom();
     return;
   }
-  var rows = list.map(function (sub) {
+  var rows = list.map(function (sub: any) {
     return '<div class="report-row"><span>' + guideEsc(sub.name) + '</span><b>' +
       guideSubCycleText(sub.cycle) + '・' + (sub.autoRenew !== false ? '自动续费开启' : '自动续费关闭') + '</b></div>';
   }).join('');
@@ -428,7 +428,7 @@ function guideStartSubCancel() {
   scrollToBottom();
 }
 
-async function guideSubCancelStep(text) {
+async function guideSubCancelStep(text: any) {
   var t = String(text || '').trim();
   var s = GUIDE_SUB;
   var svc = guideSubFindService(t);
@@ -437,12 +437,12 @@ async function guideSubCancelStep(text) {
     if (GUIDE_SUB !== s) return true;
     if (ai && ai.preset) svc = { kind: 'preset', preset: ai.preset, name: ai.preset.name };
   }
-  var target = svc && svc.kind === 'active' ? svc.sub : (svc ? guideSubActive().filter(function (x) { return guideSubNormName(x.name) === guideSubNormName(svc.name); })[0] : null);
+  var target = svc && svc.kind === 'active' ? svc.sub : (svc ? guideSubActive().filter(function (x: any) { return guideSubNormName(x.name) === guideSubNormName(svc.name); })[0] : null);
   if (!target) {
     // 用户说了与订阅无关的话：每句都要给回应，不能静默
     if (s.listShown && !svc) s.listShown = false;
     var hint2 = svc ? ('没有找到「' + guideEsc(svc.name) + '」的有效订阅。') : '没听懂你想取消哪一项。';
-    var names2 = guideSubActive().map(function (x) { return x.name; }).join('、') || '暂无订阅';
+    var names2 = guideSubActive().map(function (x: any) { return x.name; }).join('、') || '暂无订阅';
     guideSayInvalid(guideMessage('<p>' + hint2 + '</p><p>请选择你想要取消的订阅项目。</p>' +
       '<p class="guide-tip">当前有效订阅：' + guideEsc(names2) + '</p>'));
     return true;
@@ -469,7 +469,7 @@ function guideSubCancelSubmit() {
   var s = GUIDE_SUB;
   if (!s || s.stage !== 'confirm' || !s.target) return;
   var target = s.target;
-  mockData.subscriptions = guideSubActive().filter(function (x) { return x.id !== target.id; });
+  mockData.subscriptions = guideSubActive().filter(function (x: any) { return x.id !== target.id; });
   guideSubHistoryList().unshift({
     name: target.name,
     cycle: target.cycle,
@@ -501,7 +501,7 @@ function guideSubCancelAllStart() {
   guideResetAllSessions();
   var boxId = 'sub-cancel-all-' + Date.now();
   GUIDE_SUB = { mode: 'cancel-all', stage: 'confirm', list: list, boxId: boxId };
-  var rows = list.map(function (sub) {
+  var rows = list.map(function (sub: any) {
     return '<div class="report-row"><span>' + guideEsc(sub.name) + '</span><b>' +
       guideSubCycleText(sub.cycle) + '・' + (sub.autoRenew !== false ? '自动续费开启' : '自动续费关闭') + '</b></div>';
   }).join('');
@@ -524,7 +524,7 @@ function guideSubCancelAllSubmit() {
   var list = (s.list || []).slice();
   var hist = guideSubHistoryList();
   var now = new Date().toLocaleString('zh-CN');
-  list.forEach(function (sub) {
+  list.forEach(function (sub: any) {
     hist.unshift({
       name: sub.name,
       cycle: sub.cycle,
@@ -565,7 +565,7 @@ function guideSubCancelOp() {
 }
 
 // 订阅会话统一入口（异步：自动续费的是/否可能要问模型）
-async function guideSubSession(t) {
+async function guideSubSession(t: any) {
   var s = GUIDE_SUB;
   if (!s) return true;
   var plain = String(t || '').replace(/[吧呢啊呀。.!！?？\s]/g, '');

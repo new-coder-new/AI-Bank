@@ -23,11 +23,11 @@ function guideStartCardApply() {
 }
 
 // 从一句话里抽卡种 / 额度 / 用途；同时返回无法识别的卡种词（如「钻石卡」）
-function guideCardApplyParse(text) {
+function guideCardApplyParse(text: any) {
   var raw = String(text || '');
   var t = raw;
 
-  var cardType = CARD_APPLY_TYPES.filter(function (n) { return t.indexOf(n) !== -1; })[0] || null;
+  var cardType = CARD_APPLY_TYPES.filter(function (n: any) { return t.indexOf(n) !== -1; })[0] || null;
   if (!cardType) {
     if (/白金/.test(t)) cardType = '白金信用卡';
     else if (/标准金卡|金卡/.test(t)) cardType = '标准金卡';
@@ -45,14 +45,14 @@ function guideCardApplyParse(text) {
     // 「办张卡 / 办个卡 / 办款卡」这类量词+卡不是卡种，别误判为「不支持的卡种」
     if (/^[张个款种这那的每]?卡$/.test(tok)) continue;
     if (/^(一张|两张|几张)/.test(tok)) continue;
-    var ok = CARD_APPLY_TYPES.some(function (n) { return n.indexOf(tok) !== -1 || tok.indexOf(n) !== -1; });
+    var ok = CARD_APPLY_TYPES.some(function (n: any) { return n.indexOf(tok) !== -1 || tok.indexOf(n) !== -1; });
     if (!ok) { unknownType = tok; break; }
   }
 
   // 用途：先剔除已识别的卡种，避免「旅行信用卡」里的「旅行」被当成用途
   var t2 = t;
-  CARD_APPLY_TYPES.forEach(function (n) { t2 = t2.split(n).join(' '); });
-  var purpose = CARD_APPLY_PURPOSES.filter(function (n) { return t2.indexOf(n) !== -1; })[0] || null;
+  CARD_APPLY_TYPES.forEach(function (n: any) { t2 = t2.split(n).join(' '); });
+  var purpose = CARD_APPLY_PURPOSES.filter(function (n: any) { return t2.indexOf(n) !== -1; })[0] || null;
   if (!purpose) {
     if (/差旅|出差|旅行|旅游/.test(t2)) purpose = '出行差旅';
     else if (/消费|日常刷卡|买菜/.test(t2)) purpose = '日常消费';
@@ -73,7 +73,7 @@ function guideCardApplyParse(text) {
 }
 
 // 第一段只收集「卡种 + 期望额度」，用途在第二段单独问
-function guideCardApplyMissingPrompt(s) {
+function guideCardApplyMissingPrompt(s: any) {
   var missType = !s.cardType;
   var missLimit = !(Number(s.limit) > 0);
   if (missType && missLimit) return '请告诉我你想办理的信用卡类型和期望额度。';
@@ -81,11 +81,11 @@ function guideCardApplyMissingPrompt(s) {
   return '请问你的期望额度是多少元？';
 }
 
-function guideCardApplyMoney(v) {
+function guideCardApplyMoney(v: any) {
   return Number(v || 0).toLocaleString('zh-CN');
 }
 
-async function guideCardApplyStep(text) {
+async function guideCardApplyStep(text: any) {
   var t = String(text || '').trim();
   var s = GUIDE_CARD_APPLY;
   var plain = t.replace(/[吧呢啊呀。.!！?？\s]/g, '');
@@ -262,7 +262,7 @@ function guideCardApplyCancel() {
 function guideCardApplyRecords() {
   var list = (typeof cardApplyList === 'function') ? cardApplyList() : [];
   var rows = list.length
-    ? list.slice().reverse().map(function (a) {
+    ? list.slice().reverse().map(function (a: any) {
       return '<div class="report-row"><span>' + guideEsc(a.cardType) + '・' + guideEsc(a.purpose) + '</span>' +
         '<b>' + guideEsc(a.status) + '・' + guideEsc(a.appliedAt) + '</b></div>';
     }).join('')
@@ -298,13 +298,13 @@ function guideCardLimitCards() {
   return [];
 }
 
-function guideCardLabel(card) {
+function guideCardLabel(card: any) {
   if (!card) return '信用卡';
   return String(card.cardType || '信用卡') + '（尾号 ' + String(card.tail || '----') + '）';
 }
 
-function guideCardLimitPickCardHtml(cards) {
-  var rows = cards.map(function (c, i) {
+function guideCardLimitPickCardHtml(cards: any) {
+  var rows = cards.map(function (c: any, i: any) {
     return '<div class="report-row"><span>' + (i + 1) + '. ' + guideEsc(c.cardType || '信用卡') +
       '　尾号 ' + guideEsc(c.tail || '----') + '</span><b>¥' + Number(c.limit || 0).toLocaleString('zh-CN') + '</b></div>';
   }).join('');
@@ -314,10 +314,10 @@ function guideCardLimitPickCardHtml(cards) {
 }
 
 // 选卡后进入额度收集
-function guideCardLimitPickCard(cardId) {
+function guideCardLimitPickCard(cardId: any) {
   var s = GUIDE_CARD_LIMIT;
   if (!s || !Array.isArray(s.cards)) return;
-  var card = s.cards.filter(function (c) { return c.id === cardId; })[0];
+  var card = s.cards.filter(function (c: any) { return c.id === cardId; })[0];
   if (!card) return;
   s.card = card;
   s.stage = 'slots';
@@ -353,7 +353,7 @@ function guideStartCardLimitAdjust() {
   scrollToBottom();
 }
 
-function guideCardLimitParse(text) {
+function guideCardLimitParse(text: any) {
   var t = String(text || '');
   var limit = 0;
   var m = t.match(/(\d+(?:\.\d+)?)\s*(万|w|W)?/);
@@ -362,7 +362,7 @@ function guideCardLimitParse(text) {
     if (m[2]) limit *= 10000;
   }
 
-  var reason = CARD_LIMIT_REASONS.filter(function (n) { return t.indexOf(n) !== -1; })[0] || null;
+  var reason = CARD_LIMIT_REASONS.filter(function (n: any) { return t.indexOf(n) !== -1; })[0] || null;
   if (!reason) {
     if (/消费.*(增加|需求)|需求.*增加/.test(t)) reason = '消费需求增加';
     else if (/收入.*(提升|增加|提高)|涨薪|加薪/.test(t)) reason = '收入提升';
@@ -375,7 +375,7 @@ function guideCardLimitParse(text) {
   return { limit: limit, reason: reason };
 }
 
-async function guideCardLimitStep(text) {
+async function guideCardLimitStep(text: any) {
   if (guideIsNegativeAmount(text)) {
     guideAsk(guideMessage('<p>目标额度需要大于 0，请重新输入（例如「80000」）。</p>'));
     return true;
@@ -551,7 +551,7 @@ function guideCardLimitCancel() {
   scrollToBottom();
 }
 
-function guideCardLimitAIReason(text) {
+function guideCardLimitAIReason(text: any) {
   return guideAISlots(
     text,
     '你是银行 App 的意图解析器。用户在申请信用卡额度调整，需要识别「调整原因」，' +
@@ -573,14 +573,14 @@ function guideCardLostCards() {
   return [];
 }
 
-function guideStartCardLost(text) {
+function guideStartCardLost(text: any) {
   guideResetAllSessions();
   GUIDE_CARD_LOST = { stage: 'slots', card: null };
   currentModule = 'card';
   // 「挂失尾号6789的卡」这类说法：直接选中对应卡片，省一步
   var tail = String(text || (typeof window !== 'undefined' ? window.__GUIDE_LAST_TEXT : '') || '').replace(/\D/g, '');
   if (tail.length >= 4) {
-    var hit = guideCardLostCards().filter(function (c) {
+    var hit = guideCardLostCards().filter(function (c: any) {
       return String(c.tail || c.number || '').replace(/\D/g, '').slice(-4) === tail.slice(-4);
     })[0];
     if (hit) {
@@ -598,7 +598,7 @@ function guideStartCardLost(text) {
   scrollToBottom();
 }
 
-function guideCardLostStep(text) {
+function guideCardLostStep(text: any) {
   var t = String(text || '').trim();
   var s = GUIDE_CARD_LOST;
 
@@ -618,7 +618,7 @@ function guideCardLostStep(text) {
   }
 
   var tail = digits.slice(-4);
-  var card = guideCardLostCards().filter(function (c) { return String(c.tail) === tail; })[0];
+  var card = guideCardLostCards().filter(function (c: any) { return String(c.tail) === tail; })[0];
   if (!card) {
     appendMessage(guideMessage('<p>未找到尾号 <b>' + guideEsc(tail) + '</b> 的卡片，请重新输入尾号。</p>'));
     scrollToBottom();
@@ -668,7 +668,7 @@ function guideCardLostSubmit() {
 }
 
 // 验证通过后真正冻结卡片并出结果卡
-async function guideCardLostApply(card) {
+async function guideCardLostApply(card: any) {
   var c = card || {};
 
   // —— 服务端权威：后端在线时由服务端冻结卡片 ——
@@ -734,7 +734,7 @@ async function guideCardLostApply(card) {
   scrollToBottom();
 }
 // 取消 / 验证失败：把确认块整体折叠成一行
-function guideCardLostCollapse(text) {
+function guideCardLostCollapse(text: any) {
   var s = GUIDE_CARD_LOST;
   var boxId = s && s.confirmBoxId;
   var box = boxId ? document.getElementById(boxId) : null;

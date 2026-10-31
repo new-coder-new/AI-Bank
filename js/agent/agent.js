@@ -1525,7 +1525,7 @@ async function agentApprovePlan(id) {
             if (errEl)
                 errEl.textContent = '请输入验证码后再继续';
             if (input)
-                input.focus();
+                input.focus?.();
             return;
         }
         if (got !== AGENT_DEMO_OTP) {
@@ -1533,7 +1533,7 @@ async function agentApprovePlan(id) {
                 errEl.textContent = '验证码不正确，请重新输入（本次未执行任何操作）';
             if (input) {
                 input.value = '';
-                input.focus();
+                input.focus?.();
             }
             if (typeof showToast === 'function')
                 showToast('验证失败，转账未执行', 2200);

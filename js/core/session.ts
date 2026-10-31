@@ -5,7 +5,7 @@
 
 // —— 运行时由其它脚本提供的全局 ——
 declare var currentModule: string;
-declare var AGENT_PENDING_PLANS: {};
+declare var AGENT_PENDING_PLANS: Record<string, any>;
 declare function guideServiceByKey(key: string): any;
 declare function guideFlowLockedNotice(extra?: string): void;
 

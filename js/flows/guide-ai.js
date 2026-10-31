@@ -24,7 +24,7 @@
 //  约定：本文件不做流程控制、不渲染卡片；规则识别在 guide-rules.js；流程在 guide.js。
 // ==========================================================================
 // 意图路由表：模块 key → 进入该模块的处理函数（供 guideAIRouteIntent 命中后调用）
-var GUIDE_INTENT_MODULES = {
+var GUIDE_INTENT_MODULES = ({
     'transfer.name': function (t) { GUIDE_TRANSFER = { kind: 'name', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
     'transfer.phone': function (t) { GUIDE_TRANSFER = { kind: 'phone', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
     'transfer.timed': function (t) { GUIDE_TRANSFER = { kind: 'timed', payee: null, phone: null, amount: null, remark: '', stage: 'slots', date: null, time: null, repeat: '不重复' }; guideTransferStep(t); },
@@ -76,7 +76,7 @@ var GUIDE_INTENT_MODULES = {
         if (typeof guideSubFindService === 'function' && guideSubFindService(t))
             guideSubManageStep(t);
     }
-};
+});
 async function guideAIRouteIntent(text) {
     if (typeof bankHasLLMKey === 'function' && !bankHasLLMKey())
         return false;
