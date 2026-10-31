@@ -518,6 +518,49 @@ function maskCardNumber(num) {
   return digits.slice(0, 4) + ' **** **** ' + digits.slice(-4);
 }
 
+
+// —— 服务端风控判定（前端只负责展示，不再自己判档）——
+function srvAssessRisk(payee, amount) {
+  const reasons = [];
+  let score = 0;
+  const contacts = DB.contacts || [];
+  const known = contacts.some((c) => c.name === payee);
+  const history = (DB.userProfile && DB.userProfile.transferHistory) || [];
+  const paidBefore = history.some((t) => t.payee === payee);
+  const avg = history.length ? history.reduce((s, t) => s + (Number(t.amount) || 0), 0) / history.length : 0;
+  const ratio = avg > 0 ? amount / avg : 0;
+
+  if (!known) { score += 40; reasons.push('收款人为新联系人'); }
+  if (!paidBefore) { score += 22; reasons.push('该联系人首次交易'); }
+  if (ratio >= 3) { score += Math.min(28, Math.round((ratio - 2) * 5)); reasons.push('金额高于历史平均 ' + ratio.toFixed(1) + ' 倍'); }
+  if (amount >= 100000) { score += 55; reasons.push('单笔金额达到 T4 大额标准'); }
+  else if (amount >= 10000) { score += 35; reasons.push('单笔金额达到 T3 档位'); }
+  else if (amount >= 1000) { score += 15; reasons.push('单笔金额达到 T2 档位'); }
+  if (ratio >= 10) { score += 10; reasons.push('金额远超历史水平'); }
+  const h = new Date().getHours();
+  if (h >= 0 && h < 6) { score += 15; reasons.push('凌晨时段交易'); }
+  score = Math.min(99, score);
+  const level = score >= 60 ? 'high' : (score >= 30 ? 'medium' : 'low');
+  return { score, level, reasons, known, paidBefore, ratio };
+}
+
+function srvTier(amount, risk) {
+  const a = Number(amount) || 0;
+  let key = a >= 100000 ? 'T4' : (a >= 10000 ? 'T3' : (a >= 1000 ? 'T2' : 'T1'));
+  // 可疑度只抬高、不降低
+  const map = { low: 0, medium: 2, high: 3 };
+  const rankByKey = { T1: 1, T2: 2, T3: 3, T4: 4 };
+  const minRank = map[(risk && risk.level) || 'low'] || 0;
+  if (rankByKey[key] < minRank) key = Object.keys(rankByKey).filter((k) => rankByKey[k] === minRank)[0] || key;
+  const table = {
+    T1: { name: '指纹/密码确认', needPassword: true, needOtp: false, needFace: false, needManual: false },
+    T2: { name: '短信验证码', needPassword: false, needOtp: true, needFace: false, needManual: false },
+    T3: { name: '短信验证码+人脸', needPassword: false, needOtp: true, needFace: true, needManual: false },
+    T4: { name: '短信+人脸+人工复核', needPassword: false, needOtp: true, needFace: true, needManual: true }
+  };
+  return Object.assign({ key: key, rank: rankByKey[key] }, table[key]);
+}
+
 function auditLog(db, action, detail) {
   try {
     db.auditLog = db.auditLog || [];
@@ -624,6 +667,26 @@ const routes = {
     const { pin } = await readBody(req);
     if (String(pin || '') !== DEMO_PIN) return { ok: false, error: '验证失败' };
     return { ok: true, verifyToken: issueVerifyToken('fund'), expiresIn: Math.floor(VERIFY_TTL / 1000) };
+  },
+
+
+  // 转账预判：服务端计算风控分与档位，返回需要哪些验证（不动账）
+  'POST /api/transfer/prepare': async (req) => {
+    const { payee, amount, channel } = await readBody(req);
+    const amt = Math.round((Number(amount) || 0) * 100) / 100;
+    const payeeName = String(payee || '').trim();
+    if (!Number.isFinite(amt) || amt <= 0) return { ok: false, error: '金额无效' };
+    if (!payeeName) return { ok: false, error: '缺少收款人' };
+    if (amt > 100000000) return { ok: false, error: '金额超出单笔上限（¥100,000,000）' };
+    if (payeeName.length > 40) return { ok: false, error: '收款人名称过长' };
+    const tl = DB.userProfile.txnLimit || {};
+    const single = Number(tl.single) || 0;
+    if (single > 0 && amt > single) return { ok: false, error: '超过单笔限额 ¥' + single };
+    const d = DB.userProfile.debitCard;
+    if (amt > d.available) return { ok: false, error: '余额不足', available: d.available, shortage: Math.round((amt - d.available) * 100) / 100 };
+    const risk = srvAssessRisk(payeeName, amt);
+    const tier = srvTier(amt, risk);
+    return { ok: true, amount: amt, payee: payeeName, channel: channel || '智能转账', risk: risk, tier: tier, available: d.available };
   },
 
   'POST /api/transfer': async (req) => {

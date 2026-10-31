@@ -555,7 +555,7 @@ registerAgentTool('transfer.resolvePayee', {
 
 registerAgentTool('transfer.execute', {
   label: '执行转账', risk: 'high',
-  run: function (args) {
+  run: async function (args) {
     var payee = String(args.payee || '').trim();
     var amount = Number(args.amount) || 0;
     if (!Number.isFinite(amount) || amount <= 0) return { ok: false, summary: '转账金额无效，未执行任何操作' };
@@ -602,6 +602,38 @@ registerAgentTool('transfer.execute', {
     }
 
     var phoneArg = String(args.phone || '').trim();
+
+    // —— 服务端权威执行：后端在线时以服务端结果为准（扣款、限额、验证令牌、复核都在服务端）——
+    if (typeof API !== 'undefined' && API.live && typeof apiTransferAuthoritative === 'function') {
+      var srv = null;
+      try {
+        srv = await apiTransferAuthoritative(payee, amount, {
+          channel: args.channel || '智能转账',
+          phone: phoneArg,
+          idempotencyKey: args.idempotencyKey || ('T' + Date.now() + '-' + Math.random().toString(36).slice(2, 8))
+        });
+      } catch (e) { srv = null; }
+      if (srv && srv.ok) {
+        // 以服务端余额为准，本地只补展示用记录（不再二次扣款）
+        mockData.userProfile.debitCard.balance = Number(srv.balance);
+        mockData.userProfile.debitCard.available = Number(srv.available);
+        registerTransferRecord(payee, amount, args.channel || '智能转账', phoneArg);
+        if (typeof addRecentAction === 'function') addRecentAction('transfer', { payee: payee, amount: amount });
+        saveUserData();
+        return {
+          summary: '已完成转账：' + payee + ' ¥' + agentFmt(amount) + '，当前余额 ¥' + agentFmt(mockData.userProfile.debitCard.balance),
+          data: { payee: payee, amount: amount, server: true, tier: srv.tier }
+        };
+      }
+      if (srv && srv.pendingReview) {
+        return { ok: false, pendingReview: true, summary: srv.error || '大额交易已提交人工复核，未扣款' };
+      }
+      if (srv && srv.error) {
+        return { ok: false, summary: '转账未执行：' + srv.error };
+      }
+      // srv 为空（网络异常）时退回本地执行
+    }
+
     var txDesc = '转账给' + payee + (phoneArg ? '（' + phoneArg + '）' : '') + (args.remark ? '（' + args.remark + '）' : '');
     var recorded = addTransaction('expense', amount, txDesc, args.channel || '智能转账', true);
     if (recorded === false) {
@@ -1826,6 +1858,27 @@ function agentParseTransfer(text) {
   return { payee: payee, amount: amount, phone: phone ? phone[0] : null };
 }
 
+
+// 服务端返回的档位 → 前端确认卡用的结构（判定权在服务端）
+function agentTierFromServer(t) {
+  if (!t) return null;
+  return {
+    key: t.key,
+    name: t.name,
+    rank: t.rank,
+    needConfirm: true,
+    needPassword: !!t.needPassword,
+    needOtp: !!t.needOtp,
+    needFace: !!t.needFace,
+    needVerify: !!(t.needOtp || t.needFace),
+    needManual: !!t.needManual,
+    byAmount: t.key,
+    byRisk: t.key,
+    escalatedByRisk: false,
+    fromServer: true
+  };
+}
+
 async function agentTransferFlow(payee, amount, rawText, channel, opts) {
   var ch = channel || '智能转账';
   var o = opts || {};
@@ -1859,7 +1912,32 @@ async function agentTransferFlow(payee, amount, rawText, channel, opts) {
     return { handled: true, executed: false, tier: null, reason: 'shortage' };
   }
 
-  var tier = agentTransferTier(amount, risk);
+  // 服务端预判优先：档位与风险分由服务端计算，前端只做展示与引导
+  var serverTier = null;
+  if (typeof API !== 'undefined' && API.live && typeof apiTransferPrepare === 'function') {
+    try {
+      var prep = await apiTransferPrepare(payee, amount, ch);
+      if (prep && prep.ok) {
+        // 服务端 reasons 是字符串数组，前端风险卡需要 {label, detail}
+        if (prep.risk) {
+          var __reasons = (prep.risk.reasons || []).map(function (r) {
+            return (typeof r === 'string') ? { label: r, detail: '' } : r;
+          });
+          risk = Object.assign({}, prep.risk, { reasons: __reasons });
+        }
+        serverTier = agentTierFromServer(prep.tier);
+      } else if (prep && prep.error) {
+        appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
+          '<div class="msg-name">智能金融助手</div><div class="msg-bubble agent-bubble">' +
+          '<div class="agent-result-card"><div class="agent-result-title" style="color:#B42318;">无法发起转账</div>' +
+          '<div class="agent-result-desc">' + ((typeof escapeHtml === 'function') ? escapeHtml(prep.error) : prep.error) + '</div>' +
+          '</div></div></div></div>');
+        scrollToBottom();
+        return { handled: true, executed: false, reason: 'serverRejected' };
+      }
+    } catch (e) { /* 预判失败则退回本地判定 */ }
+  }
+  var tier = serverTier || agentTransferTier(amount, risk);
   var phone = o.phone ? String(o.phone).trim() : '';
 
   var plan = {

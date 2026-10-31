@@ -193,6 +193,24 @@ function apiPost(path, body) {
   return apiRequest('POST', path, body);
 }
 
+// 转账预判：服务端算风险分与档位，决定需要哪些验证（不动账）
+function apiTransferPrepare(payee, amount, channel) {
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  return apiRequest('POST', '/api/transfer/prepare', { payee: payee, amount: amount, channel: channel || '智能转账' });
+}
+// 权威转账：以服务端结果为准（成功回写余额，失败/待复核原样返回）
+function apiTransferAuthoritative(payee, amount, opts) {
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  const o = opts || {};
+  return apiRequest('POST', '/api/transfer', {
+    payee: payee,
+    amount: amount,
+    channel: o.channel || '智能转账',
+    phone: o.phone || '',
+    idempotencyKey: o.idempotencyKey || ''
+  });
+}
+
 // 转账同步
 function apiTransfer(payee, amount) {
   return apiPost('/api/transfer', { payee: payee, amount: amount });
