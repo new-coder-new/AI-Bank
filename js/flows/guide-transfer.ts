@@ -960,6 +960,7 @@ function guideAASubmit() {
   }
   GUIDE_AA = null;
   scrollToBottom();
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('transfer'); }, 400);
 }
 async function guideAAStep(text: any) {
   if (guideIsNegativeAmount(text)) {

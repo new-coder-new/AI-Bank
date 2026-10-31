@@ -1111,6 +1111,7 @@ function submitScheduledTransferOtp(btn: any) {
       '<div class="bank-result-note">定时转账任务未创建，账户未扣款。人工复核通过后，请重新创建定时计划。</div>' +
       '</div>';
     if (typeof showToast === 'function') showToast('已提交人工复核，定时任务未创建', 2800);
+    if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('transfer'); }, 400);
     return;
   }
   const saved = createScheduledTransferTask(task);
@@ -1118,6 +1119,7 @@ function submitScheduledTransferOtp(btn: any) {
   card.classList.add('done');
   card.innerHTML = scheduledCreatedHtml(saved);
   if (typeof showToast === 'function') showToast('定时转账任务已创建，到期自动执行');
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('transfer'); }, 400);
 }
 
 function cancelScheduledDraft(btn: any) {
@@ -1126,6 +1128,7 @@ function cancelScheduledDraft(btn: any) {
     delete (window as any).__pendingScheduledTransfers[card.id];
   }
   if (card) card.innerHTML = '<div class="bank-cancelled">已取消，未创建定时转账任务。</div>';
+  if (typeof guideModuleWrapUp === 'function') setTimeout(function () { guideModuleWrapUp('transfer'); }, 400);
 }
 
 function createScheduledTransferTask(task: any) {
