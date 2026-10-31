@@ -1,3 +1,4 @@
+"use strict";
 // ==========================================================================
 //  经典脚本模块（TypeScript 源码，noCheck 转译）
 //  编译产物：js/flows/budget.js
@@ -15,13 +16,13 @@ function calcPeriodUsed(period) {
     const localDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     let totalUsed = 0;
     if (period === 'day') {
-        totalUsed = txns.filter(t => t.type === 'expense' && t.time.startsWith(localDate)).reduce((s, t) => s + t.amount, 0);
+        totalUsed = txns.filter((t) => t.type === 'expense' && t.time.startsWith(localDate)).reduce((s, t) => s + t.amount, 0);
     }
     else if (period === 'week') {
         const weekStart = new Date(now);
         weekStart.setDate(now.getDate() - now.getDay());
         weekStart.setHours(0, 0, 0, 0);
-        totalUsed = txns.filter(t => t.type === 'expense' && new Date(t.time) >= weekStart).reduce((s, t) => s + t.amount, 0);
+        totalUsed = txns.filter((t) => t.type === 'expense' && new Date(t.time) >= weekStart).reduce((s, t) => s + t.amount, 0);
     }
     else if (period === 'month') {
         // 月度口径与服务端/账单分析保持一致：用账单分类合计，而不是最近 50 条流水
@@ -31,7 +32,7 @@ function calcPeriodUsed(period) {
         }
         else {
             const monthStart = now.getFullYear() + '-' + pad(now.getMonth() + 1);
-            totalUsed = txns.filter(t => t.type === 'expense' && t.time.startsWith(monthStart)).reduce((s, t) => s + t.amount, 0);
+            totalUsed = txns.filter((t) => t.type === 'expense' && t.time.startsWith(monthStart)).reduce((s, t) => s + t.amount, 0);
         }
     }
     else if (period === 'year') {
@@ -39,7 +40,7 @@ function calcPeriodUsed(period) {
         const currentMonthLabel = now.getFullYear() + '年' + (now.getMonth() + 1) + '月';
         const history = Array.isArray(mockData.monthlyHistory) ? mockData.monthlyHistory : [];
         totalUsed = history
-            .filter(m => m && m.month !== currentMonthLabel)
+            .filter((m) => m && m.month !== currentMonthLabel)
             .reduce((s, m) => s + (Number(m.expense) || 0), 0);
         const bills = mockData.bills && mockData.bills.expense;
         if (Array.isArray(bills))
@@ -111,7 +112,7 @@ function smartBudgetSet(text) {
     }
     else if (!period) {
         // 没指定周期，弹出设置表单
-        showBudgetSetting();
+        showBudgetSetting('month');
     }
     else {
         // 没解析到金额，弹出设置表单并预填周期
@@ -131,7 +132,7 @@ function showBudget() {
             <span style="font-size:13px;color:#666;">日/周/月/年预算同时生效</span>
             <button class="btn btn-primary btn-sm" onclick="showBudgetSetting()">修改预算</button>
           </div>
-          ${PERIOD_ORDER.map(period => {
+          ${PERIOD_ORDER.map((period) => {
         const limit = budgets[period] || 0;
         if (limit <= 0)
             return '';
@@ -162,7 +163,7 @@ function showBudget() {
               </div>
             `;
     }).join('')}
-          ${PERIOD_ORDER.every(p => !budgets[p] || budgets[p] <= 0) ? '<div style="text-align:center;padding:20px;color:#999;font-size:13px;">暂无预算设置，点击"修改预算"或直接说"设置每月预算3000元"</div>' : ''}
+          ${PERIOD_ORDER.every((p) => !budgets[p] || budgets[p] <= 0) ? '<div style="text-align:center;padding:20px;color:#999;font-size:13px;">暂无预算设置，点击"修改预算"或直接说"设置每月预算3000元"</div>' : ''}
         </div>
       </div>
     </div>
@@ -180,7 +181,7 @@ function showBudgetSetting(prefillPeriod) {
       <div style="font-size:16px;font-weight:600;text-align:center;margin-bottom:6px;">设置预算</div>
       <p style="font-size:12px;color:#666;text-align:center;margin-bottom:16px;">日/周/月/年预算可同时设置，独立生效；留空表示不设置。</p>
       
-      ${PERIOD_ORDER.map(period => `
+      ${PERIOD_ORDER.map((period) => `
         <div style="margin-bottom:12px;">
           <label style="display:block;font-size:12px;color:#666;margin-bottom:6px;font-weight:600;">${PERIOD_LABELS[period]}预算（元）</label>
           <div style="display:flex;align-items:center;gap:8px;">
@@ -204,7 +205,7 @@ function saveBudgetSetting() {
     }
     const budgets = mockData.userProfile.budgets;
     const setPeriods = [];
-    PERIOD_ORDER.forEach(period => {
+    PERIOD_ORDER.forEach((period) => {
         const input = document.getElementById('budget-' + period);
         if (input) {
             const val = parseFloat(input.value) || 0;
@@ -220,7 +221,7 @@ function saveBudgetSetting() {
     saveUserData();
     // 同步后端，避免刷新后被服务端默认预算覆盖
     if (typeof apiBudgetSet === 'function') {
-        PERIOD_ORDER.forEach(period => {
+        PERIOD_ORDER.forEach((period) => {
             if (budgets[period] > 0)
                 apiBudgetSet(budgets[period], period);
         });

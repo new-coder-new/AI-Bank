@@ -35,8 +35,6 @@
     "js/flows/security.ts",
     "js/flows/subscription.ts",
     "js/flows/transfer.ts",
-    "js/flows/wealth.ts",
-    "js/core/voice.ts",
-    "js/flows/budget.ts"
+    "js/flows/wealth.ts"
   ]
 }

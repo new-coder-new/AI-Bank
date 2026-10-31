@@ -47,7 +47,7 @@ function startGlobalVoiceRecording() {
       globalMediaRecorder.onstop = () => {
         globalIsRecording = false;
         if (globalRecordingTimer) { clearTimeout(globalRecordingTimer); globalRecordingTimer = null; }
-        stream.getTracks().forEach(t => t.stop());
+        stream.getTracks().forEach((t: any) => t.stop());
         globalMediaStream = null;
         // 恢复UI
         voiceBtn.classList.remove('recording');
@@ -80,7 +80,7 @@ function startGlobalVoiceRecording() {
       globalIsStarting = false;
       globalIsRecording = false;
       if (globalMediaStream) {
-        try { globalMediaStream.getTracks().forEach(t => t.stop()); } catch (e) { }
+        try { globalMediaStream.getTracks().forEach((t: any) => t.stop()); } catch (e) { }
         globalMediaStream = null;
       }
       if (globalRecordingTimer) { clearTimeout(globalRecordingTimer); globalRecordingTimer = null; }
@@ -98,7 +98,7 @@ function stopGlobalVoiceRecording() {
   }
 }
 
-async function transcribeGlobalAudio(audioBlob) {
+async function transcribeGlobalAudio(audioBlob: any): Promise<void> {
   const recordingText = document.getElementById('voiceRecordingText');
   // 未配置语音识别 Key：不发起请求，直接走模拟识别，避免弹错误框
   if (!bankHasASRKey()) {
@@ -132,19 +132,19 @@ async function transcribeGlobalAudio(audioBlob) {
     } else {
       alert('未识别到语音内容，请重试');
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error('全局语音识别错误:', err);
     alert('语音识别失败：' + err.message + '\n请手动输入。');
     // 不自动提交任何内容，避免把用户没说过的话当成指令执行
   }
 }
 
-function handleGlobalVoiceResult(text) {
+function handleGlobalVoiceResult(text: any): void {
   const userInput = document.getElementById('userInput');
   if (userInput) {
     // 录音期间用户如果手动输入了内容，追加而不是静默覆盖
-    const current = String(userInput.value || '').trim();
-    userInput.value = (current && current !== String(globalInputBefore || '').trim())
+    const current = String((userInput as HTMLInputElement).value || '').trim();
+    (userInput as HTMLInputElement).value = (current && current !== String(globalInputBefore || '').trim())
       ? (current + ' ' + text)
       : text;
     userInput.style.height = 'auto';
@@ -159,7 +159,7 @@ function handleGlobalVoiceResult(text) {
 }
 
 // 银行卡号校验（长度+Luhn算法）
-function validateBankCard(cardNumber) {
+function validateBankCard(cardNumber: any): any {
   if (!cardNumber) return { valid: false, message: '请输入银行卡号' };
   const cleaned = cardNumber.replace(/\D/g, '');
   // 长度校验：16-19位
@@ -192,16 +192,17 @@ function validateBankCard(cardNumber) {
 }
 
 // 输入框实时校验
-function validateBankCardInput(inputId) {
+function validateBankCardInput(inputId: any): void {
   const input = document.getElementById(inputId);
   if (!input) return;
-  const result = validateBankCard(input.value);
+  const __input = input as HTMLInputElement;
+  const result = validateBankCard(__input.value);
   const validEl = document.getElementById(inputId + '-valid');
   const invalidEl = document.getElementById(inputId + '-invalid');
   if (validEl) validEl.style.display = result.valid ? 'flex' : 'none';
   if (invalidEl) invalidEl.style.display = result.valid ? 'none' : 'flex';
   if (result.valid && result.bank) {
-    if (validEl) validEl.querySelector('.data-value').textContent = `${result.bank} · 卡号格式正确`;
+    if (validEl) { const dv = validEl.querySelector('.data-value'); if (dv) dv.textContent = `${result.bank} · 卡号格式正确`; }
   }
 }
 
@@ -209,7 +210,8 @@ function validateBankCardInput(inputId) {
 function validateTransferBankCard() {
   const input = document.getElementById('transferBankCard');
   if (!input) return;
-  const result = validateBankCard(input.value);
+  const __input = input as HTMLInputElement;
+  const result = validateBankCard(__input.value);
   const validEl = document.getElementById('transferBankCardValid');
   const invalidEl = document.getElementById('transferBankCardInvalid');
   if (validEl) validEl.style.display = result.valid ? 'block' : 'none';

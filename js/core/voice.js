@@ -1,3 +1,4 @@
+"use strict";
 // ==========================================================================
 //  经典脚本模块（TypeScript 源码，noCheck 转译）
 //  编译产物：js/core/voice.js
@@ -48,7 +49,7 @@ function startGlobalVoiceRecording() {
                 clearTimeout(globalRecordingTimer);
                 globalRecordingTimer = null;
             }
-            stream.getTracks().forEach(t => t.stop());
+            stream.getTracks().forEach((t) => t.stop());
             globalMediaStream = null;
             // 恢复UI
             voiceBtn.classList.remove('recording');
@@ -83,7 +84,7 @@ function startGlobalVoiceRecording() {
         globalIsRecording = false;
         if (globalMediaStream) {
             try {
-                globalMediaStream.getTracks().forEach(t => t.stop());
+                globalMediaStream.getTracks().forEach((t) => t.stop());
             }
             catch (e) { }
             globalMediaStream = null;
@@ -211,7 +212,8 @@ function validateBankCardInput(inputId) {
     const input = document.getElementById(inputId);
     if (!input)
         return;
-    const result = validateBankCard(input.value);
+    const __input = input;
+    const result = validateBankCard(__input.value);
     const validEl = document.getElementById(inputId + '-valid');
     const invalidEl = document.getElementById(inputId + '-invalid');
     if (validEl)
@@ -219,8 +221,11 @@ function validateBankCardInput(inputId) {
     if (invalidEl)
         invalidEl.style.display = result.valid ? 'none' : 'flex';
     if (result.valid && result.bank) {
-        if (validEl)
-            validEl.querySelector('.data-value').textContent = `${result.bank} · 卡号格式正确`;
+        if (validEl) {
+            const dv = validEl.querySelector('.data-value');
+            if (dv)
+                dv.textContent = `${result.bank} · 卡号格式正确`;
+        }
     }
 }
 // 转账模块卡号校验
@@ -228,7 +233,8 @@ function validateTransferBankCard() {
     const input = document.getElementById('transferBankCard');
     if (!input)
         return;
-    const result = validateBankCard(input.value);
+    const __input = input;
+    const result = validateBankCard(__input.value);
     const validEl = document.getElementById('transferBankCardValid');
     const invalidEl = document.getElementById('transferBankCardInvalid');
     if (validEl)
