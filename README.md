@@ -145,7 +145,7 @@ curl http://127.0.0.1:8787/api/health
 
 **浏览器不再持有真实 Key**。AI 能力（对话 / 意图分类 / Agent function calling）统一走服务端同源代理：
 
-- 前端只调用 `/api/ai/chat` 和 `/api/ai/transcribe`；
+- 前端只调用 `/api/ai/chat`；
 - `server/index.js` 从环境变量或本机 `js/core/config.local.js` 读取 Key，在服务端转发到 DeepSeek / 硅基流动；
 - 浏览器拿到的 `js/core/config.local.js` 只有 `window.__BANK_KEYS__ = {}` 和代理开关，永远不会包含真实 Key；
 - 代理接口带同源校验和按 IP 限流（对话 20 次/分钟）。
@@ -202,9 +202,7 @@ deploy-v3/
 │   ├── budget.js              # 多周期预算设置与预算状态
 │   ├── userinfo.js            # 用户信息入口
 │   ├── analysis.js            # 账单分析、饼图/柱图、异常交易、财务报告
-│   ├── flower.js              # 生日提醒、鲜花订购
 │   ├── ai.js                  # 意图分类、功能询问、sendMessage 入口
-│   ├── intent.js              # 旧版共享动作助手（高危确认、预算预填）
 │   ├── agent.js               # Agent 核心：记忆、工具注册、余额门禁、风险分级、计划执行
 │   ├── agent-llm.js           # Function Calling 层：工具 schema、模型循环、确认卡
 │   ├── agentsvc.js            # 冻结资金与联系人服务前置处理
@@ -1323,7 +1321,6 @@ https://ai-banking-agent-335169-11-1386930579.sh.run.tcloudbase.com/
 | `js/flows/subscription.js` | 订阅列表、取消、添加 |
 | `js/flows/budget.js` | 多周期预算 |
 | `js/flows/analysis.js` | 账单分析与图表 |
-| `js/flows/flower.js` | 生日与鲜花 |
 | `js/agent/insights.js` | 首页简报、AI 发现、主动推送 |
 | `js/core/ui.js` | 深色模式、Toast、服务面板、使用手册、教程 |
 | `js/core/icons.js` | 线性 SVG 图标 |

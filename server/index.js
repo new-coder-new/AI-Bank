@@ -1491,7 +1491,6 @@ const server = http.createServer(async (req, res) => {
 
   // AI 代理（真实 Key 只在服务端）
   if (pathname === '/api/ai/chat') { await handleAIChat(req, res); return; }
-  if (pathname === '/api/ai/transcribe') { await handleAITranscribe(req, res); return; }
 
   // 无真实 Key 的配置脚本
   if (pathname === '/js/core/config.local.js') { serveKeyConfig(res); return; }
