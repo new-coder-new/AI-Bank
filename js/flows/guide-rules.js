@@ -20,14 +20,14 @@
 // ==========================================================================
 var GUIDE_SERVICES = [
     {
-        key: 'transfer', label: '转账', icon: 'transfer',
-        aliases: ['智能转账', '转账服务'],
+        key: 'transfer', label: '转账收款', icon: 'transfer',
+        aliases: ['转账', '智能转账', '转账服务', '收款'],
         prompt: '转账收款包含以下操作：',
         subs: [
-            { key: 'name', label: '姓名转账', example: '给张三转账1000元', run: function () { guideStartNameTransfer(); } },
-            { key: 'phone', label: '手机号转账', example: '转账给13800138000', run: function () { guideStartPhoneTransfer(); } },
-            { key: 'timed', label: '定时转账', example: '明天下午3点转账给张三', run: function () { guideStartTimedTransfer(); } },
-            { key: 'aa', label: 'AA收款', example: '我和张三AA，我垫了600元', run: function () { guideStartAATransfer(); } }
+            { key: 'name', label: '姓名转账', example: '给张三转账 1000 元', run: function () { guideStartNameTransfer(); } },
+            { key: 'phone', label: '手机号转账', example: '转账给13800138000，1000元', run: function () { guideStartPhoneTransfer(); } },
+            { key: 'timed', label: '定时转账', example: '明天下午3点转账给张三1000元', run: function () { guideStartTimedTransfer(); } },
+            { key: 'aa', label: 'AA收款', example: '我和张三AA，我垫了600 元', run: function () { guideStartAATransfer(); } }
         ]
     },
     {
@@ -44,11 +44,11 @@ var GUIDE_SERVICES = [
         aliases: ['卡片'],
         prompt: '卡片管理包含以下操作：',
         subs: [
-            { key: 'apply', label: '卡片申请', example: '办一张金卡，额度5万', aliases: ['申请信用卡'], run: function () { guideStartCardApply(); } },
             { key: 'mycards', label: '我的卡片', example: '查看我的信用卡', aliases: ['我的信用卡'], run: function () { showCardMyCards(); } },
-            { key: 'limit', label: '额度调整', example: '白金卡额度提到8万', aliases: ['申请调整信用卡额度', '信用卡额度调整', '调额'], run: function () { guideStartCardLimitAdjust(); } },
-            { key: 'txnlimit', label: '交易限制', example: '6789的卡，单笔限额2万', run: function () { guideStartTxnLimit(); } },
-            { key: 'lost', label: '卡片挂失', example: '挂失尾号6789的卡', run: function () { guideStartCardLost(); } }
+            { key: 'apply', label: '卡片申请', example: '办一张金卡，额度 5 万', aliases: ['申请信用卡'], run: function () { guideStartCardApply(); } },
+            { key: 'limit', label: '额度调整', example: '白金卡额度提到 8 万', aliases: ['申请调整信用卡额度', '信用卡额度调整', '调额'], run: function () { guideStartCardLimitAdjust(); } },
+            { key: 'txnlimit', label: '交易限制', example: '尾号 6789 的卡，单笔限额 2 万', run: function () { guideStartTxnLimit(); } },
+            { key: 'lost', label: '卡片挂失', example: '挂失尾号 6789 的卡', run: function () { guideStartCardLost(); } }
         ]
     },
     {
@@ -56,10 +56,10 @@ var GUIDE_SERVICES = [
         aliases: ['理财服务', '投资理财'],
         prompt: '理财包含以下操作：',
         subs: [
-            { key: 'products', label: '产品申购', example: '申购1001，5000元', aliases: ['产品', '申购'], run: function () { guideStartWealthPurchase(); } },
-            { key: 'risk', label: '风险评估', example: '做一次风险测评', run: function () { startRiskAssessment(); } },
-            { key: 'holdings', label: '持仓管理', example: '查看持仓收益', aliases: ['持仓', '我的持仓'], run: function () { guideStartHoldings(); } },
-            { key: 'catalog', label: '在售产品清单', example: '有哪些理财产品', aliases: ['产品清单', '在售产品'], run: function () { guideWealthShowAllProducts(); } }
+            { key: 'holdings', label: '我的持仓', example: '查看我的持仓', aliases: ['持仓', '持仓管理', '查看持仓收益'], run: function () { guideStartHoldings(); } },
+            { key: 'catalog', label: '在售产品清单', example: '有哪些理财产品', aliases: ['产品清单', '在售产品'], run: function () { guideWealthShowAllProducts(); } },
+            { key: 'products', label: '产品申购', example: '申购 1001，5000 元', aliases: ['产品', '申购'], run: function () { guideStartWealthPurchase(); } },
+            { key: 'risk', label: '风险评估', example: '做一次风险测评', run: function () { startRiskAssessment(); } }
         ]
     },
     {

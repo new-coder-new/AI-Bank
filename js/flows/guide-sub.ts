@@ -308,10 +308,10 @@ function guideStartSubManage() {
     '<p>订阅管理包含以下操作：</p>' +
     '<div class="guide-rows">' +
     '<div class="guide-row"><div class="guide-row-title">我的订阅</div><div class="guide-row-example">例如：查看我的订阅</div></div>' +
-    '<div class="guide-row"><div class="guide-row-title">添加订阅</div><div class="guide-row-example">例如：我想要订阅某视频平台VIP年卡</div></div>' +
-    '<div class="guide-row"><div class="guide-row-title">取消订阅</div><div class="guide-row-example">例如：取消所有订阅</div></div>' +
-    '<div class="guide-row"><div class="guide-row-title">管理自动续费</div><div class="guide-row-example">例如：某云盘超级会员年卡不续费了</div></div>' +
     '<div class="guide-row"><div class="guide-row-title">可订阅会员</div><div class="guide-row-example">例如：能订哪些会员</div></div>' +
+    '<div class="guide-row"><div class="guide-row-title">添加订阅</div><div class="guide-row-example">例如：订阅某视频平台 VIP 年卡</div></div>' +
+    '<div class="guide-row"><div class="guide-row-title">管理自动续费</div><div class="guide-row-example">例如：取消某云盘超级会员年卡续费</div></div>' +
+    '<div class="guide-row"><div class="guide-row-title">取消订阅</div><div class="guide-row-example">例如：取消所有订阅</div></div>' +
     '</div>' +
     '<p class="guide-tip">直接说出你的需求即可（照示例说也行）。</p>'
   ));
@@ -669,7 +669,7 @@ async function guideSubSession(t: any) {
     // 停在「请选择」不算进行中流程，这里只提示怎么选，不输出流程锁文案
     appendMessage(guideMessage(
       '<p>请选择订阅管理里的操作：</p>' +
-      '<p class="guide-tip">我的订阅 / 添加订阅 / 取消订阅 / 管理自动续费 / 可订阅会员。</p>'
+      '<p class="guide-tip">我的订阅 / 可订阅会员 / 添加订阅 / 管理自动续费 / 取消订阅。</p>'
     ));
     scrollToBottom();
     return true;
