@@ -17,6 +17,14 @@
   "files": [
     "js/agent/agent-llm.ts",
     "js/agent/kb.ts",
-    "js/agent/agent.ts"
+    "js/agent/agent.ts",
+    "js/flows/guide-rules.ts",
+    "js/flows/guide-ai.ts",
+    "js/flows/guide-menu.ts",
+    "js/flows/guide-transfer.ts",
+    "js/flows/guide-wealth.ts",
+    "js/flows/guide-sub.ts",
+    "js/flows/guide-flower.ts",
+    "js/flows/guide-card.ts"
   ]
 }

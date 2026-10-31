@@ -42,6 +42,22 @@
     "js/agent/agent-llm.ts",
     "js/agent/kb.js",
     "js/agent/kb.ts",
-    "js/agent/agent.js"
+    "js/agent/agent.js",
+    "js/flows/guide-rules.js",
+    "js/flows/guide-rules.ts",
+    "js/flows/guide-ai.js",
+    "js/flows/guide-ai.ts",
+    "js/flows/guide-menu.js",
+    "js/flows/guide-menu.ts",
+    "js/flows/guide-transfer.js",
+    "js/flows/guide-transfer.ts",
+    "js/flows/guide-wealth.js",
+    "js/flows/guide-wealth.ts",
+    "js/flows/guide-sub.js",
+    "js/flows/guide-sub.ts",
+    "js/flows/guide-flower.js",
+    "js/flows/guide-flower.ts",
+    "js/flows/guide-card.js",
+    "js/flows/guide-card.ts"
   ]
 }
