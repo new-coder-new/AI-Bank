@@ -19,7 +19,7 @@ var AGENT_LLM_MAX_ROUNDS = 6;       // 单次请求最多几轮「思考 → 调
 var AGENT_LLM_MAX_TOKENS = 2048;    // 单轮最大输出 token：推理型模型会先消耗 reasoning token，需留足余量
 var AGENT_LLM_BUSY = false;         // 防重入
 
-function agentLLMConfig() {
+function agentLLMConfig(): any {
   var cfg = { url: '', key: '', model: 'deepseek-chat' };
   try {
     if (typeof DEEPSEEK_API_URL !== 'undefined' && DEEPSEEK_API_URL) cfg.url = DEEPSEEK_API_URL;
@@ -31,13 +31,13 @@ function agentLLMConfig() {
   return cfg;
 }
 
-function agentLLMAvailable() {
+function agentLLMAvailable(): boolean {
   var c = agentLLMConfig();
   return !!(c.url && c.key);
 }
 
 // 本地快速闸门：明显是闲聊/寒暄的消息不进入 Agent 链路，避免无谓的模型消耗
-function agentLLMShouldAttempt(text) {
+function agentLLMShouldAttempt(text: string): boolean {
   var t = String(text || '').trim();
   if (!t) return false;
   if (/^(你好|您好|hi|hello|嗨|哈喽|在吗|谢谢|多谢|再见|你叫什么|你是谁|早上好|晚上好)[！!。.？?~\s]*$/i.test(t)) return false;
@@ -52,8 +52,8 @@ function agentLLMShouldAttempt(text) {
 }
 
 // ------------------------------ 1. 工具 schema ------------------------------
-function agentToolApiName(name) { return String(name).replace(/\./g, '__'); }
-function agentToolOrigName(apiName) { return String(apiName).replace(/__/g, '.'); }
+function agentToolApiName(name: string): string { return String(name).replace(/\./g, '__'); }
+function agentToolOrigName(apiName: string): string { return String(apiName).replace(/__/g, '.'); }
 
 // 每个工具的参数规格（供模型理解如何传参）。required 写在参数对象内部。
 var AGENT_TOOL_SPECS = {
@@ -110,7 +110,7 @@ var AGENT_TOOL_SPECS = {
   'life.travelPlan': { group: '生活', desc: '按目的地、天数和总预算拆解出差/旅行的财务计划', params: { city: { type: 'string', description: '目的地城市' }, budget: { type: 'number', description: '总预算（元）' }, days: { type: 'integer', description: '行程天数' } } }
 };
 
-function agentBuildToolSchemas() {
+function agentBuildToolSchemas(): any[] {
   var out = [];
   Object.keys(AGENT_TOOL_REGISTRY).forEach(function (name) {
     var tool = AGENT_TOOL_REGISTRY[name] || {};
@@ -138,7 +138,7 @@ function agentBuildToolSchemas() {
 var AGENT_TOOL_RISK_LABEL = { low: '只读查询', medium: '账户变更', high: '资金操作' };
 
 // ------------------------------ 2. 系统提示词（含用户记忆） ------------------------------
-function agentSystemPrompt() {
+function agentSystemPrompt(): string {
   var m = AGENT_MEMORY || {};
   var p = m.profile || {};
   var family = (m.family || []).map(function (f) {
@@ -238,14 +238,14 @@ function agentSystemPrompt() {
 // ------------------------------ 3. 多轮上下文 ------------------------------
 var AGENT_LLM_HISTORY = [];
 
-function agentLLMPushHistory(userText, assistantText) {
+function agentLLMPushHistory(userText: string, assistantText?: string): void {
   AGENT_LLM_HISTORY.push({ role: 'user', content: userText });
   AGENT_LLM_HISTORY.push({ role: 'assistant', content: assistantText || '（已执行操作）' });
   while (AGENT_LLM_HISTORY.length > 8) AGENT_LLM_HISTORY.shift();
 }
-function agentLLMResetHistory() { AGENT_LLM_HISTORY = []; }
+function agentLLMResetHistory(): void { AGENT_LLM_HISTORY = []; }
 
-function agentBuildMessages(text) {
+function agentBuildMessages(text: string): any[] {
   var msgs = [{ role: 'system', content: agentSystemPrompt() }];
   AGENT_LLM_HISTORY.forEach(function (h) { msgs.push(h); });
   msgs.push({ role: 'user', content: text });
@@ -253,12 +253,12 @@ function agentBuildMessages(text) {
 }
 
 // ------------------------------ 4. 模型调用 ------------------------------
-async function agentLLMCall(messages, tools, opts) {
+async function agentLLMCall(messages: any, tools?: any, opts?: any): Promise<any> {
   var c = agentLLMConfig();
   if (!c.url || !c.key) throw new Error('未配置模型服务');
 
   var useTools = !!(tools && tools.length && AGENT_LLM_TOOLS_OK);
-  var body = {
+  var body: any = {
     model: c.model,
     messages: messages,
     temperature: 0.2,
@@ -307,7 +307,7 @@ var AGENT_TRACE_TICK = 0;
 // 执行过程（理解需求 / 调取偏好 / 风险评估）不对用户展示，只保留最终回答或确认卡
 var AGENT_TRACE_VISIBLE = false;
 
-function agentTraceStart(title) {
+function agentTraceStart(title?: string): any {
   AGENT_TRACE_SEQ++;
   var id = 'agenttrace-' + AGENT_TRACE_SEQ + '-' + Date.now();
   if (!AGENT_TRACE_VISIBLE) {
@@ -329,7 +329,7 @@ function agentTraceStart(title) {
 }
 
 // 追加一条「进行中」的执行步骤，等待 wait 毫秒后返回该行 id
-async function agentTraceStep(trace, runningText, opts) {
+async function agentTraceStep(trace: any, runningText: string, opts?: any): Promise<string | null> {
   if (trace.removed) return null;
   var list = document.getElementById(trace.id + '-list');
   if (!list) return null;
@@ -348,7 +348,7 @@ async function agentTraceStep(trace, runningText, opts) {
 }
 
 // 把某一行标记为完成/失败，并补上结果说明
-function agentTraceSettle(trace, lineId, resultText, state) {
+function agentTraceSettle(trace: any, lineId: string | null, resultText?: string, state?: string): void {
   if (!lineId || trace.removed) return;
   var el = document.getElementById(lineId);
   if (!el) return;
@@ -369,7 +369,7 @@ function agentTraceSettle(trace, lineId, resultText, state) {
   scrollToBottom();
 }
 
-function agentTraceNote(trace, text, state) {
+function agentTraceNote(trace: any, text: string, state?: string): void {
   if (trace.removed) return;
   var list = document.getElementById(trace.id + '-list');
   if (!list) return;
@@ -381,7 +381,7 @@ function agentTraceNote(trace, text, state) {
   scrollToBottom();
 }
 
-function agentTraceComplete(trace, footNote) {
+function agentTraceComplete(trace: any, footNote?: string): void {
   if (!trace || trace.removed) return;
   var head = document.getElementById(trace.id + '-head');
   if (head) {
@@ -400,7 +400,7 @@ function agentTraceComplete(trace, footNote) {
   scrollToBottom();
 }
 
-function agentTraceRemove(trace) {
+function agentTraceRemove(trace: any): void {
   if (!trace) return;
   trace.removed = true;
   var el = document.getElementById(trace.id + '-msg');
@@ -408,7 +408,7 @@ function agentTraceRemove(trace) {
 }
 
 // ------------------------------ 6. 结果与确认卡渲染 ------------------------------
-function agentToolResultDigest(data) {
+function agentToolResultDigest(data: any): any {
   if (data === null || data === undefined) return null;
   try {
     var s = JSON.stringify(data);
@@ -417,13 +417,13 @@ function agentToolResultDigest(data) {
   } catch (e) { return String(data); }
 }
 
-function agentParseToolArgs(raw) {
+function agentParseToolArgs(raw: any): any {
   if (!raw) return {};
   if (typeof raw === 'object') return raw;
   try { return JSON.parse(raw) || {}; } catch (e) { return {}; }
 }
 
-function agentToolActionLabel(action) {
+function agentToolActionLabel(action: any): string {
   var esc = function (v) { return (typeof escapeHtml === 'function') ? escapeHtml(String(v)) : String(v); };
   var label = (action.tool && action.tool.label) || action.name;
   var ar = action.args || {};
@@ -440,7 +440,7 @@ function agentToolActionLabel(action) {
   return esc(label) + (parts.length ? '：' + parts.join(' · ') : '');
 }
 
-function agentActionAmount(action) {
+function agentActionAmount(action: any): number {
   var ar = (action && action.args) || {};
   // 鲜花/蛋糕工具用 price 字段，其余资金工具用 amount。
   // 负数必须按 0 计：否则一笔 5000 转账 + 一笔 -4900 鲜花会被算成 100 元，绕过 T2/T3 验证。
@@ -453,7 +453,7 @@ function agentActionAmount(action) {
   return Number.isFinite(v) && v > 0 ? v : 0;
 }
 
-function agentRenderAgentReply(content) {
+function agentRenderAgentReply(content: string): void {
   if (!content) return;
   var html = (typeof formatAiText === 'function') ? formatAiText(content) : escapeHtml(content);
   appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
@@ -461,7 +461,7 @@ function agentRenderAgentReply(content) {
   scrollToBottom();
 }
 
-function agentLLMRenderConfirm(state) {
+function agentLLMRenderConfirm(state: any): void {
   var batch = state.needsConfirm || [];
   var total = batch.reduce(function (s, a) { return s + agentActionAmount(a); }, 0);
   var hasHigh = batch.some(function (a) { return (a.tool && a.tool.risk) === 'high'; });
@@ -544,7 +544,7 @@ function agentLLMRenderConfirm(state) {
   scrollToBottom();
 }
 
-function agentLLMRenderNextSteps(state) {
+function agentLLMRenderNextSteps(state: any): void {
   var names = (state.executed || []).map(function (x) { return x.name; });
   function has(re) { return names.some(function (n) { return re.test(n); }); }
   var pool = [];
@@ -579,7 +579,7 @@ var AGENT_LLM_PENDING = {};
 var AGENT_LLM_SEQ = 0;
 var AGENT_LLM_LAST = null;   // 最近一次 Agent 请求状态，便于调试与「继续执行」
 
-function agentIntentLabel(text) {
+function agentIntentLabel(text: string): string {
   var keys = [];
   if (/转|汇款|打款|付款/.test(text)) keys.push('转账');
   if (/账单|消费|花了|支出/.test(text)) keys.push('账单分析');
@@ -594,7 +594,7 @@ function agentIntentLabel(text) {
   return keys.join(' + ');
 }
 
-function agentMemoryLine() {
+function agentMemoryLine(): string {
   var m = AGENT_MEMORY || {};
   var p = m.profile || {};
   var fam = (m.family || []).length;
@@ -604,7 +604,7 @@ function agentMemoryLine() {
   return parts.join(' · ');
 }
 
-async function agentLLMHandle(text) {
+async function agentLLMHandle(text: string): Promise<boolean> {
   if (!agentLLMAvailable()) return false;
   if (!agentLLMShouldAttempt(text)) return false;
   if (AGENT_LLM_BUSY) { if (typeof showToast === 'function') showToast('上一条请求还在处理中，请稍候', 2000); return true; }
@@ -688,7 +688,7 @@ async function agentLLMHandle(text) {
 }
 
 // 模型没给出正文（截断或只产出推理内容）时，用真实工具结果拼一段兜底结论，避免出现空白回复
-function agentLLMFallbackAnswer(state) {
+function agentLLMFallbackAnswer(state: any): string {
   var done = (state.executed || []).filter(function (x) { return x.ok && x.summary; });
   if (!done.length) {
     return '我已经读取了你的账户数据。你想让我重点看哪一块？例如本月支出结构、异常交易、订阅扣费或理财配置。';
@@ -697,7 +697,7 @@ function agentLLMFallbackAnswer(state) {
   return '根据实际查询到的数据：\n' + lines.join('\n') + '\n\n需要我针对其中某一项继续安排吗？';
 }
 
-async function agentLLMRunLoop(state) {
+async function agentLLMRunLoop(state: any): Promise<any> {
   var trace = state.trace;
 
   while (state.round < AGENT_LLM_MAX_ROUNDS) {
@@ -794,7 +794,7 @@ async function agentLLMRunLoop(state) {
 }
 
 // ------------------------------ 8. 用户确认后的续跑 ------------------------------
-async function agentLLMApprove(id) {
+async function agentLLMApprove(id: string): Promise<void> {
   var rec = AGENT_LLM_PENDING[id];
   if (!rec || rec.status !== 'pending') return;
   var state = rec.state;
@@ -950,7 +950,7 @@ async function agentLLMApprove(id) {
   AGENT_LLM_BUSY = false;
 }
 
-async function agentLLMReject(id) {
+async function agentLLMReject(id: string): Promise<void> {
   var rec = AGENT_LLM_PENDING[id];
   if (!rec || rec.status !== 'pending') return;
   rec.status = 'cancelled';
@@ -984,7 +984,7 @@ async function agentLLMReject(id) {
 }
 
 // 供对话重置时清空模型上下文
-function agentLLMClearHistory() {
+function agentLLMClearHistory(): void {
   agentLLMResetHistory();
   AGENT_LLM_PENDING = {};
 }
