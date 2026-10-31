@@ -1,3 +1,4 @@
+"use strict";
 // ==========================================================================
 //  经典脚本模块（TypeScript 源码，noCheck 转译）
 //  编译产物：js/flows/subscription.js
@@ -10,7 +11,7 @@ function showSubscribeList() {
         const monthly = sub.cycle === '/月' ? sub.price : sub.cycle === '/季' ? sub.price / 3 : sub.price / 12;
         return s + monthly;
     }, 0);
-    const subsHtml = mockData.subscriptions.map(sub => `
+    const subsHtml = mockData.subscriptions.map((sub) => `
     <div class="subscribe-item" id="sub-${sub.id}">
       <div class="subscribe-icon" style="background:#fef3c7;">${typeof bankIcon === 'function' ? bankIcon('bell', 16) : ''}</div>
       <div class="subscribe-info">
@@ -130,7 +131,7 @@ function showAddSubscribeForm(prefill) {
               <label class="form-label">选择订阅服务</label>
               <select class="form-select" id="newSubPreset" onchange="updateSubPrice(this)">
                 <option value="">-- 请选择 --</option>
-                ${presetSubs.map(s => `<option value="${s.id}" ${prefillPlatform === s.id ? 'selected' : ''} data-icon="${s.icon}" data-name="${s.name}" data-month="${s.prices['/月']}" data-season="${s.prices['/季']}" data-year="${s.prices['/年']}">${s.icon} ${s.name}</option>`).join('')}
+                ${presetSubs.map((s) => `<option value="${s.id}" ${prefillPlatform === s.id ? 'selected' : ''} data-icon="${s.icon}" data-name="${s.name}" data-month="${s.prices['/月']}" data-season="${s.prices['/季']}" data-year="${s.prices['/年']}">${s.icon} ${s.name}</option>`).join('')}
               </select>
             </div>
             <div class="form-group">
@@ -230,7 +231,7 @@ async function confirmAddSubscribe(btn) {
     }
     // 同名订阅（忽略空格）视为已存在，避免重复扣首月
     const nameKey = String(name || '').replace(/\s+/g, '').toLowerCase();
-    const dup = mockData.subscriptions.some(s => String(s.name || '').replace(/\s+/g, '').toLowerCase() === nameKey);
+    const dup = mockData.subscriptions.some((s) => String(s.name || '').replace(/\s+/g, '').toLowerCase() === nameKey);
     if (dup) {
         appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">「${name}」已在订阅列表中，无需重复添加。</div></div></div>`);
         scrollToBottom();
@@ -240,7 +241,7 @@ async function confirmAddSubscribe(btn) {
         }
         return;
     }
-    const newId = Math.max(0, ...mockData.subscriptions.map(s => s.id)) + 1;
+    const newId = Math.max(0, ...mockData.subscriptions.map((s) => s.id)) + 1;
     const nextDate = new Date();
     if (cycle === '/月')
         nextDate.setMonth(nextDate.getMonth() + 1);

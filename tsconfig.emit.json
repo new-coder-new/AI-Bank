@@ -37,6 +37,8 @@
     "js/core/config.ts",
     "js/core/visualization.ts",
     "js/flows/budget.ts",
-    "js/core/voice.ts"
+    "js/core/voice.ts",
+    "js/flows/subscription.ts",
+    "js/flows/cardservice.ts"
   ]
 }

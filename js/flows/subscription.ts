@@ -5,13 +5,32 @@
 //        对外符号统一在 types/global.d.ts 声明。
 // ==========================================================================
 
+declare function escapeHtml(v: any): string;
+declare function agentSleep(ms: number): Promise<void>;
+declare function registerAgentTool(name: string, def: any): void;
+declare function showSecurityVerification(purpose: string, cb: (ok: boolean) => void): void;
+declare function showToast(msg: string, ms?: number): void;
+declare function agentFmt(v: any, digits?: number): string;
+declare function agentFmtInt(v: any, digits?: number): string;
+declare function scrollToBottom(): void;
+declare function appendMessage(html: string): void;
+declare function saveUserData(): void;
+declare var currentModule: string;
+declare var mockData: any;
+declare var AGENT_SESSION: any;
+declare function submitManualReview(payload: any): void;
+declare function guideCardApplyEsc(v: any): string;
+declare function guideStartCardApply(): void;
+declare function addTransaction(type: string, amount: number, desc: string, channel?: string, deduct?: boolean): boolean | void;
+declare function verifyAmountRisk(amount: number, purpose: string, actions?: any[]): Promise<any>;
+declare function callAgentTool(name: string, args?: any): any;
 // ========== 订阅管理（中阶新增） ==========
 function showSubscribeList() {
-  const totalMonthly = mockData.subscriptions.reduce((s, sub) => {
+  const totalMonthly = mockData.subscriptions.reduce((s: any, sub: any) => {
     const monthly = sub.cycle === '/月' ? sub.price : sub.cycle === '/季' ? sub.price / 3 : sub.price / 12;
     return s + monthly;
   }, 0);
-  const subsHtml = mockData.subscriptions.map(sub => `
+  const subsHtml = mockData.subscriptions.map((sub: any) => `
     <div class="subscribe-item" id="sub-${sub.id}">
       <div class="subscribe-icon" style="background:#fef3c7;">${typeof bankIcon==='function'?bankIcon('bell',16):''}</div>
       <div class="subscribe-info">
@@ -50,7 +69,7 @@ function showSubscribeList() {
   scrollToBottom();
 }
 
-async function cancelSubscribe(id, name) {
+async function cancelSubscribe(id: any, name: any) {
   // 与一键式对话保持一致：取消订阅属于账户变更，先确认再执行
   if (!confirm('确定取消「' + name + '」的自动续费吗？\n\n取消后当前周期结束将不再扣费。')) return;
   if (typeof callAgentTool !== 'function') {
@@ -62,7 +81,7 @@ async function cancelSubscribe(id, name) {
   try {
     res = await callAgentTool('subscription.cancel', { id: id, name: name });
   } catch (e) {
-    res = { ok: false, summary: (e && e.message) || '取消失败' };
+    res = { ok: false, summary: (e && (e as any).message) || '取消失败' };
   }
   if (res.ok === false) {
     appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>取消订阅失败</strong><br>${escapeHtml(res.summary || '未找到该订阅')}</div></div></div>`);
@@ -87,7 +106,7 @@ async function cancelSubscribe(id, name) {
 
 
 // ========== 高阶版：添加新订阅 ==========
-function showAddSubscribeForm(prefill) {
+function showAddSubscribeForm(prefill: any) {
   const presetSubs = [
     { id: 'music', name: '某易云VIP', icon: '', prices: { '/月': 25, '/季': 60, '/年': 150 } },
     { id: 'video', name: '某讯VIP', icon: '', prices: { '/月': 30, '/季': 80, '/年': 200 } },
@@ -132,7 +151,7 @@ function showAddSubscribeForm(prefill) {
               <label class="form-label">选择订阅服务</label>
               <select class="form-select" id="newSubPreset" onchange="updateSubPrice(this)">
                 <option value="">-- 请选择 --</option>
-                ${presetSubs.map(s => `<option value="${s.id}" ${prefillPlatform === s.id ? 'selected' : ''} data-icon="${s.icon}" data-name="${s.name}" data-month="${s.prices['/月']}" data-season="${s.prices['/季']}" data-year="${s.prices['/年']}">${s.icon} ${s.name}</option>`).join('')}
+                ${presetSubs.map((s: any) => `<option value="${s.id}" ${prefillPlatform === s.id ? 'selected' : ''} data-icon="${s.icon}" data-name="${s.name}" data-month="${s.prices['/月']}" data-season="${s.prices['/季']}" data-year="${s.prices['/年']}">${s.icon} ${s.name}</option>`).join('')}
               </select>
             </div>
             <div class="form-group">
@@ -176,7 +195,7 @@ function showAddSubscribeForm(prefill) {
   }
 }
 
-function updateSubPrice(el) {
+function updateSubPrice(el: any) {
   const form = el ? el.closest('.data-card') : document.querySelector('.data-card');
   if (!form) return;
   const preset = form.querySelector('#newSubPreset');
@@ -195,7 +214,7 @@ function updateSubPrice(el) {
   display.style.color = '#0B4F9C';
 }
 
-async function confirmAddSubscribe(btn) {
+async function confirmAddSubscribe(btn: any) {
   // 防重复提交：处理中禁用按钮，避免连续点击重复首扣
   if (btn && btn.dataset.busy === '1') return;
   if (btn) { btn.dataset.busy = '1'; btn.disabled = true; }
@@ -221,14 +240,14 @@ async function confirmAddSubscribe(btn) {
   }
   // 同名订阅（忽略空格）视为已存在，避免重复扣首月
   const nameKey = String(name || '').replace(/\s+/g, '').toLowerCase();
-  const dup = mockData.subscriptions.some(s => String(s.name || '').replace(/\s+/g, '').toLowerCase() === nameKey);
+  const dup = mockData.subscriptions.some((s: any) => String(s.name || '').replace(/\s+/g, '').toLowerCase() === nameKey);
   if (dup) {
     appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">「${name}」已在订阅列表中，无需重复添加。</div></div></div>`);
     scrollToBottom();
     if (btn) { btn.dataset.busy = ''; btn.disabled = false; }
     return;
   }
-  const newId = Math.max(0, ...mockData.subscriptions.map(s => s.id)) + 1;
+  const newId = Math.max(0, ...mockData.subscriptions.map((s: any) => s.id)) + 1;
   const nextDate = new Date();
   if (cycle === '/月') nextDate.setMonth(nextDate.getMonth() + 1);
   else if (cycle === '/季') nextDate.setMonth(nextDate.getMonth() + 3);

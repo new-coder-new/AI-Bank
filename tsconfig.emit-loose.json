@@ -30,10 +30,8 @@
     "js/flows/analysis.ts",
     "js/flows/card.ts",
     "js/flows/cardlimit.ts",
-    "js/flows/cardservice.ts",
     "js/flows/chat.ts",
     "js/flows/security.ts",
-    "js/flows/subscription.ts",
     "js/flows/transfer.ts",
     "js/flows/wealth.ts"
   ]

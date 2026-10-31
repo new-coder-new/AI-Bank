@@ -1,3 +1,4 @@
+"use strict";
 // ==========================================================================
 //  经典脚本模块（TypeScript 源码，noCheck 转译）
 //  编译产物：js/flows/cardservice.js
@@ -147,7 +148,7 @@ function showCardMyCards() {
 function showCardApplyForm() {
     const list = cardApplyList();
     const historyHtml = list.length
-        ? list.slice(-3).reverse().map(a => '<div class="report-row"><span>' + a.cardType + ' · ' + a.purpose + '</span><b>' + a.status + ' · ' + a.appliedAt + '</b></div>').join('')
+        ? list.slice(-3).reverse().map((a) => '<div class="report-row"><span>' + a.cardType + ' · ' + a.purpose + '</span><b>' + a.status + ' · ' + a.appliedAt + '</b></div>').join('')
         : '<div class="report-empty">暂无申请记录</div>';
     const body = '<div class="data-card">' +
         '<div class="data-card-title">申请信息</div>' +

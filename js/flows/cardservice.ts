@@ -5,6 +5,26 @@
 //        对外符号统一在 types/global.d.ts 声明。
 // ==========================================================================
 
+declare function escapeHtml(v: any): string;
+declare function agentSleep(ms: number): Promise<void>;
+declare function registerAgentTool(name: string, def: any): void;
+declare function showSecurityVerification(purpose: string, cb: (ok: boolean) => void): void;
+declare function showToast(msg: string, ms?: number): void;
+declare function agentFmt(v: any, digits?: number): string;
+declare function agentFmtInt(v: any, digits?: number): string;
+declare function scrollToBottom(): void;
+declare function appendMessage(html: string): void;
+declare function saveUserData(): void;
+declare var currentModule: string;
+declare var mockData: any;
+declare var AGENT_SESSION: any;
+declare function guideCardApplyEsc(v: any): string;
+declare function guideStartCardApply(): void;
+declare function addTransaction(type: string, amount: number, desc: string, channel?: string, deduct?: boolean): boolean | void;
+declare function verifyAmountRisk(amount: number, purpose: string, actions?: any[]): Promise<any>;
+declare function callAgentTool(name: string, args?: any): any;
+declare function submitManualReview(payload: any): void;
+
 // ==========================================================================
 //  卡片服务：卡片申请 / 交易限制 / 卡片挂失
 //  入口：输入框「+」→ 全部服务 → 卡片分组
@@ -12,12 +32,12 @@
 //        （saveUserData），不新增后端接口，避免与模拟核心库产生不一致。
 // ==========================================================================
 
-function cardServiceMoney(v) {
+function cardServiceMoney(v: any) {
   return '¥' + (Number(v) || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // 统一的「卡片页」外壳：标题 + 副标题 + 内容
-function cardServicePage(title, subtitle, body) {
+function cardServicePage(title: any, subtitle: any, body: any) {
   return '<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content">' +
     '<div class="msg-name">智能金融助手</div>' +
     '<div class="msg-bubble"><div class="report-page">' +
@@ -54,7 +74,7 @@ function cardServiceCards() {
 }
 
 // 卡片申请提交后进入「复核审批」：审批通过才核发新卡
-function submitCardApplyReview(cardType, limit, purpose) {
+function submitCardApplyReview(cardType: any, limit: any, purpose: any) {
   if (typeof submitManualReview !== 'function') return null;
   return submitManualReview({
     amount: Number(limit) || 0,
@@ -67,7 +87,7 @@ function submitCardApplyReview(cardType, limit, purpose) {
 }
 
 // 复核通过：核发新卡，并把对应申请记录置为已通过
-function approveCardApplication(args) {
+function approveCardApplication(args: any) {
   var a = args || {};
   var cardType = a.cardType || '标准金卡';
   var limit = Number(a.limit) || 0;
@@ -97,7 +117,7 @@ function approveCardApplication(args) {
 }
 
 // 复核拒绝：申请记录置为已拒绝
-function rejectCardApplication(args) {
+function rejectCardApplication(args: any) {
   var a = args || {};
   var cardType = a.cardType || '';
   var limit = Number(a.limit) || 0;
@@ -114,7 +134,7 @@ function rejectCardApplication(args) {
 }
 
 // 卡片简称：白金信用卡 → 白金（用于列表左侧小徽标）
-function cardShortLabel(type) {
+function cardShortLabel(type: any) {
   var s = String(type || '信用卡');
   if (s.indexOf('白金') !== -1) return '白金';
   if (s.indexOf('旅行') !== -1) return '旅行';
@@ -125,11 +145,11 @@ function cardShortLabel(type) {
 
 // 我的卡片：展示已持有卡片（申请通过后会增加）
 // 卡片列表统一渲染（我的卡片 / 卡片挂失等复用同一套样式）
-function cardServiceListHtml(opts) {
+function cardServiceListHtml(opts: any) {
   var o = opts || {};
   var list = Array.isArray(o.list) ? o.list : cardServiceCards();
-  var totalLimit = list.reduce(function (s, c) { return s + (Number(c.limit) || 0); }, 0);
-  var rows = list.map(function (c) {
+  var totalLimit = list.reduce(function (s: any, c: any) { return s + (Number(c.limit) || 0); }, 0);
+  var rows = list.map(function (c: any) {
     var statusCls = c.status === '已挂失' ? 'bank-status frozen' : 'bank-status approved';
     return '<div class="bank-sched-item">' +
       '<div class="bank-sched-date" style="background:#F5F8FD;color:#09407F;"><b>' + cardShortLabel(c.cardType) + '</b><small>尾号 ' + (c.tail || '****') + '</small></div>' +
@@ -154,7 +174,7 @@ function showCardMyCards() {
 function showCardApplyForm() {
   const list = cardApplyList();
   const historyHtml = list.length
-    ? list.slice(-3).reverse().map(a =>
+    ? list.slice(-3).reverse().map((a: any) =>
       '<div class="report-row"><span>' + a.cardType + ' · ' + a.purpose + '</span><b>' + a.status + ' · ' + a.appliedAt + '</b></div>'
     ).join('')
     : '<div class="report-empty">暂无申请记录</div>';
@@ -196,9 +216,9 @@ function submitCardApply() {
   const hint = document.getElementById('applyCardHint');
   if (!typeEl || !limitEl || !purposeEl) return;
 
-  const cardType = typeEl.value;
-  const want = Number(limitEl.value) || 0;
-  const purpose = purposeEl.value;
+  const cardType = (typeEl as HTMLInputElement).value;
+  const want = Number((limitEl as HTMLInputElement).value) || 0;
+  const purpose = (purposeEl as HTMLInputElement).value;
 
   if (want < 5000 || want > 200000) {
     if (hint) { hint.textContent = '期望额度需在 ¥5,000 - ¥200,000 之间'; hint.style.color = '#B42318'; }
@@ -260,7 +280,7 @@ function cardDailySpend() {
 }
 
 // 限额校验：单笔 + 日累计 + 场景（online | night | overseas），分期等消费类交易提交前调用
-function cardTxnLimitCheck(amount, scene) {
+function cardTxnLimitCheck(amount: any, scene: any) {
   const l = txnLimitData();
   const amt = Number(amount) || 0;
   const spent = Number(cardDailySpend().amount) || 0;
@@ -275,7 +295,7 @@ function cardTxnLimitCheck(amount, scene) {
 }
 
 // 交易成功后累计当日消费额（供每日限额判断）
-function cardTxnLimitRecord(amount) {
+function cardTxnLimitRecord(amount: any) {
   const d = cardDailySpend();
   d.amount = (Number(d.amount) || 0) + (Number(amount) || 0);
   saveUserData();
