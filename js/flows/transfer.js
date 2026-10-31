@@ -1380,6 +1380,16 @@ function releaseScheduledCrossTabLock() {
 }
 
 function runDueScheduledTransfers(opts) {
+  // 后端在线：到期执行交给服务端（浏览器关掉也能执行），本地不再重复扣款
+  if (typeof API !== 'undefined' && API.live && typeof apiScheduledRun === 'function') {
+    apiScheduledRun().then(function (res) {
+      if (res && res.executed > 0 && (!opts || !opts.silent)) {
+        if (typeof showToast === 'function') showToast('定时转账已由服务端执行 ' + res.executed + ' 笔');
+        if (typeof apiRefreshUI === 'function') apiRefreshUI();
+      }
+    });
+    return;
+  }
   if (window.__scheduledRunning) return;
   window.__scheduledRunning = true;
   if (!acquireScheduledCrossTabLock()) {

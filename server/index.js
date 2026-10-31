@@ -525,6 +525,82 @@ function maskCardNumber(num) {
 const SRV_CARD_TYPES = ['白金信用卡', '标准金卡', '旅行信用卡', '青年卡'];
 const SRV_CARD_PURPOSES = ['日常消费', '出行差旅', '教育培训', '大额购物', '其他'];
 
+
+// —— 定时转账服务端执行器：到期自动扣款，不依赖浏览器是否打开 ——
+function srvScheduledNextDate(dateStr, timeStr, repeat) {
+  const base = new Date(String(dateStr || '') + 'T' + String(timeStr || '09:00') + ':00');
+  if (isNaN(base.getTime())) return null;
+  const d = new Date(base.getTime());
+  if (repeat === '每天') d.setDate(d.getDate() + 1);
+  else if (repeat === '每周') d.setDate(d.getDate() + 7);
+  else if (repeat === '每月') d.setMonth(d.getMonth() + 1);
+  else if (repeat === '每年') d.setFullYear(d.getFullYear() + 1);
+  else return null;
+  return fmtDate(d);
+}
+
+function runDueScheduledTransfersServer() {
+  const state = DB.clientState || (DB.clientState = { scheduledTransfers: [] });
+  const list = Array.isArray(state.scheduledTransfers) ? state.scheduledTransfers : (state.scheduledTransfers = []);
+  if (!list.length) return 0;
+  const u = DB.userProfile;
+  const d = u.debitCard;
+  const nowTs = Date.now();
+  let executed = 0;
+
+  list.forEach((task) => {
+    if (!task || task.status !== '待执行' || task.verified !== true) return;
+    const due = new Date(String(task.date || '') + 'T' + String(task.time || '09:00') + ':00');
+    if (isNaN(due.getTime()) || due.getTime() > nowTs) return;
+
+    const amt = Math.round((Number(task.amount) || 0) * 100) / 100;
+    const payee = String(task.payee || '').trim();
+    if (!(amt > 0) || !payee) {
+      task.status = '失败';
+      task.failReason = '收款人或金额无效';
+      task.executedAt = fmtDateTime(now());
+      return;
+    }
+    if (amt > Number(d.available)) {
+      task.status = '失败';
+      task.failReason = '可用余额不足（可用 ¥' + d.available + '）';
+      task.executedAt = fmtDateTime(now());
+      auditLog(DB, 'scheduled.fail', { amount: amt, target: payee, ip: 'server', result: 'insufficient' });
+      return;
+    }
+
+    d.available = Math.round((d.available - amt) * 100) / 100;
+    d.balance = Math.round((d.balance - amt) * 100) / 100;
+    addTxn('expense', amt, '定时转账给' + payee, '定时转账');
+    u.transferHistory = u.transferHistory || [];
+    u.transferHistory.unshift({
+      id: Date.now(), payee: payee, account: '****', amount: amt,
+      time: fmtDateTime(now()), status: '已完成', channel: '定时转账'
+    });
+
+    executed++;
+    auditLog(DB, 'scheduled.execute', { amount: amt, target: payee, ip: 'server', result: 'ok' });
+
+    const repeat = String(task.repeat || '不重复');
+    const nextDate = srvScheduledNextDate(task.date, task.time, repeat);
+    if (repeat !== '不重复' && nextDate) {
+      task.date = nextDate;
+      task.lastExecutedAt = fmtDateTime(now());
+      task.executedTimes = (Number(task.executedTimes) || 0) + 1;
+    } else {
+      task.status = '已完成';
+      task.executedAt = fmtDateTime(now());
+    }
+  });
+
+  if (executed) saveDB(DB);
+  return executed;
+}
+
+// 启动后立刻跑一次，并每 30 秒巡检
+setTimeout(() => { try { runDueScheduledTransfersServer(); } catch (e) { console.warn('[sched] 启动巡检失败：' + e.message); } }, 3000);
+setInterval(() => { try { runDueScheduledTransfersServer(); } catch (e) { /* 忽略 */ } }, 30000).unref();
+
 // —— 服务端价目表（金额以此为准，前端传的 price 仅作参考被忽略）——
 const SRV_FLOWER_BOUQUETS = { '简约玫瑰': 299, '向日葵花束': 168, '混搭小花束': 159, '康乃馨礼盒': 128, '百合礼盒': 199, '郁金香花束': 229 };
 const SRV_FLOWER_CAKES = { '无蛋糕': 0, '6寸水果蛋糕': 168, '8寸奶油蛋糕': 228 };
@@ -611,6 +687,10 @@ const DEMO_PIN = process.env.BANK_DEMO_PIN || '123456';
 // ------------------------------ 路由 ------------------------------
 const routes = {
   // 健康检查
+
+  // 立即执行一次到期定时转账（返回执行条数）
+  'GET /api/scheduled/run': () => ({ ok: true, executed: runDueScheduledTransfersServer() }),
+
   'GET /api/health': () => { settlePendingRedemptions(DB); return { ok: true, service: 'bank-core', time: fmtDateTime(now()), version: DB.version }; },
 
   // 完整快照（一次性拉取全部账户数据，减少请求次数）

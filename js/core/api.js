@@ -338,6 +338,18 @@ function apiMergeClientState(state) {
   };
   u.flowerOrders = unionById(u.flowerOrders, state.flowerOrders);
   u.scheduledTransfers = unionById(u.scheduledTransfers, state.scheduledTransfers);
+  // 定时转账以服务端执行结果为准：已执行/失败的状态回写本地，避免本地重复执行或显示“待执行”
+  (Array.isArray(state.scheduledTransfers) ? state.scheduledTransfers : []).forEach(function (r) {
+    if (!r) return;
+    var local = (u.scheduledTransfers || []).filter(function (x) { return x && x.id === r.id; })[0];
+    if (!local) return;
+    if (r.status === '已完成' || r.status === '失败') {
+      local.status = r.status;
+      local.executedAt = r.executedAt || local.executedAt;
+      local.failReason = r.failReason || local.failReason;
+    }
+    if (r.lastExecutedAt) local.lastExecutedAt = r.lastExecutedAt;
+  });
   // 预算：服务端是持久化基准（每次本地改动都会即时上报），以服务端为准
   if (state.budgets && typeof state.budgets === 'object' && Object.keys(state.budgets).length) {
     u.budgets = Object.assign({}, (u.budgets && typeof u.budgets === 'object') ? u.budgets : {}, state.budgets);
@@ -372,6 +384,30 @@ function apiRefreshUI() {
       renderUserInfoPage();
     }
   } catch (e) { }
+}
+
+
+// 触发服务端执行到期定时转账，并把执行结果合并回本地
+function apiScheduledRun() {
+  if (!API.enabled) return Promise.resolve({ ok: false, offline: true });
+  return apiRequest('GET', '/api/scheduled/run').then(function (res) {
+    if (res && res.ok === false) return res;
+    return apiRequest('GET', '/api/snapshot').then(function (snap) {
+      if (snap && snap.clientState) {
+        try { apiMergeClientState(snap.clientState); } catch (e) { }
+      }
+      if (snap && snap.userProfile && snap.userProfile.debitCard && mockData.userProfile) {
+        // 服务端扣款是权威，已到期任务执行后用服务端余额校准
+        if (res && res.executed > 0) {
+          mockData.userProfile.debitCard.available = Number(snap.userProfile.debitCard.available);
+          mockData.userProfile.debitCard.balance = Number(snap.userProfile.debitCard.balance);
+          if (typeof saveUserData === 'function') saveUserData();
+          if (typeof apiRefreshUI === 'function') apiRefreshUI();
+        }
+      }
+      return res || { ok: true };
+    });
+  }).catch(function () { return { ok: false }; });
 }
 
 // 页面启动时自动初始化（放在 config.js 之后加载，此时 mockData 已就绪）
