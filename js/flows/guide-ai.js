@@ -30,7 +30,7 @@ var GUIDE_INTENT_MODULES = ({
     'transfer.timed': function (t) { GUIDE_TRANSFER = { kind: 'timed', payee: null, phone: null, amount: null, remark: '', stage: 'slots', date: null, time: null, repeat: '不重复' }; guideTransferStep(t); },
     'transfer.aa': function (t) { GUIDE_AA = { total: 0, participants: [], stage: 'slots', pendingNames: [], pickOptions: [] }; guideAAStep(t); },
     'bill.analysis': function () { if (typeof showBillOverview === 'function')
-        showBillOverview(); },
+        showBillOverview(/(本年|全年|年度|这一?年的)/.test(String(window.__GUIDE_LAST_TEXT || '')) ? 'year' : 'month'); },
     'bill.abnormal': function () { if (typeof showAbnormalAlert === 'function')
         showAbnormalAlert(); },
     'card.apply': function (t) {

@@ -1333,3 +1333,10 @@
   cursor: pointer;
 }
 .agent-face-btn:hover { background: #DCEBFA; }
+
+/* 账单分析：本月 / 本年 tab（卡片右上角，与标题对齐） */
+.bill-tabs{ display: inline-flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--bank-soft, #f1f5f9); border: 1px solid var(--bank-line, #e5e7eb); flex: 0 0 auto; }
+.bill-tab{ border: none; background: transparent; color: var(--bank-muted, #64748b); font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 8px; cursor: pointer; transition: background .18s ease, color .18s ease; }
+.bill-tab:hover{ color: var(--bank-text, #0f172a); }
+.bill-tab.active{ background: #fff; color: var(--bank-primary, #0b4f9c); box-shadow: 0 1px 2px rgba(15,23,42,.12); }
+@media (max-width: 560px){ .bill-tabs{ margin-top: 8px; } .report-head{ flex-wrap: wrap; } }

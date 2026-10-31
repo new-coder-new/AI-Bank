@@ -879,9 +879,11 @@ async function guideHandleText(text) {
         }
     }
     // 账单分析意图：「分析账单」「看看我的消费」→ 直接出可视化账单分析
+    // 提到「本年 / 全年 / 年度」时直接落在「本年」tab
     if (guideIsBillAnalysisIntent(t)) {
+        var billYear = /(本年|全年|年度|这一?年的)/.test(t);
         if (typeof showBillOverview === 'function') {
-            showBillOverview();
+            showBillOverview(billYear ? 'year' : 'month');
             return true;
         }
     }

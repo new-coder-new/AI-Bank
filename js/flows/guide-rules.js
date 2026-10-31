@@ -35,7 +35,7 @@ var GUIDE_SERVICES = [
         aliases: ['账单'],
         prompt: '账单分析包含以下操作：',
         subs: [
-            { key: 'overview', label: '账单分析', example: '分析本月账单', aliases: ['财务总览', '消费统计', '账单报告', '账单'], run: function () { showBillOverview(); } },
+            { key: 'overview', label: '账单分析', example: '分析账单', aliases: ['财务总览', '消费统计', '账单报告', '账单'], run: function () { showBillOverview(/(本年|全年|年度|这一?年的)/.test(String(window.__GUIDE_LAST_TEXT || '')) ? 'year' : 'month'); } },
             { key: 'abnormal', label: '异常交易', example: '查看异常交易', run: function () { showAbnormalAlert(); } }
         ]
     },

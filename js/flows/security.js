@@ -973,7 +973,7 @@ function quickAction(type) {
             showAdminReviewPanel();
             break;
         case 'bill':
-            showBillOverview();
+            showBillOverview(/(本年|全年|年度)/.test(String(window.__GUIDE_LAST_TEXT || '')) ? 'year' : 'month');
             break;
         case 'wealth':
             showProductList();
@@ -1021,7 +1021,7 @@ function quickAction(type) {
             guideStartBirthdayFlower();
             break;
         case 'report':
-            showBillOverview();
+            showBillOverview(/(本年|全年|年度)/.test(String(window.__GUIDE_LAST_TEXT || '')) ? 'year' : 'month');
             break;
         case 'security':
             showSecurityCenter();

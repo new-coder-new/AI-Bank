@@ -31,7 +31,7 @@ var GUIDE_INTENT_MODULES = ({
   'transfer.phone': function (t: any) { GUIDE_TRANSFER = { kind: 'phone', payee: null, phone: null, amount: null, remark: '', stage: 'slots' }; guideTransferStep(t); },
   'transfer.timed': function (t: any) { GUIDE_TRANSFER = { kind: 'timed', payee: null, phone: null, amount: null, remark: '', stage: 'slots', date: null, time: null, repeat: '不重复' }; guideTransferStep(t); },
   'transfer.aa': function (t: any) { GUIDE_AA = { total: 0, participants: [], stage: 'slots', pendingNames: [], pickOptions: [] }; guideAAStep(t); },
-  'bill.analysis': function () { if (typeof showBillOverview === 'function') showBillOverview(); },
+  'bill.analysis': function () { if (typeof showBillOverview === 'function') showBillOverview(/(本年|全年|年度|这一?年的)/.test(String((window as any).__GUIDE_LAST_TEXT || '')) ? 'year' : 'month'); },
   'bill.abnormal': function () { if (typeof showAbnormalAlert === 'function') showAbnormalAlert(); },
   'card.apply': function (t: any) {
     guideStartCardApply();

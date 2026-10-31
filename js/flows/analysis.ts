@@ -24,136 +24,201 @@ function reportColor(i: any) {
   return colors[i % colors.length];
 }
 
-// 账单分析底部的一行 AI 建议：按本月收支与支出结构给一句可执行建议
-function billAnalysisAdvice(totalIncome: any, totalExpense: any, expenseList: any) {
+// 账单分析底部的一行 AI 建议：按本月/本年收支与支出结构给一句可执行建议
+function billAnalysisAdvice(totalIncome: any, totalExpense: any, expenseList: any, scope: any) {
+  const scopeText = scope === 'year' ? '本年' : '本月';
   const net = totalIncome - totalExpense;
   const rate = totalIncome > 0 ? net / totalIncome * 100 : 0;
   const top = (expenseList || [])[0];
   const topPct = (top && totalExpense > 0) ? top.value / totalExpense * 100 : 0;
   if (totalIncome <= 0) {
-    return '本月暂无收入记录，先核对流水是否同步完整，再判断收支是否健康。';
+    return scopeText + '暂无收入记录，先核对流水是否同步完整，再判断收支是否健康。';
   }
   if (net < 0) {
-    return '本月支出比收入多 ' + reportInt(Math.abs(net)) + '，优先压缩「' + (top ? top.label : '非必要消费') + '」，避免动用储蓄补缺口。';
+    return scopeText + '支出比收入多 ' + reportInt(Math.abs(net)) + '，优先压缩「' + (top ? top.label : '非必要消费') + '」，避免动用储蓄补缺口。';
   }
   if (topPct >= 45) {
-    return '支出集中在「' + top.label + '」（占 ' + topPct.toFixed(1) + '%），本月结余 ' + reportInt(net) + '，可把其中 30% 转入货币基金降低单一支出波动。';
+    return '支出集中在「' + top.label + '」（占 ' + topPct.toFixed(1) + '%），' + scopeText + '结余 ' + reportInt(net) + '，可把其中 30% 转入货币基金降低单一支出波动。';
   }
   if (rate >= 30) {
-    return '储蓄率 ' + rate.toFixed(1) + '% 表现良好，结余 ' + reportInt(net) + ' 建议按 5:3:2 分配到货币基金、稳健理财与应急金。';
+    return '储蓄率 ' + rate.toFixed(1) + '% 表现良好，' + scopeText + '结余 ' + reportInt(net) + '，建议按 5:3:2 分配到货币基金、稳健理财与应急金。';
   }
-  return '储蓄率 ' + rate.toFixed(1) + '%，结余 ' + reportInt(net) + '；建议先补足 3 个月应急金，再考虑长期理财。';
+  return '储蓄率 ' + rate.toFixed(1) + '%，' + scopeText + '结余 ' + reportInt(net) + '；建议先补足 3 个月应急金，再考虑长期理财。';
 }
 
-// 账单分析：消费统计 + 账单报告合并，内容以可视化为主（环形图 / 占比条 / 近 7 日趋势）
-function showBillOverview() {
+// 账单分析：本月 / 本年两个口径，卡片顶部 tab 切换（环形图 / 折线 / 资产概览 / 建议）
+var billAnalysisPeriod: any = 'month';
+
+// 汇总账单数据：period = 'month'（账单流水）| 'year'（月度历史 + 当月流水）
+function billAnalysisData(period: any) {
   const u = mockData.userProfile;
   const now = new Date();
-  const monthLabel = now.getFullYear() + '年' + (now.getMonth() + 1) + '月';
+  const isYear = period === 'year';
   const txns = u.recentTxns || [];
+  // 月度历史在快照里单独下发（window.__API_MONTHLY_HISTORY），本地缓存优先
+  const history = (mockData.monthlyHistory && mockData.monthlyHistory.length
+    ? mockData.monthlyHistory
+    : ((window as any).__API_MONTHLY_HISTORY || [])).slice();
+  const curLabel = now.getFullYear() + '年' + (now.getMonth() + 1) + '月';
 
-  // —— 收支 ——
-  const totalIncome = txns.filter((t: any) => t.type === 'income').reduce((s: any, t: any) => s + t.amount, 0);
-  const totalExpense = txns.filter((t: any) => t.type === 'expense').reduce((s: any, t: any) => s + t.amount, 0);
-  const netFlow = totalIncome - totalExpense;
-  const savingsRate = totalIncome > 0 ? (netFlow / totalIncome) * 100 : 0;
-
-  // —— 支出分类 ——
-  const expenseMap: Record<string, number> = {};
+  // —— 当月流水口径 ——
+  const monthIncome = txns.filter((t: any) => t.type === 'income').reduce((s: any, t: any) => s + t.amount, 0);
+  const monthExpense = txns.filter((t: any) => t.type === 'expense').reduce((s: any, t: any) => s + t.amount, 0);
+  const monthMap: Record<string, number> = {};
   txns.filter((t: any) => t.type === 'expense').forEach((t: any) => {
-    expenseMap[t.channel] = (expenseMap[t.channel] || 0) + t.amount;
+    monthMap[t.channel] = (monthMap[t.channel] || 0) + t.amount;
   });
-  const expenseList = Object.entries(expenseMap)
+
+  // —— 全年口径：历史月份（去掉与当月重复的一条）+ 当月 ——
+  const historyPrev = history.filter((h: any) => h.month !== curLabel);
+  const yearIncome = monthIncome + historyPrev.reduce((s: any, h: any) => s + (Number(h.income) || 0), 0);
+  const yearExpense = monthExpense + historyPrev.reduce((s: any, h: any) => s + (Number(h.expense) || 0), 0);
+  const yearMap: Record<string, number> = {};
+  historyPrev.forEach((h: any) => {
+    (h.categories || []).forEach((c: any) => {
+      yearMap[c.label] = (yearMap[c.label] || 0) + (Number(c.value) || 0);
+    });
+  });
+  Object.keys(monthMap).forEach((k) => { yearMap[k] = (yearMap[k] || 0) + monthMap[k]; });
+
+  const map = isYear ? yearMap : monthMap;
+  const expenseList = Object.entries(map)
     .map(([label, value]) => ({ label, value }))
     .sort((a: any, b: any) => b.value - a.value);
-  (window as any).billExpenseData = expenseList;
 
-  // —— 近 7 日支出趋势 ——
-  const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const value = txns.filter((t: any) => t.type === 'expense' && String(t.date || '').slice(0, 10) === key)
-      .reduce((s: any, t: any) => s + t.amount, 0);
-    days.push({ label: (d.getMonth() + 1) + '/' + d.getDate(), value: value });
-  }
-  // 近 7 日没有支出时，退化为「最近 7 笔支出」，避免图表全空
+  const totalIncome = isYear ? yearIncome : monthIncome;
+  const totalExpense = isYear ? yearExpense : monthExpense;
+
+  // —— 趋势：本月看近 7 日，本年看月度支出 ——
   let trendTitle = '近 7 日支出趋势';
-  let trendData = days;
-  const sum7 = days.reduce((s: any, d: any) => s + d.value, 0);
-  if (sum7 <= 0) {
-    const recentExpense = txns.filter((t: any) => t.type === 'expense').slice(0, 7).reverse();
-    if (recentExpense.length) {
-      trendTitle = '最近 7 笔支出';
-      trendData = recentExpense.map((t: any, i: any) => {
-      const d = String(t.date || '').slice(5, 10).replace('-', '/');
-      return { label: d || ('第' + (i + 1) + '笔'), value: Number(t.amount) || 0 };
+  let trendData: any[] = [];
+  if (isYear) {
+    const months = historyPrev.slice(-6);
+    trendData = months.map((h: any) => {
+      const m = /(\d{1,2})月/.exec(String(h.month || ''));
+      return { label: (m ? m[1] : String(h.month || '')) + '月', value: Number(h.expense) || 0 };
     });
+    trendData.push({ label: (now.getMonth() + 1) + '月', value: monthExpense });
+    trendTitle = '月度支出趋势';
+  } else {
+    const days: any[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      const value = txns.filter((t: any) => t.type === 'expense' && String(t.date || '').slice(0, 10) === key)
+        .reduce((s: any, t: any) => s + t.amount, 0);
+      days.push({ label: (d.getMonth() + 1) + '/' + d.getDate(), value: value });
+    }
+    const sum7 = days.reduce((s: any, d: any) => s + d.value, 0);
+    trendData = days;
+    // 近 7 日没有支出时，退化为「最近 7 笔支出」，避免图表全空
+    if (sum7 <= 0) {
+      const recentExpense = txns.filter((t: any) => t.type === 'expense').slice(0, 7).reverse();
+      if (recentExpense.length) {
+        trendTitle = '最近 7 笔支出';
+        trendData = recentExpense.map((t: any, i: any) => {
+          const d = String(t.date || '').slice(5, 10).replace('-', '/');
+          return { label: d || ('第' + (i + 1) + '笔'), value: Number(t.amount) || 0 };
+        });
+      }
     }
   }
-  (window as any).billTrendData = trendData;
 
-  // —— 资产（两列，移动端不挤） ——
   const cash = Number(u.debitCard && u.debitCard.balance) || 0;
   const frozen = Number(u.debitCard && u.debitCard.frozen) || 0;
   const holdingsTotal = (u.holdings || []).reduce((s: any, h: any) => s + (Number(h.amount) || 0), 0);
   const totalAssets = Math.max(0, cash - frozen) + holdingsTotal;
 
-  const advice = billAnalysisAdvice(totalIncome, totalExpense, expenseList);
+  return {
+    period: isYear ? 'year' : 'month',
+    setTitle: isYear ? (now.getFullYear() + '年 · 收支结构 / 支出构成 / 月度趋势')
+      : ((now.getFullYear() + '年' + (now.getMonth() + 1) + '月') + ' · 收支结构 / 支出构成 / 近 7 日趋势'),
+    totalIncome: totalIncome,
+    totalExpense: totalExpense,
+    expenseList: expenseList,
+    trendTitle: trendTitle,
+    trendData: trendData,
+    totalAssets: totalAssets,
+    holdingsTotal: holdingsTotal,
+    frozen: frozen,
+    advice: billAnalysisAdvice(totalIncome, totalExpense, expenseList, isYear ? 'year' : 'month')
+  };
+}
 
-  const html = `
-    <div class="message">
-      <div class="msg-avatar ai">🤖</div>
-      <div class="msg-content">
-        <div class="msg-name">智能金融助手</div>
-        <div class="msg-bubble">
-          <div class="report-page">
-            <div class="report-head">
-              <div>
-                <div class="report-title">账单分析</div>
-                <div class="report-sub">${monthLabel} · 收支结构 / 支出构成 / 近 7 日趋势</div>
-              </div>
-            </div>
+// 卡片内部 HTML（tab + 各区块），切 tab 时只替换这一段
+function billAnalysisCardHtml(period: any) {
+  const d = billAnalysisData(period);
+  (window as any).billExpenseData = d.expenseList;
+  (window as any).billTrendData = d.trendData;
+  const tab = (key: any, label: any) =>
+    '<button class="bill-tab' + (d.period === key ? ' active' : '') + '" onclick="switchBillPeriod(\'' + key + '\')">' + label + '</button>';
+  return '' +
+    '<div class="report-head">' +
+      '<div>' +
+        '<div class="report-title">账单分析</div>' +
+        '<div class="report-sub">' + reportEsc(d.setTitle) + '</div>' +
+      '</div>' +
+      '<div class="bill-tabs">' + tab('month', '本月') + tab('year', '本年') + '</div>' +
+    '</div>' +
+    '<div class="report-summary cols-2">' +
+      '<div><span>总收入</span><b class="income">+' + reportMoney(d.totalIncome) + '</b></div>' +
+      '<div><span>总支出</span><b class="expense">-' + reportMoney(d.totalExpense) + '</b></div>' +
+    '</div>' +
+    '<div class="report-panel" style="margin-top:8px;">' +
+      '<div class="report-panel-title">支出构成</div>' +
+      '<div class="bill-donut-wrap">' +
+        '<div class="report-donut"><canvas id="billPieChart"></canvas></div>' +
+        '<div class="report-legend bill-legend-right" id="billPieLegend"></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="report-panel" style="margin-top:8px;">' +
+      '<div class="report-panel-title">' + reportEsc(d.trendTitle) + '</div>' +
+      '<div class="bill-trend"><canvas id="billTrendChart"></canvas></div>' +
+    '</div>' +
+    '<div class="report-panel" style="margin-top:12px;">' +
+      '<div class="report-panel-title">资产概览</div>' +
+      '<div class="report-summary cols-2">' +
+        '<div><span>总资产</span><b>' + reportMoney(d.totalAssets) + '</b></div>' +
+        '<div><span>理财持仓</span><b>' + reportMoney(d.holdingsTotal) + '</b></div>' +
+      '</div>' +
+      '<div class="report-row"><span>冻结金额</span><b>' + reportMoney(d.frozen) + '</b></div>' +
+    '</div>' +
+    '<div class="report-ai-line"><span class="report-ai-tag">AI 建议</span><span>' + reportEsc(d.advice) + '</span></div>';
+}
 
-            <div class="report-summary cols-2">
-              <div><span>总收入</span><b class="income">+${reportMoney(totalIncome)}</b></div>
-              <div><span>总支出</span><b class="expense">-${reportMoney(totalExpense)}</b></div>
-            </div>
+// 画两张图（切 tab 后需要重画）
+function billAnalysisDraw() {
+  const d = billAnalysisData(billAnalysisPeriod);
+  drawReportDonut({ canvasId: 'billPieChart', legendId: 'billPieLegend', data: d.expenseList, centerLabel: d.period === 'year' ? '年支出' : '总支出', size: 200 });
+  drawBillTrendChart({ canvasId: 'billTrendChart', data: d.trendData });
+}
 
-            <div class="report-panel" style="margin-top:8px;">
-              <div class="report-panel-title">支出构成</div>
-              <div class="bill-donut-wrap">
-                <div class="report-donut"><canvas id="billPieChart"></canvas></div>
-                <div class="report-legend bill-legend-right" id="billPieLegend"></div>
-              </div>
-            </div>
+// 切 tab：只更新卡片内部，不新增消息
+function switchBillPeriod(period: any) {
+  billAnalysisPeriod = period === 'year' ? 'year' : 'month';
+  const box = document.getElementById('bill-analysis-card');
+  if (!box) return;
+  box.innerHTML = billAnalysisCardHtml(billAnalysisPeriod);
+  setTimeout(billAnalysisDraw, 60);
+  scrollToBottom();
+}
 
-            <div class="report-panel" style="margin-top:8px;">
-              <div class="report-panel-title">${trendTitle}</div>
-              <div class="bill-trend"><canvas id="billTrendChart"></canvas></div>
-            </div>
-
-            <div class="report-panel" style="margin-top:12px;">
-              <div class="report-panel-title">资产概览</div>
-              <div class="report-summary cols-2">
-                <div><span>总资产</span><b>${reportMoney(totalAssets)}</b></div>
-                <div><span>理财持仓</span><b>${reportMoney(holdingsTotal)}</b></div>
-              </div>
-              <div class="report-row"><span>冻结金额</span><b>${reportMoney(frozen)}</b></div>
-            </div>
-
-            <div class="report-ai-line"><span class="report-ai-tag">AI 建议</span><span>${reportEsc(advice)}</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+// 账单分析入口：默认本月，可指定 'year' 直接看全年
+function showBillOverview(period: any) {
+  billAnalysisPeriod = period === 'year' ? 'year' : 'month';
+  const html =
+    '<div class="message">' +
+      '<div class="msg-avatar ai">🤖</div>' +
+      '<div class="msg-content">' +
+        '<div class="msg-name">智能金融助手</div>' +
+        '<div class="msg-bubble">' +
+          '<div class="report-page" id="bill-analysis-card">' + billAnalysisCardHtml(billAnalysisPeriod) + '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
   appendMessage(html);
-  setTimeout(() => {
-    drawReportDonut({ canvasId: 'billPieChart', legendId: 'billPieLegend', data: expenseList, centerLabel: '总支出', size: 200 });
-    drawBillTrendChart({ canvasId: 'billTrendChart', data: trendData });
-  }, 60);
+  setTimeout(billAnalysisDraw, 60);
   scrollToBottom();
 }
 

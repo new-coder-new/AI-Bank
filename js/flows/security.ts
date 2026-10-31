@@ -909,7 +909,7 @@ function quickAction(type: any) {
     case 'scheduled': showScheduledTransfers(); break;
     case 'manualReviews': showManualReviews(); break;
     case 'adminReview': showAdminReviewPanel(); break;
-    case 'bill': showBillOverview(); break;
+    case 'bill': showBillOverview(/(本年|全年|年度)/.test(String((window as any).__GUIDE_LAST_TEXT || '')) ? 'year' : 'month'); break;
     case 'wealth': showProductList(); break;
     case 'card': showCardLimit(); break;
     case 'subscribe': guideStartSubManage(); break;
@@ -925,7 +925,7 @@ function quickAction(type: any) {
     case 'agent': runAgentWorkflow('帮我转账100元然后查询余额'); break;
     case 'smartLimit': showSmartLimit(); break;
     case 'birthday': guideStartBirthdayFlower(); break;
-    case 'report': showBillOverview(); break;
+    case 'report': showBillOverview(/(本年|全年|年度)/.test(String((window as any).__GUIDE_LAST_TEXT || '')) ? 'year' : 'month'); break;
     case 'security': showSecurityCenter(); break;
     case 'batchTransfer': showBatchTransfer(); break;
     case 'investment': showInvestmentPlans(); break;

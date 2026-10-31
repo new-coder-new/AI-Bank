@@ -79,7 +79,7 @@ const CASES = [
   { text: '我想买点基金', module: 'wealth', desc: '买基金口语' },
   { text: '我持有多少', module: 'wealth', desc: '持仓口语' },
   { text: '帮我赎回稳健增利90天', module: 'wealth', desc: '赎回也不直通' },
-  { text: '分析本月账单', module: 'bill', desc: '账单也先进菜单' },
+  { text: '分析账单', module: 'bill', desc: '账单也先进菜单' },
   { text: '最近有没有异常交易', module: 'bill', desc: '异常交易' },
   { text: '我想办卡', module: 'card', desc: '办卡口语（本次 bug）' },
   { text: '我想办一张金卡', module: 'card', desc: '办卡+卡种' },

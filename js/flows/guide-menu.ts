@@ -828,8 +828,10 @@ async function guideHandleText(text: any) {
   }
 
   // 账单分析意图：「分析账单」「看看我的消费」→ 直接出可视化账单分析
+  // 提到「本年 / 全年 / 年度」时直接落在「本年」tab
   if (guideIsBillAnalysisIntent(t)) {
-    if (typeof showBillOverview === 'function') { showBillOverview(); return true; }
+    var billYear = /(本年|全年|年度|这一?年的)/.test(t);
+    if (typeof showBillOverview === 'function') { showBillOverview(billYear ? 'year' : 'month'); return true; }
   }
 
   // 定时转账意图：一句话里带时间 + 转账动作，直接进定时转账多轮流程
