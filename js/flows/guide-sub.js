@@ -77,12 +77,7 @@ function guideSubShowMine() {
     var total = list.reduce(function (s, x) { return s + (Number(x.price) || 0); }, 0);
     appendMessage(guideMessage('<p>我的订阅（共 ' + list.length + ' 项）</p>' +
         '<div class="report-panel"><div class="report-panel-title">有效订阅</div>' + rows + '</div>' +
-        '<p class="guide-tip">月度合计约 ¥' + Number(total).toFixed(2) + '；需要取消或调整自动续费可以直接说。</p>' +
-        '<div class="guide-chips">' +
-        '<button class="guide-chip" onclick="guideSubShowCatalog()">可订阅会员</button>' +
-        '<button class="guide-chip" onclick="guideStartSubCancel()">取消订阅</button>' +
-        '<button class="guide-chip" onclick="guideStartSubAutoRenew()">管理自动续费</button>' +
-        '</div>'));
+        '<p class="guide-tip">月度合计约 ¥' + Number(total).toFixed(2) + '；需要取消或调整自动续费可以直接说。</p>'));
     scrollToBottom();
 }
 function guideSubPresetRows() {

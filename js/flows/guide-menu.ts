@@ -429,17 +429,6 @@ async function guideHandleText(text: any) {
     }
   } catch (e) { /* 我的订阅失败不影响后续流程 */ }
 
-  // 账单查询（最高优先级，只读）：查询本月账单 / 查账单 / 交易明细 / 查流水
-  try {
-    var billQueryText = String(text || '').trim();
-    if (/(查询本月账单|账单查询|查账单|查流水|交易明细|本月账单|本月交易)/.test(billQueryText) &&
-        !/(分析|统计|趋势|结构|构成|健康|画像)/.test(billQueryText) &&
-        typeof showBillQuery === 'function') {
-      showBillQuery(false);
-      return true;
-    }
-  } catch (e) { /* 查询失败不影响后续流程 */ }
-
 
   // 主菜单守卫（硬规则）：主菜单只识别「属于哪个一级模块」，然后打开该模块的二级菜单。
   // 一律不直通、不抽槽位；只有进入模块（currentModule 不是 chat）之后才做槽位抽取。
@@ -820,11 +809,6 @@ async function guideHandleText(text: any) {
   // 「我现在有哪些卡」直接列卡片
   if (guideIsCardListQuery(t)) {
     if (typeof showCardMyCards === 'function') { showCardMyCards(); return true; }
-  }
-
-  // 账单查询：「查询本月账单」「查流水」「交易明细」→ 折叠前三笔的账单查询（需在只读放行之前）
-  if (/(查询|查看|看|查)/.test(t) && /(账单|流水|交易明细)/.test(t) && !/(分析|统计|结构|趋势|构成)/.test(t)) {
-    if (typeof showBillQuery === 'function') { showBillQuery(false); return true; }
   }
 
   // 只读查询交回主链路，避免「查余额 / 查信用卡额度」被菜单或调额流程劫持
