@@ -238,7 +238,7 @@ async function guideCardApplySubmit() {
     : null;
 
   appendMessage(guideMessage(
-    '<p>信用卡申请已提交，状态为<b>审核中</b>' + (review ? '，已进入「复核审批」队列' : '') +
+    '<p>信用卡申请已提交，状态为<b>审核中</b>' + ((review as any) ? '，已进入「复核审批」队列' : '') +
     '。审批通过后会核发新卡，可在申请记录里查看进度。</p>' +
     '<div class="guide-chips">' +
     '<button class="guide-chip" onclick="guideCardApplyRecords()">查看申请记录</button>' +
@@ -284,9 +284,9 @@ function guideCardLimitState() {
   }
   var d = (typeof cardLimitData === 'function') ? cardLimitData() : {};
   return {
-    current: Number(d.effectiveLimit) || 0,
-    used: Number(d.used) || 0,
-    min: (typeof cardLimitMinimum === 'function') ? Number(cardLimitMinimum()) : Number(d.used) || 0
+    current: Number((d as any).effectiveLimit) || 0,
+    used: Number((d as any).used) || 0,
+    min: (typeof cardLimitMinimum === 'function') ? Number(cardLimitMinimum()) : Number((d as any).used) || 0
   };
 }
 
