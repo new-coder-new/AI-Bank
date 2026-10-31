@@ -514,7 +514,6 @@ declare function prevTutorialStep(...args: any[]): any;
 declare function closeTutorial(...args: any[]): any;
 declare function checkTutorial(...args: any[]): any;
 declare function initPageAnimations(...args: any[]): any;
-declare function showManual(...args: any[]): any;
 declare function reportEsc(...args: any[]): any;
 declare function reportMoney(...args: any[]): any;
 declare function reportInt(...args: any[]): any;
