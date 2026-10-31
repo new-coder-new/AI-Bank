@@ -7,7 +7,6 @@
 
 declare function renderServiceWelcome(): void;
 declare var GUIDE_HOME_ENTRIES: any;
-declare function agentHandle(text: string): Promise<boolean>;
 declare function agentLLMHandle(text: string): Promise<boolean>;
 declare function registerTransferRecord(payee: string, amount: number, channel?: string, phone?: string): void;
 declare function showBatchTransfer(...args: any[]): any;

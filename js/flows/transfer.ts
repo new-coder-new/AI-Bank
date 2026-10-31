@@ -5,18 +5,23 @@
 //        对外符号统一在 types/global.d.ts 声明。
 // ==========================================================================
 
+declare function guideStartTimedTransfer(...args: any[]): any;
+declare function agentTransferTier(amount: number, risk?: any): any;
+declare var AGENT_SESSION: any;
+declare function agentTierBadge(tier: any): any;
+declare function agentAmountTier(amount: number): any;
 // ========== 智能转账（中阶：姓名/手机号/定时/AA） ==========
 // 统一写入转账记录，供「转账记录查询 / 撤销」使用。
 // 说明：转出成功后必须调用它，否则智能助手/Agent 转出的账在记录查询里会"查不到"。
 // 返回写入的记录对象；若已存在同 id 则跳过（防重复）。
-function registerTransferRecord(payee, amount, channel, account) {
+function registerTransferRecord(payee: any, amount: any, channel: any, account: any) {
   if (!mockData.userProfile.transferHistory) mockData.userProfile.transferHistory = [];
   const history = mockData.userProfile.transferHistory;
   const amt = Number(amount) || 0;
   if (amt <= 0) return null;
-  const contact = (mockData.contacts || []).find(c => c.name === payee);
+  const contact = (mockData.contacts || []).find((c: any) => c.name === payee);
   const record = {
-    id: Math.max(0, ...history.map(t => Number(t.id) || 0)) + 1,
+    id: Math.max(0, ...history.map((t: any) => Number(t.id) || 0)) + 1,
     payee: payee || '未知收款人',
     account: account || (contact && contact.account) || '**** **** **** ****',
     amount: amt,
@@ -28,12 +33,12 @@ function registerTransferRecord(payee, amount, channel, account) {
   return record;
 }
 
-function localDateValue(d) {
+function localDateValue(d: any) {
   const t = d || new Date();
   return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
 }
 
-function localTimeValue(d) {
+function localTimeValue(d: any) {
   const t = d || new Date();
   return String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
 }
@@ -43,8 +48,8 @@ function syncScheduledTimeMin() {
   const dateEl = document.getElementById('transferDate');
   const timeEl = document.getElementById('transferTime');
   if (!dateEl || !timeEl) return;
-  if (dateEl.value === localDateValue(new Date())) {
-    timeEl.min = localTimeValue(new Date(Date.now() + 5 * 60 * 1000));
+  if ((dateEl as HTMLInputElement).value === localDateValue(new Date())) {
+    (timeEl as HTMLInputElement).min = localTimeValue(new Date(Date.now() + 5 * 60 * 1000));
   } else {
     timeEl.removeAttribute('min');
   }
@@ -52,7 +57,7 @@ function syncScheduledTimeMin() {
 
 // mode: 'smart'（按姓名/手机号/银行卡号，即时转账）| 'timed'（定时转账）| 'aa'（AA 收款）
 // 面板入口按业务动作各开一个模式，避免在同一个表单里塞 5 个页签造成两套导航。
-function showTransferForm(mode) {
+function showTransferForm(mode: any) {
   const m = (mode === 'timed' || mode === 'aa' || mode === 'bank') ? mode : 'smart';
   const tabDefs = m === 'smart'
     ? [['name', '按姓名'], ['phone', '手机号']]
@@ -101,13 +106,13 @@ function showTransferForm(mode) {
 }
 
 // 打开 AA 表单并预填总金额/活动名称（语音 AA 复用，避免只按人数瞎猜参与人）
-function openAAForm(prefillTotal, prefillName) {
+function openAAForm(prefillTotal: any, prefillName: any) {
   showTransferForm('aa');
   setTimeout(function () {
     const totalInput = document.getElementById('aaTotal');
-    if (totalInput && prefillTotal) totalInput.value = prefillTotal;
+    if (totalInput && prefillTotal) (totalInput as HTMLInputElement).value = prefillTotal;
     const nameInput = document.getElementById('aaName');
-    if (nameInput && prefillName) nameInput.value = prefillName;
+    if (nameInput && prefillName) (nameInput as HTMLInputElement).value = prefillName;
     updateAADetail();
     const forms = document.querySelectorAll('.transfer-form');
     const form = forms[forms.length - 1];
@@ -120,7 +125,7 @@ function renderTransferTierHint() {
   const el = document.getElementById('transferTierHint');
   const input = document.getElementById('transferAmount');
   if (!el || !input) return;
-  const amount = parseFloat(input.value) || 0;
+  const amount = parseFloat((input as HTMLInputElement).value) || 0;
   if (amount <= 0 || typeof agentAmountTier !== 'function') { el.style.display = 'none'; return; }
   const key = agentAmountTier(amount);
   const t = AGENT_TRANSFER_TIERS[key];
@@ -132,13 +137,13 @@ function renderTransferTierHint() {
 }
 
 // 手机号与通讯录匹配：通讯录里的号码是脱敏的（138****1234），先把输入按同样规则脱敏再比对
-function maskPhoneForMatch(phone) {
+function maskPhoneForMatch(phone: any) {
   var digits = String(phone || '').replace(/\D/g, '');
   if (digits.length === 11) return digits.slice(0, 3) + '****' + digits.slice(7);
   return String(phone || '').trim();
 }
 
-function findContactByPhone(phone) {
+function findContactByPhone(phone: any) {
   var key = maskPhoneForMatch(phone);
   if (!key) return null;
   var list = mockData.contacts || [];
@@ -156,13 +161,13 @@ function resolvePhonePayee() {
   var labelEl = document.getElementById('transferNameLabel');
   if (!phoneEl || !nameEl || !hintEl) return;
 
-  var digits = String(phoneEl.value || '').replace(/\D/g, '');
+  var digits = String((phoneEl as HTMLInputElement).value || '').replace(/\D/g, '');
   var contact = digits.length === 11 ? findContactByPhone(digits) : null;
 
   if (contact) {
-    nameEl.value = contact.name;
+    (nameEl as HTMLInputElement).value = contact.name;
     nameEl.dataset.auto = '1';
-    nameEl.disabled = true;
+    (nameEl as HTMLInputElement).disabled = true;
     nameEl.style.background = '#F0F4FA';
     if (labelEl) labelEl.textContent = '收款人姓名（通讯录匹配）';
     hintEl.textContent = '已匹配联系人：' + contact.name + '（' + (contact.bank || '') + ' ' + (contact.account || '') + '）';
@@ -171,10 +176,10 @@ function resolvePhonePayee() {
   }
 
   if (nameEl.dataset.auto === '1') {
-    nameEl.value = '';
+    (nameEl as HTMLInputElement).value = '';
     nameEl.dataset.auto = '0';
   }
-  nameEl.disabled = false;
+  (nameEl as HTMLInputElement).disabled = false;
   nameEl.style.background = '';
   if (labelEl) labelEl.textContent = '收款人姓名（该手机号不在联系人中，需验证）';
   if (!digits) {
@@ -188,16 +193,16 @@ function resolvePhonePayee() {
   }
 }
 
-function switchTransferTab(el, type) {
+function switchTransferTab(el: any, type: any) {
   const forms = document.querySelectorAll('.transfer-form');
   const form = (el && typeof el.closest === 'function') ? el.closest('.transfer-form') : forms[forms.length - 1];
   if (!form) return;
-  form.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  form.querySelectorAll('.tab').forEach((t: any) => t.classList.remove('active'));
   if (el && el.classList) el.classList.add('active');
   const content = form.querySelector('#transferContent');
   if (!content) return;
   if (type === 'name') {
-    const contactOptions = mockData.contacts.map(c => `<option value="${escapeAttr(c.name)}">${escapeHtml(c.name)}（${escapeHtml(c.phone)}）</option>`).join('');
+    const contactOptions = mockData.contacts.map((c: any) => `<option value="${escapeAttr(c.name)}">${escapeHtml(c.name)}（${escapeHtml(c.phone)}）</option>`).join('');
     content.innerHTML = `
       <div class="form-group"><label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">收款人 <button class="btn btn-primary btn-sm" onclick="goToContactsTab()" style="padding:2px 8px;font-size:11px;">管理</button></label><select class="form-select" id="transferContact">${contactOptions}</select></div>
       <div class="form-group"><label class="form-label">转账金额（元）</label><input type="number" class="form-input" id="transferAmount" placeholder="请输入金额" oninput="renderTransferTierHint()"><div id="transferTierHint" style="display:none;margin-top:6px;font-size:12px;line-height:1.6;"></div></div>
@@ -219,7 +224,7 @@ function switchTransferTab(el, type) {
       <div class="form-group"><label class="form-label">备注（选填）</label><input type="text" class="form-input" id="transferRemark" placeholder="转账备注"></div>
     `;
   } else if (type === 'timed') {
-    const contactOptions = mockData.contacts.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    const contactOptions = mockData.contacts.map((c: any) => `<option value="${c.name}">${c.name}</option>`).join('');
     const now = new Date();
     const next = new Date(now.getTime() + 60 * 60 * 1000);
     const dateVal = localDateValue(next);
@@ -240,7 +245,7 @@ function switchTransferTab(el, type) {
       <div class="bank-inline-note">创建任务需完成短信验证码验证；到期自动从储蓄卡扣款，执行前可随时取消。</div>
     `;
   } else if (type === 'aa') {
-    const participantOptions = (mockData.contacts || []).map(c => `
+    const participantOptions = (mockData.contacts || []).map((c: any) => `
       <label class="aa-participant-row">
         <input type="checkbox" class="aa-participant" value="${c.name}" checked onchange="updateAADetail()">
         <span class="aa-participant-name">${c.name}</span>
@@ -273,8 +278,8 @@ function switchTransferTab(el, type) {
 }
 
 function updateAADetail() {
-  const total = parseFloat(document.getElementById('aaTotal')?.value) || 0;
-  const selected = Array.from(document.querySelectorAll('.aa-participant:checked')).map(el => el.value);
+  const total = parseFloat((document.getElementById('aaTotal') as HTMLInputElement)?.value) || 0;
+  const selected = Array.from(document.querySelectorAll('.aa-participant:checked')).map((el: any) => el.value);
   const el = document.getElementById('aaDetail');
   if (!el) return;
   if (selected.length === 0) {
@@ -292,16 +297,16 @@ function updateAADetail() {
   el.innerHTML = `已选 <b>${splitCount}</b> 人（含我）：我、${selected.join('、')}<br>向 <b>${selected.length}</b> 人收款，每人应付 <b>¥${per.toFixed(2)}</b>`;
 }
 
-function toggleAllAAParticipants(btn) {
+function toggleAllAAParticipants(btn: any) {
   const boxes = Array.from(document.querySelectorAll('.aa-participant'));
   if (!boxes.length) return;
-  const allChecked = boxes.every(b => b.checked);
-  boxes.forEach(b => { b.checked = !allChecked; });
+  const allChecked = boxes.every((b: any) => b.checked);
+  boxes.forEach((b: any) => { b.checked = !allChecked; });
   if (btn) btn.textContent = allChecked ? '全选' : '清空';
   updateAADetail();
 }
 
-function confirmTransfer(btn) {
+function confirmTransfer(btn: any) {
   const form = btn ? btn.closest('.transfer-form') : document.querySelector('.transfer-form');
   if (!form) return;
   const activeTab = form.querySelector('.tab.active');
@@ -309,12 +314,12 @@ function confirmTransfer(btn) {
   const type = activeTab
     ? (activeTab.textContent.includes('姓名') ? 'name' : activeTab.textContent.includes('手机号') ? 'phone' : activeTab.textContent.includes('银行卡') ? 'bank' : activeTab.textContent.includes('定时') ? 'timed' : 'aa')
     : (formMode === 'timed' || formMode === 'aa' || formMode === 'bank' ? formMode : 'name');
-  const getVal = (id) => form.querySelector('#' + id)?.value || '';
+  const getVal = (id: any) => form.querySelector('#' + id)?.value || '';
   let detailHtml = '';
   let aaRequestData = null;
   if (type === 'aa') {
     const total = parseFloat(getVal('aaTotal')) || 0;
-    const collectFrom = Array.from(form.querySelectorAll('.aa-participant:checked')).map(el => el.value);
+    const collectFrom = Array.from(form.querySelectorAll('.aa-participant:checked')).map((el: any) => el.value);
     const activity = getVal('aaName') || 'AA收款';
     if (!(total > 0)) {
       appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>请输入有效的 AA 总金额</strong></div></div></div>');
@@ -345,7 +350,7 @@ function confirmTransfer(btn) {
     const time = getVal('transferTime') || '09:00';
     const repeat = getVal('transferRepeat') || '不重复';
     const remark = getVal('transferRemark') || '';
-    const info = mockData.contacts.find(c => c.name === contact);
+    const info = mockData.contacts.find((c: any) => c.name === contact);
     const task = {
       payee: contact,
       account: info?.account || '',
@@ -364,7 +369,7 @@ function confirmTransfer(btn) {
       return;
     }
     form.closest('.message')?.remove();
-    openScheduledTransferConfirm(task);
+    openScheduledTransferConfirm(task, undefined);
     return;
   } else if (type === 'phone') {
     const phone = String(getVal('transferPhone') || '').replace(/\D/g, '');
@@ -396,7 +401,7 @@ function confirmTransfer(btn) {
     const contact = getVal('transferContact');
     const amount = getVal('transferAmount') || '0';
     const remark = getVal('transferRemark') || '无';
-    const contactInfo = mockData.contacts.find(c => c.name === contact);
+    const contactInfo = mockData.contacts.find((c: any) => c.name === contact);
     detailHtml = `<div class="data-row"><span class="data-label">收款人</span><span class="data-value">${contact}</span></div>
       <div class="data-row"><span class="data-label">收款账户</span><span class="data-value">${contactInfo?.account || '-'}</span></div>
       <div class="data-row"><span class="data-label">转账金额</span><span class="data-value expense">¥ ${parseFloat(amount).toFixed(2)}</span></div>
@@ -490,7 +495,7 @@ function confirmTransfer(btn) {
   scrollToBottom();
 }
 
-function cancelTransfer(btn) {
+function cancelTransfer(btn: any) {
   // 取消必须让草稿失效：移除整个表单消息，避免“已取消”后还能点旧按钮转账
   const form = btn && btn.closest ? btn.closest('.transfer-form') : null;
   const msg = form ? form.closest('.message') : null;
@@ -511,7 +516,7 @@ function showTransferHistory() {
         <div class="msg-bubble">
           <p><strong>转账记录查询</strong>（共 ${history.length} 笔）</p>
           <div class="data-card">
-            ${history.map(t => `
+            ${history.map((t: any) => `
               <div class="transfer-record-item">
                 <div class="transfer-record-icon"></div>
                 <div class="transfer-record-info">
@@ -532,9 +537,9 @@ function showTransferHistory() {
   scrollToBottom();
 }
 
-function revokeTransfer(id) {
+function revokeTransfer(id: any) {
   const history = mockData.userProfile.transferHistory || [];
-  const record = history.find(t => t.id === id);
+  const record = history.find((t: any) => t.id === id);
   if (record && record.status === '已完成') {
     record.status = '已撤销';
     addTransaction('income', record.amount, `转账撤销-${record.payee}（原路退回）`, '转账撤销');
@@ -556,12 +561,12 @@ function revokeTransfer(id) {
 
 // ========== 功能增强：批量转账 ==========
 // 批量转账选中的收款人
-let batchTransferSelected = [];
+let batchTransferSelected: any[] = [];
 
 // 智能解析批量转账指令：提取多个收款人和金额
-function smartBatchTransferParse(text) {
+function smartBatchTransferParse(text: any) {
   const contacts = mockData.contacts || [];
-  const selectedIndexes = [];
+  const selectedIndexes: any[] = [];
   let amount = 0;
 
   // 提取金额
@@ -580,7 +585,7 @@ function smartBatchTransferParse(text) {
   }
 
   // 匹配通讯录中的收款人（支持"和"、"、"分隔）
-  contacts.forEach((c, idx) => {
+  contacts.forEach((c: any, idx: any) => {
     if (text.includes(c.name)) {
       selectedIndexes.push(idx);
     }
@@ -590,7 +595,7 @@ function smartBatchTransferParse(text) {
 }
 
 // 显示批量转账界面（支持预填选中的收款人和金额）
-function showBatchTransfer(prefill) {
+function showBatchTransfer(prefill: any) {
   // 先移除之前的批量转账界面，避免ID冲突
   const oldPanel = document.getElementById('batch-transfer-panel');
   if (oldPanel) oldPanel.closest('.message')?.remove();
@@ -598,7 +603,7 @@ function showBatchTransfer(prefill) {
   const contacts = mockData.contacts || [];
   // 选中状态按下标保存；对话期间联系人可能被删除导致下标前移。
   // 这里记录一份打开面板时的名单快照，确认时逐项核对，避免把钱转给错误的人。
-  window.__batchContactsSnapshot = contacts.map(function (c) { return { name: c.name, phone: c.phone }; });
+  (window as any).__batchContactsSnapshot = contacts.map(function (c: any) { return { name: c.name, phone: c.phone }; });
 
   // 预填选中的收款人和金额
   if (prefill && prefill.selectedIndexes && prefill.selectedIndexes.length > 0) {
@@ -624,7 +629,7 @@ function showBatchTransfer(prefill) {
               <button onclick="selectAllContacts()" style="background:none;border:none;color:#0B4F9C;font-size:12px;cursor:pointer;font-weight:600;">全选</button>
             </div>
             <div id="contactSelectList" style="max-height:200px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px;padding:8px;">
-              ${contacts.map((c, i) => `
+              ${contacts.map((c: any, i: any) => `
                 <div onclick="toggleContactSelect(${i})" id="contact-item-${i}" style="display:flex;align-items:center;padding:8px;border-radius:6px;cursor:pointer;transition:all 0.2s;">
                   <div style="width:20px;height:20px;border:2px solid #d1d5db;border-radius:4px;margin-right:10px;display:flex;align-items:center;justify-content:center;" id="contact-checkbox-${i}"></div>
                   <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#0B4F9C,#1F6FD0);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;margin-right:10px;">${c.name.charAt(0)}</div>
@@ -664,14 +669,14 @@ function showBatchTransfer(prefill) {
   `;
   appendMessage(html);
   scrollToBottom();
-  window.batchAmountMode = 'uniform';
+  (window as any).batchAmountMode = 'uniform';
   
   // 渲染后自动更新汇总信息，并高亮选中的收款人
   setTimeout(() => {
     updateBatchSummary();
     // 高亮预填选中的收款人
     if (prefill && prefill.selectedIndexes && prefill.selectedIndexes.length > 0) {
-      prefill.selectedIndexes.forEach(i => {
+      prefill.selectedIndexes.forEach((i: any) => {
         const item = document.getElementById('contact-item-' + i);
         const checkbox = document.getElementById('contact-checkbox-' + i);
         if (item && checkbox) {
@@ -690,7 +695,7 @@ function showBatchTransfer(prefill) {
 }
 
 // 切换联系人选中状态
-function toggleContactSelect(index) {
+function toggleContactSelect(index: any) {
   const idx = batchTransferSelected.indexOf(index);
   if (idx > -1) {
     batchTransferSelected.splice(idx, 1);
@@ -707,7 +712,7 @@ function selectAllContacts() {
   if (batchTransferSelected.length === contacts.length) {
     batchTransferSelected = [];
   } else {
-    batchTransferSelected = contacts.map((_, i) => i);
+    batchTransferSelected = contacts.map((_: any, i: any) => i);
   }
   updateContactSelectUI();
   updateBatchSummary();
@@ -716,8 +721,8 @@ function selectAllContacts() {
 // 更新联系人选择UI
 function updateContactSelectUI() {
   const contacts = mockData.contacts || [];
-  document.getElementById('selectedCount').textContent = String(batchTransferSelected.length);
-  contacts.forEach((_, i) => {
+  (document.getElementById('selectedCount') as HTMLInputElement).textContent = String(batchTransferSelected.length);
+  contacts.forEach((_: any, i: any) => {
     const item = document.getElementById('contact-item-' + i);
     const checkbox = document.getElementById('contact-checkbox-' + i);
     if (item && checkbox) {
@@ -736,37 +741,37 @@ function updateContactSelectUI() {
       }
     }
   });
-  if (window.batchAmountMode === 'individual') {
+  if ((window as any).batchAmountMode === 'individual') {
     updateIndividualAmountList();
   }
 }
 
 // 设置批量金额模式
-function setBatchAmountMode(mode) {
-  window.batchAmountMode = mode;
+function setBatchAmountMode(mode: any) {
+  (window as any).batchAmountMode = mode;
   const uniformBtn = document.getElementById('mode-uniform');
   const individualBtn = document.getElementById('mode-individual');
   const uniformSection = document.getElementById('uniformAmountSection');
   const individualSection = document.getElementById('individualAmountSection');
   
   if (mode === 'uniform') {
-    uniformBtn.style.borderColor = '#0B4F9C';
-    uniformBtn.style.background = '#F2F6FC';
-    uniformBtn.style.color = '#0B4F9C';
-    individualBtn.style.borderColor = '#e5e7eb';
-    individualBtn.style.background = '#fff';
-    individualBtn.style.color = '#374151';
-    uniformSection.style.display = 'block';
-    individualSection.style.display = 'none';
+    (uniformBtn as any).style.borderColor = '#0B4F9C';
+    (uniformBtn as any).style.background = '#F2F6FC';
+    (uniformBtn as any).style.color = '#0B4F9C';
+    (individualBtn as any).style.borderColor = '#e5e7eb';
+    (individualBtn as any).style.background = '#fff';
+    (individualBtn as any).style.color = '#374151';
+    (uniformSection as HTMLElement).style.display = 'block';
+    (individualSection as HTMLElement).style.display = 'none';
   } else {
-    individualBtn.style.borderColor = '#0B4F9C';
-    individualBtn.style.background = '#F2F6FC';
-    individualBtn.style.color = '#0B4F9C';
-    uniformBtn.style.borderColor = '#e5e7eb';
-    uniformBtn.style.background = '#fff';
-    uniformBtn.style.color = '#374151';
-    uniformSection.style.display = 'none';
-    individualSection.style.display = 'block';
+    (individualBtn as any).style.borderColor = '#0B4F9C';
+    (individualBtn as any).style.background = '#F2F6FC';
+    (individualBtn as any).style.color = '#0B4F9C';
+    (uniformBtn as any).style.borderColor = '#e5e7eb';
+    (uniformBtn as any).style.background = '#fff';
+    (uniformBtn as any).style.color = '#374151';
+    (uniformSection as HTMLElement).style.display = 'none';
+    (individualSection as HTMLElement).style.display = 'block';
     updateIndividualAmountList();
   }
   updateBatchSummary();
@@ -781,7 +786,7 @@ function updateIndividualAmountList() {
     list.innerHTML = '<div style="text-align:center;padding:20px;color:#999;font-size:12px;">请先选择收款人</div>';
     return;
   }
-  list.innerHTML = batchTransferSelected.map(i => {
+  list.innerHTML = batchTransferSelected.map((i: any) => {
     const c = contacts[i];
     return `
       <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;">
@@ -800,12 +805,12 @@ function updateBatchSummary() {
   if (!countEl || !totalEl) return;
   
   let total = 0;
-  if (window.batchAmountMode === 'uniform') {
-    const amount = parseFloat(document.getElementById('batchUniformAmount')?.value) || 0;
+  if ((window as any).batchAmountMode === 'uniform') {
+    const amount = parseFloat((document.getElementById('batchUniformAmount') as HTMLInputElement)?.value) || 0;
     total = amount * batchTransferSelected.length;
   } else {
-    batchTransferSelected.forEach(i => {
-      const amount = parseFloat(document.getElementById('individual-amount-' + i)?.value) || 0;
+    batchTransferSelected.forEach((i: any) => {
+      const amount = parseFloat(((document.getElementById('individual-amount-' + i) as HTMLInputElement)?.value) || '0') || 0;
       total += amount;
     });
   }
@@ -814,12 +819,12 @@ function updateBatchSummary() {
   totalEl.textContent = '¥' + total.toLocaleString('zh-CN', {minimumFractionDigits: 2});
 }
 
-function cancelBatchTransfer(btn) {
+function cancelBatchTransfer(btn: any) {
   const panel = document.getElementById('batch-transfer-panel');
   const msg = panel ? panel.closest('.message') : (btn && btn.closest ? btn.closest('.message') : null);
   if (msg) msg.remove();
   batchTransferSelected = [];
-  window.__batchContactsSnapshot = null;
+  (window as any).__batchContactsSnapshot = null;
   appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">已取消批量转账，本次未发生扣款。</div></div></div>');
   scrollToBottom();
 }
@@ -832,10 +837,10 @@ async function confirmBatchTransfer() {
   }
   
   const contacts = mockData.contacts || [];
-  const snapshot = window.__batchContactsSnapshot || [];
+  const snapshot = (window as any).__batchContactsSnapshot || [];
   const d = mockData.userProfile.debitCard;
   let totalAmount = 0;
-  const transfers = [];
+  const transfers: any[] = [];
 
   // 名单快照核对：联系人被删除/调整顺序后，下标可能指向另一个人，直接中止
   for (const i of batchTransferSelected) {
@@ -847,18 +852,18 @@ async function confirmBatchTransfer() {
     }
   }
 
-  if (window.batchAmountMode === 'uniform') {
-    const amount = parseFloat(document.getElementById('batchUniformAmount')?.value) || 0;
+  if ((window as any).batchAmountMode === 'uniform') {
+    const amount = parseFloat((document.getElementById('batchUniformAmount') as HTMLInputElement)?.value) || 0;
     if (amount <= 0) { alert('请输入正确的转账金额'); return; }
-    batchTransferSelected.forEach(i => {
+    batchTransferSelected.forEach((i: any) => {
       transfers.push({ name: contacts[i].name, amount });
       totalAmount += amount;
     });
   } else {
     // 先完整校验，任何一人金额无效都中止整批，不能只跳过当前人继续转其他人
-    const invalid = [];
-    batchTransferSelected.forEach(i => {
-      const amount = parseFloat(document.getElementById('individual-amount-' + i)?.value) || 0;
+    const invalid: any[] = [];
+    batchTransferSelected.forEach((i: any) => {
+      const amount = parseFloat(((document.getElementById('individual-amount-' + i) as HTMLInputElement)?.value) || '0') || 0;
       if (!(amount > 0)) invalid.push(contacts[i].name);
       transfers.push({ name: contacts[i].name, amount });
       totalAmount += amount;
@@ -880,20 +885,20 @@ async function confirmBatchTransfer() {
   }
 
   // 人工确认框
-  const confirmText = `确认批量转账？\n\n转账人数：${transfers.length} 人\n转账总金额：¥${totalAmount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}\n当前可用余额：¥${avail.toLocaleString('zh-CN', {minimumFractionDigits: 2})}\n转账后余额：¥${(avail - totalAmount).toLocaleString('zh-CN', {minimumFractionDigits: 2})}\n\n${transfers.map(t => `• ${t.name}：¥${t.amount.toLocaleString()}`).join('\n')}`;
+  const confirmText = `确认批量转账？\n\n转账人数：${transfers.length} 人\n转账总金额：¥${totalAmount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}\n当前可用余额：¥${avail.toLocaleString('zh-CN', {minimumFractionDigits: 2})}\n转账后余额：¥${(avail - totalAmount).toLocaleString('zh-CN', {minimumFractionDigits: 2})}\n\n${transfers.map((t: any) => `• ${t.name}：¥${t.amount.toLocaleString()}`).join('\n')}`;
 
   if (!confirm(confirmText)) return;
 
   // 批量转账总额同样适用金额分级：T2 密码确认，T3 二次验证，T4 提交人工复核
   if (typeof verifyAmountRisk === 'function') {
-    const batchActions = transfers.map(t => ({ tool: 'transfer.execute', args: { payee: t.name, amount: t.amount, channel: '批量转账' } }));
+    const batchActions = transfers.map((t: any) => ({ tool: 'transfer.execute', args: { payee: t.name, amount: t.amount, channel: '批量转账' } }));
     const risk = await verifyAmountRisk(totalAmount, '批量转账', batchActions);
     if (risk && risk.pendingReview) {
       // 已提交人工复核：立即移除面板并清空选中，避免重复提交同一批产生多张复核单
       const panel = document.getElementById('batch-transfer-panel');
       if (panel) panel.closest('.message')?.remove();
       batchTransferSelected = [];
-      window.__batchContactsSnapshot = null;
+      (window as any).__batchContactsSnapshot = null;
       return;
     }
     if (!risk || !risk.ok) {
@@ -912,7 +917,7 @@ async function confirmBatchTransfer() {
       try {
         res = await callAgentTool('transfer.execute', { payee: t.name, amount: t.amount, channel: '批量转账' });
       } catch (e) {
-        res = { ok: false, summary: (e && e.message) || '执行失败' };
+        res = { ok: false, summary: (e && (e as any).message) || '执行失败' };
       }
     } else {
       const okTx = addTransaction('expense', t.amount, '转账给' + t.name, '批量转账', true);
@@ -927,9 +932,9 @@ async function confirmBatchTransfer() {
   const panel = document.getElementById('batch-transfer-panel');
   if (panel) panel.closest('.message')?.remove();
   batchTransferSelected = [];
-  window.__batchContactsSnapshot = null;
+  (window as any).__batchContactsSnapshot = null;
   
-  appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">${failed === 0 ? '✅ <strong>批量转账成功</strong>' : '⚠️ <strong>批量转账部分完成</strong>'}<br>转账人数：${transfers.length} 人（成功 ${succeeded} 笔${failed ? '，失败 ' + failed + ' 笔（可用余额不足）' : ''}）<br>转账总金额：¥${totalAmount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}<br><br>${transfers.map(t => `• ${t.name}：¥${t.amount.toLocaleString()}`).join('<br>')}<br><br>当前可用余额：¥${Number(d.available).toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div></div></div>`);
+  appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">${failed === 0 ? '✅ <strong>批量转账成功</strong>' : '⚠️ <strong>批量转账部分完成</strong>'}<br>转账人数：${transfers.length} 人（成功 ${succeeded} 笔${failed ? '，失败 ' + failed + ' 笔（可用余额不足）' : ''}）<br>转账总金额：¥${totalAmount.toLocaleString('zh-CN', {minimumFractionDigits: 2})}<br><br>${transfers.map((t: any) => `• ${t.name}：¥${t.amount.toLocaleString()}`).join('<br>')}<br><br>当前可用余额：¥${Number(d.available).toLocaleString('zh-CN', {minimumFractionDigits: 2})}</div></div></div>`);
   scrollToBottom();
 }
 
@@ -939,22 +944,22 @@ async function confirmBatchTransfer() {
 // ==========================================================================
 var SCHEDULED_DEMO_OTP = '123456';
 
-function schedEsc(v) {
+function schedEsc(v: any) {
   return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function schedMoney(v) {
+function schedMoney(v: any) {
   return '¥' + (Number(v) || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function getScheduledTransfers() {
   const u = mockData.userProfile;
   if (!Array.isArray(u.scheduledTransfers)) u.scheduledTransfers = [];
-  u.scheduledTransfers.forEach(t => { t.amount = Number(t.amount) || 0; });
+  u.scheduledTransfers.forEach((t: any) => { t.amount = Number(t.amount) || 0; });
   return u.scheduledTransfers;
 }
 
-function scheduledDateTimeValue(task) {
+function scheduledDateTimeValue(task: any) {
   const dp = String(task.date || '').split('-');
   const tp = String(task.time || '09:00').split(':');
   if (dp.length !== 3) return null;
@@ -962,20 +967,20 @@ function scheduledDateTimeValue(task) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-function schedMaskAccount(account) {
+function schedMaskAccount(account: any) {
   const s = String(account || '');
   if (s.length < 8) return s || '储蓄卡';
   return s.slice(0, 4) + ' **** ' + s.slice(-4);
 }
 
-function schedStatusClass(status) {
+function schedStatusClass(status: any) {
   if (status === '待执行') return 'pending';
   if (status === '已完成') return 'done';
   if (status === '已取消') return 'cancelled';
   return 'failed';
 }
 
-function schedDefaultTask(task) {
+function schedDefaultTask(task: any) {
   const t = Object.assign({}, task || {});
   if (!t.date || !t.time) {
     const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -987,7 +992,7 @@ function schedDefaultTask(task) {
   return t;
 }
 
-function schedValidationError(task) {
+function schedValidationError(task: any) {
   if (!task.payee) return '请选择收款人。';
   if (!(task.amount > 0)) return '请输入大于 0 的转账金额。';
   const due = scheduledDateTimeValue(task);
@@ -996,7 +1001,7 @@ function schedValidationError(task) {
   return '';
 }
 
-function openScheduledTransferConfirm(task, opts) {
+function openScheduledTransferConfirm(task: any, opts: any) {
   const o = opts || {};
   const t = schedDefaultTask(task);
   const err = schedValidationError(t);
@@ -1005,7 +1010,7 @@ function openScheduledTransferConfirm(task, opts) {
     scrollToBottom();
     return;
   }
-  const info = (mockData.contacts || []).find(c => c.name === t.payee);
+  const info = (mockData.contacts || []).find((c: any) => c.name === t.payee);
   const account = t.account || (info && info.account) || '';
   const avail = Number(mockData.userProfile.debitCard.available) || 0;
   const shortWarn = t.amount > avail
@@ -1013,8 +1018,8 @@ function openScheduledTransferConfirm(task, opts) {
     : '';
   const cardId = 'sched-confirm-' + Date.now();
   // 每张确认卡绑定自己的任务，避免后开的卡覆盖前一张，验证 A 卡创建 B 任务
-  window.__pendingScheduledTransfers = window.__pendingScheduledTransfers || {};
-  window.__pendingScheduledTransfers[cardId] = t;
+  (window as any).__pendingScheduledTransfers = (window as any).__pendingScheduledTransfers || {};
+  (window as any).__pendingScheduledTransfers[cardId] = t;
 
   const html = `
     <div class="message">
@@ -1055,17 +1060,17 @@ function openScheduledTransferConfirm(task, opts) {
   }, 120);
 }
 
-function submitScheduledTransferOtp(btn) {
+function submitScheduledTransferOtp(btn: any) {
   const card = btn.closest('.bank-confirm');
   if (!card) return;
   const input = card.querySelector('.bank-otp-input');
   const errEl = card.querySelector('.bank-otp-error');
   const code = (input && input.value ? input.value : '').replace(/\D/g, '');
   if (code !== SCHEDULED_DEMO_OTP) {
-    window.__schedOtpAttempts = window.__schedOtpAttempts || {};
+    (window as any).__schedOtpAttempts = (window as any).__schedOtpAttempts || {};
     const key = card.id || 'sched';
-    window.__schedOtpAttempts[key] = (window.__schedOtpAttempts[key] || 0) + 1;
-    if (window.__schedOtpAttempts[key] >= 5) {
+    (window as any).__schedOtpAttempts[key] = ((window as any).__schedOtpAttempts[key] || 0) + 1;
+    if ((window as any).__schedOtpAttempts[key] >= 5) {
       if (errEl) errEl.textContent = '验证失败次数过多，本张确认卡已失效，请重新发起。';
       const submit = card.querySelector('.btn-primary');
       if (submit) submit.disabled = true;
@@ -1076,8 +1081,8 @@ function submitScheduledTransferOtp(btn) {
     if (input) { input.value = ''; input.focus(); }
     return;
   }
-  if (window.__schedOtpAttempts && card.id) delete window.__schedOtpAttempts[card.id];
-  const pendingMap = window.__pendingScheduledTransfers || {};
+  if ((window as any).__schedOtpAttempts && card.id) delete (window as any).__schedOtpAttempts[card.id];
+  const pendingMap = (window as any).__pendingScheduledTransfers || {};
   const task = card.id ? pendingMap[card.id] : null;
   if (!task) {
     if (errEl) errEl.textContent = '确认信息已失效，请重新发起。';
@@ -1116,15 +1121,15 @@ function submitScheduledTransferOtp(btn) {
   if (typeof showToast === 'function') showToast('定时转账任务已创建，到期自动执行');
 }
 
-function cancelScheduledDraft(btn) {
+function cancelScheduledDraft(btn: any) {
   const card = btn.closest('.bank-confirm');
-  if (card && card.id && window.__pendingScheduledTransfers) {
-    delete window.__pendingScheduledTransfers[card.id];
+  if (card && card.id && (window as any).__pendingScheduledTransfers) {
+    delete (window as any).__pendingScheduledTransfers[card.id];
   }
   if (card) card.innerHTML = '<div class="bank-cancelled">已取消，未创建定时转账任务。</div>';
 }
 
-function createScheduledTransferTask(task) {
+function createScheduledTransferTask(task: any) {
   const list = getScheduledTransfers();
   const now = new Date();
   const record = {
@@ -1161,7 +1166,7 @@ function createScheduledTransferTask(task) {
   return record;
 }
 
-function scheduledCreatedHtml(task) {
+function scheduledCreatedHtml(task: any) {
   return '<div class="bank-result" id="sched-created-' + schedEsc(task.id) + '">' +
     '<div class="bank-result-icon">' + bankIcon('check', 22) + '</div>' +
     '<div class="bank-result-title">定时转账任务已创建</div>' +
@@ -1182,7 +1187,7 @@ function scheduledCreatedHtml(task) {
 
 // 任务状态变化后，同步更新页面上对应的"创建成功"卡片和列表计数，避免出现
 // "列表已取消、成功卡片还写着待执行" 这类自相矛盾的信息。
-function updateScheduledCreatedStatus(taskId, text, cls) {
+function updateScheduledCreatedStatus(taskId: any, text: any, cls: any) {
   const card = document.getElementById('sched-created-' + taskId);
   if (!card) return;
   const el = card.querySelector('.sched-created-status');
@@ -1195,7 +1200,7 @@ function updateScheduledCreatedStatus(taskId, text, cls) {
 function refreshScheduledListCount() {
   const el = document.querySelector('#scheduled-list-card .bank-page-sub');
   if (!el) return;
-  const pending = getScheduledTransfers().filter(t => t.status === '待执行').length;
+  const pending = getScheduledTransfers().filter((t: any) => t.status === '待执行').length;
   el.textContent = '共 ' + pending + ' 笔待执行';
 }
 
@@ -1211,14 +1216,14 @@ function openTimedTransferForm() {
 function showScheduledTransfers() {
   if (typeof runDueScheduledTransfers === 'function') runDueScheduledTransfers({ silent: true });
   const list = getScheduledTransfers();
-  const pending = list.filter(t => t.status === '待执行');
-  const history = list.filter(t => t.status !== '待执行');
-  const sorted = pending.slice().sort((a, b) => {
+  const pending = list.filter((t: any) => t.status === '待执行');
+  const history = list.filter((t: any) => t.status !== '待执行');
+  const sorted = pending.slice().sort((a: any, b: any) => {
     const da = scheduledDateTimeValue(a), db = scheduledDateTimeValue(b);
     return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
   }).concat(history);
 
-  const rows = sorted.map(t => {
+  const rows = sorted.map((t: any) => {
     const due = scheduledDateTimeValue(t);
     const dateLabel = due ? (String(due.getMonth() + 1).padStart(2, '0') + '-' + String(due.getDate()).padStart(2, '0')) : '--';
     const timeLabel = due ? localTimeValue(due) : (t.time || '09:00');
@@ -1246,8 +1251,8 @@ function showScheduledTransfers() {
   scrollToBottom();
 }
 
-function cancelScheduledTransferTask(id) {
-  const task = getScheduledTransfers().find(t => String(t.id) === String(id));
+function cancelScheduledTransferTask(id: any) {
+  const task = getScheduledTransfers().find((t: any) => String(t.id) === String(id));
   if (!task || task.status !== '待执行') return;
   if (!confirm('确定取消这笔定时转账？\n\n收款人：' + task.payee + '\n金额：' + schedMoney(task.amount) + '\n执行时间：' + task.date + ' ' + task.time)) return;
   task.status = '已取消';
@@ -1266,7 +1271,7 @@ function cancelScheduledTransferTask(id) {
 }
 
 // 计算下一次执行日期；不重复任务返回 null
-function nextScheduledRun(date, time, repeat, anchorDay, anchorMonth) {
+function nextScheduledRun(date: any, time: any, repeat: any, anchorDay: any, anchorMonth: any) {
   if (!repeat || repeat === '不重复') return null;
   const d = scheduledDateTimeValue({ date: date, time: time });
   if (!d) return null;
@@ -1300,7 +1305,7 @@ function nextScheduledRun(date, time, repeat, anchorDay, anchorMonth) {
   return { date: localDateValue(d), time: localTimeValue(d) };
 }
 
-function executeScheduledTransferTask(task) {
+function executeScheduledTransferTask(task: any) {
   const amount = Number(task.amount) || 0;
   if (!(amount > 0)) {
     task.status = '执行失败';
@@ -1341,11 +1346,11 @@ function executeScheduledTransferTask(task) {
   return { ok: true, next: next };
 }
 
-function scheduledRunResultHtml(results) {
-  const okCount = results.filter(r => r.ok).length;
+function scheduledRunResultHtml(results: any) {
+  const okCount = results.filter((r: any) => r.ok).length;
   const failCount = results.length - okCount;
   const title = failCount === 0 ? '定时转账已自动执行' : (okCount ? '定时转账部分执行成功' : '定时转账执行失败');
-  const rows = results.map(r => {
+  const rows = results.map((r: any) => {
     const t = r.task;
     const next = r.next ? '下次 ' + r.next.date + ' ' + r.next.time : '';
     return '<div class="bank-sched-result ' + (r.ok ? 'ok' : 'fail') + '">' +
@@ -1386,10 +1391,10 @@ function releaseScheduledCrossTabLock() {
   try { localStorage.removeItem('financeScheduledLock'); } catch (e) { }
 }
 
-function runDueScheduledTransfers(opts) {
+function runDueScheduledTransfers(opts: any) {
   // 后端在线：到期执行交给服务端（浏览器关掉也能执行），本地不再重复扣款
   if (typeof API !== 'undefined' && API.live && typeof apiScheduledRun === 'function') {
-    apiScheduledRun().then(function (res) {
+    apiScheduledRun().then(function (res: any) {
       if (res && res.executed > 0 && (!opts || !opts.silent)) {
         if (typeof showToast === 'function') showToast('定时转账已由服务端执行 ' + res.executed + ' 笔');
         if (typeof apiRefreshUI === 'function') apiRefreshUI();
@@ -1397,17 +1402,17 @@ function runDueScheduledTransfers(opts) {
     });
     return;
   }
-  if (window.__scheduledRunning) return;
-  window.__scheduledRunning = true;
+  if ((window as any).__scheduledRunning) return;
+  (window as any).__scheduledRunning = true;
   if (!acquireScheduledCrossTabLock()) {
-    window.__scheduledRunning = false;
+    (window as any).__scheduledRunning = false;
     return;
   }
   try {
     const list = getScheduledTransfers();
     const now = Date.now();
-    const results = [];
-    list.forEach(task => {
+    const results: any[] = [];
+    list.forEach((task: any) => {
       if (task.status !== '待执行' || task.verified !== true) return;
       const due = scheduledDateTimeValue(task);
       if (!due || due.getTime() > now) return;
@@ -1423,21 +1428,21 @@ function runDueScheduledTransfers(opts) {
         scrollToBottom();
       }
       if (typeof showToast === 'function') {
-        const failed = results.filter(r => !r.ok).length;
+        const failed = results.filter((r: any) => !r.ok).length;
         showToast(failed ? '有定时转账执行失败，请查看' : '定时转账已自动执行');
       }
     }
   } finally {
     releaseScheduledCrossTabLock();
-    window.__scheduledRunning = false;
+    (window as any).__scheduledRunning = false;
   }
 }
 
 function initScheduledTransferEngine() {
   // 稍后再跑：给 api.js 的快照注入留出时间，避免"先本地扣款、再被快照覆盖"的竞态
   setTimeout(function () { runDueScheduledTransfers(); }, 600);
-  if (window.__scheduledTimer) clearInterval(window.__scheduledTimer);
-  window.__scheduledTimer = setInterval(function () { runDueScheduledTransfers(); }, 30000);
+  if ((window as any).__scheduledTimer) clearInterval((window as any).__scheduledTimer);
+  (window as any).__scheduledTimer = setInterval(function () { runDueScheduledTransfers(); }, 30000);
 }
 
 

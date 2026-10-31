@@ -77,7 +77,6 @@
     "js/flows/security.ts",
     "js/flows/subscription.js",
     "js/flows/transfer.js",
-    "js/flows/transfer.ts",
     "js/flows/userinfo.js",
     "js/flows/wealth.js"
   ]

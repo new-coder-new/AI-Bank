@@ -15,9 +15,9 @@ function registerTransferRecord(payee, amount, channel, account) {
     const amt = Number(amount) || 0;
     if (amt <= 0)
         return null;
-    const contact = (mockData.contacts || []).find(c => c.name === payee);
+    const contact = (mockData.contacts || []).find((c) => c.name === payee);
     const record = {
-        id: Math.max(0, ...history.map(t => Number(t.id) || 0)) + 1,
+        id: Math.max(0, ...history.map((t) => Number(t.id) || 0)) + 1,
         payee: payee || '未知收款人',
         account: account || (contact && contact.account) || '**** **** **** ****',
         amount: amt,
@@ -196,14 +196,14 @@ function switchTransferTab(el, type) {
     const form = (el && typeof el.closest === 'function') ? el.closest('.transfer-form') : forms[forms.length - 1];
     if (!form)
         return;
-    form.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    form.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
     if (el && el.classList)
         el.classList.add('active');
     const content = form.querySelector('#transferContent');
     if (!content)
         return;
     if (type === 'name') {
-        const contactOptions = mockData.contacts.map(c => `<option value="${escapeAttr(c.name)}">${escapeHtml(c.name)}（${escapeHtml(c.phone)}）</option>`).join('');
+        const contactOptions = mockData.contacts.map((c) => `<option value="${escapeAttr(c.name)}">${escapeHtml(c.name)}（${escapeHtml(c.phone)}）</option>`).join('');
         content.innerHTML = `
       <div class="form-group"><label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">收款人 <button class="btn btn-primary btn-sm" onclick="goToContactsTab()" style="padding:2px 8px;font-size:11px;">管理</button></label><select class="form-select" id="transferContact">${contactOptions}</select></div>
       <div class="form-group"><label class="form-label">转账金额（元）</label><input type="number" class="form-input" id="transferAmount" placeholder="请输入金额" oninput="renderTransferTierHint()"><div id="transferTierHint" style="display:none;margin-top:6px;font-size:12px;line-height:1.6;"></div></div>
@@ -228,7 +228,7 @@ function switchTransferTab(el, type) {
     `;
     }
     else if (type === 'timed') {
-        const contactOptions = mockData.contacts.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        const contactOptions = mockData.contacts.map((c) => `<option value="${c.name}">${c.name}</option>`).join('');
         const now = new Date();
         const next = new Date(now.getTime() + 60 * 60 * 1000);
         const dateVal = localDateValue(next);
@@ -250,7 +250,7 @@ function switchTransferTab(el, type) {
     `;
     }
     else if (type === 'aa') {
-        const participantOptions = (mockData.contacts || []).map(c => `
+        const participantOptions = (mockData.contacts || []).map((c) => `
       <label class="aa-participant-row">
         <input type="checkbox" class="aa-participant" value="${c.name}" checked onchange="updateAADetail()">
         <span class="aa-participant-name">${c.name}</span>
@@ -283,7 +283,7 @@ function switchTransferTab(el, type) {
 }
 function updateAADetail() {
     const total = parseFloat(document.getElementById('aaTotal')?.value) || 0;
-    const selected = Array.from(document.querySelectorAll('.aa-participant:checked')).map(el => el.value);
+    const selected = Array.from(document.querySelectorAll('.aa-participant:checked')).map((el) => el.value);
     const el = document.getElementById('aaDetail');
     if (!el)
         return;
@@ -305,8 +305,8 @@ function toggleAllAAParticipants(btn) {
     const boxes = Array.from(document.querySelectorAll('.aa-participant'));
     if (!boxes.length)
         return;
-    const allChecked = boxes.every(b => b.checked);
-    boxes.forEach(b => { b.checked = !allChecked; });
+    const allChecked = boxes.every((b) => b.checked);
+    boxes.forEach((b) => { b.checked = !allChecked; });
     if (btn)
         btn.textContent = allChecked ? '全选' : '清空';
     updateAADetail();
@@ -325,7 +325,7 @@ function confirmTransfer(btn) {
     let aaRequestData = null;
     if (type === 'aa') {
         const total = parseFloat(getVal('aaTotal')) || 0;
-        const collectFrom = Array.from(form.querySelectorAll('.aa-participant:checked')).map(el => el.value);
+        const collectFrom = Array.from(form.querySelectorAll('.aa-participant:checked')).map((el) => el.value);
         const activity = getVal('aaName') || 'AA收款';
         if (!(total > 0)) {
             appendMessage('<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">❌ <strong>请输入有效的 AA 总金额</strong></div></div></div>');
@@ -357,7 +357,7 @@ function confirmTransfer(btn) {
         const time = getVal('transferTime') || '09:00';
         const repeat = getVal('transferRepeat') || '不重复';
         const remark = getVal('transferRemark') || '';
-        const info = mockData.contacts.find(c => c.name === contact);
+        const info = mockData.contacts.find((c) => c.name === contact);
         const task = {
             payee: contact,
             account: info?.account || '',
@@ -376,7 +376,7 @@ function confirmTransfer(btn) {
             return;
         }
         form.closest('.message')?.remove();
-        openScheduledTransferConfirm(task);
+        openScheduledTransferConfirm(task, undefined);
         return;
     }
     else if (type === 'phone') {
@@ -411,7 +411,7 @@ function confirmTransfer(btn) {
         const contact = getVal('transferContact');
         const amount = getVal('transferAmount') || '0';
         const remark = getVal('transferRemark') || '无';
-        const contactInfo = mockData.contacts.find(c => c.name === contact);
+        const contactInfo = mockData.contacts.find((c) => c.name === contact);
         detailHtml = `<div class="data-row"><span class="data-label">收款人</span><span class="data-value">${contact}</span></div>
       <div class="data-row"><span class="data-label">收款账户</span><span class="data-value">${contactInfo?.account || '-'}</span></div>
       <div class="data-row"><span class="data-label">转账金额</span><span class="data-value expense">¥ ${parseFloat(amount).toFixed(2)}</span></div>
@@ -522,7 +522,7 @@ function showTransferHistory() {
         <div class="msg-bubble">
           <p><strong>转账记录查询</strong>（共 ${history.length} 笔）</p>
           <div class="data-card">
-            ${history.map(t => `
+            ${history.map((t) => `
               <div class="transfer-record-item">
                 <div class="transfer-record-icon"></div>
                 <div class="transfer-record-info">
@@ -544,7 +544,7 @@ function showTransferHistory() {
 }
 function revokeTransfer(id) {
     const history = mockData.userProfile.transferHistory || [];
-    const record = history.find(t => t.id === id);
+    const record = history.find((t) => t.id === id);
     if (record && record.status === '已完成') {
         record.status = '已撤销';
         addTransaction('income', record.amount, `转账撤销-${record.payee}（原路退回）`, '转账撤销');
@@ -676,7 +676,7 @@ function showBatchTransfer(prefill) {
         updateBatchSummary();
         // 高亮预填选中的收款人
         if (prefill && prefill.selectedIndexes && prefill.selectedIndexes.length > 0) {
-            prefill.selectedIndexes.forEach(i => {
+            prefill.selectedIndexes.forEach((i) => {
                 const item = document.getElementById('contact-item-' + i);
                 const checkbox = document.getElementById('contact-checkbox-' + i);
                 if (item && checkbox) {
@@ -786,7 +786,7 @@ function updateIndividualAmountList() {
         list.innerHTML = '<div style="text-align:center;padding:20px;color:#999;font-size:12px;">请先选择收款人</div>';
         return;
     }
-    list.innerHTML = batchTransferSelected.map(i => {
+    list.innerHTML = batchTransferSelected.map((i) => {
         const c = contacts[i];
         return `
       <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;">
@@ -809,8 +809,8 @@ function updateBatchSummary() {
         total = amount * batchTransferSelected.length;
     }
     else {
-        batchTransferSelected.forEach(i => {
-            const amount = parseFloat(document.getElementById('individual-amount-' + i)?.value) || 0;
+        batchTransferSelected.forEach((i) => {
+            const amount = parseFloat((document.getElementById('individual-amount-' + i)?.value) || '0') || 0;
             total += amount;
         });
     }
@@ -853,7 +853,7 @@ async function confirmBatchTransfer() {
             alert('请输入正确的转账金额');
             return;
         }
-        batchTransferSelected.forEach(i => {
+        batchTransferSelected.forEach((i) => {
             transfers.push({ name: contacts[i].name, amount });
             totalAmount += amount;
         });
@@ -861,8 +861,8 @@ async function confirmBatchTransfer() {
     else {
         // 先完整校验，任何一人金额无效都中止整批，不能只跳过当前人继续转其他人
         const invalid = [];
-        batchTransferSelected.forEach(i => {
-            const amount = parseFloat(document.getElementById('individual-amount-' + i)?.value) || 0;
+        batchTransferSelected.forEach((i) => {
+            const amount = parseFloat((document.getElementById('individual-amount-' + i)?.value) || '0') || 0;
             if (!(amount > 0))
                 invalid.push(contacts[i].name);
             transfers.push({ name: contacts[i].name, amount });
@@ -883,12 +883,12 @@ async function confirmBatchTransfer() {
         return;
     }
     // 人工确认框
-    const confirmText = `确认批量转账？\n\n转账人数：${transfers.length} 人\n转账总金额：¥${totalAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}\n当前可用余额：¥${avail.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}\n转账后余额：¥${(avail - totalAmount).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}\n\n${transfers.map(t => `• ${t.name}：¥${t.amount.toLocaleString()}`).join('\n')}`;
+    const confirmText = `确认批量转账？\n\n转账人数：${transfers.length} 人\n转账总金额：¥${totalAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}\n当前可用余额：¥${avail.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}\n转账后余额：¥${(avail - totalAmount).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}\n\n${transfers.map((t) => `• ${t.name}：¥${t.amount.toLocaleString()}`).join('\n')}`;
     if (!confirm(confirmText))
         return;
     // 批量转账总额同样适用金额分级：T2 密码确认，T3 二次验证，T4 提交人工复核
     if (typeof verifyAmountRisk === 'function') {
-        const batchActions = transfers.map(t => ({ tool: 'transfer.execute', args: { payee: t.name, amount: t.amount, channel: '批量转账' } }));
+        const batchActions = transfers.map((t) => ({ tool: 'transfer.execute', args: { payee: t.name, amount: t.amount, channel: '批量转账' } }));
         const risk = await verifyAmountRisk(totalAmount, '批量转账', batchActions);
         if (risk && risk.pendingReview) {
             // 已提交人工复核：立即移除面板并清空选中，避免重复提交同一批产生多张复核单
@@ -936,7 +936,7 @@ async function confirmBatchTransfer() {
         panel.closest('.message')?.remove();
     batchTransferSelected = [];
     window.__batchContactsSnapshot = null;
-    appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">${failed === 0 ? '✅ <strong>批量转账成功</strong>' : '⚠️ <strong>批量转账部分完成</strong>'}<br>转账人数：${transfers.length} 人（成功 ${succeeded} 笔${failed ? '，失败 ' + failed + ' 笔（可用余额不足）' : ''}）<br>转账总金额：¥${totalAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}<br><br>${transfers.map(t => `• ${t.name}：¥${t.amount.toLocaleString()}`).join('<br>')}<br><br>当前可用余额：¥${Number(d.available).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</div></div></div>`);
+    appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">${failed === 0 ? '✅ <strong>批量转账成功</strong>' : '⚠️ <strong>批量转账部分完成</strong>'}<br>转账人数：${transfers.length} 人（成功 ${succeeded} 笔${failed ? '，失败 ' + failed + ' 笔（可用余额不足）' : ''}）<br>转账总金额：¥${totalAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}<br><br>${transfers.map((t) => `• ${t.name}：¥${t.amount.toLocaleString()}`).join('<br>')}<br><br>当前可用余额：¥${Number(d.available).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</div></div></div>`);
     scrollToBottom();
 }
 // ==========================================================================
@@ -953,7 +953,7 @@ function getScheduledTransfers() {
     const u = mockData.userProfile;
     if (!Array.isArray(u.scheduledTransfers))
         u.scheduledTransfers = [];
-    u.scheduledTransfers.forEach(t => { t.amount = Number(t.amount) || 0; });
+    u.scheduledTransfers.forEach((t) => { t.amount = Number(t.amount) || 0; });
     return u.scheduledTransfers;
 }
 function scheduledDateTimeValue(task) {
@@ -1011,7 +1011,7 @@ function openScheduledTransferConfirm(task, opts) {
         scrollToBottom();
         return;
     }
-    const info = (mockData.contacts || []).find(c => c.name === t.payee);
+    const info = (mockData.contacts || []).find((c) => c.name === t.payee);
     const account = t.account || (info && info.account) || '';
     const avail = Number(mockData.userProfile.debitCard.available) || 0;
     const shortWarn = t.amount > avail
@@ -1214,7 +1214,7 @@ function refreshScheduledListCount() {
     const el = document.querySelector('#scheduled-list-card .bank-page-sub');
     if (!el)
         return;
-    const pending = getScheduledTransfers().filter(t => t.status === '待执行').length;
+    const pending = getScheduledTransfers().filter((t) => t.status === '待执行').length;
     el.textContent = '共 ' + pending + ' 笔待执行';
 }
 function openTimedTransferForm() {
@@ -1229,13 +1229,13 @@ function showScheduledTransfers() {
     if (typeof runDueScheduledTransfers === 'function')
         runDueScheduledTransfers({ silent: true });
     const list = getScheduledTransfers();
-    const pending = list.filter(t => t.status === '待执行');
-    const history = list.filter(t => t.status !== '待执行');
+    const pending = list.filter((t) => t.status === '待执行');
+    const history = list.filter((t) => t.status !== '待执行');
     const sorted = pending.slice().sort((a, b) => {
         const da = scheduledDateTimeValue(a), db = scheduledDateTimeValue(b);
         return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
     }).concat(history);
-    const rows = sorted.map(t => {
+    const rows = sorted.map((t) => {
         const due = scheduledDateTimeValue(t);
         const dateLabel = due ? (String(due.getMonth() + 1).padStart(2, '0') + '-' + String(due.getDate()).padStart(2, '0')) : '--';
         const timeLabel = due ? localTimeValue(due) : (t.time || '09:00');
@@ -1263,7 +1263,7 @@ function showScheduledTransfers() {
     scrollToBottom();
 }
 function cancelScheduledTransferTask(id) {
-    const task = getScheduledTransfers().find(t => String(t.id) === String(id));
+    const task = getScheduledTransfers().find((t) => String(t.id) === String(id));
     if (!task || task.status !== '待执行')
         return;
     if (!confirm('确定取消这笔定时转账？\n\n收款人：' + task.payee + '\n金额：' + schedMoney(task.amount) + '\n执行时间：' + task.date + ' ' + task.time))
@@ -1371,10 +1371,10 @@ function executeScheduledTransferTask(task) {
     return { ok: true, next: next };
 }
 function scheduledRunResultHtml(results) {
-    const okCount = results.filter(r => r.ok).length;
+    const okCount = results.filter((r) => r.ok).length;
     const failCount = results.length - okCount;
     const title = failCount === 0 ? '定时转账已自动执行' : (okCount ? '定时转账部分执行成功' : '定时转账执行失败');
-    const rows = results.map(r => {
+    const rows = results.map((r) => {
         const t = r.task;
         const next = r.next ? '下次 ' + r.next.date + ' ' + r.next.time : '';
         return '<div class="bank-sched-result ' + (r.ok ? 'ok' : 'fail') + '">' +
@@ -1442,7 +1442,7 @@ function runDueScheduledTransfers(opts) {
         const list = getScheduledTransfers();
         const now = Date.now();
         const results = [];
-        list.forEach(task => {
+        list.forEach((task) => {
             if (task.status !== '待执行' || task.verified !== true)
                 return;
             const due = scheduledDateTimeValue(task);
@@ -1461,7 +1461,7 @@ function runDueScheduledTransfers(opts) {
                 scrollToBottom();
             }
             if (typeof showToast === 'function') {
-                const failed = results.filter(r => !r.ok).length;
+                const failed = results.filter((r) => !r.ok).length;
                 showToast(failed ? '有定时转账执行失败，请查看' : '定时转账已自动执行');
             }
         }

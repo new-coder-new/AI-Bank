@@ -28,6 +28,7 @@
     "js/flows/guide-card.ts",
     "js/core/ui.ts",
     "js/flows/security.ts",
+    "js/flows/chat.ts",
     "js/flows/transfer.ts"
   ]
 }
