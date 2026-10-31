@@ -64,7 +64,7 @@ function guideModuleMenuHint(module) {
             return '';
         if (key === 'sub') {
             return '<p>请选择订阅管理里的操作：</p>' +
-                '<p class="guide-tip">添加订阅 / 取消订阅 / 管理自动续费。</p>';
+                '<p class="guide-tip">添加订阅 / 取消订阅 / 管理自动续费 / 可订阅会员。</p>';
         }
         if (key === 'flower') {
             return '<p>请选择生日鲜花里的操作：</p>' +

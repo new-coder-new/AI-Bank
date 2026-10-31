@@ -635,7 +635,7 @@ async function guideSubSession(t) {
         }
         // 停在「请选择」不算进行中流程，这里只提示怎么选，不输出流程锁文案
         appendMessage(guideMessage('<p>请选择订阅管理里的操作：</p>' +
-            '<p class="guide-tip">添加订阅 / 取消订阅 / 管理自动续费。</p>'));
+            '<p class="guide-tip">添加订阅 / 取消订阅 / 管理自动续费 / 可订阅会员。</p>'));
         scrollToBottom();
         return true;
     }
