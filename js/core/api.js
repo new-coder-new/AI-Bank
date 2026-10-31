@@ -93,8 +93,19 @@ function apiInjectSnapshot(snap) {
   var localLoaded = typeof window !== 'undefined' && window.__LOCAL_STATE_LOADED === true;
   if (snap.userProfile) {
     if (localLoaded && mockData.userProfile) {
+      // 服务端权威字段：本地 localStorage 只是缓存，不再覆盖服务端
+      var AUTHORITATIVE = [
+        'debitCard', 'creditCard', 'creditCards', 'holdings', 'pendingRedemptions',
+        'flowerOrders', 'cardApplications', 'manualReviews', 'transferHistory',
+        'recentTxns', 'txnLimit', 'budgets', 'flowerHolds', 'flowerHold'
+      ];
+      AUTHORITATIVE.forEach(function (k) {
+        if (snap.userProfile[k] !== undefined) mockData.userProfile[k] = snap.userProfile[k];
+      });
+      // 其余字段（姓名/等级等展示信息）本地缺失时用服务端补齐
       Object.keys(snap.userProfile).forEach(function (k) {
-        if (mockData.userProfile[k] === undefined || mockData.userProfile[k] === null) {
+        if (AUTHORITATIVE.indexOf(k) === -1 &&
+            (mockData.userProfile[k] === undefined || mockData.userProfile[k] === null)) {
           mockData.userProfile[k] = snap.userProfile[k];
         }
       });
@@ -127,9 +138,26 @@ function apiInjectSnapshot(snap) {
   }
   if (snap.products) mockData.products = snap.products;
   if (snap.subscriptions) {
-    if (!localLoaded || !window.__LOCAL_SUBS_LOADED ||
-        !Array.isArray(mockData.subscriptions) || mockData.subscriptions.length === 0) {
+    if (!localLoaded || !Array.isArray(mockData.subscriptions) || mockData.subscriptions.length === 0) {
       mockData.subscriptions = snap.subscriptions;
+    } else {
+      // 服务端为准：按 id/名称对齐，覆盖价格、周期、续费状态与下次扣费日
+      var srvSubs = snap.subscriptions;
+      srvSubs.forEach(function (ss) {
+        var hit = (mockData.subscriptions || []).filter(function (ls) {
+          return ls && (String(ls.id) === String(ss.id) || String(ls.name || '') === String(ss.name || ''));
+        })[0];
+        if (!hit) { mockData.subscriptions.push(ss); return; }
+        ['price', 'cycle', 'autoRenew', 'chargeDate', 'lastRenewAt', 'lastRenewAmount', 'lastRenewError'].forEach(function (k) {
+          if (ss[k] !== undefined) hit[k] = ss[k];
+        });
+      });
+      // 服务端已取消的订阅，本地也要移除
+      mockData.subscriptions = (mockData.subscriptions || []).filter(function (ls) {
+        return !ls || srvSubs.some(function (ss) {
+          return String(ss.id) === String(ls.id) || String(ss.name || '') === String(ls.name || '');
+        });
+      });
     }
   }
   if (Array.isArray(snap.contacts)) {
