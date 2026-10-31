@@ -41,7 +41,7 @@ interface KBEntry {
 //      vs:{ <otherId>: '差异描述' } }
 // ==========================================================================
 
-var FIN_KB_META = {
+var FIN_KB_META: Record<string, any> = {
   'macro': '宏观金融',
   'bank': '银行基础业务',
   'invest': '投资理财',
@@ -49,7 +49,7 @@ var FIN_KB_META = {
   'plan': '个人财务规划'
 };
 
-var FIN_KB = [
+var FIN_KB: any[] = [
   /* ==================== 〇、宏观金融 ==================== */
   {
     id: 'inflation', cat: 'macro', title: '通货膨胀',
@@ -1117,12 +1117,12 @@ var FIN_KB = [
 ];
 
 // 建立索引：id → 条目
-var FIN_KB_INDEX = {};
-FIN_KB.forEach(function (k) { FIN_KB_INDEX[k.id] = k; });
+var FIN_KB_INDEX: Record<string, any> = {};
+FIN_KB.forEach(function (k: any) { FIN_KB_INDEX[k.id] = k; });
 
 // ------------------------------ 1. 同义扩展 ------------------------------
 // 把口语说法映射到标准关键词，提升召回
-var FIN_KB_SYNONYM = {
+var FIN_KB_SYNONYM: Record<string, string> = {
   '定存': '定期存款', '存定期': '定期存款', '银行定期': '定期存款', '整存整取': '定期存款',
   '活期': '活期存款', '余额宝': '货币基金', '零钱通': '货币基金', '货基': '货币基金', '宝宝类': '货币基金',
   '理财': '银行理财', '理财产品': '银行理财',
@@ -1159,7 +1159,7 @@ var FIN_KB_SYNONYM = {
 //   howto     —— 怎么办 / 如何应对 / 该不该  → 处理建议
 //   fit       —— 适合谁 / 我适合吗           → 适用人群
 //   auto      —— 未显式提问类型（默认）
-var KB_QTYPE_RULES = [
+var KB_QTYPE_RULES: any[] = [
   { type: 'why', re: /(为什么|为何|原因|缘故|怎么(会|造成)|是什么导致|由于什么|因为什么|起因)/ },
   { type: 'impact', re: /(影响|会怎样|会怎么样|有什么后果|有什么用|意味着什么|会带来|对我有|会导致|变化会)/ },
   { type: 'compare', re: /(有什么区别|区别|差别|差异|哪个好|哪个更|怎么选|哪个划算|相比|对比)/ },
@@ -1168,7 +1168,7 @@ var KB_QTYPE_RULES = [
   { type: 'concept', re: /(是什么|什么是|是什么意思|定义|解释|介绍|科普|讲解|原理|怎么算|含义)/ }
 ];
 
-function agentKBClassify(text) {
+function agentKBClassify(text: any) {
   var t = String(text || '');
   for (var i = 0; i < KB_QTYPE_RULES.length; i++) {
     if (KB_QTYPE_RULES[i].re.test(t)) return KB_QTYPE_RULES[i].type;
@@ -1178,7 +1178,7 @@ function agentKBClassify(text) {
 
 // 把中文标题切成 2 字词元（去重），用于复合标题的主干匹配
 // "存贷款利率变化的原因" → ["存贷","贷款","款利","利率","率变","变化","化的","的原","原因"]
-function agentKBBigrams(title) {
+function agentKBBigrams(title: any) {
   var t = String(title || '').replace(/[\/（）()、的]/g, '');
   var out = [];
   for (var i = 0; i + 2 <= t.length; i++) {
@@ -1203,20 +1203,20 @@ function agentKBRetrieve(query: string, limit?: number): any[] {
 
   // ① 收集全部候选词：{ word, kind, owner }（owner = 所属知识条目 id）
   //    同义扩展词按其标准词归到对应条目。
-  var vocab = [];
-  FIN_KB.forEach(function (k) {
+  var vocab: any[] = [];
+  FIN_KB.forEach(function (k: any) {
     vocab.push({ word: k.title, kind: 'title', w: 10, owner: k.id, kb: k });
-    (k.alias || []).forEach(function (a) { if (a) vocab.push({ word: a, kind: 'alias', w: 7, owner: k.id, kb: k }); });
-    (k.keywords || []).forEach(function (w2) { if (w2) vocab.push({ word: w2, kind: 'keyword', w: 5, owner: k.id, kb: k }); });
+    (k.alias || []).forEach(function (a: any) { if (a) vocab.push({ word: a, kind: 'alias', w: 7, owner: k.id, kb: k }); });
+    (k.keywords || []).forEach(function (w2: any) { if (w2) vocab.push({ word: w2, kind: 'keyword', w: 5, owner: k.id, kb: k }); });
     // 分类名（低权重，不占位）
     if (FIN_KB_META[k.cat] && q.indexOf(FIN_KB_META[k.cat]) > -1) {
       vocab.push({ word: FIN_KB_META[k.cat], kind: 'cat', w: 2, owner: k.id, kb: k, noClaim: true });
     }
   });
   // 同义词：口语 → 标准词，权重 6，归到含该标准词的条目
-  Object.keys(FIN_KB_SYNONYM).forEach(function (syn) {
+  Object.keys(FIN_KB_SYNONYM).forEach(function (syn: any) {
     var std = FIN_KB_SYNONYM[syn];
-    FIN_KB.forEach(function (k) {
+    FIN_KB.forEach(function (k: any) {
       if (k.title === std || (k.alias || []).indexOf(std) > -1 || (k.keywords || []).indexOf(std) > -1) {
         vocab.push({ word: syn, kind: 'synonym', w: 6, owner: k.id, kb: k });
       }
@@ -1226,9 +1226,9 @@ function agentKBRetrieve(query: string, limit?: number): any[] {
   // ② 按「条目」各自做最长匹配优先：
   //    同一条目内部，若短词被长词完全覆盖（如 利率 ⊂ 贷款利率），只给长词计分，
   //    避免同一段文本重复计分；不同条目之间互不占位（贷款 vs 利率 各得各的分）。
-  var byOwner = {};
-  FIN_KB.forEach(function (k) { byOwner[k.id] = { kb: k, score: 0, hits: [] }; });
-  vocab.forEach(function (v) {
+  var byOwner: Record<string, any> = {};
+  FIN_KB.forEach(function (k: any) { byOwner[k.id] = { kb: k, score: 0, hits: [] }; });
+  vocab.forEach(function (v: any) {
     var w = String(v.word).toLowerCase();
     if (!w) return;
     var idx = q.indexOf(w);
@@ -1236,7 +1236,7 @@ function agentKBRetrieve(query: string, limit?: number): any[] {
     if (v.noClaim) { byOwner[v.owner].score += v.w; byOwner[v.owner].hits.push(v.word); return; }
     // 同条目内查最长同源词
     var longest = w;
-    vocab.forEach(function (o) {
+    vocab.forEach(function (o: any) {
       if (o.owner !== v.owner) return;
       var ow = String(o.word).toLowerCase();
       if (ow.length > longest.length && q.indexOf(ow) > -1 && ow.indexOf(w) > -1) longest = ow;
@@ -1251,14 +1251,14 @@ function agentKBRetrieve(query: string, limit?: number): any[] {
   //    它就是为回答"为什么/影响"而存在的专属条目，应压过只靠单一泛化词（贷款 / 利率）命中的基础条目。
   //    判定：① 标题含因果词（原因/影响/变化）；② 标题主干词元（2 字）命中 ≥2 个。
   if ((qtype === 'why' || qtype === 'impact')) {
-    Object.keys(byOwner).forEach(function (id) {
+    Object.keys(byOwner).forEach(function (id: any) {
       var e = byOwner[id];
       if (!e.kb.why || !e.kb.why.length) return;
       var causal = /(原因|影响|变化|走势)/.test(e.kb.title);
       var grams = agentKBBigrams(e.kb.title);
-      var stemHits = grams.filter(function (s) {
+      var stemHits = grams.filter(function (s: any) {
         if (q.indexOf(s) > -1) return true;
-        return (e.kb.keywords || []).some(function (w) {
+        return (e.kb.keywords || []).some(function (w: any) {
           return w.toLowerCase().indexOf(s) > -1 && q.indexOf(w.toLowerCase()) > -1;
         });
       });
@@ -1270,28 +1270,28 @@ function agentKBRetrieve(query: string, limit?: number): any[] {
   }
 
   // ④ 问题类型加权：有对应分析字段的条目，在对应问法下优先
-  var scored = Object.keys(byOwner).map(function (id) {
+  var scored = Object.keys(byOwner).map(function (id: any) {
     var e = byOwner[id];
     if (!e.score) return null;
     if (bonusWhy && e.kb.why && e.kb.why.length) e.score += bonusWhy;
     if (bonusImpact && e.kb.impact && e.kb.impact.length) e.score += bonusImpact;
     if (bonusFit && e.kb.fit) e.score += bonusFit;
     // 命中的最长词元长度：同分时长词更具体（"净值化" 优于 "净值"），用于打破平局
-    e.maxLen = e.hits.reduce(function (m, h) { return Math.max(m, String(h).length); }, 0);
+    e.maxLen = e.hits.reduce(function (m: any, h: any) { return Math.max(m, String(h).length); }, 0);
     return e;
-  }).filter(function (x) { return x && x.score > 0; });
+  }).filter(function (x: any) { return x && x.score > 0; });
 
-  scored.sort(function (a, b) { return (b.score - a.score) || (b.maxLen - a.maxLen); });
+  scored.sort(function (a: any, b: any) { return (b.score - a.score) || (b.maxLen - a.maxLen); });
 
   // ⑤ 同分并列保留：同分时不要被切片丢掉（"贷款利率变化会影响什么"）
   var lim = limit || 3;
   if (scored.length > lim) {
     var headScore = scored[0].score;
-    var headHits = scored.filter(function (x) { return x.score === headScore; });
+    var headHits = scored.filter(function (x: any) { return x.score === headScore; });
     if (headHits.length > 1) {
-      var headIds = {};
-      headHits.forEach(function (x) { headIds[x.kb.id] = true; });
-      var rest = scored.filter(function (x) { return !headIds[x.kb.id]; });
+      var headIds: Record<string, boolean> = {};
+      headHits.forEach(function (x: any) { headIds[x.kb.id] = true; });
+      var rest = scored.filter(function (x: any) { return !headIds[x.kb.id]; });
       scored = headHits.concat(rest);
       lim = Math.max(lim, headHits.length);
     }
@@ -1302,26 +1302,26 @@ function agentKBRetrieve(query: string, limit?: number): any[] {
 // 检索时明确问题类型（供回答生成使用）
 // 判断某条知识是否被 query「整词提及」——用于消歧：
 // "什么是货币基金" 同时命中「货币基金」和「基金」（子串包含），但只有「货币基金」是被真正问到的词。
-function agentKBHeadwordHit(kb, query) {
+function agentKBHeadwordHit(kb: any, query: any) {
   var q = String(query || '').toLowerCase();
   if (!q) return false;
   var words = [kb.title].concat(kb.alias || [], kb.keywords || []);
-  return words.some(function (w) { return w && q.indexOf(String(w).toLowerCase()) > -1; });
+  return words.some(function (w: any) { return w && q.indexOf(String(w).toLowerCase()) > -1; });
 }
 
 // 若 A 的标题/别名/关键词以 B 的标题为「子串」，说明 B 是 A 的父概念
 // （货币基金 ⊃ 基金），此时 A 是更精确的答案，不应被并列成"对比"。
-function agentKBIsSubconceptOf(a, b) {
+function agentKBIsSubconceptOf(a: any, b: any) {
   if (!a || !b || a.id === b.id) return false;
   var bt = String(b.title || '').toLowerCase();
   if (!bt) return false;
-  var own = [String(a.title || '').toLowerCase()].concat((a.alias || []).map(function (x) { return String(x).toLowerCase(); }),
-    (a.keywords || []).map(function (x) { return String(x).toLowerCase(); }));
-  return own.some(function (w) { return w && w !== bt && w.indexOf(bt) > -1; });
+  var own = [String(a.title || '').toLowerCase()].concat((a.alias || []).map(function (x: any) { return String(x).toLowerCase(); }),
+    (a.keywords || []).map(function (x: any) { return String(x).toLowerCase(); }));
+  return own.some(function (w: any) { return w && w !== bt && w.indexOf(bt) > -1; });
 }
 
 // 是否属于"需要知识检索"的问题
-function agentKBIsKnowledgeQuery(text) {
+function agentKBIsKnowledgeQuery(text: any) {
   var t = String(text || '');
   // 明确的求知意图（含 v8 的"为什么/影响/适合谁"三类分析型问法）
   var askKnowledge = /(是什么|什么是|有什么区别|区别|差别|差异|不同|哪个好|哪个更|怎么选|如何选择|是什么意思|介绍|讲解|科普|原理|为什么|为何|原因|影响|会怎样|会怎么样|意味着什么|有什么用|适合谁|适合什么|适合我吗|靠不靠谱|安全吗|保本|风险大不大|怎么算|收益如何|值得吗|怎么办|该不该|能不能买|要不要买|如何处理|如何应对|怎么处理|怎么样|变化会)/.test(t);
@@ -1335,7 +1335,7 @@ function agentKBIsKnowledgeQuery(text) {
 
 // ------------------------------ 3. 对比类问题 ------------------------------
 // "A 和 B 有什么区别" → 逐点对比
-function agentKBParseCompare(text) {
+function agentKBParseCompare(text: any) {
   var t = String(text || '');
   var m = t.match(/(.+?)\s*(?:和|与|跟|比|vs|VS|、)\s*(.+?)\s*(?:有什么区别|有什么不同|哪个好|哪个更|的区别|有什么差别|相比)/);
   if (!m) return null;
@@ -1347,24 +1347,24 @@ function agentKBParseCompare(text) {
 
 // ------------------------------ 4. 回答生成 ------------------------------
 function agentKBPointsHtml(item: any, tone?: string): string {
-  return (item.points || []).map(function (p) {
+  return (item.points || []).map(function (p: any) {
     return '<div class="kb-point"><span class="kb-dot" style="background:' + (tone || '#09407F') + ';"></span><span>' + p + '</span></div>';
   }).join('');
 }
 
-function agentKBRiskBadge(item) {
+function agentKBRiskBadge(item: any) {
   var r = item.risk || '—';
   var color = /极高|高/.test(r) ? '#dc2626' : /中/.test(r) ? '#d97706' : '#15803d';
   return '<span class="kb-badge" style="color:' + color + ';border-color:' + color + '33;background:' + color + '12;">风险 ' + r + '</span>';
 }
-function agentKBLiqBadge(item) {
+function agentKBLiqBadge(item: any) {
   if (!item.liquidity || item.liquidity === '—') return '';
   return '<span class="kb-badge kb-badge-gray">流动性 ' + item.liquidity + '</span>';
 }
 function agentKBList(title: string, arr: any[], cls?: string): string {
   if (!arr || !arr.length) return '';
   return '<div class="agent-sec-title">' + title + '</div><div class="' + (cls || 'kb-advices') + '">' +
-    arr.map(function (x) { return '<div class="' + (cls === 'kb-why-list' ? 'kb-why-item' : 'kb-advice') + '">· ' + x + '</div>'; }).join('') +
+    arr.map(function (x: any) { return '<div class="' + (cls === 'kb-why-list' ? 'kb-why-item' : 'kb-advice') + '">· ' + x + '</div>'; }).join('') +
     '</div>';
 }
 
@@ -1374,7 +1374,7 @@ function agentKBAnswerItem(item: any, query?: string, opts?: any): any {
   opts = opts || {};
   var qtype = opts.qtype || agentKBClassify(query || '');
 
-  var related = FIN_KB.filter(function (k) {
+  var related = FIN_KB.filter(function (k: any) {
     return k.id !== item.id && k.cat === item.cat;
   }).slice(0, 3);
 
@@ -1404,10 +1404,10 @@ function agentKBAnswerItem(item: any, query?: string, opts?: any): any {
 
     // 实用建议
     (item.advices && item.advices.length ? '<div class="agent-sec-title">实用建议</div><div class="kb-advices">' +
-      item.advices.map(function (a) { return '<div class="kb-advice">· ' + a + '</div>'; }).join('') + '</div>' : '') +
+      item.advices.map(function (a: any) { return '<div class="kb-advice">· ' + a + '</div>'; }).join('') + '</div>' : '') +
 
     (related.length ? '<div class="agent-sec-title">你可能还想了解</div><div class="kb-related">' +
-      related.map(function (r) { return '<span class="kb-related-chip" onclick="agentKBAsk(\'' + r.id + '\')">' + r.title + '</span>'; }).join('') + '</div>' : '') +
+      related.map(function (r: any) { return '<span class="kb-related-chip" onclick="agentKBAsk(\'' + r.id + '\')">' + r.title + '</span>'; }).join('') + '</div>' : '') +
     agentKBPersonalHook(item) +
     '</div></div></div>';
 
@@ -1422,11 +1422,11 @@ function agentKBAnswerItem(item: any, query?: string, opts?: any): any {
 // 对比两条知识
 function agentKBAnswerCompare(itemA: any, itemB: any): any {
   var dims = [
-    { name: '收益特点', get: function (k) { return k.yieldText || '—'; } },
-    { name: '风险等级', get: function (k) { return k.risk || '—'; } },
-    { name: '流动性', get: function (k) { return k.liquidity || '—'; } }
+    { name: '收益特点', get: function (k: any) { return k.yieldText || '—'; } },
+    { name: '风险等级', get: function (k: any) { return k.risk || '—'; } },
+    { name: '流动性', get: function (k: any) { return k.liquidity || '—'; } }
   ];
-  var rows = dims.map(function (d) {
+  var rows = dims.map(function (d: any) {
     return '<tr><td class="kb-cmp-dim">' + d.name + '</td><td>' + d.get(itemA) + '</td><td>' + d.get(itemB) + '</td></tr>';
   }).join('');
 
@@ -1456,7 +1456,7 @@ function agentKBAnswerCompare(itemA: any, itemB: any): any {
 }
 
 // 结合用户数据 + 反问（"资金多久不用？更关注收益还是流动性？"）
-function agentKBPersonalHook(item) {
+function agentKBPersonalHook(item: any) {
   var month = agentMonthSummary();
   var surplus = month.balance || 0;
   var idle = item.liquidity === '极高' || item.liquidity === '高';
@@ -1474,7 +1474,7 @@ function agentKBPersonalHook(item) {
     '</div></div>';
 }
 
-function agentKBPersonalHookCompare(itemA, itemB) {
+function agentKBPersonalHookCompare(itemA: any, itemB: any) {
   var month = agentMonthSummary();
   return '<div class="kb-hook">' +
     '<div class="kb-hook-title">结合你的情况</div>' +
@@ -1502,10 +1502,10 @@ function agentKBAsk(id: string): void {
 // v8 对个人的影响（结合真实数据）：把知识条目的 impact 与用户自身财务状况挂钩
 // 额外从条目自身的 why（原因分析）里，捞出直接点到用户身上的子项，补进影响列表，
 //   保证"利率变化会影响什么"能落到 房贷 / 消费贷 / 企业融资 这种具体传导上。
-function agentKBImpactItems(item) {
+function agentKBImpactItems(item: any) {
   var list = (item.impact || []).slice();
   var borrowers = /房贷|消费贷|贷款|借款|月供|融资|负债|债/;
-  (item.why || []).forEach(function (w) {
+  (item.why || []).forEach(function (w: any) {
     if (borrowers.test(w) && list.indexOf(w) < 0) list.push(w);
   });
   return list;
@@ -1526,21 +1526,21 @@ function agentKBPersonalDataBlock() {
   }
   if (!personal.length) return '';
   return '<div class="kb-why-personal"><span class="kb-why-personal-label">结合你的数据</span>' +
-    personal.map(function (p) { return '<div class="kb-why-personal-line">· ' + p + '</div>'; }).join('') + '</div>';
+    personal.map(function (p: any) { return '<div class="kb-why-personal-line">· ' + p + '</div>'; }).join('') + '</div>';
 }
 
-function agentKBPersonalImpact(item) {
+function agentKBPersonalImpact(item: any) {
   if (!item.impact || !item.impact.length) return '';
   var items = agentKBImpactItems(item);
   return '<div class="agent-sec-title">对你的影响</div>' +
     '<div class="kb-why-list">' +
-    items.map(function (x) { return '<div class="kb-why-item">· ' + x + '</div>'; }).join('') +
+    items.map(function (x: any) { return '<div class="kb-why-item">· ' + x + '</div>'; }).join('') +
     '</div>' + agentKBPersonalDataBlock();
 }
 
 // v8 读取用户背景（供影响分析使用），字段缺失时返回 null，避免瞎编
 function agentKBUserContext() {
-  var ctx = { savingRate: null, debtRatio: null, riskLevel: null, surplus: null, balance: null };
+  var ctx: any = { savingRate: null, debtRatio: null, riskLevel: null, surplus: null, balance: null };
   try {
     var month = (typeof agentMonthSummary === 'function') ? agentMonthSummary() : null;
     if (month) {
@@ -1564,7 +1564,7 @@ function agentKBUserContext() {
 }
 
 // v8 "为什么 / 影响" 三段式回答：基础解释 → 原因分析 → 对用户影响 → 处理建议
-function agentKBWhyAnswer(item, query) {
+function agentKBWhyAnswer(item: any, query: any) {
   var qtype = agentKBClassify(query || '');
   var showWhy = (qtype !== 'impact') && item.why && item.why.length;
   var showImpact = item.impact && item.impact.length;
@@ -1583,18 +1583,18 @@ function agentKBWhyAnswer(item, query) {
 
     (showWhy ? '<div class="kb-why-block">' +
       '<div class="kb-why-step"><span class="kb-why-no">2</span>原因分析</div>' +
-      '<div class="kb-why-list">' + item.why.map(function (x) { return '<div class="kb-why-item">· ' + x + '</div>'; }).join('') + '</div>' +
+      '<div class="kb-why-list">' + item.why.map(function (x: any) { return '<div class="kb-why-item">· ' + x + '</div>'; }).join('') + '</div>' +
       '</div>' : '') +
 
     (showImpact ? '<div class="kb-why-block">' +
       '<div class="kb-why-step"><span class="kb-why-no">' + (showWhy ? '3' : '2') + '</span>对你的影响</div>' +
-      '<div class="kb-why-list">' + agentKBImpactItems(item).map(function (x) { return '<div class="kb-why-item">· ' + x + '</div>'; }).join('') + '</div>' +
+      '<div class="kb-why-list">' + agentKBImpactItems(item).map(function (x: any) { return '<div class="kb-why-item">· ' + x + '</div>'; }).join('') + '</div>' +
       agentKBPersonalDataBlock() +
       '</div>' : '') +
 
     '<div class="kb-why-block kb-why-final">' +
     '<div class="kb-why-step"><span class="kb-why-no">✓</span>你该怎么处理</div>' +
-    '<div class="kb-advices">' + (item.advices || []).map(function (a) { return '<div class="kb-advice">· ' + a + '</div>'; }).join('') + '</div>' +
+    '<div class="kb-advices">' + (item.advices || []).map(function (a: any) { return '<div class="kb-advice">· ' + a + '</div>'; }).join('') + '</div>' +
     '</div>' +
 
     (item.fit ? '<div class="kb-fit"><span class="kb-fit-label">适合人群</span>' + item.fit + '</div>' : '') +
@@ -1619,7 +1619,7 @@ function agentKBQuickAsk(text: string): any {
 }
 
 // ------------------------------ 5. 知识问答主入口 ------------------------------
-function agentKBHandle(text) {
+function agentKBHandle(text: any) {
   var t = String(text || '');
   if (!t) return false;
   if (!agentKBIsKnowledgeQuery(t)) return false;
@@ -1670,12 +1670,12 @@ function agentKBHandle(text) {
 // ------------------------------ 6. 工具注册 ------------------------------
 registerAgentTool('kb.search', {
   label: '检索金融知识库', risk: 'low',
-  run: function (args) {
+  run: function (args: any) {
     var q = (args && args.query) || '';
     var hits = agentKBRetrieve(q, 3);
     if (!hits.length) return { summary: '知识库中未找到相关条目', data: [] };
     var qtype = agentKBClassify(q);
-    var detail = hits.map(function (h) {
+    var detail = hits.map(function (h: any) {
       return {
         id: h.kb.id, title: h.kb.title, cat: FIN_KB_META[h.kb.cat],
         risk: h.kb.risk, liquidity: h.kb.liquidity, yieldText: h.kb.yieldText,
@@ -1687,7 +1687,7 @@ registerAgentTool('kb.search', {
       };
     });
     return {
-      summary: '检索到 ' + hits.length + ' 条相关知识（问题类型：' + qtype + '）：' + hits.map(function (h) { return h.kb.title; }).join('、'),
+      summary: '检索到 ' + hits.length + ' 条相关知识（问题类型：' + qtype + '）：' + hits.map(function (h: any) { return h.kb.title; }).join('、'),
       questionType: qtype,
       data: detail
     };
