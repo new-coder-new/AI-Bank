@@ -11,3 +11,11 @@ js/core/config.local.js
 .env.*
 # 本地持久化数据库不进镜像：运行时由 /app/data 卷提供
 data
+
+# 开发期文件不进镜像（运行时只需要 index.html / css / js / server）
+tests
+docs
+types
+tsconfig*.json
+vite.config.mjs
+tsconfig.strict-all.json
