@@ -27,6 +27,7 @@
     "preview",
     "js/core/session.js",
     "js/core/api.js",
-    "js/core/storage.js"
+    "js/core/storage.js",
+    "js/agent/agentsvc.js"
   ]
 }
