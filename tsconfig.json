@@ -28,6 +28,7 @@
     "js/core/session.js",
     "js/core/api.js",
     "js/core/storage.js",
-    "js/agent/agentsvc.js"
+    "js/agent/agentsvc.js",
+    "js/agent/context.js"
   ]
 }
