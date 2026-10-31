@@ -286,6 +286,10 @@ icons → config → api → visualization → storage → security
 
 ## 6. 数据模型与持久化
 
+> 服务端持久化：**SQLite（Node 内置 `node:sqlite`，零额外依赖）**，文件 `data/bank.db`（WAL 模式）。
+> 表结构：`state(key, value, updated_at)` 存业务快照，`ledger(id, at, action, amount, target, ip, result, meta)` 存资金审计流水。
+> 首次启动会自动把旧的 `data/db.json` 导入一次并保留原文件做备份；可用 `GET /api/ledger?limit=50` 查询流水。
+
 ### 6.1 前端 `mockData`
 
 `js/core/config.js` 定义了前端默认数据 `mockData`，包括：

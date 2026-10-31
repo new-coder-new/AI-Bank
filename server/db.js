@@ -253,7 +253,48 @@ function buildDB() {
 // 不再每次启动都回到初始种子数据。
 // 可用环境变量 BANK_DB_FILE 指定文件位置（容器里建议挂载卷）。
 // ---------------------------------------------------------------------------
-const DB_FILE = process.env.BANK_DB_FILE || path.join(__dirname, '..', 'data', 'db.json');
+// ---------------------------------------------------------------------------
+// 持久化层：SQLite（Node 内置 node:sqlite，零依赖）
+// 设计原则（最小改动）：
+//   1) 业务代码仍然拿到一个 DB 对象（结构不变），只有落盘方式换成 SQLite；
+//   2) 每次保存都在一个事务里写全部键，避免"写一半"；
+//   3) 额外维护一张 ledger 表，资金审计可按时间/动作查询；
+//   4) 首次启动如果存在旧的 data/db.json，自动导入一次（文件保留做备份）。
+// ---------------------------------------------------------------------------
+const { DatabaseSync } = require('node:sqlite');
+
+const DB_PATH = process.env.BANK_DB_FILE || path.join(__dirname, '..', 'data', 'bank.db');
+const LEGACY_JSON = path.join(__dirname, '..', 'data', 'db.json');
+
+let _db = null;
+function openDb() {
+  if (_db) return _db;
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+  _db = new DatabaseSync(DB_PATH);
+  _db.exec(`
+    PRAGMA journal_mode = WAL;
+    PRAGMA synchronous = NORMAL;
+    PRAGMA busy_timeout = 3000;
+    CREATE TABLE IF NOT EXISTS state (
+      key        TEXT PRIMARY KEY,
+      value      TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS ledger (
+      id      INTEGER PRIMARY KEY AUTOINCREMENT,
+      at      TEXT NOT NULL,
+      action  TEXT NOT NULL,
+      amount  REAL,
+      target  TEXT,
+      ip      TEXT,
+      result  TEXT,
+      meta    TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_ledger_at ON ledger(at);
+    CREATE INDEX IF NOT EXISTS idx_ledger_action ON ledger(action);
+  `);
+  return _db;
+}
 
 function isPlainObject(v) {
   return v && typeof v === 'object' && !Array.isArray(v);
@@ -271,36 +312,103 @@ function mergeSaved(base, saved) {
   return out;
 }
 
+function readStateMap() {
+  const rows = openDb().prepare('SELECT key, value FROM state').all();
+  const out = {};
+  rows.forEach((r) => {
+    try { out[r.key] = JSON.parse(r.value); } catch (e) { /* 忽略坏行 */ }
+  });
+  return out;
+}
+
 function loadDB() {
   const base = buildDB();
   try {
-    if (fs.existsSync(DB_FILE)) {
-      const saved = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-      if (isPlainObject(saved)) {
-        console.log('[db] 已加载持久化数据：' + DB_FILE);
-        return mergeSaved(base, saved);
+    const saved = readStateMap();
+    if (Object.keys(saved).length) {
+      console.log('[db] 已加载 SQLite 数据：' + DB_PATH);
+      return mergeSaved(base, saved);
+    }
+    // 首次启动：尝试导入旧的 db.json（保留文件做备份）
+    if (fs.existsSync(LEGACY_JSON)) {
+      try {
+        const legacy = JSON.parse(fs.readFileSync(LEGACY_JSON, 'utf8'));
+        if (isPlainObject(legacy)) {
+          const merged = mergeSaved(base, legacy);
+          saveDB(merged);
+          console.log('[db] 已从旧 JSON 导入到 SQLite：' + LEGACY_JSON);
+          return merged;
+        }
+      } catch (e) {
+        console.warn('[db] 旧 JSON 导入失败，使用初始数据：' + e.message);
       }
     }
+    saveDB(base);
+    console.log('[db] 初始化 SQLite 数据文件：' + DB_PATH);
+    return base;
   } catch (e) {
-    console.warn('[db] 持久化数据读取失败，使用初始数据：' + e.message);
+    console.warn('[db] SQLite 读取失败，使用初始数据：' + e.message);
+    return base;
   }
-  return base;
 }
 
-// 原子写入：先写临时文件再改名，避免进程中断留下半个 JSON
+// 事务保存：所有顶层键在同一事务里 upsert，避免写一半
 function saveDB(db) {
   try {
-    fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
-    const tmp = DB_FILE + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(db, null, 2), 'utf8');
-    fs.renameSync(tmp, DB_FILE);
+    const d = openDb();
+    const at = fmtDateTime(now());
+    const upsert = d.prepare(
+      'INSERT INTO state (key, value, updated_at) VALUES (?, ?, ?) ' +
+      'ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at'
+    );
+    d.exec('BEGIN IMMEDIATE');
+    try {
+      Object.keys(db || {}).forEach((k) => {
+        if (k === '__idem') return;   // 幂等键是短生命周期缓存，不入库
+        upsert.run(k, JSON.stringify(db[k]), at);
+      });
+      d.exec('COMMIT');
+    } catch (e) {
+      d.exec('ROLLBACK');
+      throw e;
+    }
     return true;
   } catch (e) {
-    console.warn('[db] 持久化写入失败：' + e.message);
+    console.warn('[db] SQLite 写入失败：' + e.message);
     return false;
   }
 }
 
-function dbFilePath() { return DB_FILE; }
+// 追加资金审计行（与内存 auditLog 并行落一行，便于按时间查询）
+function appendLedger(entry) {
+  try {
+    const e = entry || {};
+    openDb().prepare(
+      'INSERT INTO ledger (at, action, amount, target, ip, result, meta) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(
+      String(e.at || fmtDateTime(now())),
+      String(e.action || 'unknown'),
+      Number(e.amount) || 0,
+      e.target == null ? '' : String(e.target),
+      e.ip == null ? '' : String(e.ip),
+      e.result == null ? '' : String(e.result),
+      JSON.stringify(e)
+    );
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
 
-module.exports = { buildDB, fmtDate, fmtDateTime, now, daysAgo, loadDB, saveDB, dbFilePath };
+function queryLedger(limit) {
+  try {
+    return openDb().prepare('SELECT * FROM ledger ORDER BY id DESC LIMIT ?').all(Number(limit) || 50);
+  } catch (e) { return []; }
+}
+
+function dbFilePath() { return DB_PATH; }
+
+module.exports = {
+  buildDB, fmtDate, fmtDateTime, now, daysAgo, loadDB, saveDB, dbFilePath,
+  appendLedger, queryLedger
+};

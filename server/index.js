@@ -8,7 +8,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { buildDB, fmtDate, fmtDateTime, now, loadDB, saveDB, dbFilePath } = require('./db');
+const { buildDB, fmtDate, fmtDateTime, now, loadDB, saveDB, dbFilePath, appendLedger, queryLedger } = require('./db');
 
 // 有 data/db.json 就读回上次的数据，没有才用初始种子
 let DB = loadDB();
@@ -522,8 +522,11 @@ function auditLog(db, action, detail) {
   try {
     db.auditLog = db.auditLog || [];
     const ip = (detail && detail.ip) || '';
-    db.auditLog.unshift(Object.assign({ at: fmtDateTime(now()), action: action, ip: ip }, detail || {}));
+    const entry = Object.assign({ at: fmtDateTime(now()), action: action, ip: ip }, detail || {});
+    db.auditLog.unshift(entry);
     if (db.auditLog.length > 500) db.auditLog.length = 500;
+    // 同时落一行到 SQLite ledger，便于按时间/动作查询
+    try { appendLedger(entry); } catch (e) { /* 落库失败不影响业务 */ }
   } catch (e) { /* 审计失败不影响业务 */ }
 }
 
@@ -581,6 +584,14 @@ const routes = {
 
   // 资金审计日志（最近 200 条）
   'GET /api/audit': () => ({ ok: true, items: (DB.auditLog || []).slice(0, 200) }),
+
+  // 资金流水（SQLite ledger 表，最近 N 条）
+  'GET /api/ledger': (req) => {
+    const u = new URL(req.url, 'http://localhost');
+    return { ok: true, items: queryLedger(u.searchParams.get('limit') || 50) };
+  },
+
+
 
 
   // 退出登录：销毁当前会话令牌
