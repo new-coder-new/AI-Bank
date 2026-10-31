@@ -121,7 +121,7 @@ function renderTransferTierHint() {
   el.style.display = 'block';
   el.style.color = badge.color;
   el.innerHTML = '当前金额将适用 <b>' + t.name + '</b> 档' +
-    (t.needVerify ? '：需要输入二次验证码后才可执行。' : (t.needConfirm ? '：需要确认后执行。' : '：可直接执行。'));
+    ((/** @type {any} */ (t)).needVerify ? '：需要输入二次验证码后才可执行。' : (t.needConfirm ? '：需要确认后执行。' : '：可直接执行。'));
 }
 
 // 手机号与通讯录匹配：通讯录里的号码是脱敏的（138****1234），先把输入按同样规则脱敏再比对

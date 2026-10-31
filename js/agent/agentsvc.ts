@@ -5,8 +5,8 @@
 
 // —— 运行时由其它脚本提供的全局 ——
 declare var mockData: any;
-declare function agentFmt(v: any): string;
-declare function agentFmtInt(v: any): string;
+declare function agentFmt(v: any, digits?: number): string;
+declare function agentFmtInt(v: any, digits?: number): string;
 declare function appendMessage(html: string): void;
 declare function scrollToBottom(): void;
 declare function addToConversation(role: string, text: string, meta?: any): void;

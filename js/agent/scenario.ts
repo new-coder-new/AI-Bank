@@ -8,7 +8,7 @@
 declare var AGENT_MEMORY: any;
 declare function agentParseAmount(text: string): number;
 declare function agentSessionSnapshot(): any;
-declare function agentFmtInt(v: any): string;
+declare function agentFmtInt(v: any, digits?: number): string;
 declare function agentSessionAnalysis(kind: string, summary: string, extra?: any): void;
 declare function agentSessionDemand(type: string, text: string): void;
 declare function agentCtxPushTopic(type: string, summary?: string, extra?: any): any;

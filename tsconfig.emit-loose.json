@@ -16,6 +16,7 @@
   },
   "files": [
     "js/agent/agent-llm.ts",
-    "js/agent/kb.ts"
+    "js/agent/kb.ts",
+    "js/agent/agent.ts"
   ]
 }

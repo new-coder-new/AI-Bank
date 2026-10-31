@@ -5,13 +5,13 @@
 // ==========================================================================
 
 // —— 运行时由其它脚本提供的全局 ——
-declare var mockData: any;
 declare var AGENT_SESSION: any;
+declare var mockData: any;
 declare function agentMonthSummary(): any;
 declare function agentSessionSnapshot(): any;
 declare function agentBudgetStatus(): any;
 declare function agentCategoryStats(): any[];
-declare function agentFmtInt(v: any): string;
+declare function agentFmtInt(v: any, digits?: number): string;
 declare function agentDateStr(days: number): string;
 declare function agentSessionAnalysis(kind: string, summary: string, extra?: any): void;
 declare function agentSessionDemand(type: string, text: string): void;

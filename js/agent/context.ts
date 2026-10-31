@@ -11,11 +11,11 @@
 // —— 运行时由其它脚本提供的全局 ——
 declare var AGENT_SESSION: any;
 declare var mockData: any;
-declare function agentFmtInt(v: any): string;
+declare function agentFmtInt(v: any, digits?: number): string;
 declare function appendMessage(html: string): void;
 declare function scrollToBottom(): void;
 declare function addToConversation(role: string, text: string, meta?: any): void;
-declare function agentSessionAnalysis(kind: string, summary: string): void;
+declare function agentSessionAnalysis(kind: string, summary: string, extra?: any): void;
 declare function agentCategoryStats(): any[];
 declare function agentMonthSummary(): any;
 declare function profileHealthScore(x: any): any;

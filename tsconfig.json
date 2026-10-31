@@ -41,6 +41,7 @@
     "js/agent/agent-llm.js",
     "js/agent/agent-llm.ts",
     "js/agent/kb.js",
-    "js/agent/kb.ts"
+    "js/agent/kb.ts",
+    "js/agent/agent.js"
   ]
 }

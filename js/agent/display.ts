@@ -13,11 +13,11 @@ declare function profileCashFlow(): any;
 declare function agentMonthSummary(): any;
 declare function agentCategoryStats(): any[];
 declare function agentSessionSnapshot(): any;
-declare function agentFmt(v: any): string;
-declare function agentFmtInt(v: any): string;
+declare function agentFmt(v: any, digits?: number): string;
+declare function agentFmtInt(v: any, digits?: number): string;
 declare function appendMessage(html: string): void;
 declare function scrollToBottom(): void;
-declare function agentSessionAnalysis(kind: string, summary: string): void;
+declare function agentSessionAnalysis(kind: string, summary: string, extra?: any): void;
 declare function addToConversation(role: string, text: string, meta?: any): void;
 declare function registerAgentTool(name: string, def: any): void;
 
