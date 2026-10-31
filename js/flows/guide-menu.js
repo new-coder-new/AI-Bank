@@ -554,6 +554,16 @@ async function guideHandleText(text) {
         guideExitSilently();
         return true;
     }
+    // 停在某个模块的二级菜单（没有进行中流程）时：说「退出」直接回主菜单，
+    // 不能再被当成「本模块乱说一句」而重问「请选择 XX 里的操作」
+    if (/^(退出|退出流程|回到主菜单|回主菜单|退出模块|不办了)$/.test(t) &&
+        currentModule && currentModule !== 'chat' &&
+        !(typeof guideActiveFlowLabel === 'function' && guideActiveFlowLabel())) {
+        GUIDE_WRAPUP = null;
+        guideBackToMenu();
+        scrollToBottom();
+        return true;
+    }
     // GUIDE_WRAPUP_HANDLED：业务完成后的「还需要办理其他业务吗？」待答状态
     if (GUIDE_WRAPUP) {
         var plainWrap = t.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, ''); // 只保留中英文与数字，剔除各种标点
