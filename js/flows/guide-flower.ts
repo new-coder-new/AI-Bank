@@ -950,7 +950,8 @@ function guideFlowerModifyStart(orderId: any) {
   GUIDE_FLOWER = { mode: 'modify', stage: 'modify-slots', order: order, newBouquet: '' };
   currentModule = 'flower';
   var slot = guideFlowerSlot(order.slot);
-  appendMessage(guideMessage('<p>要修改「' + guideEsc(order.recipient) + '」这笔鲜花订单的什么？例如「改成向日葵花束」。</p>' +
+  appendMessage(guideMessage('<p>要修改「' + guideEsc(order.recipient) + '」这笔鲜花订单的什么？</p>' +
+    '<p class="guide-tip">例如：改成向日葵花束</p>' +
     '<p class="guide-tip">当前：' + guideEsc(order.bouquet) + '｜' + guideFlowerDisplayDate(order.date) + ' ' + slot.text +
     '（配送前 24 小时以上可免费修改）</p>'));
   scrollToBottom();

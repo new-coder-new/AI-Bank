@@ -321,7 +321,8 @@ function guideStartSubAutoRenew() {
     '<p>当前有效订阅如下：</p>' +
     '<div class="report-panel"><div class="report-panel-title">有效订阅</div>' + rows + '</div>' +
     (historyHtml ? '<div class="report-panel" style="margin-top:10px;"><div class="report-panel-title">历史记录</div>' + historyHtml + '</div>' : '') +
-    '<p>需要取消或开启哪一项的自动续费？例如「关闭某阅读APP会员 的自动续费」。</p>'
+    '<p>需要取消或开启哪一项的自动续费？</p>' +
+    '<p class="guide-tip">例如：关闭某阅读APP会员的自动续费</p>'
   ));
   scrollToBottom();
 }

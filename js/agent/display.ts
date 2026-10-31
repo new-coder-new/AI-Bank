@@ -55,7 +55,8 @@ function agentHealthCardHtml(health: Health, lifecycle: Lifecycle): string {
     '<div class="agent-sec-title">生命周期分析 · ' + lifecycle.stage + '</div>' +
     '<div class="health-life-desc">' + lifecycle.desc + '</div>' +
     '<div class="health-advices">' + lifeAdvice + '</div>' +
-    '<div class="health-foot">需要我按其中某条建议直接办理吗？例如「帮我开一个自动储蓄计划」。</div>' +
+    '<div class="health-foot">需要我按其中某条建议直接办理吗？</div>' +
+    '<div class="guide-tip">例如：帮我开一个自动储蓄计划</div>' +
     '</div></div></div>';
 }
 
@@ -209,7 +210,8 @@ function agentAlertCardHtml(a: CategoryAlert): string {
     '<div class="agent-insight-title">' + a.title + '</div>' +
     '<div class="agent-insight-desc">' + a.detail + '</div>' +
     '</div></div>' +
-    '<div class="agent-tasks-note">如需处理，直接告诉我怎么做即可（例如「调整预算」「体检负债风险」）。</div>' +
+    '<div class="agent-tasks-note">如需处理，直接告诉我怎么做即可。</div>' +
+    '<div class="guide-tip">例如：调整预算 / 体检负债风险</div>' +
     '</div></div></div>';
 }
 

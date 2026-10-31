@@ -256,7 +256,8 @@ function contactAddDo(name: string, account: string, bank?: string): void {
     '<div class="data-row"><span class="data-label">开户银行</span><span class="data-value">' + (bank || '未提供开户行') + '</span></div>' +
     '<div class="data-row"><span class="data-label">当前联系人总数</span><span class="data-value">' + contactListData().length + ' 位</span></div>' +
     '</div>' +
-    '<p style="margin-top:8px;font-size:12px;color:#999;"> 现在可以直接对 TA 转账，例如「给 ' + name + ' 转账 500 元」。</p>' +
+    '<p style="margin-top:8px;font-size:12px;color:#999;"> 现在可以直接对 TA 转账。</p>' +
+    '<p class="guide-tip">例如：给 ' + name + ' 转账 500 元</p>' +
     '</div></div></div>';
   appendMessage(okHtml);
   scrollToBottom();

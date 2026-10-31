@@ -724,7 +724,7 @@ async function agentLLMHandle(text) {
 function agentLLMFallbackAnswer(state) {
     var done = (state.executed || []).filter(function (x) { return x.ok && x.summary; });
     if (!done.length) {
-        return '我已经读取了你的账户数据。你想让我重点看哪一块？例如本月支出结构、异常交易、订阅扣费或理财配置。';
+        return '我已经读取了你的账户数据。你想让我重点看哪一块？\n例如：本月支出结构 / 异常交易 / 订阅扣费 / 理财配置';
     }
     var lines = done.slice(0, 4).map(function (x) { return '· ' + (x.label || x.name) + '：' + x.summary; });
     return '根据实际查询到的数据：\n' + lines.join('\n') + '\n\n需要我针对其中某一项继续安排吗？';

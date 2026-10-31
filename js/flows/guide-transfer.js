@@ -437,7 +437,8 @@ function guideTransferStep(text) {
     }
     // 负数金额或只写了负号：直接给明确提示，不再交给模型（避免反复追问同一句）
     if (/^\s*[-−负]/.test(t) && /\d/.test(t) && !(parsed.amount > 0)) {
-        guideAsk(guideMessage('<p>转账金额需要大于 0，请重新输入（例如「1000」）。</p>'));
+        guideAsk(guideMessage('<p>转账金额需要大于 0，请重新输入。</p>' +
+            '<p class="guide-tip">例如：1000</p>'));
         return true;
     }
     // 槽位层·模型补位：纯数字 / 尾号 / 联系人姓名这类「正则可以确定」的输入不会走到这里；
@@ -474,7 +475,8 @@ function guideTransferStep(text) {
     }
     if (s.payee) {
         if (/^[-−]?\s*负?\s*\d/.test(t) && /^[-−]|负/.test(t)) {
-            guideAsk(guideMessage('<p>转账金额需要大于 0，请重新输入（例如「1000」）。</p>'));
+            guideAsk(guideMessage('<p>转账金额需要大于 0，请重新输入。</p>' +
+                '<p class="guide-tip">例如：1000</p>'));
         }
         else {
             guideAsk(guideMessage('<p>麻烦告诉我转账金额</p>'));
@@ -543,7 +545,7 @@ function guideTimedMissingPrompt(s) {
         return '请问执行日期是哪天？（今天 / 明天 / 具体日期；时间已记为 ' + s.time + '）';
     // 只差钟点
     if (!missDate && missTime)
-        return '请问几点执行？（例如：15:00）';
+        return '请问几点执行？';
     if (missDate && missTime)
         return '麻烦告诉我执行时间是多少（如「明天下午5点」）';
     if (missAmount)
@@ -695,7 +697,8 @@ async function guideTimedStep(text) {
         guideTimedAskRepeat('');
         return true;
     }
-    appendMessage(guideMessage('<p>' + guideTimedMissingPrompt(s) + '</p>'));
+    appendMessage(guideMessage('<p>' + guideTimedMissingPrompt(s) + '</p>' +
+        (/请问几点执行/.test(guideTimedMissingPrompt(s)) ? '<p class="guide-tip">例如：15:00</p>' : '')));
     scrollToBottom();
     return true;
 }
@@ -722,7 +725,8 @@ function guideTimedConfirm() {
         s.date = null;
         s.time = null;
         s.period = null;
-        appendMessage(guideMessage('<p>' + guideTimedMissingPrompt(s) + '</p>'));
+        appendMessage(guideMessage('<p>' + guideTimedMissingPrompt(s) + '</p>' +
+            (/请问几点执行/.test(guideTimedMissingPrompt(s)) ? '<p class="guide-tip">例如：15:00</p>' : '')));
         scrollToBottom();
         return;
     }
@@ -979,7 +983,8 @@ function guideAASubmit() {
 }
 async function guideAAStep(text) {
     if (guideIsNegativeAmount(text)) {
-        guideAsk(guideMessage('<p>垫付金额需要大于 0，请重新输入（例如「600」）。</p>'));
+        guideAsk(guideMessage('<p>垫付金额需要大于 0，请重新输入。</p>' +
+            '<p class="guide-tip">例如：600</p>'));
         return true;
     }
     var t = String(text || '').trim();

@@ -312,7 +312,8 @@ async function guideTransferAIFallback(text: any) {
 
   var aiTag = '';
   if (!(amount > 0) && /[-−负]/.test(String(text || '')) && /\d/.test(String(text || ''))) {
-    guideAsk(guideMessage('<p>转账金额需要大于 0，请重新输入（例如「1000」）。</p>'));
+    guideAsk(guideMessage('<p>转账金额需要大于 0，请重新输入。</p>' +
+    '<p class="guide-tip">例如：1000</p>'));
     return true;
   }
   var hasTarget = s.kind === 'phone' ? !!s.phone : !!s.payee;
@@ -339,7 +340,7 @@ async function guideTransferAIFallback(text: any) {
       guideAsk(guideMessage('<p>请问收款手机号是多少？</p>'));
     } else {
       var reply = parsed && parsed.reply ? String(parsed.reply) : '';
-      appendMessage(guideMessage('<p>' + (reply || '没太听懂。可以直接说手机号和金额，例如「13800138000 100」。') + '</p>' +
+      appendMessage(guideMessage('<p>' + (reply || '没太听懂。可以直接说手机号和金额。') + '</p>' +
         '<p class="guide-tip">例如：13800138000 100</p>'));
     }
   } else if (s.payee) {
@@ -348,7 +349,7 @@ async function guideTransferAIFallback(text: any) {
     guideAsk(guideMessage('<p>请问要转给谁？</p>'));
   } else {
     var reply2 = parsed && parsed.reply ? String(parsed.reply) : '';
-    appendMessage(guideMessage('<p>' + (reply2 || '没太听懂。可以直接说收款人和金额，例如「张三 100」。') + '</p>' +
+    appendMessage(guideMessage('<p>' + (reply2 || '没太听懂。可以直接说收款人和金额。') + '</p>' +
       '<p class="guide-tip">例如：张三 100 / 张三转 100 / 给李雷转 1.5 万</p>'));
   }
   scrollToBottom();

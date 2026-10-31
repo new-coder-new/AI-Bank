@@ -1002,7 +1002,7 @@ function guideUnknownPayeeNotice(name, sourceText) {
     // 这时不要把它当「收款人姓名」念出来，改成通用追问，避免出现「你个傻比 → 『个啥比』不在通讯录里」
     var likeTransfer = /(转|打款|汇款|付款|付给|给|向|帮|替)/.test(src) || /\d/.test(src);
     if (src && !likeTransfer) {
-        guideAsk(guideMessage('<p>没太听懂。可以直接说收款人和金额，例如「张三 100」。</p>' +
+        guideAsk(guideMessage('<p>没太听懂。可以直接说收款人和金额。</p>' +
             '<p class="guide-tip">例如：张三 100 / 张三转 100 / 给李雷转 1.5 万</p>'));
         return;
     }
@@ -1215,7 +1215,8 @@ function guideTypingBubble() {
 }
 async function guideTxnLimitStep(text) {
     if (guideIsNegativeAmount(text) && !/(不变|不改变|保持原样|不改)/.test(text)) {
-        guideAsk(guideMessage('<p>限额需要大于 0，请重新输入（例如「20000」）。</p>'));
+        guideAsk(guideMessage('<p>限额需要大于 0，请重新输入。</p>' +
+            '<p class="guide-tip">例如：20000</p>'));
         return true;
     }
     var t = String(text || '').trim();

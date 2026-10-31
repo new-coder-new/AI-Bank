@@ -377,7 +377,8 @@ function guideCardLimitParse(text: any) {
 
 async function guideCardLimitStep(text: any) {
   if (guideIsNegativeAmount(text)) {
-    guideAsk(guideMessage('<p>目标额度需要大于 0，请重新输入（例如「80000」）。</p>'));
+    guideAsk(guideMessage('<p>目标额度需要大于 0，请重新输入。</p>' +
+    '<p class="guide-tip">例如：80000</p>'));
     return true;
   }
   var t = String(text || '').trim();

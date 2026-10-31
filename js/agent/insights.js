@@ -268,7 +268,8 @@ function agentProactiveCardHtml(ev) {
         '<div class="agent-insight-title">' + ev.title + '</div>' +
         '<div class="agent-insight-desc">' + ev.detail + '</div>' +
         '</div></div>' +
-        '<div class="agent-tasks-note">需要处理时直接说一声即可，例如「' + (ev.taskLabel || '帮我看看') + '」。</div>' +
+        '<div class="agent-tasks-note">需要处理时直接说一声即可。</div>' +
+        '<div class="guide-tip">例如：' + (ev.taskLabel || '帮我看看') + '</div>' +
         '<div class="agent-proactive-foot">好的，我记下了。等你需要时直接对我说一声就行。</div>' +
         '</div></div></div>';
 }
