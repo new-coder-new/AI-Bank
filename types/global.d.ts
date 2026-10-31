@@ -186,3 +186,9 @@ declare function agentLLMHandle(text: string): Promise<boolean>;
 declare function agentLLMClearHistory(): void;
 declare function agentLLMApprove(id: string): void;
 declare function agentLLMReject(id: string): void;
+
+// —— 金融知识库（js/agent/kb.ts，以 noCheck 转译）——
+declare function agentKBHandle(text: string): Promise<boolean> | boolean;
+declare function agentKBIsKnowledgeQuery(text: string): boolean;
+declare function agentKBQuickAsk(text: string): any;
+declare function agentKBAsk(text: string): any;
