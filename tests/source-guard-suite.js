@@ -39,18 +39,23 @@ ok('index.html 引用的脚本都存在（' + refs.length + ' 个）', missing.l
 
 // ③ 每个 .ts 源都有对应的 .js 产物
 const tsFiles = walk(path.join(ROOT, 'js'), ['.ts']);
-const noOutput = tsFiles.filter((f) => !fs.existsSync(f.replace(/\.ts$/, '.js')));
+const JS_ROOT = path.join(ROOT, 'js');
+const BUILD_ROOT = path.join(ROOT, 'build', 'js');
+const noOutput = tsFiles.filter((f) => {
+  const rel = path.relative(JS_ROOT, f).replace(/\\/g, '/').replace(/\.ts$/, '.js');
+  return !fs.existsSync(path.join(BUILD_ROOT, rel));
+});
 ok('每个 .ts 都有编译产物 .js（' + tsFiles.length + ' 个）', noOutput.length === 0, noOutput.join(', '));
 
 // ④ 引导层入口函数在编译产物里确实存在（防止拆分/替换后丢函数）
 const guideEntry = ['guideHandleText', 'guideBackToMenu', 'guideResetAllSessions'];
-const guideSrc = fs.readFileSync(path.join(ROOT, 'js/flows/guide-menu.js'), 'utf8') +
-  fs.readFileSync(path.join(ROOT, 'js/core/session.js'), 'utf8');
+const guideSrc = fs.readFileSync(path.join(ROOT, 'build/js/flows/guide-menu.js'), 'utf8') +
+  fs.readFileSync(path.join(ROOT, 'build/js/core/session.js'), 'utf8');
 const lostEntries = guideEntry.filter((n) => !guideSrc.includes('function ' + n + '('));
 ok('引导层关键入口函数存在', lostEntries.length === 0, lostEntries.join(', '));
 
 // ⑤ 安全验证模块的关键函数存在（本次卡死回归的守卫）
-const secSrc = fs.readFileSync(path.join(ROOT, 'js/flows/security.js'), 'utf8');
+const secSrc = fs.readFileSync(path.join(ROOT, 'build/js/flows/security.js'), 'utf8');
 const secFns = ['showSecurityVerification', 'showPasswordVerify', 'showFingerprintVerify', 'showSmsVerify', 'showFaceVerification', 'showOtpVerification', 'closeSecurityVerify', 'showSecurityCenter'];
 const lostSec = secFns.filter((n) => !secSrc.includes('function ' + n + '('));
 ok('安全验证模块函数齐全（' + secFns.length + ' 个）', lostSec.length === 0, lostSec.join(', '));

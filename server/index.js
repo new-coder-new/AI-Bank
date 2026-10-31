@@ -125,7 +125,7 @@ const MIME = {
 function isAllowedStatic(pathname) {
   if (pathname === '/index.html' || pathname === '/favicon.ico') return true;
   if (pathname.endsWith('config.local.js')) return false;
-  return /^\/(css|js|preview)\//.test(pathname);
+  return /^\/(css|js|preview|build)\//.test(pathname);
 }
 
 // 提供静态文件（目录穿越防护）

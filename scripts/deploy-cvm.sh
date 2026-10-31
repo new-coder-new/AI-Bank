@@ -28,7 +28,7 @@ tar -czf "$PKG" -C "$ROOT" \
   --exclude='.git' --exclude='.workbuddy' --exclude='preview' \
   --exclude='data' --exclude='logs' --exclude='node_modules' \
   --exclude='*.log' --exclude='config.local.js' \
-  index.html css js server package.json Dockerfile tsconfig.emit.json types
+  index.html css js server package.json Dockerfile tsconfig.emit.json types build
 echo "    包大小: $(du -h "$PKG" | cut -f1)"
 
 say "2/5 上传"

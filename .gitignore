@@ -32,6 +32,7 @@ js/core/config.local.js
 .zcode/
 
 dist/
+build/
 
 # 编译产物：仓库只保留 TS 源码，.js 由 npm run build:ts 生成
 js/**/*.js

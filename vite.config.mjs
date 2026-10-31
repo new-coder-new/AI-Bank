@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
 import { transformSync } from 'esbuild';
 
 const ROOT = process.cwd();
-const JS_DIRS = ['js'];
+const JS_DIRS = ['build/js'];
 
 /** 收集 js/ 下所有 .js（跳过 config.local.js，它是服务端动态下发的） */
 function collectJs(dir, out = []) {
@@ -46,7 +46,7 @@ function classicScriptsBuild() {
             out = src; // 压缩失败则原样输出，不阻塞构建
           }
           const hash = createHash('sha256').update(out).digest('hex').slice(0, 8);
-          const base = rel.replace(/^\/js\//, '').replace(/\.js$/, '');
+          const base = rel.replace(/^\/build\/js\//, '').replace(/\.js$/, '');
           const outRel = `/assets/${base}.${hash}.js`;
           const outPath = join(distDir, outRel.slice(1));
           mkdirSync(dirname(outPath), { recursive: true });

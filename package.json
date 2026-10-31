@@ -15,7 +15,8 @@
     "typecheck:strict": "tsc -p tsconfig.strict-all.json",
     "prestart": "npm run build:ts",
     "predev": "npm run build:ts",
-    "pretest": "npm run build:ts"
+    "pretest": "npm run build:ts",
+    "clean": "node -e \"require('fs').rmSync('build',{recursive:true,force:true})\""
   },
   "engines": {
     "node": ">=18"

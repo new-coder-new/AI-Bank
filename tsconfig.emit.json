@@ -9,7 +9,7 @@
       "DOM.Iterable"
     ],
     "rootDir": ".",
-    "outDir": ".",
+    "outDir": "build",
     "strict": true,
     "skipLibCheck": true,
     "removeComments": false,

@@ -3,8 +3,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const FLOWS = path.join(__dirname, '..', '..', 'js', 'flows');
-const CORE = path.join(__dirname, '..', '..', 'js', 'core');
+const FLOWS = path.join(__dirname, '..', '..', 'build', 'js', 'flows');
+const CORE = path.join(__dirname, '..', '..', 'build', 'js', 'core');
 const ORDER = [
   'guide-rules.js',
   'guide-ai.js',
