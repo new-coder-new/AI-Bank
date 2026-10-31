@@ -52,7 +52,6 @@
     "js/core/icons.js",
     "js/core/intent.js",
     "js/core/config.js",
-    "js/core/voice.js",
     "js/core/visualization.js",
     "js/core/ui.js",
     "js/flows/analysis.js",

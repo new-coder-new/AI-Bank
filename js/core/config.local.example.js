@@ -8,6 +8,5 @@
 window.__BANK_KEYS__ = {
   // DeepSeek：对话、意图分类、Agent function calling
   deepseekApiKey: 'sk-在此填入你的 DeepSeek API Key',
-  // 硅基流动：语音识别（可留空，此时语音输入自动走模拟识别）
   siliconflowApiKey: 'sk-在此填入你的 SiliconFlow API Key'
 };

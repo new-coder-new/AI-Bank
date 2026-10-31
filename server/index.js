@@ -20,7 +20,7 @@ const STATIC_ROOT = path.join(__dirname, '..');
 
 // ---------------------------------------------------------------------------
 // 密钥只在服务端使用：优先读环境变量，其次读本地 js/config.local.js。
-// 浏览器永远不会拿到真实 Key；前端通过 /api/ai/* 代理调用模型与语音。
+// 浏览器永远不会拿到真实 Key；前端通过 /api/ai/* 代理调用模型。
 // ---------------------------------------------------------------------------
 function loadLocalKeys() {
   const out = {
@@ -40,7 +40,6 @@ function loadLocalKeys() {
 }
 const AI_KEYS = loadLocalKeys();
 const DEEPSEEK_UPSTREAM = 'https://api.deepseek.com/v1/chat/completions';
-const SILICONFLOW_UPSTREAM = 'https://api.siliconflow.cn/v1/audio/transcriptions';
 const SILICONFLOW_CHAT_UPSTREAM = 'https://api.siliconflow.cn/v1/chat/completions';
 const SILICONFLOW_CHAT_MODEL = process.env.SILICONFLOW_MODEL || 'Qwen/Qwen3-30B-A3B-Instruct-2507';
 // 对话模型提供方：AI_PROVIDER=siliconflow|deepseek；默认硅基流动（有 Key 时）
@@ -157,7 +156,7 @@ function serveStatic(req, res) {
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'SAMEORIGIN',
       'Referrer-Policy': 'same-origin',
-      'Permissions-Policy': 'geolocation=(), microphone=(self), camera=()',
+      'Permissions-Policy': 'geolocation=(), camera=()',
       'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff'
@@ -169,7 +168,7 @@ function serveStatic(req, res) {
 // 不再向浏览器下发真实 Key；只告诉前端“走服务端代理”
 function serveKeyConfig(res) {
   res.writeHead(200, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-store' });
-  res.end('window.__BANK_KEYS__ = {};\nwindow.__BANK_AI_PROXY__ = true;\nwindow.__BANK_ASR_PROXY__ = true;\n' +
+  res.end('window.__BANK_KEYS__ = {};\nwindow.__BANK_AI_PROXY__ = true;\n' +
     'window.__BANK_MODEL__ = ' + JSON.stringify(AI_PROVIDER === 'siliconflow' ? SILICONFLOW_CHAT_MODEL : (process.env.DEEPSEEK_MODEL || 'deepseek-chat')) + ';\n');
 }
 
@@ -267,31 +266,6 @@ async function handleAIChat(req, res) {
     res.end(text);
   } catch (e) {
     sendJSON(res, 502, { error: { message: '模型服务不可用：' + (e && e.message || e) } });
-  }
-}
-
-async function handleAITranscribe(req, res) {
-  if (!isSameOriginStrict(req)) return sendJSON(res, 403, { error: { message: 'Forbidden' } });
-  if (aiRateLimited(req, 'asr', 10, 60000)) return sendJSON(res, 429, { error: { message: '请求过于频繁，请稍后再试' } });
-  if (!AI_KEYS.siliconflow) return sendJSON(res, 503, { error: { message: '服务端未配置 SILICONFLOW_API_KEY' } });
-  const body = await readRawBody(req, 25 * 1024 * 1024);
-  if (!body || !body.length) return sendJSON(res, 400, { error: { message: '音频内容为空或过大' } });
-  const contentType = req.headers['content-type'] || 'application/octet-stream';
-  try {
-    const upstream = await fetch(SILICONFLOW_UPSTREAM, {
-      method: 'POST',
-      headers: { 'Content-Type': contentType, 'Authorization': 'Bearer ' + AI_KEYS.siliconflow },
-      body: body
-    });
-    const text = await upstream.text();
-    res.writeHead(upstream.status, {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store',
-      'X-Content-Type-Options': 'nosniff'
-    });
-    res.end(text);
-  } catch (e) {
-    sendJSON(res, 502, { error: { message: '语音识别服务不可用：' + (e && e.message || e) } });
   }
 }
 

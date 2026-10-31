@@ -23,20 +23,11 @@ var DEEPSEEK_API_URL = (typeof window !== 'undefined' && window.__BANK_AI_PROXY_
 // 直连模式（无代理）时回退到 DeepSeek。
 /** @type {any} */
 var MODEL_NAME = (typeof window !== 'undefined' && window.__BANK_MODEL__) || 'deepseek-v4-flash';
-// 硅基流动语音识别API
-const SILICONFLOW_API_KEY = BANK_KEYS.siliconflowApiKey || '';
-const SILICONFLOW_API_URL = (typeof window !== 'undefined' && window.__BANK_ASR_PROXY__)
-    ? '/api/ai/transcribe'
-    : 'https://api.siliconflow.cn/v1/audio/transcriptions';
-const VOICE_MODEL = 'XingChenAGI/XingChenASR-V3.2-Ultra';
 // 是否可用：服务端代理开启时即使浏览器没有 Key 也可用
 function bankHasLLMKey() {
     return !!(typeof window !== 'undefined' && window.__BANK_AI_PROXY__) || !!String(DEEPSEEK_API_KEY || '').trim();
 }
-function bankHasASRKey() {
-    return !!(typeof window !== 'undefined' && window.__BANK_ASR_PROXY__) || !!String(SILICONFLOW_API_KEY || '').trim();
-}
-// 带超时的 fetch：网络挂起时不能把 Agent/语音永久锁在“处理中”
+// 带超时的 fetch：网络挂起时不能把 Agent 永久锁在“处理中”
 function bankFetch(url, options, timeoutMs) {
     const ms = Number(timeoutMs) || 30000;
     const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;

@@ -39,7 +39,6 @@
     "js/core/storage.ts",
     "js/core/ui.ts",
     "js/core/visualization.ts",
-    "js/core/voice.ts",
     "js/flows/analysis.ts",
     "js/flows/budget.ts",
     "js/flows/card.ts",
