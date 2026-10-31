@@ -8,13 +8,16 @@ const BANK_KEYS = (typeof window !== 'undefined' && window.__BANK_KEYS__) || {};
 
 // 浏览器不再持有真实 Key。默认走同源代理 /api/ai/*，由 server/index.js
 // 用环境变量或本机 config.local.js 里的 Key 转发；前端 Key 仅作为旧部署兜底。
-const DEEPSEEK_API_KEY = BANK_KEYS.deepseekApiKey || '';
-const DEEPSEEK_API_URL = (typeof window !== 'undefined' && window.__BANK_AI_PROXY__)
+/** @type {any} */
+var DEEPSEEK_API_KEY = BANK_KEYS.deepseekApiKey || '';
+/** @type {any} */
+var DEEPSEEK_API_URL = (typeof window !== 'undefined' && window.__BANK_AI_PROXY__)
   ? '/api/ai/chat'
   : 'https://api.deepseek.com/v1/chat/completions';
 // 模型名：服务端会通过 window.__BANK_MODEL__ 下发（如硅基流动的 Qwen 模型）；
 // 直连模式（无代理）时回退到 DeepSeek。
-const MODEL_NAME = (typeof window !== 'undefined' && window.__BANK_MODEL__) || 'deepseek-v4-flash';
+/** @type {any} */
+var MODEL_NAME = (typeof window !== 'undefined' && window.__BANK_MODEL__) || 'deepseek-v4-flash';
 
 // 硅基流动语音识别API
 const SILICONFLOW_API_KEY = BANK_KEYS.siliconflowApiKey || '';
@@ -43,7 +46,8 @@ function bankFetch(url, options, timeoutMs) {
 
 /** @type {string} */
 var currentModule = 'chat';
-let isLoading = false;
+/** @type {any} */
+var isLoading = false;
 var cardFrozen = false;
 /** @type {any} */
 var riskProfile = null;

@@ -29,6 +29,8 @@
     "js/core/api.js",
     "js/core/storage.js",
     "js/agent/agentsvc.js",
-    "js/agent/context.js"
+    "js/agent/context.js",
+    "js/agent/ai.js",
+    "js/agent/display.js"
   ]
 }

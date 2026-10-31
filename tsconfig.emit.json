@@ -21,6 +21,8 @@
     "js/core/api.ts",
     "js/core/storage.ts",
     "js/agent/agentsvc.ts",
-    "js/agent/context.ts"
+    "js/agent/context.ts",
+    "js/agent/ai.ts",
+    "js/agent/display.ts"
   ]
 }

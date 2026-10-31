@@ -1,7 +1,7 @@
-// ========== 大模型意图分类与模块路由 ==========
-// 调用大模型自动识别用户意图，分类到对应模块
+"use strict";
+/** 调用大模型识别用户意图（未配置 Key 时返回 null，由调用方降级到本地规则） */
 async function callLLMIntentClassification(text) {
-  const intentDefinitions = `
+    const intentDefinitions = `
 支持的意图（15种）：
 1. 智能转账 - 用户要求转账、汇款、打款、付款给单个收款人
 2. 批量转账 - 用户要求给多个收款人转账，包括"给XX和YY都转"、"给XX、YY各转"、"给XX和YY分别转"、"批量转账"、"多人转账"
@@ -50,98 +50,92 @@ async function callLLMIntentClassification(text) {
 请严格输出JSON格式，不要输出多余解释：
 {"intent": "意图名称", "module": "模块名", "slots": {"amount": null, "date": null, "payee_name": null, "payee_list": [], "phone": null, "product_name": null, "period": null, "platform": null, "steps": []}, "confidence": 0.0, "reply": "给用户的简短回复"}
 `;
-
-  // 未配置 Key（且没有服务端代理）：直接返回 null，由调用方降级到本地规则
-  if (!bankHasLLMKey()) {
-    console.info('[ai] 未配置 DeepSeek API Key，意图分类降级为本地规则');
-    return null;
-  }
-
-  try {
-    const response = await bankFetch(DEEPSEEK_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_API_KEY}` },
-      body: JSON.stringify({
-        model: MODEL_NAME,
-        messages: [
-          { role: 'system', content: '你是一个银行智能体的意图分类引擎。根据用户输入，识别意图并分类到对应模块。只输出JSON，不要输出多余解释，不要输出推理过程。' + intentDefinitions },
-          { role: 'user', content: text }
-        ],
-        temperature: 0.1,
-        max_tokens: 2000,
-        stream: false
-      })
-    });
-    const data = await response.json();
-    if (data.choices && data.choices[0] && data.choices[0].message) {
-      let content = data.choices[0].message.content || '';
-      // 尝试从内容中提取JSON部分（去除可能的前后文本）
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        content = jsonMatch[0];
-      }
-      try {
-        const result = JSON.parse(content);
-        console.log('大模型意图分类结果:', result);
-        return result;
-      } catch (parseErr) {
-        console.warn('大模型输出JSON解析失败，原始内容:', content);
-        // 降级：用简单规则判断
+    if (!bankHasLLMKey()) {
+        console.info('[ai] 未配置 DeepSeek API Key，意图分类降级为本地规则');
         return null;
-      }
     }
-    console.warn('大模型返回格式异常:', data);
-    return null;
-  } catch (err) {
-    console.error('大模型意图分类失败:', err);
-    return null;
-  }
+    try {
+        const response = await bankFetch(DEEPSEEK_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_API_KEY}` },
+            body: JSON.stringify({
+                model: MODEL_NAME,
+                messages: [
+                    { role: 'system', content: '你是一个银行智能体的意图分类引擎。根据用户输入，识别意图并分类到对应模块。只输出JSON，不要输出多余解释，不要输出推理过程。' + intentDefinitions },
+                    { role: 'user', content: text }
+                ],
+                temperature: 0.1,
+                max_tokens: 2000,
+                stream: false
+            })
+        });
+        const data = await response.json();
+        if (data.choices && data.choices[0] && data.choices[0].message) {
+            let content = data.choices[0].message.content || '';
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch)
+                content = jsonMatch[0];
+            try {
+                const result = JSON.parse(content);
+                console.log('大模型意图分类结果:', result);
+                return result;
+            }
+            catch (parseErr) {
+                console.warn('大模型输出JSON解析失败，原始内容:', content);
+                return null;
+            }
+        }
+        console.warn('大模型返回格式异常:', data);
+        return null;
+    }
+    catch (err) {
+        console.error('大模型意图分类失败:', err);
+        return null;
+    }
 }
-
-// 根据大模型分类结果执行模块跳转
-
 // ========== AI 对话 ==========
 async function sendMessage() {
-  if (typeof window !== 'undefined') window.__DEDUPE_BREAK__ = true;   // 新一轮输入：允许相同追问再次出现
-  // 如果在用户信息页面，自动回到聊天界面
-  const userInfoPage = document.getElementById('userInfoPage');
-  if (userInfoPage && userInfoPage.classList.contains('show')) {
-    closeUserInfoPage();
-  }
-  const input = document.getElementById('userInput');
-  const text = input.value.trim();
-  if (!text || isLoading) return;
-  
-  appendMessage(`<div class="message user"><div class="msg-avatar user">陈</div><div class="msg-content"><div class="msg-name">小陈</div><div class="msg-bubble">${escapeHtml(text)}</div></div></div>`);
-  input.value = '';
-  input.style.height = 'auto';
-  scrollToBottom();
-  isLoading = true;
-
-  try {
-  // 服务向导优先（现在是异步的：AI 优先识别 → 规则兜底），返回 true 才算接管
-  if (typeof guideHandleText === 'function') {
-    var guideHandled = await guideHandleText(text);
-    if (guideHandled) return;
-  }
-
-  // 检测"你能做什么"类问题，调用AI API输出功能列表
-  if (/你能做什么|你能干啥|你有什么用|你会什么|你有什么功能|功能介绍|介绍一下|能帮我做什么|可以做什么|有哪些功能|你是谁/.test(text)) {
-    const loadingId = 'loading-' + Date.now();
-    appendMessage(`<div class="message" id="${loadingId}"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div></div></div>`);
+    if (typeof window !== 'undefined')
+        window.__DEDUPE_BREAK__ = true;
+    const userInfoPage = document.getElementById('userInfoPage');
+    if (userInfoPage && userInfoPage.classList.contains('show')) {
+        closeUserInfoPage();
+    }
+    const input = document.getElementById('userInput');
+    if (!input)
+        return;
+    const text = input.value.trim();
+    if (!text || isLoading)
+        return;
+    appendMessage(`<div class="message user"><div class="msg-avatar user">陈</div><div class="msg-content"><div class="msg-name">小陈</div><div class="msg-bubble">${escapeHtml(text)}</div></div></div>`);
+    input.value = '';
+    input.style.height = 'auto';
     scrollToBottom();
+    isLoading = true;
     try {
-      // 未配置 Key：直接进入降级提示，不发请求
-      if (!bankHasLLMKey()) {
-        throw new Error('未配置 DeepSeek API Key，请参考 js/config.local.example.js 创建 js/config.local.js');
-      }
-      const response = await bankFetch(DEEPSEEK_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_API_KEY}` },
-        body: JSON.stringify({
-          model: MODEL_NAME,
-          messages: [
-            { role: 'system', content: `你是一个专业的智能金融助手。用户在询问你的功能，请用简洁清晰的方式列出你支持的所有功能。
+        // 服务向导优先（异步：AI 优先识别 → 规则兜底）
+        if (typeof guideHandleText === 'function') {
+            var guideHandled = await guideHandleText(text);
+            if (guideHandled)
+                return;
+        }
+        // 「你能做什么」类问题：调用 AI 输出功能列表
+        if (/你能做什么|你能干啥|你有什么用|你会什么|你有什么功能|功能介绍|介绍一下|能帮我做什么|可以做什么|有哪些功能|你是谁/.test(text)) {
+            const loadingId = 'loading-' + Date.now();
+            appendMessage(`<div class="message" id="${loadingId}"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div></div></div>`);
+            scrollToBottom();
+            try {
+                if (!bankHasLLMKey()) {
+                    throw new Error('未配置 DeepSeek API Key，请参考 js/config.local.example.js 创建 js/config.local.js');
+                }
+                const response = await bankFetch(DEEPSEEK_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_API_KEY}` },
+                    body: JSON.stringify({
+                        model: MODEL_NAME,
+                        messages: [
+                            {
+                                role: 'system', content: `你是一个专业的智能金融助手。用户在询问你的功能，请用简洁清晰的方式列出你支持的所有功能。
 
 要求：
 1. 用中文回答
@@ -161,32 +155,36 @@ async function sendMessage() {
 -  生日鲜花：联系人生日提醒、一键订购鲜花、自动支付
 - ️ 安全中心：密码/指纹/短信验证、登录设备管理
 -  用户信息：账户总览、基本信息、交易记录查询（支持按日期筛选）、联系人管理
--  智能客服：多轮对话、复杂指令拆解、指代理解、上下文记忆` },
-            { role: 'user', content: text }
-          ],
-          temperature: 0.7, max_tokens: 1024, stream: false
-        })
-      });
-      const data = await response.json();
-      const loadingEl = document.getElementById(loadingId);
-      if (loadingEl) loadingEl.remove();
-      if (data.choices && data.choices[0]) {
-        appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">${formatAiText(data.choices[0].message.content)}</div></div></div>`);
-      } else {
-        throw new Error(data.error?.message || 'API 返回异常');
-      }
-    } catch (err) {
-      const loadingEl = document.getElementById(loadingId);
-      if (loadingEl) loadingEl.remove();
-      appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble" style="color:#ef4444;">⚠️ AI 服务暂时不可用：${escapeHtml(err.message)}</div></div></div>`);
+-  智能客服：多轮对话、复杂指令拆解、指代理解、上下文记忆`
+                            },
+                            { role: 'user', content: text }
+                        ],
+                        temperature: 0.7, max_tokens: 1024, stream: false
+                    })
+                });
+                const data = await response.json();
+                const loadingEl = document.getElementById(loadingId);
+                if (loadingEl)
+                    loadingEl.remove();
+                if (data.choices && data.choices[0]) {
+                    appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">${formatAiText(data.choices[0].message.content)}</div></div></div>`);
+                }
+                else {
+                    throw new Error(data.error?.message || 'API 返回异常');
+                }
+            }
+            catch (err) {
+                const loadingEl = document.getElementById(loadingId);
+                if (loadingEl)
+                    loadingEl.remove();
+                appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble" style="color:#ef4444;">⚠️ AI 服务暂时不可用：${escapeHtml(err.message)}</div></div></div>`);
+            }
+            return;
+        }
+        // 增强版消息处理（多轮对话、复杂指令、指代理解）
+        await enhancedSendMessage(text);
     }
-    return;
-  }
-
-  // 使用增强版消息处理（多轮对话、复杂指令、指代理解）
-  await enhancedSendMessage(text);
-  } finally {
-    isLoading = false;
-  }
+    finally {
+        isLoading = false;
+    }
 }
-
