@@ -59,6 +59,7 @@ Agent 规划 + 风险识别 + 金额分级
 | 逐步引导式转账确认 | 定时转账验证 |
 |---|---|
 | ![引导式转账确认](preview/guided-transfer-confirm.png) | ![定时转账确认](preview/timed-transfer-confirm.png) |
+| ![账单分析](preview/bill-analysis.png) | ![理财申购确认](preview/wealth-confirm.png) |
 
 界面采用“稳重深蓝”的手机银行视觉：深蓝主色、白色卡片、红色支出、绿色收入、低饱和背景、统一线性图标。桌面端和 390px 移动端都做了适配。
 
