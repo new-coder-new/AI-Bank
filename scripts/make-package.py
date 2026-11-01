@@ -30,9 +30,11 @@ ROOT_FILES = [
     "tsconfig.strict-all.json", "cloudbaserc.json",
 ]
 # 打包目录
-DIRS = ["css", "js", "server", "tests", "docs", "scripts", "types", "build"]
+DIRS = ["css", "js", "server", "tests", "docs", "scripts", "types", "build", "preview"]
 # 目录级排除
-SKIP_DIRS = {"node_modules", ".git", ".workbuddy", "data", "preview", "logs", "__pycache__", "dist"}
+SKIP_DIRS = {"node_modules", ".git", ".workbuddy", "data", "logs", "__pycache__", "dist", "demo", "frames"}
+# preview 目录只收 README 引用的截图，不收录屏与帧序列
+PREVIEW_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp")
 # 文件级排除（安全红线）
 SKIP_FILES = {"config.local.js", "capture-previews.mjs", "build-submission.py"}
 SKIP_SUFFIX = (".db", ".db-wal", ".db-shm", ".mp4", ".webm", ".log", ".tsbuildinfo")
@@ -100,7 +102,7 @@ PACKAGE_README = """智银管家 · 源代码与部署材料
 """
 
 
-def should_skip(name, rel):
+def should_skip(name, cur):
     if name in SKIP_FILES:
         return True
     if name.startswith(".") and name not in (".dockerignore", ".gitignore"):
@@ -112,6 +114,11 @@ def should_skip(name, rel):
     # 任何层级的本地密钥文件
     if name == "config.local.js":
         return True
+    # preview 只收截图，录屏/帧序列一律不要（54MB）
+    rel_dir = os.path.relpath(cur, ROOT).replace(os.sep, "/")
+    if rel_dir == "preview" or rel_dir.startswith("preview/"):
+        if not name.lower().endswith(PREVIEW_EXTS):
+            return True
     return False
 
 
@@ -128,7 +135,8 @@ def build():
             if not os.path.isdir(base):
                 continue
             for cur, subs, files in os.walk(base):
-                subs[:] = [s for s in subs if s not in SKIP_DIRS]
+                subs[:] = [s for s in subs
+                           if s not in SKIP_DIRS and not s.startswith(("frames-", "demo-"))]
                 for f in files:
                     if should_skip(f, cur):
                         continue
@@ -150,11 +158,21 @@ def verify():
         for n in names:
             if n.endswith("config.local.js") or "/.env" in n or n.startswith(".env"):
                 problems.append("包含敏感文件: " + n)
-        # 2) 不得含 node_modules / .git / data
+        # 2) 不得含 node_modules / .git / data / 录屏素材
         for n in names:
-            for bad in ("node_modules/", ".git/", "/data/", "preview/"):
+            for bad in ("node_modules/", ".git/", "/data/", "preview/demo/", "preview/frames"):
                 if n.startswith(bad) or ("/" + bad) in n:
                     problems.append("包含应排除目录: " + n)
+        # 2.5) README 引用的每张图都必须真的在包里，否则图文全挂
+        try:
+            readme = z.read("README.md").decode("utf-8", "ignore")
+        except KeyError:
+            readme = ""
+        for img in re.findall(r"!\[[^\]]*\]\(([^)\s]+)\)", readme):
+            if img.startswith(("http://", "https://", "data:")):
+                continue
+            if img not in names:
+                problems.append("README 引用的图片缺失: " + img)
         # 3) 内容扫描：不得出现真实 Key 形态
         pat = re.compile(rb"sk-[A-Za-z0-9]{25,}")
         for n in names:

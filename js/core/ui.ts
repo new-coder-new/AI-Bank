@@ -75,9 +75,6 @@ var FUNC_GROUPS = [
 
 // 主分组之外、但仍在用的能力：降级为面板底部一行文字入口，避免功能失去入口
 var FUNC_MORE = [
-  { key: 'transferHistory', label: '转账记录' },
-  { key: 'batchTransfer', label: '批量转账' },
-  { key: 'installment', label: '账单分期' },
   { key: 'manualReviews', label: '复核审批' },
   { key: 'security', label: '安全中心' }
 ];

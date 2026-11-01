@@ -1,5 +1,5 @@
 // ==========================================================================
-//  卡片页与分期：卡片详情、账单分期测算
+//  卡片页：卡片详情、额度与挂失
 //  源码：js/flows/card.ts　→　编译：build/js/flows/card.js（经典脚本，无 import/export）
 //  对外入口：showCardLimit / toggleFreeze / showSmartLimit / showInstallmentCalculator 等
 //  类型：tsc 严格模式检查；对外符号统一在 types/global.d.ts 声明

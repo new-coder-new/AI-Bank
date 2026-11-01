@@ -919,15 +919,12 @@ function quickAction(type: any) {
     case 'risk': startRiskAssessment(); break;
     case 'abnormal': showAbnormalAlert(); break;
     case 'holdings': guideStartHoldings(); break;
-    case 'transferHistory': showTransferHistory(); break;
     case 'budget': showBillOverview('month'); break;
     case 'agent': runAgentWorkflow('帮我转账100元然后查询余额'); break;
     case 'smartLimit': showSmartLimit(); break;
     case 'birthday': guideStartBirthdayFlower(); break;
     case 'report': showBillOverview(/(本年|全年|年度)/.test(String((window as any).__GUIDE_LAST_TEXT || '')) ? 'year' : 'month'); break;
     case 'security': showSecurityCenter(); break;
-    case 'batchTransfer': showBatchTransfer(); break;
-    case 'installment': showInstallmentCalculator(); break;
     // 全部服务（+）新分组：转账 / 卡片
     case 'aa': openAAForm(); break;
     case 'transferName': guideStartNameTransfer(); break;
