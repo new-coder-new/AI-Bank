@@ -29,7 +29,7 @@ const STAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const OUT_DIR = path.join(process.cwd(), 'preview', 'demo');
 const FRAME_DIR = path.join(OUT_DIR, 'frames-' + STAMP);
 const DEVICE = ANDROID ? devices['Pixel 7'] : devices['iPhone 13'];
-const PACE = (FAST ? 0.15 : 1) * (Number(opt('pace', '2.2')) || 2.2);
+const PACE = (FAST ? 0.15 : 1) * (Number(opt('pace', '1.3')) || 1.3);
 
 fs.mkdirSync(FRAME_DIR, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -204,7 +204,7 @@ async function fillOtp(page) {
 
   // ① 开场：主菜单
   log('① 主菜单');
-  await beat(14000);
+  await beat(6000);
 
   // ② 转账 800（T1：指纹/密码）
   log('② 转账 800（T1）');
@@ -221,7 +221,7 @@ async function fillOtp(page) {
   await completeVerify(page);
   const okTransfer = await waitFor(page, async () => hasText(page, /转账已完成|转账成功|已转账/), 12000, '转账完成');
   results.push(['转账 800', okTransfer]);
-  await beat(20000);
+  await beat(10000);
 
   // ③ 定时转账 1000（T2：短信验证）
   log('③ 定时转账 1000（T2）');
@@ -241,7 +241,7 @@ async function fillOtp(page) {
   } else {
     results.push(['定时转账 1000', false]);
   }
-  await beat(20000);
+  await beat(10000);
 
   // ④ 账单分析（本月 ↔ 本年）
   log('④ 账单分析');
@@ -255,11 +255,11 @@ async function fillOtp(page) {
   await beat(3500);
   if (hasBill) {
     await clickByText(page, /^本年$/);
-    await beat(6000);
-    await clickByText(page, /^本月$/);
     await beat(4000);
+    await clickByText(page, /^本月$/);
+    await beat(3000);
   }
-  await beat(16000);
+  await beat(8000);
 
   // ⑤ 理财申购（风险测评 / 确认卡 / 验证）
   log('⑤ 理财申购');
@@ -289,7 +289,7 @@ async function fillOtp(page) {
   } else {
     results.push(['理财申购', false]);
   }
-  await beat(18000);
+  await beat(9000);
 
   // ⑥ 订阅：我的订阅 + 重复拦截
   log('⑥ 订阅管理');
@@ -297,7 +297,7 @@ async function fillOtp(page) {
   await say(page, '查看我的订阅', 1500);
   const mySubs = await waitFor(page, async () => hasText(page, /我的订阅（共/), 10000, '我的订阅');
   results.push(['我的订阅', mySubs]);
-  await beat(4000);
+  await beat(3000);
   await say(page, '订阅某视频平台VIP年卡', 1800);
   if (await waitChip(page, /^否$/, 8000)) { await clickByText(page, /^否$/); await beat(1200); }
   if (await waitChip(page, /确认添加/, 12000)) {
@@ -307,7 +307,7 @@ async function fillOtp(page) {
   } else {
     results.push(['重复订阅拦截', false]);
   }
-  await beat(16000);
+  await beat(8000);
 
   // ⑦ 收尾：重置演示数据
   log('⑦ 重置演示数据');
@@ -318,7 +318,7 @@ async function fillOtp(page) {
   await clickByText(page, /重置演示数据/);
   await beat(1500);
   await clickByText(page, /确定|确认/);
-  await beat(12000);
+  await beat(6000);
 
   recording = false;
   await cap;
