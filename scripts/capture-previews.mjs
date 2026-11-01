@@ -50,6 +50,8 @@ await shot({ ...devices['iPhone 13'], locale: 'zh-CN' }, 'bank-home-mobile.png')
 // 3) 引导式转账确认卡（停在确认卡，不触发验证弹窗）
 await shot({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1, locale: 'zh-CN' }, 'guided-transfer-confirm.png', async (page) => {
   await page.evaluate(() => { window.guideResetAllSessions(); window.currentModule = 'chat'; });
+  await page.evaluate(() => window.guideHandleText('转账收款'));
+  await sleep(900);
   await page.evaluate(() => window.guideHandleText('给张三转账 800 元'));
   await waitFor(page, async () => page.evaluate(() => Array.from(document.querySelectorAll('.guide-chip')).some((c) => /^否$/.test(c.textContent.trim()))), 8000);
   await clickText(page, /^否$/);
@@ -73,6 +75,8 @@ await shot({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1, local
 // 5) 账单分析（本月）
 await shot({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1, locale: 'zh-CN' }, 'bill-analysis.png', async (page) => {
   await page.evaluate(() => { window.guideResetAllSessions(); window.currentModule = 'chat'; });
+  await page.evaluate(() => window.guideHandleText('账单与交易'));
+  await sleep(900);
   await page.evaluate(() => window.guideHandleText('分析账单'));
   await sleep(1800);
 });
@@ -85,6 +89,8 @@ await shot({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1, local
     window.riskProfile = { level: 3, name: '平衡型', date: '2026-06-01' };
     window.mockData.userProfile.riskProfile = window.riskProfile;
   });
+  await page.evaluate(() => window.guideHandleText('理财'));
+  await sleep(900);
   await page.evaluate(() => window.guideHandleText('申购1001，5000元'));
   await sleep(1600);
 });
