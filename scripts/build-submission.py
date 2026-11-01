@@ -556,6 +556,9 @@ def build_zip():
                 for f in files:
                     if f.endswith((".db", ".mp4", ".webm", ".jpg", ".png")):
                         continue
+                    # 本地密钥文件绝不打进提交包（只保留 .example）
+                    if f == "config.local.js" or f.startswith(".env"):
+                        continue
                     full = os.path.join(cur, f)
                     rel = os.path.relpath(full, ROOT).replace(os.sep, "/")
                     z.write(full, rel)
