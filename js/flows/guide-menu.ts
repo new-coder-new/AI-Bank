@@ -1069,15 +1069,10 @@ function guideStartWealthPurchase() {
   if (!profile || !guideWealthValidProfile()) {
     GUIDE_WEALTH.stage = 'risk';
     var expired = (typeof riskProfileExpired === 'function') ? riskProfileExpired(profile) : false;
-    appendMessage(guideMessage(
-      '<p>查询到您' + (expired ? '风险测评<b>已过期</b>（有效期 1 年）' : '尚未完成风险评估') +
-      '，按照监管要求，需要先完成风险测评，才能为您推荐和购买理财产品，是否现在开始测评？</p>' +
-      '<div class="guide-chips">' +
-      '<button class="guide-chip" onclick="guideWealthStartAssess()">开始测评</button>' +
-      '<button class="guide-chip" onclick="guideWealthCancelAssess()">暂不测评</button>' +
-      '</div>'
-    ));
-    scrollToBottom();
+    // 统一由 guideWealthRiskPrompt 出提示，避免与申购流程的提示重复
+    if (typeof guideWealthRiskPrompt === 'function') {
+      guideWealthRiskPrompt(expired);
+    }
     return;
   }
   guideWealthShowRecommendations(profile);

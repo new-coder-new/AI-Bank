@@ -339,20 +339,30 @@ async function guideWealthStep(text: any) {
   return true;
 }
 
+// 申购前的风险测评提示：同一轮只出现一次，避免入口提示与确认流程重复弹两条
+function guideWealthRiskPrompt(expired?: any) {
+  var s = GUIDE_WEALTH;
+  if (s && s.riskPromptShown) return;
+  if (s) { s.stage = 'risk'; s.riskPromptShown = true; }
+  appendMessage(guideMessage(
+    '<p>按照监管要求，申购前需要完成有效的风险测评（有效期 1 年）。' +
+    (expired ? '你的上一份测评<b>已过期</b>，需重新测评。' : '') +
+    '是否现在开始测评？</p>' +
+    '<div class="guide-chips">' +
+    '<button class="guide-chip" onclick="guideWealthStartAssess()">开始测评</button>' +
+    '<button class="guide-chip" onclick="guideWealthCancelAssess()">暂不测评</button>' +
+    '</div>'
+  ));
+  scrollToBottom();
+}
+
 function guideWealthConfirm() {
   var s = GUIDE_WEALTH;
   if (!s) return;
   var profile = guideWealthValidProfile();
   if (!profile) {
     s.stage = 'risk';
-    appendMessage(guideMessage(
-      '<p>按照监管要求，申购前需要完成有效的风险测评（有效期 1 年）。是否现在开始测评？</p>' +
-      '<div class="guide-chips">' +
-      '<button class="guide-chip" onclick="guideWealthStartAssess()">开始测评</button>' +
-      '<button class="guide-chip" onclick="guideWealthCancelAssess()">暂不测评</button>' +
-      '</div>'
-    ));
-    scrollToBottom();
+    guideWealthRiskPrompt(false);
     return;
   }
 
