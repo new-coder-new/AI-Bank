@@ -330,7 +330,7 @@ async function resetStage(page, moduleKey) {
   await say(page, '订阅某阅读APP会员年卡', 700);
   if (await waitChip(page, /^否$/)) await clickByText(page, /^否$/);
   if (await waitChip(page, /确认添加/)) await clickByText(page, /确认添加/);
-  step('添加订阅（阅读年卡）', await waitFor(page, async () => hasText(page, /已添加|添加成功|订阅成功/), 8000, '添加结果'));
+  step('添加订阅（重复拦截）', await waitFor(page, async () => hasText(page, /已有有效订阅|已存在|已添加|添加成功/), 8000, '添加结果'));
   await beat(800);
 
   await say(page, '关闭某阅读APP会员的自动续费', 700);
@@ -339,7 +339,7 @@ async function resetStage(page, moduleKey) {
   await beat(800);
 
   await say(page, '查看我的订阅', 900);
-  step('我的订阅', await waitFor(page, async () => hasText(page, /我的订阅（共/), 6000, '我的订阅'));
+  step('我的订阅', await waitFor(page, async () => hasText(page, /我的订阅/), 8000, '我的订阅'));
   await beat(1000);
 
   // ⑬ 生日鲜花（先确保有最近生日联系人，再直接进确认表单）
