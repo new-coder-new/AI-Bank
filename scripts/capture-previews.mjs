@@ -24,6 +24,15 @@ async function shot(ctxOpts, file, action) {
   await ctx.close();
 }
 
+async function waitFor(page, fn, timeout = 8000) {
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    try { if (await fn()) return true; } catch (e) { }
+    await sleep(200);
+  }
+  return false;
+}
+
 const clickText = (page, re) => page.evaluate((src) => {
   const r = new RegExp(src);
   const list = Array.from(document.querySelectorAll('.guide-chip,button'))
@@ -38,14 +47,14 @@ await shot({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, local
 // 2) 移动首页（iPhone 13）
 await shot({ ...devices['iPhone 13'], locale: 'zh-CN' }, 'bank-home-mobile.png');
 
-// 3) 引导式转账确认卡
+// 3) 引导式转账确认卡（停在确认卡，不触发验证弹窗）
 await shot({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1, locale: 'zh-CN' }, 'guided-transfer-confirm.png', async (page) => {
-  await page.evaluate(() => window.guideHandleText('给张三转账800元'));
-  await sleep(1200);
+  await page.evaluate(() => { window.guideResetAllSessions(); window.currentModule = 'chat'; });
+  await page.evaluate(() => window.guideHandleText('给张三转账 800 元'));
+  await waitFor(page, async () => page.evaluate(() => Array.from(document.querySelectorAll('.guide-chip')).some((c) => /^否$/.test(c.textContent.trim()))), 8000);
   await clickText(page, /^否$/);
-  await sleep(1200);
-  await clickText(page, /确认转账|确认执行/).catch(() => { });
-  await sleep(800);
+  await waitFor(page, async () => /请确认本次转账/.test(await page.evaluate(() => document.body.innerText)), 8000);
+  await sleep(600);
 });
 
 // 4) 定时转账确认卡
