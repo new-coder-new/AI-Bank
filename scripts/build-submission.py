@@ -17,7 +17,7 @@ from pptx.util import Inches as PInches, Pt as PPt
 from pptx.dml.color import RGBColor as PRGB
 
 ROOT = r"C:\Users\32977\Desktop\配置\deploy-v5"
-OUT = r"C:\Users\32977\Desktop\配置\智银管家-参赛提交"
+OUT = os.environ.get("SUBMIT_OUT", r"C:\Users\32977\Desktop\配置\智银管家-参赛提交")
 MEDIA = os.path.join(ROOT, "scripts", "_submit_media")
 os.makedirs(OUT, exist_ok=True)
 os.makedirs(MEDIA, exist_ok=True)
@@ -412,6 +412,15 @@ def build_pptx(arch_png):
         ("T4  ≥ ¥100,000：短信 + 人脸 + 人工复核（不立即扣款）", 22, True),
         ("风险加权：深夜 / 异地 / 返利等可疑行为至少 T2–T3", 20, False),
     ], notes="70 秒：安全是最大卖点，讲清「金额 + 可疑度取较高档」。")
+
+    add_slide("可疑度怎么打分（与代码一致）", [
+        ("非联系人 +40 ｜ 该人无成功转账 +22", 21, False),
+        ("金额超历史均值 3 倍：按倍数加分，最多 +28", 21, False),
+        ("金额档：¥1,000–9,999 +15 ｜ ¥10,000–99,999 +35 ｜ ≥ ¥100,000 +55", 21, True),
+        ("凌晨 00:00–06:00 +15 ｜ 超均值 10 倍再 +10 ｜ 上限 99", 21, False),
+        ("≥60 高风险（至少 T3）｜ 30–59 中风险（至少 T2）", 21, False),
+        ("最终档位 = max(金额档, 可疑度档)：转 100 元遇「新联系人 + 首次交易」也会到 T3", 20, False),
+    ], notes="60 秒：讲清可疑度是代码里的服务端评分函数，不是固定风险标记。")
 
     add_slide("服务端权威与审计", [
         ("前端只收集与展示：档位、余额、价格、复核结论都由服务端计算", 21, False),
