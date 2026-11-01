@@ -129,17 +129,6 @@ docs/                 使用手册、测试用例、部署说明、安全审查�
 
 详见 [docs/部署说明.md](docs/部署说明.md)。
 
-## 演示与录制
-
-```bash
-node scripts/mobile-browser.mjs        # 手机尺寸浏览器窗口（390×664 设备模拟）
-npm run demo:record                    # 自动录制：断言 6 大步骤并合成 mp4
-npm run demo:record:android            # Pixel 7 设备模拟
-```
-
-- 自动录制成片约 4 分钟，输出到 `preview/demo/*.mp4`
-- 手动演示脚本：[docs/演示脚本.md](docs/演示脚本.md)、全模块版 [docs/演示脚本-全模块.md](docs/演示脚本-全模块.md)
-
 ## 测试与质量
 
 - 三套 tsconfig 全量 strict 检查，0 错误
@@ -162,8 +151,6 @@ npm run demo:record:android            # Pixel 7 设备模拟
 | [docs/测试用例.md](docs/测试用例.md) | 意图、槽位、边界用例 |
 | [docs/部署说明.md](docs/部署说明.md) | 本地 / Docker / CVM / 局域网 |
 | [docs/安全审查报告.md](docs/安全审查报告.md) | 安全设计与变更记录 |
-| [docs/演示脚本.md](docs/演示脚本.md) | 5 分钟演示分镜 |
-| [docs/演示脚本-全模块.md](docs/演示脚本-全模块.md) | 全模块三集方案 |
 
 ## 许可
 
