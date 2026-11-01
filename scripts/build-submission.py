@@ -540,7 +540,7 @@ def build_zip():
     skip_dirs = {"node_modules", "build", "dist", "data", "preview", ".git", ".workbuddy", "__pycache__"}
     include_root = [
         "index.html", "package.json", "package-lock.json", "README.md", "Dockerfile",
-        ".dockerignore", ".gitignore", "vite.config.mjs", "cloudbaserc.json",
+        ".dockerignore", ".gitignore", "vite.config.mjs",
         "tsconfig.json", "tsconfig.emit.json", "tsconfig.strict-all.json",
     ]
     dirs = ["css", "js", "server", "tests", "scripts", "types", "docs"]

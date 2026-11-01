@@ -1,4 +1,4 @@
-# 智银管家 · CloudBase CloudRun 容器部署
+# 智银管家 · 容器部署（Docker）
 # 源码只保留 TypeScript；镜像内先跑 npm run build:ts 生成 js 产物，再启动零依赖 Node 服务
 FROM node:20-alpine
 

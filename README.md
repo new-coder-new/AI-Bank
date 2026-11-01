@@ -145,7 +145,7 @@ curl http://127.0.0.1:8787/api/health
   会弹出应用内确认框；清空对话并回到首页，不会取消已创建的定时转账任务。
 - **重置本地数据**：用户信息页 → 重置数据。  
   清除当前浏览器 `localStorage` 并刷新。
-- **重置服务端数据**：先 `GET /api/session` 领取会话令牌，再带 `X-Bank-Session` 头调用 `POST /api/reset`。<br>会重建内存数据库，适合演示前恢复初始状态；无令牌/跨站请求会被拒绝。
+- **重置服务端数据**：先 `GET /api/session` 领取会话令牌，再带 `X-Bank-Session` 头调用 `POST /api/reset`。<br>会重建演示数据（SQLite 重新播种），适合演示前恢复初始状态；无令牌/跨站请求会被拒绝。
 - **彻底重置**：重启 `node server/index.js`。  
   服务端数据在内存中，重启即恢复初始数据。
 
@@ -184,49 +184,75 @@ cp js/core/config.local.example.js js/core/config.local.js   # 然后填入自�
 ## 4. 目录结构
 
 ```text
-deploy-v3/
-├── README.md                  # 项目详细说明（本文档）
-├── index.html                 # 单页应用外壳：顶部栏、抽屉、聊天区、用户信息页、输入区、服务面板
-├── package.json               # 零依赖，仅 node server/index.js
-├── Dockerfile                 # CloudBase CloudRun 容器部署
-├── cloudbaserc.json           # CloudBase 环境与服务配置
-├── .dockerignore
-├── .workbuddy/
-│   └── memory/2026-10-25.md   # 部署记录与踩坑说明
-├── preview/                   # 界面预览截图（不参与应用运行）
+deploy-v5/
+├── README.md                  # 项目完整技术说明（本文档）
+├── index.html                 # 单页外壳：顶栏、聊天区、服务面板、用户信息页、输入区
+├── package.json               # 运行时零第三方依赖；devDependencies 仅有 typescript + vite
+├── package-lock.json
+├── vite.config.mjs            # 仅用于 npm run dev / preview，生产不经过它
+├── Dockerfile                 # 容器构建（构建期编译 TS，运行期只跑 node）
+├── tsconfig.json              # 类型检查（--noEmit）
+├── tsconfig.emit.json         # 编译入口：38 个 .ts → build/js/
+├── tsconfig.strict-all.json   # 全量严格检查
 ├── css/
-│   └── style.css              # 基础样式 + v9 银行 App 视觉覆盖层
-├── js/
-│   ├── icons.js               # 统一线性 SVG 图标
-│   ├── config.js              # API Key、模型配置、mockData 初始数据、通用工具
-│   ├── api.js                 # 前端 API 数据层：健康检查、快照注入、写操作同步
-│   ├── storage.js             # localStorage 持久化、首页/抽屉/服务面板/用户信息页
-│   ├── security.js            # 安全验证、用户信息渲染、addTransaction、quickAction、resetChat
-│   ├── transfer.js            # 转账表单、批量、AA、定时转账、转账记录与撤销
-│   ├── wealth.js              # 理财产品、风险测评、申购赎回、持仓
-│   ├── card.js                # 信用卡、调额、挂失、账单分期
-│   ├── cardlimit.js           # 额度分层、调额申请工具、额度查询前置处理
-│   ├── subscription.js        # 订阅列表、取消、添加、首次扣费
-│   ├── userinfo.js            # 用户信息入口
-│   ├── analysis.js            # 账单分析、饼图/柱图、异常交易、财务报告
-│   ├── ai.js                  # 意图分类、功能询问、sendMessage 入口
-│   ├── agent.js               # Agent 核心：记忆、工具注册、余额门禁、风险分级、计划执行
-│   ├── agent-llm.js           # Function Calling 层：工具 schema、模型循环、确认卡
-│   ├── agentsvc.js            # 冻结资金与联系人服务前置处理
-│   ├── context.js             # 对话上下文、指代消解、追问承接
-│   ├── kb.js                  # 金融知识库 RAG
-│   ├── scenario.js            # 资金安排场景推理
-│   ├── profile.js             # 用户画像分析
-│   ├── decision.js            # 消费决策分析
-│   ├── riskdetect.js          # 高危金融行为识别
-│   ├── planner.js             # 跨场景目标规划
-│   ├── display.js             # 健康评分、负债体检、主动提醒卡
-│   ├── visualization.js       # Canvas 趋势图、资产图、瀑布图
-│   ├── insights.js            # 首页简报、AI 发现、主动推送、场景库
-│   └── ui.js                  # 深色模式、Toast、服务面板渲染、教程
-└── server/
-    ├── index.js               # 零依赖 HTTP 服务：静态资源 + 模拟银行核心 API
-    └── db.js                  # 内存数据库：账户、账单、产品、订阅、持仓、额度
+│   └── style.css              # 全部样式（基础 + 银行 App 视觉层）
+├── js/                        # ★ 前端唯一源码目录，只保留 .ts
+│   ├── core/
+│   │   ├── api.ts             # 数据层：会话令牌、快照注入、写操作同步、验证令牌去重
+│   │   ├── config.ts          # 模型配置、mockData 初始数据、通用工具
+│   │   ├── icons.ts           # 统一线性 SVG 图标
+│   │   ├── session.ts         # 会话与登录态
+│   │   ├── storage.ts         # 本地持久化、顶栏/服务面板/用户信息页渲染、tab 切换
+│   │   ├── ui.ts              # 深色模式、Toast、服务面板分组、图标按钮
+│   │   ├── visualization.ts   # Canvas 趋势图、资产图、瀑布图
+│   │   └── config.local.example.js  # 本地密钥模板（真实文件不入库）
+│   ├── agent/                 # AI 能力层（13 个模块）
+│   │   ├── agent.ts           # Agent 内核：记忆、工具注册、余额门禁、金额分级、计划执行
+│   │   ├── agent-llm.ts       # Function Calling：工具 schema、模型循环、确认卡
+│   │   ├── ai.ts              # 意图分类与 sendMessage 入口
+│   │   ├── agentsvc.ts        # 冻结资金与联系人服务前置
+│   │   ├── context.ts         # 对话上下文、指代消解、追问承接
+│   │   ├── kb.ts              # 金融知识库 RAG
+│   │   ├── profile.ts         # 用户画像
+│   │   ├── decision.ts        # 消费决策分析
+│   │   ├── riskdetect.ts      # 高危金融行为识别
+│   │   ├── planner.ts         # 跨场景目标规划
+│   │   ├── scenario.ts        # 资金安排场景推理
+│   │   ├── display.ts         # 健康评分、负债体检、主动提醒卡
+│   │   └── insights.ts        # 首页简报、AI 发现、主动推送
+│   └── flows/                 # 业务流程层（18 个模块）
+│       ├── guide-menu.ts      # 主菜单守卫、二级菜单、模块作用域、收尾问句
+│       ├── guide-ai.ts        # 意图路由表（16 个模块 key）与模型识别
+│       ├── guide-transfer.ts  # 转账引导（姓名/手机号/定时/AA）
+│       ├── guide-wealth.ts    # 理财引导（申购/测评/持仓）
+│       ├── guide-card.ts      # 卡片引导（申请/调额/限额/挂失）
+│       ├── guide-sub.ts       # 订阅引导
+│       ├── guide-flower.ts    # 生日鲜花引导
+│       ├── guide-rules.ts     # 本地规则兜底
+│       ├── transfer.ts        # 转账表单、批量、AA、定时、记录与撤销
+│       ├── wealth.ts          # 理财申购赎回、持仓
+│       ├── card.ts / cardlimit.ts / cardservice.ts   # 卡片、额度、挂失
+│       ├── subscription.ts    # 订阅清单、增删、首次扣费
+│       ├── analysis.ts        # 账单分析、图表、异常交易、财务报告
+│       ├── security.ts        # 安全验证、用户信息渲染、统一记账入口
+│       ├── chat.ts            # 对话主循环
+│       └── userinfo.ts        # 用户信息消息卡
+├── build/                     # ★ TypeScript 编译产物（index.html 实际加载 build/js/**）
+│   └── js/                    # 与 js/ 结构一一对应的 38 个 .js
+├── server/                    # 服务端（纯 JavaScript，零第三方依赖）
+│   ├── index.js               # HTTP 服务：静态资源白名单 + 模拟银行核心 API + AI 代理
+│   └── db.js                  # SQLite 持久化层（state 表 + ledger 审计表，WAL 模式）
+├── tests/                     # 10 个测试套件（143 条用例）+ run-all.js
+├── types/
+│   └── global.d.ts            # 全局类型声明（经典脚本跨文件共享符号）
+├── docs/                      # 功能清单 / 使用手册 / 部署说明 / 测试用例 / 目录结构 / 安全审查 / 演示脚本
+├── scripts/
+│   ├── deploy-cvm.sh          # 云服务器一键部署
+│   ├── make-package.py        # 生成提交材料压缩包（含安全检查）
+│   ├── auto-demo.mjs          # 自动演示录制
+│   └── mobile-browser.mjs     # 手机浏览器模拟
+├── data/                      # 运行时数据（SQLite，不入库、不进提交包）
+└── preview/                   # 界面预览截图（不参与运行）
 ```
 
 ---
@@ -238,40 +264,45 @@ deploy-v3/
 ```mermaid
 flowchart LR
     U[用户] --> UI[Web UI<br/>index.html + css]
-    UI --> CHAT[对话层<br/>ai.js / chat.js]
-    CHAT --> LLM[Function Calling<br/>agent-llm.js]
-    CHAT --> RULE[规则 Agent<br/>agent.js]
+    UI --> CHAT[对话层<br/>flows/chat.ts · agent/ai.ts]
+    CHAT --> LLM[Function Calling<br/>agent/agent-llm.ts]
+    CHAT --> RULE[规则 Agent<br/>agent/agent.ts]
+    CHAT --> GUIDE[逐步引导<br/>flows/guide-*.ts]
     LLM --> TOOLS[Agent 工具注册表]
     RULE --> TOOLS
+    GUIDE --> TOOLS
     TOOLS --> TX[addTransaction<br/>统一余额门禁]
-    UI --> API[API 数据层<br/>api.js]
+    UI --> API[API 数据层<br/>core/api.ts]
     TX --> API
     API --> SRV[模拟银行核心<br/>server/index.js]
-    SRV --> DB[(内存数据库<br/>server/db.js)]
+    SRV --> DB[(SQLite<br/>server/db.js)]
     UI <--> LS[(localStorage)]
 ```
 
 ### 5.2 前端结构
 
-前端没有使用 React/Vue，也没有打包器，采用传统多脚本加载：
+前端没有使用 React/Vue，也不用打包器做生产构建，采用「TypeScript 编译 + 传统多脚本加载」：
 
 1. `index.html` 负责页面骨架。
 2. `css/style.css` 负责基础样式与银行 App 主题。
-3. `js/*.js` 按依赖顺序加载，每个文件暴露全局函数。
-4. `index.html` 末尾统一 `DOMContentLoaded` 初始化。
+3. `js/**/*.ts` 经 `npm run build:ts` 编译为 `build/js/**/*.js`。
+4. `index.html` 按依赖顺序用 `<script src>` 加载 **`build/js/**`** 下的产物，每个文件暴露全局函数。
+5. 页面末尾统一 `DOMContentLoaded` 初始化。
 
-脚本加载顺序（简化）：
+脚本加载顺序（简化，实际见 `index.html`）：
 
 ```text
-icons → config → api → visualization → storage → security
-→ transfer → wealth → card → subscription → userinfo
-→ analysis → flower → ai → intent
-→ agent → profile → decision → riskdetect → planner → display
-→ cardlimit → agentsvc → context → kb → scenario → insights
-→ agent-llm → chat → ui
+core/icons → core/config → core/session → core/api → core/visualization
+→ core/storage → flows/security → flows/transfer → flows/wealth
+→ flows/card → flows/subscription → flows/userinfo → flows/analysis
+→ agent/ai → agent/agent → agent/profile → agent/decision
+→ agent/riskdetect → agent/planner → agent/display
+→ flows/cardlimit → agent/agentsvc → agent/context → agent/kb
+→ agent/scenario → agent/insights → agent/agent-llm
+→ flows/chat → flows/guide-* → core/ui
 ```
 
-因为所有业务函数都是全局声明，后加载的模块可以在运行时被先加载的 UI 调用；但如果要在初始化阶段直接调用，需要注意顺序。
+因为所有业务函数都是全局声明（经典脚本，非 ES Module），后加载的模块可以在运行时被先加载的 UI 调用；初始化阶段直接调用则需注意顺序。跨文件共享的符号统一在 `types/global.d.ts` 声明。
 
 ### 5.3 后端结构
 
@@ -280,8 +311,8 @@ icons → config → api → visualization → storage → security
 - 同时提供静态文件与 API。
 - 静态文件根目录是项目根目录。
 - 默认端口 `8787`，容器环境通过 `PORT` 注入。
-- 所有数据存放在 `server/db.js` 构建的内存对象 `DB` 中。
-- 重启服务即重置数据，没有真正的数据库。
+- 业务数据由 `server/db.js` 持久化到 **SQLite**（`data/bank.db`，WAL 模式）。
+- 内存中的 `DB` 对象是运行时视图，每次写入走事务落盘；**重启不丢数据**。
 
 ---
 
@@ -311,9 +342,9 @@ icons → config → api → visualization → storage → security
 - AA 收款请求（`aaRequests`，包含活动、总额、参与人员、每人应付、状态）。
 - `riskProfile`：风险测评结果（运行时全局变量，会与 `userProfile.riskProfile` 同步）。
 
-### 6.2 服务端内存数据库
+### 6.2 服务端数据模型与 SQLite 持久化
 
-`server/db.js` 的 `buildDB()` 构建：
+`server/db.js` 的 `buildDB()` 构建初始业务对象：
 
 - `userProfile`：与服务端一致的账户核心数据。
 - `bills`：按当前月份动态生成。
@@ -321,6 +352,13 @@ icons → config → api → visualization → storage → security
 - `products`、`subscriptions`、`contacts`、`card`、`funds`。
 - `frozenItems`：冻结资金明细（类型、原因、金额、冻结时间、预计解冻日）。
 - `insights`：服务端洞察快照。
+
+持久化用 Node 内置 `node:sqlite`（`DatabaseSync`），数据库文件 `data/bank.db`，WAL 模式：
+
+- `state` 表：以 KV 形式存整个业务对象的 JSON 快照，每次保存在一个事务里写全部键，避免「写一半」；
+- `ledger` 表：资金审计流水，可按时间/动作查询（`GET /api/ledger`）；
+- 首次启动若存在旧的 `data/db.json`，会自动导入一次并保留原文件作备份；
+- 因此**重启服务不会丢数据**，需重置时调 `POST /api/reset` 或删除 `data/bank.db`。
 
 服务端的 `addTxn()` 会：
 
@@ -418,10 +456,10 @@ icons → config → api → visualization → storage → security
 
 | 档位 | 金额 | 执行要求 |
 |---|---|---|
-| T1 | ¥0.01–499.99 | 确认执行，直接执行 |
-| T2 | ¥500–4,999.99 | 确认卡 + 密码确认 |
-| T3 | ¥5,000–49,999.99 | 确认 + 二次验证码 |
-| T4 | ≥ ¥50,000 | 确认 + 二次验证码 + 提交人工复核（不立即扣款） |
+| T1 | 低于 ¥1,000 | 确认卡 + 交易密码 / 指纹 |
+| T2 | ¥1,000–9,999 | 确认卡 + 短信验证码 |
+| T3 | ¥10,000–99,999 | 确认卡 + 短信验证码 + 人脸 |
+| T4 | ≥ ¥100,000 | 确认 + 短信 + 人脸 + 提交人工复核（不立即扣款） |
 
 最终档位取「金额档」与「风险档」中更严的一个：
 
@@ -435,9 +473,9 @@ icons → config → api → visualization → storage → security
 - 收款人不在联系人中：+40。
 - 该收款人历史无成功转账：+22。
 - 金额达到历史平均转账的 3 倍以上：按倍数追加，最多 +28。
-- 单笔 ≥ ¥20,000：+10；单笔 ≥ ¥50,000：+20。
+- 单笔金额达到档位：¥1,000–9,999 +15；¥10,000–99,999 +35；≥ ¥100,000 +55。
 - 交易时间在 00:00–06:00：+15。
-- 分数上限 99；≥60 为高风险，30–59 为中风险，<30 为低风险。
+- 金额为历史平均 10 倍以上：再 +10；分数上限 99；≥60 为高风险，30–59 为中风险，<30 为低风险。
 
 因此，“新联系人 + 首次交易”本身就有 62 分，即使只转 100 元也会被抬到 T3 二次验证档。
 
@@ -695,7 +733,7 @@ AI：确认申购【稳健增利90天】50000 元，默认从活期主账户（�
 - 产品名模糊匹配：`稳健增利` / `稳利90天` 这类不完整说法也能对上（最长公共子串 ≥ 3 字）。
 - **查询所有产品**：推荐卡底部有【查询所有产品】按钮；也可以直接输入「查询所有产品 / 全部产品 / 更多产品 / 产品列表」，无论当前在哪个模块都会列出全部在售产品（带起购金额，以及「适配 / 超出您当前 R2 承受能力」标记）。
 - 风险等级高于用户等级：**不再直接拦截**，先提醒「该产品波动可能超过您的承受范围，是否仍要申购？」+【仍然申购】【换个产品】；选「仍然申购」后确认卡会标注风险等级提示，继续走金额风控与申购流程；选「换个产品」则取消并给出适配产品。低于起购金额 / 可用余额不足 → 提示重给金额。
-- 确认后调用 `executeBuyProduct()` → `wealth.buy`，沿用金额风控（≥¥500 需密码/验证码，≥¥50,000 提交人工复核）。
+- 确认后调用 `executeBuyProduct()` → `wealth.buy`，沿用金额风控（≥¥1,000 需短信验证，≥¥100,000 提交人工复核）。
 - 扣款账户尾号取自用户储蓄卡（当前演示数据为 `8666`，不是写死的 1234）。
 
 #### 8.4.2 持仓管理：追加申购 / 赎回（对话式）
@@ -973,7 +1011,7 @@ AI：您想要添加订阅、取消订阅，还是管理自动续费？
 
 ### 8.12 人工复核（T4 大额交易）
 
-- 触发条件：单笔/总额 ≥ `¥50,000`（T4 档）。
+- 触发条件：单笔/总额 ≥ `¥100,000`（T4 档）。
 - 流程：确认卡 → 二次验证码 → **提交人工复核**。
 - **提交后不扣款**，余额保持不变。
 - 复核记录保存在 `userProfile.manualReviews`，刷新后仍保留。
@@ -1012,7 +1050,7 @@ AI：您想要添加订阅、取消订阅，还是管理自动续费？
 | POST | `/api/card/adjust` | 调额申请（支持提额/降额，进入待复核） |
 | POST | `/api/card/limit/approve` | 复核通过后生效额度（降额不得低于已用额度） |
 | POST | `/api/contact/add` | 新增联系人（卡号去重、格式校验） |
-| POST | `/api/reset` | 重置内存数据库 |
+| POST | `/api/reset` | 重置演示数据（SQLite 重新播种） |
 
 其他请求会尝试作为静态文件返回。静态文件带目录穿越防护，API 响应带 `Cache-Control: no-store`，并允许跨域 `*`。
 
@@ -1191,9 +1229,9 @@ AI：您想要添加订阅、取消订阅，还是管理自动续费？
 - 一键式转账：`转账给张三1千元` 同样出确认卡；确认后只扣一次。
 - 复杂指令：`先转1000给张三，再查余额` 会等待转账确认，确认后才继续查询。
 - 理财申购：表单路径扣 `¥1,000`，只扣一次；持仓同步增加。
-- 理财申购 `¥2,000`：触发 T2 密码确认；`¥5,000` 触发 T3 安全验证；取消验证不扣款。
-- 鲜花订购 `¥5,000`：触发 T3 安全验证。
-- T4 `¥50,000`：验证后提交人工复核，余额不变；「全部服务 → 更多 → 复核审批」中可见记录。
+- 理财申购 `¥2,000`：触发 T2 短信验证；`¥20,000`：触发 T3 短信+人脸；取消验证不扣款。
+- 鲜花订购 `¥5,000`：触发 T2 短信验证。
+- T4 `¥100,000`：验证后提交人工复核，余额不变；「全部服务 → 更多 → 复核审批」中可见记录。
 - 信用卡额度：支持 `¥90,000 → ¥50,000` 降额和 `¥50,000 → ¥80,000` 提额；申请进入复核审批，通过后生效额度与可用额度同步更新；低于已用额度会被拒绝。
 - 管理员审批：通过后执行原申请，储蓄卡可用余额从 ¥998,000 变为 ¥948,000；拒绝后余额不变。
 - AA：默认勾选 3 位联系人和我，总额 ¥400，4 人分摊，每人应付 ¥100；提交不新增支出流水。
@@ -1247,44 +1285,22 @@ docker run -p 8080:8080 \
 
 镜像内不含任何 Key：容器启动后 `GET /js/core/config.local.js` 会由环境变量即时生成配置。
 
-### 13.3 腾讯云 CloudBase CloudRun
-
-项目内已有 `cloudbaserc.json` 与部署记录：
-
-- 环境：`base-d4g6gegsv70ec2031`（alias `base`，体验版 Trial，ap-shanghai）。
-- 服务：`ai-banking-agent`。
-- 公网访问（历史部署记录）：
-
-```text
-https://ai-banking-agent-335169-11-1386930579.sh.run.tcloudbase.com/
-```
-
-部署要点（来自 `.workbuddy/memory/2026-10-25.md`）：
-
-- 首次部署使用相对路径 `CMD` 时容器内找不到 `server/index.js`。
-- 已改为 `COPY . /app` + 绝对路径 `CMD ["node","/app/server/index.js"]`。
-- 容器内端口为 `8080`。
-- 服务 `MinNum=1` 常驻，响应快但按实例计费；可下调为 0 省费，代价是冷启动。
-- 代码更新后重新走 CloudBase 源码构建部署即可。
-- 密钥通过控制台「环境变量」配置 `DEEPSEEK_API_KEY` / `SILICONFLOW_API_KEY`，不要写进仓库。
-
 ### 13.4 生产化建议
 
-- ✅ 已删除前端硬编码 API Key：Key 外置到 `js/core/config.local.js`（git 忽略）或环境变量注入；生产环境建议进一步改为服务端代理，前端完全不接触 Key。
-- 增加登录、会话、权限、审计与限流。
-- 使用真实数据库替代内存数据库。
+- ✅ 前端已完全不含 API Key：下发的 `js/core/config.local.js` 恒为 `window.__BANK_KEYS__ = {}`，模型调用经 `/api/ai/chat` 由服务端代理，真实 Key 只存在于服务端环境变量。
+- ✅ 已接入会话鉴权与同源校验：`POST /api/session` 签发令牌，写接口需 `X-Bank-Session`，`isSameOriginStrict` 拒绝无 Origin/Referer 的请求。
+- ✅ 资金操作已具备幂等键、事务落盘与审计流水（`ledger` 表）。
+- 后续可接入真实银行核心系统替代模拟服务端。
 - 使用服务端定时任务替代前端定时器。
-- 增加 HTTPS 强制、CSP、CORS 白名单、密钥轮换。
-- 为资金操作增加幂等键、事务、对账与回滚。
-- 把验证码/密码/指纹替换为真实认证服务。
+- 增加 HTTPS 强制、CSP、密钥轮换与多用户隔离。
 
 ---
 
 ## 14. 已知边界与后续建议
 
-1. **内存数据库**：重启服务即重置，不适合生产。
-2. **API Key 硬编码**：`config.js` 中有 DeepSeek Key，生产必须迁移到服务端环境变量，且应轮换已暴露的 Key。
-3. **无鉴权**：所有 API 公开，CORS 为 `*`，没有多用户隔离。
+1. **模拟服务端**：业务规则为演示实现，非真实银行核心；数据虽落盘 SQLite（重启不丢），但不具备生产级对账、清算与多活能力。
+2. **AI 接口鉴权强度有限**：`/api/ai/chat` 目前只做同源校验（Origin/Referer）与频率限制（20 次/分钟/IP），未要求会话令牌；脚本伪造 Origin 仍可调用。生产环境应改为必须携带会话令牌。
+3. **单一演示账户**：无多用户与角色体系，所有访客共用同一份演示数据。
 4. **定时转账是前端实现**：页面关闭时不会执行，重新打开会补跑；真实银行必须放到服务端调度。
 5. **局部本地数据**：以下字段前端 localStorage 持有、后端核心不持有，`apiInjectSnapshot()` 会显式保留：`scheduledTransfers`、`riskProfile`、`manualReviews`、`aaRequests`、`creditCards`、`cardApplications`、`txnLimit`，以及主卡上的 `limitApply*` / `effectiveLimit` 等调额状态；其余字段仍会被服务端快照覆盖。
 6. **AI 依赖外部服务**：网络或 Key 不可用时，Function Calling 会降级到规则层。
@@ -1328,9 +1344,8 @@ https://ai-banking-agent-335169-11-1386930579.sh.run.tcloudbase.com/
 | `js/core/ui.js` | 深色模式、Toast、服务面板、教程 |
 | `js/core/icons.js` | 线性 SVG 图标 |
 | `server/index.js` | HTTP 服务、静态资源、银行核心 API |
-| `server/db.js` | 内存数据库初始数据 |
-| `Dockerfile` | CloudRun 容器构建 |
-| `cloudbaserc.json` | CloudBase 环境配置 |
+| `server/db.js` | SQLite 持久化层（state / ledger 表） |
+| `Dockerfile` | Docker 容器构建 |
 
 ---
 

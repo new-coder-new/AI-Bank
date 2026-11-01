@@ -864,11 +864,11 @@ const routes = {
         if (DB.__idem[k] && Date.now() - (DB.__idem[k].at || 0) > 600000) delete DB.__idem[k];
       });
     }
-    // 服务端独立判定：≥ ¥5,000（T3）必须携带一次性的验证令牌
+    // 服务端独立判定：≥ ¥1,000（T2）必须携带一次性的验证令牌
     if (amt >= 1000 && !consumeVerifyToken(req)) {
       return { ok: false, error: '需要安全验证（金额达到短信验证档）' };
     }
-    // ≥ ¥50,000（T4）：不直接扣款，转服务端人工复核
+    // ≥ ¥100,000（T4）：不直接扣款，转服务端人工复核
     if (amt >= 100000) {
       DB.userProfile.manualReviews = DB.userProfile.manualReviews || [];
       const reviewId = 'SRV' + Date.now();

@@ -71,7 +71,7 @@ function showUserInfo() {
               '<div class="data-card-title">🛡️ 复核审批</div>' +
               '<div class="data-row"><span class="data-label">待审批</span><span class="data-value" style="color:#B45309;font-weight:600;">' + pending + ' 笔</span></div>' +
               '<div class="data-row"><span class="data-label">累计申请</span><span class="data-value">' + list.length + ' 笔</span></div>' +
-              (list.length ? '' : '<div class="data-row"><span class="data-label">说明</span><span class="data-value" style="font-weight:400;">大额转账（≥ ¥50,000）、信用卡申请、额度调整会进入人工复核</span></div>') +
+              (list.length ? '' : '<div class="data-row"><span class="data-label">说明</span><span class="data-value" style="font-weight:400;">大额转账（≥ ¥100,000）、信用卡申请、额度调整会进入人工复核</span></div>') +
               '<div style="margin-top:8px;"><button class="ui-link" onclick="showUserInfoFromTopbar(); switchUserInfoTab(&quot;reviews&quot;, null);">查看/处理复核</button></div>' +
               '</div>';
           })()}

@@ -52,8 +52,8 @@ function buildDefaultAgentMemory() {
       riskPreference: '稳健型',
       riskLevel: 'C2 稳健型',
       monthlyAvgExpense: 7520,
-      confirmThreshold: 500,
-      verifyThreshold: 5000,   // 金额达到此值必须二次验证
+      confirmThreshold: 1000,
+      verifyThreshold: 1000,   // 金额达到此值（T2）必须短信验证
     },
     family: [
       { name: '林小雨', relation: '爱人', birthdayOffset: 3, favoriteFlower: '向日葵', cakeSize: '6寸', avoid: ['香菜'] },
@@ -85,9 +85,9 @@ function loadAgentMemory() {
   try {
     var raw = localStorage.getItem(AGENT_MEMORY_KEY);
     var mem = raw ? JSON.parse(raw) : null;
-    // 旧记忆里的确认阈值是 5000，与实际 T2 阈值 500 不一致，读取时迁移
-    if (mem && mem.profile && mem.profile.confirmThreshold === 5000) {
-      mem.profile.confirmThreshold = 500;
+    // 旧记忆里的阈值（500 / 5000）与当前档位（T2 起 ¥1,000）不一致，读取时迁移
+    if (mem && mem.profile && (mem.profile.confirmThreshold === 500 || mem.profile.confirmThreshold === 5000)) {
+      mem.profile.confirmThreshold = 1000;
     }
     return mem;
   } catch (e) { return null; }

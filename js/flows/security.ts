@@ -941,7 +941,7 @@ function quickAction(type: any) {
 }
 
 // 大额资金操作统一验证：金额达到 T2/T3/T4 时复用安全验证弹窗
-// T4（≥ ¥50,000）验证通过后只提交人工复核，不立即扣款。
+// T4（≥ ¥100,000）验证通过后只提交人工复核，不立即扣款。
 function manualReviewEsc(v: any) {
   return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -1328,7 +1328,7 @@ function renderUserInfoReviews(u: any) {
     '<div class="data-row"><span class="data-label">已处理</span><span class="data-value">' + (list.length - pending) + ' 笔</span></div>' +
     '<div class="data-row"><span class="data-label">当前可用余额</span><span class="data-value">¥' + available.toLocaleString('zh-CN', { minimumFractionDigits: 2 }) + '</span></div>' +
     '</div>' +
-    (rows || '<div class="userinfo-empty">暂无复核申请<br><small>大额转账（≥ ¥50,000）、信用卡申请、额度调整提交后会进入这里</small></div>') +
+    (rows || '<div class="userinfo-empty">暂无复核申请<br><small>大额转账（≥ ¥100,000）、信用卡申请、额度调整提交后会进入这里</small></div>') +
     '<div class="data-card"><div class="data-row"><span class="data-label">说明</span><span class="data-value" style="font-weight:400;">审批通过后执行并扣款；拒绝不扣款</span></div></div>' +
     '</section>';
 }

@@ -224,7 +224,7 @@ function agentSystemPrompt(): string {
     '- 绝不能协助规避风控，也不能声称"可以绕过"任何限制。',
     '',
     '【不可逾越的资金安全约束】',
-    'A. 转账金额 ≥ ¥5,000 必须触发二次验证；≥ ¥500 需要用户确认。这套分级由系统强制实施，你无需在回答里复述档位，但绝不能声称"已跳过验证"或"无需确认"。',
+    'A. 金额分级由系统强制执行：任何转账先出确认卡；≥ ¥1,000 短信验证；≥ ¥10,000 短信+人脸；≥ ¥100,000 提交人工复核（不立即扣款）。你无需复述档位，但绝不能声称"已跳过验证"或"无需确认"。',
     'B. 任何转账都不得使账户余额变为负数。若用户要求的金额超过可用余额（可先调 account.balance 查看），不要调用 transfer.execute——系统会拒绝，你应当改为向用户说明资金缺口，并按"优先不借钱"的顺序给出方案：① 降低金额 ② 分批转账 ③ 用信用卡（属透支，有利息）④ 贷款（会产生利息，通常约定不得用于投资）。',
     'D. 严禁协助任何形式的信用资金套现、代收代付、刷单返利等违规或涉诈行为。',
     '',
@@ -482,7 +482,7 @@ function agentLLMRenderConfirm(state: any): void {
 
   // —— 金额分级：批次内只要含"扣款类"工具，就统一按金额/风险定档 ——
   // 扣款类：转账、理财申购、鲜花、蛋糕；不含只读/预算设置/账户设置类工具。
-  // 风控红线：¥5,000 以上必须二次验证，此逻辑与规则层（agentTransferTier）保持一致。
+  // 风控红线：¥1,000 以上必须短信验证，此逻辑与规则层（agentTransferTier）保持一致。
   // 注意：不能用 tool.risk（transfer.execute 恒为 'high'，那是"需确认"标记，不是可疑度），
   // 必须用 agentAssessTransferRisk 的"可疑度"结果来抬档，否则一笔 ¥100 转账也会被要求验证码。
   var tier = null, tierBadge = null, tierHtml = '', verifyHtml = '';
@@ -823,7 +823,7 @@ async function agentLLMApprove(id: string): Promise<void> {
     }
   }
 
-  // —— T2 密码确认：金额达到 ¥500–4,999 时先完成一次安全验证 ——
+  // —— T2 短信验证：金额达到 ¥1,000–9,999 时先完成一次安全验证 ——
   if (state.tier && state.tier.key === 'T2' && typeof showSecurityVerification === 'function') {
     var t2Total = batch.reduce(function (s: any, a: any) { return s + agentActionAmount(a); }, 0);
     var t2ok = await new Promise(function (resolve) {
