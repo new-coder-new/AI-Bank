@@ -40,3 +40,7 @@ js/**/*.js
 
 # 自动演示录制的帧与视频（体积大，不入库）
 preview/demo/
+
+# 参赛材料构建中间产物
+scripts/_submit_media/
+
