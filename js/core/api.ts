@@ -18,6 +18,7 @@ interface ApiState {
   live: boolean;
   token: string;
   verifyToken: string;
+  verifyPending?: Promise<any> | null;
   verifyExp: number;
   pending: any[];
 }
@@ -28,6 +29,7 @@ var API: ApiState = {
   live: false,         // 是否已成功注入后端真实数据
   token: '',           // 同源会话令牌（写接口必须携带）
   verifyToken: '',     // 资金验证令牌（按金额档位校验）
+  verifyPending: null,  // 正在换取令牌的请求（防重复验证）
   verifyExp: 0,        // 验证令牌过期时间戳
   pending: []          // 等待后端就绪期间积压的写操作
 };
@@ -41,7 +43,8 @@ function bankAuthHeaders(): Record<string, string> {
 
 /** 安全验证通过后向服务端换取一次性验证令牌（供高金额资金接口使用） */
 function requestFundVerify(): Promise<any> {
-  return apiRequest('POST', '/api/verify/issue', { pin: '123456' })
+  if (API.verifyPending) return API.verifyPending;
+  const p = apiRequest('POST', '/api/verify/issue', { pin: '123456' })
     .then(function (res: any) {
       if (res && res.ok && res.verifyToken) {
         API.verifyToken = res.verifyToken;
@@ -50,6 +53,9 @@ function requestFundVerify(): Promise<any> {
       return res;
     })
     .catch(function () { return null; });
+  API.verifyPending = p;
+  p.then(function () { if (API.verifyPending === p) API.verifyPending = null; });
+  return p;
 }
 
 // 同源部署默认留空；file:// 或本地调试时连本机后端

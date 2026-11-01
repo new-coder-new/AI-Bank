@@ -767,9 +767,16 @@ async function agentEnsureFundVerify(amount: any, purpose: any) {
   try {
     if (!(Number(amount) >= 1000)) return true;
     if (typeof API !== 'undefined' && API.verifyToken && API.verifyExp > Date.now()) return true;
+    // 上一步验证刚通过但令牌还在换取中：等它完成，避免再弹一次验证码
+    if (typeof API !== 'undefined' && API.verifyPending) {
+      try { await API.verifyPending; } catch (e) { }
+      if (API.verifyToken && API.verifyExp > Date.now()) return true;
+    }
     if (typeof verifyAmountRisk !== 'function') return true;
     var r = await verifyAmountRisk(Number(amount), purpose || '资金操作', []);
-    return !!(r && (r as any).ok);
+    if (!r || !(r as any).ok) return false;
+    if (typeof requestFundVerify === 'function') { try { await requestFundVerify(); } catch (e) { } }
+    return !!(API && API.verifyToken && API.verifyExp > Date.now());
   } catch (e) { return false; }
 }
 
