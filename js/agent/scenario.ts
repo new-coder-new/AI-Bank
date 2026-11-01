@@ -149,7 +149,7 @@ function agentScenarioAllocate(amount: number, horizon: Horizon, purpose: Purpos
       { name: '固收类理财 / 债券基金', ratio: Math.round(fixedPool * 0.4), amount: pct(fixedPool * 0.4), why: '稳健增厚', kbId: 'bond' }
     ];
     if (equityRatio > 0) {
-      layers.push({ name: '指数基金定投（权益类）', ratio: equityRatio, amount: pct(equityRatio), why: '长期摊薄波动，博取超额收益', kbId: 'fund' });
+      layers.push({ name: '指数基金（权益类）', ratio: equityRatio, amount: pct(equityRatio), why: '长期摊薄波动，博取超额收益', kbId: 'fund' });
     }
   }
 
@@ -175,7 +175,7 @@ function agentScenarioRisks(amount: number, horizon: Horizon, purpose: Purpose, 
     risks.push('你的风险偏好偏进取，但这笔钱的用途（' + purpose.label + '）容错率低，建议按用途而非偏好来定配置。');
   }
   if (horizon.months >= 36 && layers.every(function (l) { return !/权益|指数/.test(l.name); })) {
-    risks.push('期限 1 年以上却全配固收，长期可能跑不赢通胀，可考虑用不超过 20% 的仓位做指数定投。');
+    risks.push('期限 1 年以上却全配固收，长期可能跑不赢通胀，可考虑用不超过 20% 的仓位配置指数基金。');
   }
   return risks;
 }

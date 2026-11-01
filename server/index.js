@@ -386,7 +386,7 @@ function lifeStage() {
   const age = now().getFullYear() - 1998;
   const loan = DB.userProfile.loan;
   if (age < 30) {
-    return { stage: '成长期', age, focus: '资产积累 + 能力提升', advice: '收入上升期，建议将月结余的 30%~40% 用于定投，尽早建立应急金（3~6 个月生活费）。' };
+    return { stage: '成长期', age, focus: '资产积累 + 能力提升', advice: '收入上升期，建议将月结余的 30%~40% 用于分批买入基金，尽早建立应急金（3~6 个月生活费）。' };
   } else if (age < 45) {
     return { stage: '稳定期', age, focus: '家庭责任 + 资产配置', advice: '家庭开支高峰期，需平衡房贷、子女教育与养老储备，建议按「短中长期」三层配置资金。' };
   } else {
@@ -1417,7 +1417,7 @@ const routes = {
     const acc = String(account || '').replace(/\s+/g, '');
     const bk = String(bank || '').trim();
     if (!nm) return { ok: false, error: '缺少联系人姓名' };
-    if (!/^\d{10,25}$/.test(acc)) return { ok: false, error: '银行卡号格式不正确（应为 10-25 位数字）' };
+    if (!/^\d{10,25}$/.test(acc)) return { ok: false, error: '收款账号格式不正确（应为 10-25 位数字）' };
     const exists = DB.contacts.some((c) => c.account.replace(/\s+/g, '') === acc);
     if (exists) return { ok: false, error: `卡号 ${acc.slice(-4).padStart(acc.length, '*')} 已存在于联系人列表中，请勿重复添加` };
     const item = { name: nm, phone: phone || '', account: acc, bank: bk || '未提供开户行' };

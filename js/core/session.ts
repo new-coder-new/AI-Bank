@@ -99,7 +99,6 @@ function guideActiveFlowLabel(): string {
   if (GUIDE_TRANSFER) {
     if (GUIDE_TRANSFER.kind === 'timed') return '定时转账';
     if (GUIDE_TRANSFER.kind === 'phone') return '手机号转账';
-    if (GUIDE_TRANSFER.kind === 'bank') return '银行卡转账';
     return '姓名转账';
   }
   if (GUIDE_AA) return 'AA 收款';

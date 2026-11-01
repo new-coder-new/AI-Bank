@@ -52,7 +52,7 @@ function riskDetectCreditToInvest(text: string): RiskHit | null {
       evidence: '识别到「信用额度/信用卡」与「套现/提现」及「投资/炒股」的组合表述',
       alternative: [
         '改用自有可投资资金，并按你的风险等级（' + ((AGENT_MEMORY && AGENT_MEMORY.profile.riskLevel) || '稳健型') + '）做风险匹配的投资',
-        '如需放大收益，优先考虑定投方式，用时间摊薄波动，而不是加杠杆',
+        '如需放大收益，优先考虑分批买入，用时间摊薄波动，而不是加杠杆',
         '先补足 3~6 个月应急金，再谈权益类投资'
       ]
     };
@@ -71,7 +71,7 @@ function riskDetectHighLeverage(text: string): RiskHit | null {
       evidence: '识别到「借款/贷款/杠杆」与「投资/炒股」的组合表述',
       alternative: [
         '用自有闲置资金投资，避免债务与投资叠加',
-        '若资金不足，先通过储蓄计划积累本金（可按月结余的 40% 定投）',
+        '若资金不足，先通过储蓄计划积累本金（可按月结余的 40% 分批买入）',
         '了解清楚可投资金额后再决定配置比例'
       ]
     };

@@ -265,9 +265,9 @@ function profileLifecycle(attr: ProfileAttr): LifecycleResult {
     stage = '财富积累期';
     stageDesc = '收入成长快、负担相对轻，是建立储蓄与投资习惯的黄金阶段。';
     advices = [
-      { text: '建立强制储蓄：每月固定转入 ' + agentFmtInt(Math.max(1000, attr.cashFlow.net * 0.5)) + ' 元定投，优先货币基金与固收+', why: '起步阶段靠纪律而非收益' },
+      { text: '建立强制储蓄：每月固定转入 ' + agentFmtInt(Math.max(1000, attr.cashFlow.net * 0.5)) + ' 元做分批买入，优先货币基金与固收+', why: '起步阶段靠纪律而非收益' },
       { text: '配置 3~6 个月生活费的应急金（约 ¥' + agentFmtInt(attr.cashFlow.outflow * 3) + '）', why: '应对失业/突发支出，避免动用信用卡' },
-      { text: '小额权益类定投（不超过可投资金 30%）', why: '年轻可承受时间波动，用长期摊销风险' }
+      { text: '小额权益类基金（不超过可投资金 30%）', why: '年轻可承受时间波动，用长期摊销风险' }
     ];
   } else if (age < 40) {
     stage = '财富成长与负债管理期';

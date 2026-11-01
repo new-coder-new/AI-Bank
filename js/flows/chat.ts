@@ -121,15 +121,6 @@ function identifyIntent(text: any) {
     };
   }
   
-  // 基金定投（优先于普通理财判断）
-  if (/(定投|定期投资|自动申购|每月.*买|每周.*买|基金定投)/.test(text)) {
-    return {
-      intent: 'investment_plan',
-      slots: {},
-      confidence: 0.95
-    };
-  }
-  
   // 账单分期（优先于普通信用卡判断）
   if (/(分期|账单分期|信用卡分期|还款分期|分.*期还)/.test(text)) {
     return {
@@ -431,11 +422,6 @@ async function executeSingleCommand(cmd: any) {
         addRecentAction('batch_transfer', {});
         break;
         
-      case 'investment_plan':
-        showInvestmentPlans();
-        addRecentAction('investment_plan', {});
-        break;
-        
       case 'installment':
         showInstallmentCalculator();
         addRecentAction('installment', {});
@@ -482,7 +468,7 @@ async function executeSingleCommand(cmd: any) {
         
       case 'wealth':
         // 区分购买理财和查看理财
-        if (/购买|申购|买入|买.*元|买.*块|定投|理财.*买/.test(cmd.text)) {
+        if (/购买|申购|买入|买.*元|买.*块|理财.*买/.test(cmd.text)) {
           const result = smartBuyParse(cmd.text);
           if (result.product && result.amount > 0) {
             showSmartBuyConfirm(result.product, result.amount, cmd.text);
@@ -1120,6 +1106,6 @@ function showWelcomeMessage() {
   else if (hour < 18) greeting = '下午好';
   else greeting = '晚上好';
   
-  appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">👋 <strong>${greeting}，小陈！</strong><br><br>我是你的智能金融助手，可以帮你完成：<br><br>💸 <strong>智能转账</strong> — 给张三转账1000元 / 批量转账<br>💰 <strong>理财操作</strong> — 购买安享三年定期500元 / 基金定投<br>💳 <strong>卡片管理</strong> — 查询额度 / 账单分期 / 挂失<br>🔔 <strong>订阅管理</strong> — 订阅某视频平台VIPvip年卡<br>🎯 <strong>预算管理</strong> — 设置每月预算3000元<br>📊 <strong>财务报告</strong> — 生成本月财务报告<br><br>💡 你可以直接对我说，也可以点击右下角 <strong>+</strong> 查看全部功能。</div></div></div>`);
+  appendMessage(`<div class="message"><div class="msg-avatar ai">🤖</div><div class="msg-content"><div class="msg-name">智能金融助手</div><div class="msg-bubble">👋 <strong>${greeting}，小陈！</strong><br><br>我是你的智能金融助手，可以帮你完成：<br><br>💸 <strong>智能转账</strong> — 给张三转账1000元 / 批量转账<br>💰 <strong>理财操作</strong> — 查看持仓 / 申购 1001，1000 元<br>💳 <strong>卡片管理</strong> — 查询额度 / 账单分期 / 挂失<br>🔔 <strong>订阅管理</strong> — 订阅某视频平台VIPvip年卡<br><br>📊 <strong>账单分析</strong> — 分析本月账单<br><br>💡 你可以直接对我说，也可以点击右下角 <strong>+</strong> 查看全部功能。</div></div></div>`);
   scrollToBottom();
 }

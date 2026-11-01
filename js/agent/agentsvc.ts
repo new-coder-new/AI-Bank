@@ -184,7 +184,7 @@ function contactListCard(): string {
     '<div class="msg-bubble agent-bubble">' +
     '<div class="ctx-head"> 转账联系人（共 ' + list.length + ' 位）</div>' +
     '<div class="data-card">' + (rows || '<p style="color:#999;">暂无联系人</p>') + '</div>' +
-    '<p style="margin-top:10px;font-size:12px;color:#999;"> 你可以直接对我说「新增联系人，姓名叫 X，银行卡号 N，开户银行是 Y」，我会帮你添加。</p>' +
+    '<p style="margin-top:10px;font-size:12px;color:#999;"> 你可以直接对我说「新增联系人，姓名叫 X，收款账号 N，开户银行是 Y」，我会帮你添加。</p>' +
     '</div></div></div>';
 }
 
@@ -206,8 +206,8 @@ function contactAddForm(preset?: { name?: string; account?: string; bank?: strin
     '<div class="transfer-form">' +
     '<div class="form-group"><label class="form-label">姓名</label>' +
     '<input type="text" class="form-input" id="ctName" value="' + (p.name || '') + '" placeholder="请输入姓名"></div>' +
-    '<div class="form-group"><label class="form-label">银行卡号</label>' +
-    '<input type="text" class="form-input" id="ctAccount" value="' + (p.account || '') + '" placeholder="请输入银行卡号"></div>' +
+    '<div class="form-group"><label class="form-label">收款账号</label>' +
+    '<input type="text" class="form-input" id="ctAccount" value="' + (p.account || '') + '" placeholder="请输入收款账号"></div>' +
     '<div class="form-group"><label class="form-label">开户银行</label>' +
     '<input type="text" class="form-input" id="ctBank" value="' + (p.bank || '') + '" placeholder="例如：中国工商银行"></div>' +
     '<div class="form-actions">' +
@@ -231,11 +231,11 @@ function contactAddSubmit(): void {
 /** 执行添加：本地乐观更新 + 后端同步（失败回滚） */
 function contactAddDo(name: string, account: string, bank?: string): void {
   if (!name || !account) {
-    agentReply('️ 姓名与银行卡号不能为空，请补充后重试。');
+    agentReply('️ 姓名与收款账号不能为空，请补充后重试。');
     return;
   }
   if (!/^\d{10,25}$/.test(account)) {
-    agentReply('️ 银行卡号格式不正确（应为 10-25 位数字），请检查后重试。');
+    agentReply('️ 收款账号格式不正确（应为 10-25 位数字），请检查后重试。');
     return;
   }
   var localDup = contactListData().some(function (c) { return String(c.account || '').replace(/\s+/g, '') === account; });
@@ -254,7 +254,7 @@ function contactAddDo(name: string, account: string, bank?: string): void {
     '<p style="font-weight:600;color:#16a34a;"> 联系人添加成功</p>' +
     '<div class="data-card">' +
     '<div class="data-row"><span class="data-label">姓名</span><span class="data-value">' + name + '</span></div>' +
-    '<div class="data-row"><span class="data-label">银行卡号</span><span class="data-value">' + account + '</span></div>' +
+    '<div class="data-row"><span class="data-label">收款账号</span><span class="data-value">' + account + '</span></div>' +
     '<div class="data-row"><span class="data-label">开户银行</span><span class="data-value">' + (bank || '未提供开户行') + '</span></div>' +
     '<div class="data-row"><span class="data-label">当前联系人总数</span><span class="data-value">' + contactListData().length + ' 位</span></div>' +
     '</div>' +
@@ -333,8 +333,8 @@ registerAgentTool('contact.add', {
     var name = args && (args.name || args.payee);
     var account = String((args && (args.account || args.cardNo)) || '').replace(/\s+/g, '');
     var bank = args && (args.bank || args.bankName);
-    if (!name || !account) return { ok: false, summary: '请同时提供姓名与银行卡号，例如「新增联系人，姓名叫李明，银行卡号 6222021234567890123，开户银行是中国工商银行」' };
-    if (!/^\d{10,25}$/.test(account)) return { ok: false, summary: '银行卡号格式不正确（应为 10-25 位数字）' };
+    if (!name || !account) return { ok: false, summary: '请同时提供姓名与收款账号，例如「新增联系人，姓名叫李明，收款账号 6222021234567890123，开户银行是中国工商银行」' };
+    if (!/^\d{10,25}$/.test(account)) return { ok: false, summary: '收款账号格式不正确（应为 10-25 位数字）' };
     var dup = contactListData().some(function (c) { return String(c.account || '').replace(/\s+/g, '') === account; });
     if (dup) return { ok: false, summary: '该卡号已存在于联系人列表中，请勿重复添加' };
     mockData.contacts = mockData.contacts || [];

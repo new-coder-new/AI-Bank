@@ -54,21 +54,19 @@ function syncScheduledTimeMin() {
   }
 }
 
-// mode: 'smart'（按姓名/手机号/银行卡号，即时转账）| 'timed'（定时转账）| 'aa'（AA 收款）
+// mode: 'smart'（按姓名/手机号，即时转账）| 'timed'（定时转账）| 'aa'（AA 收款）
 // 面板入口按业务动作各开一个模式，避免在同一个表单里塞 5 个页签造成两套导航。
 function showTransferForm(mode: any) {
-  const m = (mode === 'timed' || mode === 'aa' || mode === 'bank') ? mode : 'smart';
+  const m = (mode === 'timed' || mode === 'aa') ? mode : 'smart';
   const tabDefs = m === 'smart'
     ? [['name', '按姓名'], ['phone', '手机号']]
-    : (m === 'timed' ? [['timed', '定时转账']] : (m === 'bank' ? [['bank', '银行卡号']] : [['aa', 'AA收款']]));
-  const title = m === 'timed' ? '定时转账' : (m === 'aa' ? 'AA 收款' : (m === 'bank' ? '银行卡转账' : '智能转账'));
+    : (m === 'timed' ? [['timed', '定时转账']] : [['aa', 'AA收款']]);
+  const title = m === 'timed' ? '定时转账' : (m === 'aa' ? 'AA 收款' : '智能转账');
   const note = m === 'timed'
     ? '创建任务需短信验证码验证；到期自动从储蓄卡扣款，执行前可随时取消。'
     : m === 'aa'
       ? '先由你垫付，再按参与人数向联系人收款；发起后可在对话中查看分摊明细。'
-      : (m === 'bank'
-        ? '按收款银行卡号转账；金额达到风控档位会升级确认与验证。'
-        : '按姓名或手机号转账；金额达到风控档位会升级确认与验证。');
+      : '按姓名或手机号转账；金额达到风控档位会升级确认与验证。';
   const tabsHtml = m === 'smart'
     ? '<div class="tabs">' + tabDefs.map((t: any, i: any) =>
       '<div class="tab' + (i === 0 ? ' active' : '') + '" onclick="switchTransferTab(this,\'' + t[0] + '\')">' + t[1] + '</div>'
@@ -214,14 +212,6 @@ function switchTransferTab(el: any, type: any) {
       <div class="form-group"><label class="form-label">转账金额（元）</label><input type="number" class="form-input" id="transferAmount" placeholder="请输入金额" oninput="renderTransferTierHint()"><div id="transferTierHint" style="display:none;margin-top:6px;font-size:12px;line-height:1.6;"></div></div>
       <div class="form-group"><label class="form-label">备注（选填）</label><input type="text" class="form-input" id="transferRemark" placeholder="转账备注"></div>
     `;
-  } else if (type === 'bank') {
-    content.innerHTML = `
-      <div class="form-group"><label class="form-label">收款银行卡号</label><input type="text" class="form-input" id="transferBankCard" placeholder="请输入银行卡号（16-19位）" maxlength="19" style="font-family:monospace;" oninput="this.value=this.value.replace(/\\D/g,'')" onblur="validateTransferBankCard()"></div>
-      <div id="transferBankCardValid" style="display:none;padding:4px 0;color:#22c55e;font-size:12px;">卡号格式正确</div>
-      <div id="transferBankCardInvalid" style="display:none;padding:4px 0;color:#ef4444;font-size:12px;">卡号格式不正确</div>
-      <div class="form-group"><label class="form-label">转账金额（元）</label><input type="number" class="form-input" id="transferAmount" placeholder="请输入金额" oninput="renderTransferTierHint()"><div id="transferTierHint" style="display:none;margin-top:6px;font-size:12px;line-height:1.6;"></div></div>
-      <div class="form-group"><label class="form-label">备注（选填）</label><input type="text" class="form-input" id="transferRemark" placeholder="转账备注"></div>
-    `;
   } else if (type === 'timed') {
     const contactOptions = mockData.contacts.map((c: any) => `<option value="${c.name}">${c.name}</option>`).join('');
     const now = new Date();
@@ -311,8 +301,8 @@ function confirmTransfer(btn: any) {
   const activeTab = form.querySelector('.tab.active');
   const formMode = form.dataset.mode || '';
   const type = activeTab
-    ? (activeTab.textContent.includes('姓名') ? 'name' : activeTab.textContent.includes('手机号') ? 'phone' : activeTab.textContent.includes('银行卡') ? 'bank' : activeTab.textContent.includes('定时') ? 'timed' : 'aa')
-    : (formMode === 'timed' || formMode === 'aa' || formMode === 'bank' ? formMode : 'name');
+    ? (activeTab.textContent.includes('姓名') ? 'name' : activeTab.textContent.includes('手机号') ? 'phone' : activeTab.textContent.includes('定时') ? 'timed' : 'aa')
+    : (formMode === 'timed' || formMode === 'aa' ? formMode : 'name');
   const getVal = (id: any) => form.querySelector('#' + id)?.value || '';
   let detailHtml = '';
   let aaRequestData = null;
@@ -383,19 +373,6 @@ function confirmTransfer(btn: any) {
       <div class="data-row"><span class="data-label">转账金额</span><span class="data-value expense">¥ ${parseFloat(amount).toFixed(2)}</span></div>
       <div class="data-row"><span class="data-label">备注</span><span class="data-value">${remark}</span></div>
       <div class="data-row"><span class="data-label">交易时间</span><span class="data-value">${new Date().toLocaleString('zh-CN')}</span></div>`;
-  } else if (type === 'bank') {
-    const bankcard = getVal('transferBankCard');
-    const amount = getVal('transferAmount') || '0';
-    const remark = getVal('transferRemark') || '无';
-    const cardResult = validateBankCard(bankcard);
-    const bank = cardResult.bank || '未知银行';
-    const maskedCard = bankcard.length >= 8 ? bankcard.substring(0, 4) + ' **** **** ' + bankcard.substring(bankcard.length - 4) : bankcard;
-    detailHtml = `<div class="data-row"><span class="data-label">转账类型</span><span class="data-value">银行卡号转账</span></div>
-      <div class="data-row"><span class="data-label">收款银行</span><span class="data-value" style="font-weight:600;">${bank}</span></div>
-      <div class="data-row"><span class="data-label">收款卡号</span><span class="data-value" style="font-family:monospace;">${maskedCard}</span></div>
-      <div class="data-row"><span class="data-label">转账金额</span><span class="data-value expense">¥ ${parseFloat(amount).toFixed(2)}</span></div>
-      <div class="data-row"><span class="data-label">备注</span><span class="data-value">${remark}</span></div>
-      <div class="data-row"><span class="data-label">交易时间</span><span class="data-value">${new Date().toLocaleString('zh-CN')}</span></div>`;
   } else {
     const contact = getVal('transferContact');
     const amount = getVal('transferAmount') || '0';
@@ -407,17 +384,15 @@ function confirmTransfer(btn: any) {
       <div class="data-row"><span class="data-label">备注</span><span class="data-value">${remark}</span></div>
       <div class="data-row"><span class="data-label">交易时间</span><span class="data-value">${new Date().toLocaleString('zh-CN')}</span></div>`;
   }
-  // —— 立即执行的转账（姓名 / 手机号 / 银行卡）：统一改走 Agent 风控链路 ——
+  // —— 立即执行的转账（姓名 / 手机号）：统一改走 Agent 风控链路 ——
   // 这样金额分级、二次验证码、余额门禁三处防线都生效，不再出现"表单转账无风控"的漏洞。
-  if (type === 'name' || type === 'phone' || type === 'bank') {
+  if (type === 'name' || type === 'phone') {
     const amount = parseFloat(getVal('transferAmount')) || 0;
     const phoneDigits = type === 'phone' ? String(getVal('transferPhone') || '').replace(/\D/g, '') : '';
     const phoneContact = type === 'phone' ? findContactByPhone(phoneDigits) : null;
     const contact = type === 'name'
       ? getVal('transferContact')
-      : type === 'phone'
-        ? (phoneContact ? phoneContact.name : (getVal('transferName') || '').trim())
-        : (validateBankCard(getVal('transferBankCard')).bank || '银行卡用户');
+      : (phoneContact ? phoneContact.name : (getVal('transferName') || '').trim());
 
     // 手机号转账：号码格式必须正确；不在通讯录时必须有手填的收款人姓名
     if (type === 'phone') {
@@ -438,7 +413,7 @@ function confirmTransfer(btn: any) {
       scrollToBottom();
       return;
     }
-    const ch = type === 'name' ? '网银转账' : type === 'phone' ? '手机号转账' : '银行卡转账';
+    const ch = type === 'name' ? '网银转账' : '手机号转账';
     // 移除表单，避免重复提交；真正结果由 Agent 链路输出
     form.closest('.message')?.remove();
     if (typeof agentTransferFlow === 'function') {

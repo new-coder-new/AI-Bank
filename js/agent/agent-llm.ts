@@ -63,7 +63,7 @@ var AGENT_TOOL_SPECS: Record<string, any> = {
   'account.balance': { group: '账户', desc: '查询借记卡可用余额、冻结金额与资产总览', params: {} },
   'account.frozenDetail': { group: '账户', desc: '查询冻结金额明细：每笔冻结的类型、原因、金额、冻结时间与预计解冻日期。当用户问"冻结金额明细/为什么被冻结/什么时候解冻/解冻后可用余额"时调用', params: {} },
   'contact.list': { group: '转账', desc: '查询转账联系人列表（姓名、开户行、卡号）', params: {} },
-  'contact.add': { group: '转账', desc: '新增转账联系人，需要姓名与银行卡号，可选开户银行', params: { name: { type: 'string', description: '联系人姓名', required: true }, account: { type: 'string', description: '银行卡号', required: true }, bank: { type: 'string', description: '开户银行' } } },
+  'contact.add': { group: '转账', desc: '新增转账联系人，需要姓名与收款账号，可选开户银行', params: { name: { type: 'string', description: '联系人姓名', required: true }, account: { type: 'string', description: '收款账号', required: true }, bank: { type: 'string', description: '开户银行' } } },
   'account.profile': { group: '账户', desc: '读取用户画像：风险等级、家庭成员、理财目标、常用收款人', params: {} },
   'account.financeOverview': { group: '账户', desc: '生成完整财务全景：收入、支出、月结余、储蓄率、总资产、风险等级、支出结构。当用户问"我的财务情况/我最近财务状况/帮我看看财务"时优先调用它', params: {} },
   'account.profileAnalysis': { group: '账户', desc: '生成深度用户画像分析：客户标签、财务健康评分（四维）、生命周期阶段、带理由的个性化服务推荐。当用户问"分析我的画像/我是什么类型的客户/适合我的服务/根据我的情况推荐"时调用', params: {} },

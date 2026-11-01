@@ -1891,7 +1891,7 @@ function agentIsPurchaseDecision(text: any) {
   var hasAmount = /\d/.test(t);
   var purchase = /(买|购|入手|换|要|想买|想换|下单|购入)/.test(t);
   var ask = /(建议|要不要|该不该|划算|值不值|分期|可以吗|能买|负担得起|承受|合适吗|推荐吗)/.test(t);
-  var isWealth = /(理财|基金|股票|投资|申购|赎回|定投)/.test(t);
+  var isWealth = /(理财|基金|股票|投资|申购|赎回)/.test(t);
   return hasAmount && purchase && ask && !isWealth;
 }
 
@@ -1952,7 +1952,7 @@ async function agentTransferFlow(payee: any, amount: any, rawText: any, channel:
   var ch = channel || '智能转账';
   var o = opts || {};
 
-  // 姓名转账只允许转给通讯录里的联系人；手机号转账、银行卡转账不走这条限制
+  // 姓名转账只允许转给通讯录里的联系人；手机号转账不走这条限制
   var NAME_CHANNELS: Record<string, number> = { '网银转账': 1, '智能转账': 1, '姓名转账': 1 };
   if (NAME_CHANNELS[ch]) {
     var contacts = mockData.contacts || [];

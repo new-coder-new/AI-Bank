@@ -927,13 +927,11 @@ function quickAction(type: any) {
     case 'report': showBillOverview(/(本年|全年|年度)/.test(String((window as any).__GUIDE_LAST_TEXT || '')) ? 'year' : 'month'); break;
     case 'security': showSecurityCenter(); break;
     case 'batchTransfer': showBatchTransfer(); break;
-    case 'investment': showInvestmentPlans(); break;
     case 'installment': showInstallmentCalculator(); break;
     // 全部服务（+）新分组：转账 / 卡片
     case 'aa': openAAForm(); break;
     case 'transferName': guideStartNameTransfer(); break;
     case 'transferPhone': guideStartPhoneTransfer(); break;
-    case 'bankTransfer': showTransferForm('bank'); break;
     case 'cardApply': guideStartCardApply(); break;
     case 'myCards': showCardMyCards(); break;
     case 'cardLimit': guideStartCardLimitAdjust(); break;
