@@ -29,7 +29,7 @@ const STAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const OUT_DIR = path.join(process.cwd(), 'preview', 'demo');
 const FRAME_DIR = path.join(OUT_DIR, 'frames-' + STAMP);
 const DEVICE = ANDROID ? devices['Pixel 7'] : devices['iPhone 13'];
-const PACE = (FAST ? 0.15 : 1) * (Number(opt('pace', '1.4')) || 1.4);
+const PACE = (FAST ? 0.15 : 1) * (Number(opt('pace', '2.2')) || 2.2);
 
 fs.mkdirSync(FRAME_DIR, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -338,5 +338,10 @@ async function fillOtp(page) {
   log('合成 mp4 …');
   runFf(mp4, 'libx264', ['-movflags', '+faststart', '-crf', '23']);
   log('完成：', mp4);
-  log('帧目录（可删）：', FRAME_DIR);
+  if (args.includes('--keep-frames')) {
+    log('帧目录（--keep-frames 保留）：', FRAME_DIR);
+  } else {
+    fs.rmSync(FRAME_DIR, { recursive: true, force: true });
+    log('已清理帧目录（需要保留加 --keep-frames）');
+  }
 })();
