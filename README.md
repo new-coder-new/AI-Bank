@@ -1,5 +1,7 @@
 # 智银管家 · ZhiYin Banker Copilot
 
+**代码仓库**：https://github.com/new-coder-new/AI-Bank
+
 > 面向个人客户的对话式银行智能服务台（演示原型）。  
 > 文档版本：v1.2（2026-10-31）  
 > 运行形态：单端口 Web 应用（仓库只保留 TypeScript，`npm run build:ts` 输出到 `build/js/`；Vite 构建 + 零依赖 Node.js 模拟银行核心 + SQLite 权威记账）  
